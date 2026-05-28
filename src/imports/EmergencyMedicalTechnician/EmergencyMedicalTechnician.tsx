@@ -3203,11 +3203,13 @@ function Frame2() {
   };
 
   return (
-    <div className="content-stretch flex flex-col font-['Inter:Regular',sans-serif] font-normal gap-[16px] items-start relative shrink-0 text-[18px] text-white">
+    <div className="content-stretch flex flex-col font-['Inter:Regular',sans-serif] font-normal gap-[16px] items-start pb-[10px] relative shrink-0 text-[18px] text-white">
       <button type="button" onClick={handleProgramClick("#emt")} className="relative shrink-0 text-left transition-colors duration-200 w-[264px] hover:text-[#8ee2d2]">Emergency Medical Technician</button>
       <button type="button" onClick={handleProgramClick("#ha")} className="relative shrink-0 text-left transition-colors duration-200 w-[264px] hover:text-[#8ee2d2]">Hospital Administration</button>
       <button type="button" onClick={handleProgramClick("#gda")} className="min-w-full relative shrink-0 text-left transition-colors duration-200 w-[min-content] hover:text-[#8ee2d2]">General Duty Assistance</button>
       <button type="button" onClick={handleProgramClick("#ocha")} className="min-w-full relative shrink-0 text-left transition-colors duration-200 w-[min-content] hover:text-[#8ee2d2]">OCHA</button>
+      <button type="button" onClick={handleProgramClick("#acha")} className="min-w-full relative shrink-0 text-left transition-colors duration-200 w-[min-content] hover:text-[#8ee2d2]">ACHA</button>
+      <button type="button" onClick={handleProgramClick("#gca")} className="min-w-full relative shrink-0 text-left transition-colors duration-200 w-[min-content] hover:text-[#8ee2d2]">GCA</button>
     </div>
   );
 }
@@ -3528,7 +3530,7 @@ function Frame68() {
 
 function Frame4() {
   return (
-    <div className="bg-[#1f3471] h-[305px] relative shrink-0 w-full">
+    <div className="bg-[#1f3471] h-[330px] relative shrink-0 w-full">
       <Frame1 />
       <Frame68 />
     </div>

@@ -1984,7 +1984,7 @@ function Frame171() {
 
 function Container18() {
   return (
-    <div className="absolute h-[156px] left-0 overflow-clip right-0 rounded-[19.458px] top-0" style={{ backgroundImage: "linear-gradient(113.747deg, rgb(16, 211, 130) 1.5712%, rgb(64, 194, 140) 49.325%, rgb(8, 109, 67) 97.079%)" }} data-name="Container">
+    <div className="absolute h-[156px] left-0 overflow-clip right-0 rounded-[19.458px] top-0" style={{ backgroundImage: "linear-gradient(113deg, rgb(151, 66, 7) 2%, rgb(235, 127, 37) 58%, rgb(245, 155, 71) 100%)" }} data-name="Container">
       <Container19 />
       <Frame171 />
     </div>
@@ -2215,11 +2215,217 @@ function Frame58() {
   );
 }
 
+function Container19Acha() {
+  return <div className="absolute bg-white left-[312px] opacity-4 rounded-[40806480px] size-[146px] top-[71px]" data-name="Container" />;
+}
+
+function Frame171Acha() {
+  return (
+    <div className="absolute bg-[rgba(255,255,255,0.22)] content-stretch flex items-center justify-center left-[288px] overflow-clip px-[14px] py-[7px] rounded-[6px] top-[22.24px]">
+      <p className="font-['Inter:Medium',sans-serif] font-medium leading-[11.036px] not-italic relative shrink-0 text-[#eee] text-[12px] whitespace-nowrap">FLAGSHIP</p>
+    </div>
+  );
+}
+
+function Container18Acha() {
+  return (
+    <div
+      className="absolute h-[156px] left-0 overflow-clip right-0 rounded-[19.458px] top-0"
+      style={{ backgroundImage: "linear-gradient(113.747deg, rgb(16, 211, 130) 1.5712%, rgb(64, 194, 140) 49.325%, rgb(8, 109, 67) 97.079%)" }}
+      data-name="Container"
+    >
+      <Container19Acha />
+      <Frame171Acha />
+    </div>
+  );
+}
+
+function Frame59Acha() {
+  return (
+    <div className="absolute content-stretch flex flex-col gap-[8px] items-start left-[41px] not-italic right-[41px] text-white top-[54px]">
+      <p className="font-['Inter:Bold',sans-serif] font-bold leading-[normal] relative shrink-0 text-[20px] whitespace-nowrap">ACHA Program</p>
+      <div className="font-['Inter:Regular',sans-serif] font-normal leading-[0] min-w-full relative shrink-0 text-[18px] w-[min-content] whitespace-pre-wrap">
+        <p className="leading-[normal] mb-0">Advance Certification in Hospital</p>
+        <p className="leading-[normal]">Administration</p>
+      </div>
+    </div>
+  );
+}
+
+function Frame61Acha() {
+  return (
+    <div className="absolute content-stretch flex flex-col gap-[9px] items-start left-[41px] top-[188px] w-[328px]">
+      <div className="content-stretch flex gap-[15px] items-center relative shrink-0">
+        <div className="content-stretch flex gap-[8px] items-center relative shrink-0">
+          <MingcuteTimeLine2 />
+          <p className="font-['Inter:Semi_Bold',sans-serif] font-semibold leading-[normal] not-italic relative shrink-0 text-[#333] text-[18px] whitespace-nowrap">9 Months</p>
+        </div>
+        <div className="content-stretch flex gap-[8px] items-center relative shrink-0">
+          <MingcuteHospitalLine1 />
+          <p className="font-['Inter:Semi_Bold',sans-serif] font-semibold leading-[normal] not-italic relative shrink-0 text-[#333] text-[18px] whitespace-nowrap">60+ Job Roles</p>
+        </div>
+      </div>
+      <p className="font-['Inter:Regular',sans-serif] font-normal leading-[27px] not-italic relative shrink-0 text-[#333] text-[14px] w-full">{`6 Months Classroom & Practical Training + 3 Months Hospital Internship`}</p>
+      <div className="content-stretch flex flex-col gap-[10px] items-start relative shrink-0 w-full">
+        <p className="font-['Inter:Semi_Bold',sans-serif] font-semibold leading-[27px] min-w-full not-italic relative shrink-0 text-[#25a88d] text-[14px] w-[min-content]">Program Highlights</p>
+        <div className="content-stretch flex flex-col gap-[5px] items-start relative shrink-0 w-[271px]">
+          <div className="content-stretch flex gap-[15px] items-center relative shrink-0">
+            <MdiTick8 />
+            <p className="font-['Inter:Regular',sans-serif] font-normal leading-[27px] not-italic relative shrink-0 text-[#333] text-[14px] whitespace-nowrap">QCC Readiness Track + Advance</p>
+          </div>
+          <div className="content-stretch flex gap-[15px] items-center relative shrink-0 w-full">
+            <MdiTick9 />
+            <p className="font-['Inter:Regular',sans-serif] font-normal leading-[27px] not-italic relative shrink-0 text-[#333] text-[14px] whitespace-nowrap">Professional Skills Training</p>
+          </div>
+          <div className="content-stretch flex gap-[15px] items-center relative shrink-0">
+            <MdiTick10 />
+            <p className="font-['Inter:Regular',sans-serif] font-normal leading-[27px] not-italic relative shrink-0 text-[#333] text-[14px] whitespace-nowrap">NSDC + HSSC-aligned curriculum</p>
+          </div>
+          <div className="content-stretch flex gap-[15px] items-center relative shrink-0">
+            <MdiTick11 />
+            <p className="font-['Inter:Regular',sans-serif] font-normal leading-[27px] not-italic relative shrink-0 text-[#333] text-[14px] whitespace-nowrap">Real Hospital internship at partner facilities</p>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function Frame66Acha() {
+  const handleClick = () => {
+    window.location.hash = "acha";
+    window.scrollTo({ top: 0, behavior: "smooth" });
+  };
+
+  return (
+    <div onClick={handleClick} className="-translate-x-1/2 absolute content-stretch flex h-[40px] items-center justify-center left-1/2 overflow-clip px-[112px] py-[8px] rounded-[6px] top-[553px] w-[328px] cursor-pointer" style={{ backgroundImage: "linear-gradient(140.961deg, rgb(53, 80, 159) 6.5327%, rgb(26, 56, 144) 53.048%, rgb(59, 99, 215) 99.563%), linear-gradient(90deg, rgb(37, 168, 141) 0%, rgb(37, 168, 141) 100%)" }}>
+      <p className="font-['Inter:Semi_Bold',sans-serif] font-semibold leading-[normal] not-italic relative shrink-0 text-[18px] text-white whitespace-nowrap">Explore Now</p>
+    </div>
+  );
+}
+
+function FrameAcha() {
+  return (
+    <div className="bg-white h-[640px] overflow-clip relative rounded-[20px] shadow-[0px_10px_15px_-3px_rgba(37,99,235,0.15),0px_4px_6px_-4px_rgba(0,0,0,0.1),10px_40px_50px_0px_rgba(229,233,246,0.4),0px_6.478px_54.897px_0px_rgba(0,134,255,0.1)] shrink-0 transition-all duration-300 w-[410px] hover:-translate-y-2 hover:shadow-[0px_16px_24px_-6px_rgba(37,99,235,0.25),0px_10px_16px_-8px_rgba(0,0,0,0.12),12px_48px_58px_0px_rgba(229,233,246,0.5),0px_10px_60px_0px_rgba(0,134,255,0.15)]">
+      <Container18Acha />
+      <Frame59Acha />
+      <Frame61Acha />
+      <div className="absolute content-stretch flex flex-col gap-[15px] items-start left-[41px] not-italic top-[475px] w-[328px]">
+        <p className="font-['Inter:Regular',sans-serif] font-normal leading-[normal] relative shrink-0 text-[#333] text-[16px] w-full">Starting Salary Range</p>
+        <p className="font-['Inter:Semi_Bold',sans-serif] font-semibold leading-[21px] relative shrink-0 text-[#25a88d] text-[18px] w-full">{`Rs 20,000 - Rs 35,000 /Month `}</p>
+      </div>
+      <Frame66Acha />
+    </div>
+  );
+}
+
+function Container19Gca() {
+  return <div className="absolute bg-white left-[312px] opacity-4 rounded-[40806480px] size-[146px] top-[71px]" data-name="Container" />;
+}
+
+function Frame171Gca() {
+  return (
+    <div className="absolute bg-[rgba(82,123,255,0.24)] content-stretch flex items-center justify-center left-[257px] overflow-clip px-[14px] py-[7px] rounded-[6px] top-[22.24px]">
+      <p className="font-['Inter:Medium',sans-serif] font-medium leading-[11.036px] not-italic relative shrink-0 text-[#dfe9ff] text-[12px] whitespace-nowrap">HIGH DEMAND</p>
+    </div>
+  );
+}
+
+function Container18Gca() {
+  return (
+    <div
+      className="absolute h-[156px] left-0 overflow-clip right-0 rounded-[19.458px] top-0"
+      style={{ backgroundImage: "linear-gradient(113deg, rgb(76, 56, 178) 2%, rgb(96, 69, 201) 58%, rgb(128, 76, 224) 100%)" }}
+      data-name="Container"
+    >
+      <Container19Gca />
+      <Frame171Gca />
+    </div>
+  );
+}
+
+function Frame59Gca() {
+  return (
+    <div className="absolute content-stretch flex flex-col gap-[8px] items-start left-[41px] not-italic right-[41px] text-white top-[54px]">
+      <p className="font-['Inter:Bold',sans-serif] font-bold leading-[normal] relative shrink-0 text-[20px] whitespace-nowrap">GCA Program</p>
+      <div className="font-['Inter:Regular',sans-serif] font-normal leading-[0] min-w-full relative shrink-0 text-[18px] w-[min-content] whitespace-pre-wrap">
+        <p className="leading-[normal] mb-0">Certification in Geriatric Care</p>
+        <p className="leading-[normal]">Assistance</p>
+      </div>
+    </div>
+  );
+}
+
+function Frame61Gca() {
+  return (
+    <div className="absolute content-stretch flex flex-col gap-[9px] items-start left-[41px] top-[188px] w-[328px]">
+      <div className="content-stretch flex gap-[15px] items-center relative shrink-0">
+        <div className="content-stretch flex gap-[8px] items-center relative shrink-0">
+          <MingcuteTimeLine2 />
+          <p className="font-['Inter:Semi_Bold',sans-serif] font-semibold leading-[normal] not-italic relative shrink-0 text-[#333] text-[18px] whitespace-nowrap">6 Months</p>
+        </div>
+      </div>
+      <p className="font-['Inter:Regular',sans-serif] font-normal leading-[27px] not-italic relative shrink-0 text-[#333] text-[14px] w-full">{`4 Months Classroom & Practical Training + 2 Months field Internship`}</p>
+      <div className="content-stretch flex flex-col gap-[10px] items-start relative shrink-0 w-full">
+        <p className="font-['Inter:Semi_Bold',sans-serif] font-semibold leading-[27px] min-w-full not-italic relative shrink-0 text-[#25a88d] text-[14px] w-[min-content]">Program Highlights</p>
+        <div className="content-stretch flex flex-col gap-[5px] items-start relative shrink-0 w-[271px]">
+          <div className="content-stretch flex gap-[15px] items-center relative shrink-0">
+            <MdiTick8 />
+            <p className="font-['Inter:Regular',sans-serif] font-normal leading-[27px] not-italic relative shrink-0 text-[#333] text-[14px] whitespace-nowrap">NSDC + HSSC-aligned curriculum</p>
+          </div>
+          <div className="content-stretch flex gap-[15px] items-center relative shrink-0 w-full">
+            <MdiTick9 />
+            <p className="font-['Inter:Regular',sans-serif] font-normal leading-[27px] not-italic relative shrink-0 text-[#333] text-[14px] whitespace-nowrap">Practical elderly care training</p>
+          </div>
+          <div className="content-stretch flex gap-[15px] items-center relative shrink-0">
+            <MdiTick10 />
+            <p className="font-['Inter:Regular',sans-serif] font-normal leading-[27px] not-italic relative shrink-0 text-[#333] text-[14px] whitespace-nowrap">Home Care & Healthcare Facility Internship</p>
+          </div>
+          <div className="content-stretch flex gap-[15px] items-center relative shrink-0">
+            <MdiTick11 />
+            <p className="font-['Inter:Regular',sans-serif] font-normal leading-[27px] not-italic relative shrink-0 text-[#333] text-[14px] whitespace-nowrap">Placement assistance included</p>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function Frame66Gca() {
+  const handleClick = () => {
+    window.location.hash = "gca";
+    window.scrollTo({ top: 0, behavior: "smooth" });
+  };
+
+  return (
+    <div onClick={handleClick} className="-translate-x-1/2 absolute content-stretch flex h-[40px] items-center justify-center left-1/2 overflow-clip px-[112px] py-[8px] rounded-[6px] top-[553px] w-[328px] cursor-pointer" style={{ backgroundImage: "linear-gradient(140.961deg, rgb(53, 80, 159) 6.5327%, rgb(26, 56, 144) 53.048%, rgb(59, 99, 215) 99.563%), linear-gradient(90deg, rgb(37, 168, 141) 0%, rgb(37, 168, 141) 100%)" }}>
+      <p className="font-['Inter:Semi_Bold',sans-serif] font-semibold leading-[normal] not-italic relative shrink-0 text-[18px] text-white whitespace-nowrap">Explore Now</p>
+    </div>
+  );
+}
+
+function FrameGca() {
+  return (
+    <div className="bg-white h-[640px] overflow-clip relative rounded-[20px] shadow-[0px_10px_15px_-3px_rgba(37,99,235,0.15),0px_4px_6px_-4px_rgba(0,0,0,0.1),10px_40px_50px_0px_rgba(229,233,246,0.4),0px_6.478px_54.897px_0px_rgba(0,134,255,0.1)] shrink-0 transition-all duration-300 w-[410px] hover:-translate-y-2 hover:shadow-[0px_16px_24px_-6px_rgba(37,99,235,0.25),0px_10px_16px_-8px_rgba(0,0,0,0.12),12px_48px_58px_0px_rgba(229,233,246,0.5),0px_10px_60px_0px_rgba(0,134,255,0.15)]">
+      <Container18Gca />
+      <Frame59Gca />
+      <Frame61Gca />
+      <div className="absolute content-stretch flex flex-col gap-[15px] items-start left-[41px] not-italic top-[475px] w-[328px]">
+        <p className="font-['Inter:Regular',sans-serif] font-normal leading-[normal] relative shrink-0 text-[#333] text-[16px] w-full">Starting Salary Range</p>
+        <p className="font-['Inter:Semi_Bold',sans-serif] font-semibold leading-[21px] relative shrink-0 text-[#25a88d] text-[18px] w-full">{`Rs 15,000 - Rs 30,000 /Month `}</p>
+      </div>
+      <Frame66Gca />
+    </div>
+  );
+}
+
 function Frame47() {
   return (
-    <div className="content-stretch flex gap-[43px] items-start relative shrink-0">
-      <Frame37 />
+    <div className="content-stretch flex flex-wrap gap-[43px] items-start justify-center relative shrink-0 w-[1320px]">
+      <FrameAcha />
       <Frame42 />
+      <Frame37 />
+      <FrameGca />
       <Frame58 />
     </div>
   );
@@ -2227,7 +2433,7 @@ function Frame47() {
 
 function About2() {
   return (
-    <div id="career-path" className="-translate-x-1/2 absolute bg-white content-stretch flex flex-col gap-[126px] items-center left-1/2 px-[32px] py-[60px] top-[4609.76px] w-[1440px]" data-name="About">
+    <div id="career-path" className="-translate-x-1/2 absolute z-[20] bg-white content-stretch flex flex-col gap-[126px] items-center left-1/2 px-[32px] py-[60px] top-[4609.76px] w-[1440px]" data-name="About">
       <Container13 />
       <Frame47 />
     </div>
@@ -3736,7 +3942,7 @@ function Frame3() {
 
 function Frame4() {
   return (
-    <div className="content-stretch flex flex-col font-['Inter:Regular',sans-serif] font-normal gap-[16px] items-start relative shrink-0 text-[18px] text-white">
+    <div className="content-stretch flex flex-col font-['Inter:Regular',sans-serif] font-normal gap-[16px] items-start pb-[10px] relative shrink-0 text-[18px] text-white">
       <button
         type="button"
         onClick={() => {
@@ -3776,6 +3982,26 @@ function Frame4() {
         className="cursor-pointer min-w-full relative shrink-0 text-left transition-colors duration-200 w-[min-content] hover:text-[#8ee2d2]"
       >
         OCHA
+      </button>
+      <button
+        type="button"
+        onClick={() => {
+          window.location.hash = "acha";
+          window.scrollTo({ top: 0, behavior: "smooth" });
+        }}
+        className="cursor-pointer min-w-full relative shrink-0 text-left transition-colors duration-200 w-[min-content] hover:text-[#8ee2d2]"
+      >
+        ACHA
+      </button>
+      <button
+        type="button"
+        onClick={() => {
+          window.location.hash = "gca";
+          window.scrollTo({ top: 0, behavior: "smooth" });
+        }}
+        className="cursor-pointer min-w-full relative shrink-0 text-left transition-colors duration-200 w-[min-content] hover:text-[#8ee2d2]"
+      >
+        GCA
       </button>
     </div>
   );
@@ -4096,7 +4322,7 @@ function Frame123({ onOpenCareers }: { onOpenCareers: () => void }) {
 
 function Frame6({ onOpenCareers }: { onOpenCareers: () => void }) {
   return (
-    <div className="bg-[#1f3471] h-[305px] relative shrink-0 w-full">
+    <div className="bg-[#1f3471] h-[330px] relative shrink-0 w-full">
       <Frame3 />
       <Frame123 onOpenCareers={onOpenCareers} />
     </div>
@@ -5478,9 +5704,11 @@ export default function HomePage({ onOpenCareers }: { onOpenCareers: () => void 
                   type="button"
                   onClick={closePopup}
                   aria-label="Close popup"
-                  className="absolute right-3 top-3 z-20 grid h-10 w-10 place-items-center rounded-full border border-[#d6ece8] bg-white text-[28px] leading-none text-[#24406f] shadow-[0_8px_20px_rgba(0,0,0,0.15)]"
+                  className="absolute right-3 top-3 z-20 flex h-10 w-10 items-center justify-center rounded-full border border-[#d6ece8] bg-white text-[#24406f] shadow-[0_8px_20px_rgba(0,0,0,0.15)]"
                 >
-                  ×
+                  <svg viewBox="0 0 24 24" className="h-[18px] w-[18px]" fill="none" aria-hidden="true">
+                    <path d="M6 6L18 18M18 6L6 18" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" />
+                  </svg>
                 </button>
                 <img
                   src={imgHomePopup}
@@ -5582,6 +5810,13 @@ export default function HomePage({ onOpenCareers }: { onOpenCareers: () => void 
     </div>
   );
 }
+
+
+
+
+
+
+
 
 
 

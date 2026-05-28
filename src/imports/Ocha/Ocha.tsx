@@ -137,7 +137,9 @@ const footerProgramLinks = [
   { label: "Emergency Medical Technician", hash: "#emt", className: "cursor-pointer relative shrink-0 text-left transition-colors duration-200 whitespace-nowrap hover:text-[#8ee2d2]" },
   { label: "Hospital Administration", hash: "#ha", className: "cursor-pointer relative shrink-0 text-left transition-colors duration-200 w-[264px] hover:text-[#8ee2d2]" },
   { label: "General Duty Assistance", hash: "#gda", className: "cursor-pointer min-w-full relative shrink-0 text-left transition-colors duration-200 w-[min-content] hover:text-[#8ee2d2]" },
-  { label: "OCHA", hash: "#ocha", className: "cursor-pointer min-w-full relative shrink-0 text-left transition-colors duration-200 w-[min-content] hover:text-[#8ee2d2]" },
+  { label: "OCHA", target: "home", className: "cursor-pointer min-w-full relative shrink-0 text-left transition-colors duration-200 w-[min-content] hover:text-[#8ee2d2]" },
+  { label: "ACHA", hash: "#acha", className: "cursor-pointer min-w-full relative shrink-0 text-left transition-colors duration-200 w-[min-content] hover:text-[#8ee2d2]" },
+  { label: "GCA", hash: "#gca", className: "cursor-pointer min-w-full relative shrink-0 text-left transition-colors duration-200 w-[min-content] hover:text-[#8ee2d2]" },
 ];
 
 const footerCompanyLinks = [
@@ -307,7 +309,7 @@ function Frame27() {
 
 function Frame16() {
   return (
-    <div className="absolute bg-[#1f3471] h-[666px] left-0 overflow-clip top-[66px] w-[1440px]">
+    <div id="home" className="absolute bg-[#1f3471] h-[666px] left-0 overflow-clip top-[66px] w-[1440px]">
       <div className="-translate-x-1/2 -translate-y-1/2 absolute h-[668px] left-[calc(50%+271px)] opacity-47 top-[calc(50%-1px)] w-[1002px]" data-name="image 1722">
         <img loading="lazy" decoding="async" alt="" className="absolute inset-0 max-w-none object-cover pointer-events-none size-full" src={imgImage1722} />
       </div>
@@ -3341,7 +3343,7 @@ function Frame1() {
 
 function Frame2() {
   return (
-    <div className="content-stretch flex flex-col font-['Inter:Regular',sans-serif] font-normal gap-[16px] items-start relative shrink-0 text-[18px] text-white">
+    <div className="content-stretch flex flex-col font-['Inter:Regular',sans-serif] font-normal gap-[16px] items-start pb-[10px] relative shrink-0 text-[18px] text-white">
       {footerProgramLinks.map((item) => (
         <button
           className={item.className}
@@ -3648,7 +3650,7 @@ function Frame68() {
 
 function Frame4() {
   return (
-    <div className="bg-[#1f3471] h-[305px] relative shrink-0 w-full">
+    <div className="bg-[#1f3471] h-[330px] relative shrink-0 w-full">
       <Frame1 />
       <Frame68 />
     </div>
@@ -3765,3 +3767,4 @@ export default function Ocha() {
     </div>
   );
 }
+

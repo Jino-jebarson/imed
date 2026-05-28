@@ -6,6 +6,8 @@ const loadCareersPage = () => import("../imports/CareersModal/CareersPage");
 const loadEmergencyMedicalTechnician = () => import("../imports/EmergencyMedicalTechnician/EmergencyMedicalTechnician");
 const loadHospitalAdministration = () => import("../imports/HospitalAdministration/HospitalAdministration");
 const loadGeneralDutyAssistance = () => import("../imports/GeneralDutyAssistance/GeneralDutyAssistance");
+const loadGeriatricCareAssistance = () => import("../imports/GeriatricCareAssistance/GeriatricCareAssistance");
+const loadAcha = () => import("../imports/Acha/Acha.tsx");
 const loadOcha = () => import("../imports/Ocha/Ocha");
 const loadSkillbridge = () => import("../imports/Skillbrige/Skillbrige.jsx");
 const loadPrivacyPolicy = () => import("../imports/PrivacyPolicy/PrivacyPolicy");
@@ -16,6 +18,8 @@ const CareersPage = lazy(loadCareersPage);
 const EmergencyMedicalTechnician = lazy(loadEmergencyMedicalTechnician);
 const HospitalAdministration = lazy(loadHospitalAdministration);
 const GeneralDutyAssistance = lazy(loadGeneralDutyAssistance);
+const GeriatricCareAssistance = lazy(loadGeriatricCareAssistance);
+const Acha = lazy(loadAcha);
 const Ocha = lazy(loadOcha);
 const Skillbridge = lazy(loadSkillbridge);
 const PrivacyPolicy = lazy(loadPrivacyPolicy);
@@ -25,6 +29,8 @@ const preloadByHash: Record<string, () => Promise<unknown>> = {
   "#emt": loadEmergencyMedicalTechnician,
   "#ha": loadHospitalAdministration,
   "#gda": loadGeneralDutyAssistance,
+  "#gca": loadGeriatricCareAssistance,
+  "#acha": loadAcha,
   "#ocha": loadOcha,
   "#skillbridge": loadSkillbridge,
   "#careers": loadCareersPage,
@@ -73,6 +79,17 @@ const SEO_BY_HASH: Record<string, SeoConfig> = {
     title: "Terms and Conditions | iMED Academy",
     description: "Review iMED Academy Terms and Conditions for website and service usage guidelines.",
     path: "/#terms-and-conditions",
+  },
+  "#gca": {
+    title: "GCA Course | iMED Academy",
+    description:
+      "Join iMED Academy's Geriatric Care Assistance program and build a career in elderly care support.",
+    path: "/#gca",
+  },
+  "#acha": {
+    title: "ACHA Program | iMED Academy",
+    description: "Explore iMED Academy's Advance Certification in Hospital Administration (ACHA) program.",
+    path: "/#acha",
   },
   "#ocha": {
     title: "OCHA Program | iMED Academy",
@@ -148,6 +165,8 @@ export default function App() {
       preloadRoute("#emt");
       preloadRoute("#ha");
       preloadRoute("#gda");
+      preloadRoute("#gca");
+      preloadRoute("#acha");
     };
 
     if ("requestIdleCallback" in window) {
@@ -296,6 +315,10 @@ export default function App() {
     page = <HospitalAdministration />;
   } else if (hash === "#gda") {
     page = <GeneralDutyAssistance />;
+  } else if (hash === "#gca") {
+    page = <GeriatricCareAssistance />;
+  } else if (hash === "#acha") {
+    page = <Acha />;
   } else if (hash === "#ocha") {
     page = <Ocha />;
   } else if (hash === "#careers") {

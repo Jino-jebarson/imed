@@ -1,6 +1,10 @@
 import { useMemo, useState } from "react";
 
-type Role = "Emergency Medical Technician" | "Hospital Administration" | "General Duty Assistance";
+type Role =
+  | "Emergency Medical Technician"
+  | "Hospital Administration"
+  | "General Duty Assistance"
+  | "Geriatric Care Assistance";
 
 type Props = {
   defaultRole: Role;
@@ -12,6 +16,7 @@ const HEALTHCARE_ROLE_OPTIONS: Role[] = [
   "Emergency Medical Technician",
   "Hospital Administration",
   "General Duty Assistance",
+  "Geriatric Care Assistance",
 ];
 
 const CITY_TIER_OPTIONS = ["Tier 1 - Metro", "Tier 2 - Large City", "Tier 3 - Small City"];
@@ -44,6 +49,11 @@ function computeSalaryBreakdown(selection: {
       "Tier 1 - Metro": [15000, 22000],
       "Tier 2 - Large City": [12000, 18000],
       "Tier 3 - Small City": [10000, 15000],
+    },
+    "Geriatric Care Assistance": {
+      "Tier 1 - Metro": [18000, 30000],
+      "Tier 2 - Large City": [15000, 24000],
+      "Tier 3 - Small City": [12000, 18000],
     },
   };
 
@@ -195,3 +205,5 @@ export default function ScopeSalarySection({
     </div>
   );
 }
+
+
