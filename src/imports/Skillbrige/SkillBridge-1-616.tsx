@@ -13,7 +13,10 @@ import imgContainer8 from "./495b45b30e1871660f26078c6433a7e812d8a872.png";
 import imgContainer9 from "./b79d75bf2d74efbad2c9618710bdca9e8ece895b.png";
 
 const DESIGN_WIDTH = 1440;
-const DESIGN_HEIGHT = 6516;
+const DESIGN_HEIGHT = 6940;
+const API_BASE_URL = import.meta.env.PROD
+  ? ((import.meta.env.VITE_PROD_API_BASE_URL as string | undefined) || "")
+  : ((import.meta.env.VITE_API_BASE_URL as string | undefined) || "");
 
 function scrollToSkillBridgeSection(sectionId: string) {
   const scale = window.innerWidth / DESIGN_WIDTH;
@@ -24,7 +27,7 @@ function scrollToSkillBridgeSection(sectionId: string) {
     "sb-colleges": 2751,
     "sb-pricing": 3722,
     "sb-how-it-works": 5349,
-    "sb-contact": 6079,
+    "sb-contact": 6060,
   };
 
   const mappedTop = sectionTopMap[sectionId];
@@ -106,11 +109,11 @@ function Frame78() {
   return (
     <button
       onClick={() => scrollToSkillBridgeSection("sb-modules")}
-      className="group block h-[24px] relative shrink-0 w-[66px] transition-all duration-200 hover:-translate-y-0.5"
+      className="group block h-[24px] relative shrink-0 w-[66px] transition-colors duration-200"
       type="button"
     >
       <p className="-translate-x-1/2 [word-break:break-word] absolute font-['Inter:Medium',sans-serif] font-medium leading-[24px] left-[33px] not-italic text-[#333] text-[16px] text-center top-0 whitespace-nowrap transition-colors duration-200 group-hover:text-[#1f3471]">Modules</p>
-      <span aria-hidden="true" className="absolute left-1/2 -bottom-[3px] h-[2px] w-0 -translate-x-1/2 rounded-full bg-[#25a88d] transition-all duration-300 group-hover:w-[72%]" />
+      <span aria-hidden="true" className="absolute pointer-events-none left-1/2 -bottom-[3px] h-[2px] w-0 -translate-x-1/2 rounded-full bg-[#25a88d] transition-all duration-300 group-hover:w-[72%]" />
     </button>
   );
 }
@@ -119,11 +122,11 @@ function Frame79() {
   return (
     <button
       onClick={() => scrollToSkillBridgeSection("sb-process")}
-      className="group block h-[24px] relative shrink-0 w-[62px] transition-all duration-200 hover:-translate-y-0.5"
+      className="group block h-[24px] relative shrink-0 w-[62px] transition-colors duration-200"
       type="button"
     >
       <p className="-translate-x-1/2 [word-break:break-word] absolute font-['Inter:Medium',sans-serif] font-medium leading-[24px] left-[31px] not-italic text-[#333] text-[16px] text-center top-0 whitespace-nowrap transition-colors duration-200 group-hover:text-[#1f3471]">Process</p>
-      <span aria-hidden="true" className="absolute left-1/2 -bottom-[3px] h-[2px] w-0 -translate-x-1/2 rounded-full bg-[#25a88d] transition-all duration-300 group-hover:w-[72%]" />
+      <span aria-hidden="true" className="absolute pointer-events-none left-1/2 -bottom-[3px] h-[2px] w-0 -translate-x-1/2 rounded-full bg-[#25a88d] transition-all duration-300 group-hover:w-[72%]" />
     </button>
   );
 }
@@ -132,11 +135,11 @@ function Frame80() {
   return (
     <button
       onClick={() => scrollToSkillBridgeSection("sb-colleges")}
-      className="group block h-[24px] relative shrink-0 w-[96px] transition-all duration-200 hover:-translate-y-0.5"
+      className="group block h-[24px] relative shrink-0 w-[96px] transition-colors duration-200"
       type="button"
     >
       <p className="-translate-x-1/2 [word-break:break-word] absolute font-['Inter:Medium',sans-serif] font-medium leading-[24px] left-[48px] not-italic text-[#333] text-[16px] text-center top-0 whitespace-nowrap transition-colors duration-200 group-hover:text-[#1f3471]">For Colleges</p>
-      <span aria-hidden="true" className="absolute left-1/2 -bottom-[3px] h-[2px] w-0 -translate-x-1/2 rounded-full bg-[#25a88d] transition-all duration-300 group-hover:w-[78%]" />
+      <span aria-hidden="true" className="absolute pointer-events-none left-1/2 -bottom-[3px] h-[2px] w-0 -translate-x-1/2 rounded-full bg-[#25a88d] transition-all duration-300 group-hover:w-[78%]" />
     </button>
   );
 }
@@ -145,11 +148,11 @@ function Frame81() {
   return (
     <button
       onClick={() => scrollToSkillBridgeSection("sb-pricing")}
-      className="group block h-[24px] relative shrink-0 w-[53px] transition-all duration-200 hover:-translate-y-0.5"
+      className="group block h-[24px] relative shrink-0 w-[53px] transition-colors duration-200"
       type="button"
     >
       <p className="-translate-x-1/2 [word-break:break-word] absolute font-['Inter:Medium',sans-serif] font-medium leading-[24px] left-[26.5px] not-italic text-[#333] text-[16px] text-center top-0 whitespace-nowrap transition-colors duration-200 group-hover:text-[#1f3471]">Pricing</p>
-      <span aria-hidden="true" className="absolute left-1/2 -bottom-[3px] h-[2px] w-0 -translate-x-1/2 rounded-full bg-[#25a88d] transition-all duration-300 group-hover:w-[72%]" />
+      <span aria-hidden="true" className="absolute pointer-events-none left-1/2 -bottom-[3px] h-[2px] w-0 -translate-x-1/2 rounded-full bg-[#25a88d] transition-all duration-300 group-hover:w-[72%]" />
     </button>
   );
 }
@@ -158,11 +161,11 @@ function Frame82() {
   return (
     <button
       onClick={() => scrollToSkillBridgeSection("sb-contact")}
-      className="group block h-[24px] relative shrink-0 w-[88px] transition-all duration-200 hover:-translate-y-0.5"
+      className="group block h-[24px] relative shrink-0 w-[88px] transition-colors duration-200"
       type="button"
     >
       <p className="-translate-x-1/2 [word-break:break-word] absolute font-['Inter:Medium',sans-serif] font-medium leading-[24px] left-[44px] not-italic text-[#333] text-[16px] text-center top-0 whitespace-nowrap transition-colors duration-200 group-hover:text-[#1f3471]">Contact US</p>
-      <span aria-hidden="true" className="absolute left-1/2 -bottom-[3px] h-[2px] w-0 -translate-x-1/2 rounded-full bg-[#25a88d] transition-all duration-300 group-hover:w-[74%]" />
+      <span aria-hidden="true" className="absolute pointer-events-none left-1/2 -bottom-[3px] h-[2px] w-0 -translate-x-1/2 rounded-full bg-[#25a88d] transition-all duration-300 group-hover:w-[74%]" />
     </button>
   );
 }
@@ -1952,7 +1955,7 @@ function Frame38() {
   return (
     <div className="[word-break:break-word] content-stretch flex flex-col gap-[2px] items-start leading-[19.8px] not-italic relative shrink-0 w-[203.867px]">
       <p className="font-['Inter:Semi_Bold',sans-serif] font-semibold min-w-full relative shrink-0 text-[#14cca8] text-[14px] w-[min-content]">Dr. Raghav Menon</p>
-      <p className="font-['Inter:Regular',sans-serif] font-normal relative shrink-0 text-[12px] text-[rgba(255,255,255,0.5)] w-[249px]">Dean, KIMS University College</p>
+      <p className="font-['Inter:Regular',sans-serif] font-normal relative shrink-0 text-[12px] text-[rgba(255,255,255,0.5)] w-[249px]">Academic Dean, Healthcare University</p>
     </div>
   );
 }
@@ -2208,7 +2211,7 @@ function Frame121() {
       quote:
         "\"The AI workshop completely changed how our students think about technology. They were building real projects by day three, and their confidence was visibly higher by the end.\"",
       name: "Dr. Raghav Menon",
-      role: "Dean, KIMS University College",
+      role: "Academic Dean, Healthcare University",
       image: imgContainer4,
     },
     {
@@ -2222,7 +2225,7 @@ function Frame121() {
       quote:
         "\"Zero hassle for our administration team. SkillBridge handled everything from scheduling to certification, and student feedback remained excellent throughout.\"",
       name: "Dr. Amit Joshi",
-      role: "Principal, Lucknow Institute of Management",
+      role: "Director, Business School",
       image: imgContainer6,
     },
     {
@@ -3297,7 +3300,7 @@ function Container53() {
 
 function Footer() {
   return (
-    <div className="absolute bg-[#061529] content-stretch flex flex-col h-[437.003px] items-start left-0 pt-[79.078px] top-[6079px] w-[1440px]" data-name="Footer">
+    <div className="absolute bg-[#061529] content-stretch flex flex-col h-[437.003px] items-start left-0 pt-[79.078px] top-[6500px] w-[1440px]" data-name="Footer">
       <div aria-hidden="true" className="absolute border-[rgba(255,255,255,0.08)] border-solid border-t-[0.976px] inset-0 pointer-events-none" />
       <Container53 />
     </div>
@@ -3431,6 +3434,113 @@ function Frame134() {
   );
 }
 
+function SkillBridgeContactForm() {
+  const [formValues, setFormValues] = useState({
+    fullName: "",
+    phone: "",
+    qualification: "",
+    preferredProgram: "",
+    mode: "SkillBridge",
+    message: "",
+  });
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [feedback, setFeedback] = useState<string | null>(null);
+
+  const updateValue = (key: keyof typeof formValues, value: string) => {
+    setFormValues((prev) => ({ ...prev, [key]: value }));
+  };
+
+  const submitContact = async (event: any) => {
+    event.preventDefault();
+    setFeedback(null);
+
+    if (!formValues.fullName || !formValues.phone || !formValues.preferredProgram) {
+      setFeedback("Please fill name, phone, and preferred program.");
+      return;
+    }
+
+    try {
+      setIsSubmitting(true);
+      const response = await fetch(`${API_BASE_URL}/api/contact`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(formValues),
+      });
+
+      if (!response.ok) {
+        throw new Error("Request failed");
+      }
+
+      setFeedback("Message sent successfully.");
+      setFormValues({
+        fullName: "",
+        phone: "",
+        qualification: "",
+        preferredProgram: "",
+        mode: "SkillBridge",
+        message: "",
+      });
+    } catch (_error) {
+      setFeedback("Failed to send message. Please try again.");
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
+  return (
+    <form
+      onSubmit={submitContact}
+      className="-translate-x-1/2 absolute left-1/2 top-[6060px] z-20 w-[1240px] rounded-[16px] border border-[rgba(255,255,255,0.2)] bg-[rgba(8,26,54,0.92)] p-[28px] shadow-[0px_20px_40px_rgba(0,0,0,0.25)]"
+    >
+      <p className="mb-[16px] font-['Inter:Semi_Bold',sans-serif] text-[24px] text-white">Contact Us</p>
+      <div className="grid grid-cols-2 gap-[14px]">
+        <input
+          value={formValues.fullName}
+          onChange={(e) => updateValue("fullName", e.target.value)}
+          placeholder="Full Name *"
+          className="h-[46px] rounded-[10px] border border-[rgba(255,255,255,0.25)] bg-white/10 px-[14px] text-white placeholder:text-[rgba(255,255,255,0.65)] outline-none"
+        />
+        <input
+          value={formValues.phone}
+          onChange={(e) => updateValue("phone", e.target.value)}
+          placeholder="Phone Number *"
+          className="h-[46px] rounded-[10px] border border-[rgba(255,255,255,0.25)] bg-white/10 px-[14px] text-white placeholder:text-[rgba(255,255,255,0.65)] outline-none"
+        />
+        <input
+          value={formValues.qualification}
+          onChange={(e) => updateValue("qualification", e.target.value)}
+          placeholder="Qualification"
+          className="h-[46px] rounded-[10px] border border-[rgba(255,255,255,0.25)] bg-white/10 px-[14px] text-white placeholder:text-[rgba(255,255,255,0.65)] outline-none"
+        />
+        <select
+          value={formValues.preferredProgram}
+          onChange={(e) => updateValue("preferredProgram", e.target.value)}
+          className="h-[46px] rounded-[10px] border border-[rgba(255,255,255,0.25)] bg-white/10 px-[14px] text-white outline-none"
+        >
+          <option value="" className="text-black">Preferred Program *</option>
+          <option value="AI Edge" className="text-black">AI Edge</option>
+          <option value="Growth Lab" className="text-black">Growth Lab</option>
+          <option value="InsightIQ" className="text-black">InsightIQ</option>
+        </select>
+      </div>
+      <textarea
+        value={formValues.message}
+        onChange={(e) => updateValue("message", e.target.value)}
+        placeholder="Message"
+        className="mt-[14px] h-[92px] w-full resize-none rounded-[10px] border border-[rgba(255,255,255,0.25)] bg-white/10 px-[14px] py-[10px] text-white placeholder:text-[rgba(255,255,255,0.65)] outline-none"
+      />
+      <button
+        type="submit"
+        disabled={isSubmitting}
+        className="mt-[14px] inline-flex h-[46px] items-center justify-center rounded-[10px] bg-[#14cca8] px-[20px] font-['Inter:Semi_Bold',sans-serif] text-[16px] text-white transition-all duration-200 hover:brightness-110 disabled:opacity-70"
+      >
+        {isSubmitting ? "Sending..." : "Send Message"}
+      </button>
+      {feedback ? <p className="mt-[10px] text-[13px] text-[#d9fff7]">{feedback}</p> : null}
+    </form>
+  );
+}
+
 export default function SkillBridge() {
   const [scale, setScale] = useState(1);
   const [isNavPinned, setIsNavPinned] = useState(false);
@@ -3449,7 +3559,15 @@ export default function SkillBridge() {
   useEffect(() => {
     const navTop = 66;
     const onScroll = () => {
-      setIsNavPinned(window.scrollY >= navTop * scale);
+      const y = window.scrollY;
+      const pinAt = navTop * scale + 6;
+      const unpinAt = navTop * scale - 18;
+
+      setIsNavPinned((prev) => {
+        if (!prev && y >= pinAt) return true;
+        if (prev && y <= unpinAt) return false;
+        return prev;
+      });
     };
 
     onScroll();
@@ -3462,7 +3580,13 @@ export default function SkillBridge() {
       {isNavPinned ? (
         <div
           className="fixed left-1/2 top-0 z-50"
-          style={{ width: DESIGN_WIDTH, transform: `translateX(-50%) scale(${scale})`, transformOrigin: "top center" }}
+          style={{
+            width: DESIGN_WIDTH,
+            transform: `translateX(-50%) scale(${scale}) translateZ(0)`,
+            transformOrigin: "top center",
+            willChange: "transform",
+            backfaceVisibility: "hidden",
+          }}
         >
           <NavBar pinned />
         </div>
@@ -3475,7 +3599,7 @@ export default function SkillBridge() {
         <div className="absolute left-0 top-[2088px] h-px w-px" id="sb-process" />
         <div className="absolute left-0 top-[2751px] h-px w-px" id="sb-colleges" />
         <div className="absolute left-0 top-[5349px] h-px w-px" id="sb-how-it-works" />
-        <div className="absolute left-0 top-[6079px] h-px w-px" id="sb-contact" />
+        <div className="absolute left-0 top-[6060px] h-px w-px" id="sb-contact" />
         <NavBar1 />
         {!isNavPinned ? <NavBar /> : null}
         <Hero />
@@ -3488,10 +3612,12 @@ export default function SkillBridge() {
         <About5 />
         <Footer />
         <Frame134 />
+        <SkillBridgeContactForm />
       </div>
     </div>
   );
 }
+
 
 
 

@@ -43,7 +43,9 @@ import imgImage1723 from "./image1723.webp";
 import imgContainer from "./container.png";
 import imgHomePopup from "./homepopup.jpeg";
 
-const API_BASE_URL = (import.meta.env.VITE_API_BASE_URL as string | undefined) || "";
+const API_BASE_URL = import.meta.env.PROD
+  ? ((import.meta.env.VITE_PROD_API_BASE_URL as string | undefined) || "")
+  : ((import.meta.env.VITE_API_BASE_URL as string | undefined) || "");
 
 const faqItems = [
   {
@@ -234,28 +236,38 @@ function Group35() {
 
 function Frame18() {
   return (
-    <button data-nav-target="career-path" className="group block h-[24px] relative shrink-0 w-[75px] transition-all duration-200 hover:-translate-y-0.5 hover:text-[#1f3471]">
-      <p className="-translate-x-1/2 absolute font-['Inter:Medium',sans-serif] font-medium leading-[24px] left-[37.5px] not-italic text-[#333] text-[16px] text-center top-0 whitespace-nowrap transition-colors duration-200 hover:text-[#1f3471]">Programs</p>
-      <span aria-hidden="true" className="absolute left-1/2 -bottom-[3px] h-[2px] w-0 -translate-x-1/2 rounded-full bg-[#25a88d] transition-all duration-300 group-hover:w-[72%]" />
-    </button>
-  );
-}
-
-function Frame19() {
-  return (
-    <button data-nav-target="imed-online" className="group block h-[24px] relative shrink-0 w-[120px] transition-all duration-200 hover:-translate-y-0.5 hover:text-[#1f3471]">
-      <p className="-translate-x-1/2 absolute font-['Inter:Medium',sans-serif] font-medium leading-[24px] left-[60px] not-italic text-[#333] text-[16px] text-center top-0 whitespace-nowrap transition-colors duration-200 hover:text-[#1f3471]">Online Program</p>
-      <span aria-hidden="true" className="absolute left-1/2 -bottom-[3px] h-[2px] w-0 -translate-x-1/2 rounded-full bg-[#25a88d] transition-all duration-300 group-hover:w-[78%]" />
-    </button>
+    <div className="group relative shrink-0">
+      <button className="group block h-[24px] relative w-[96px] cursor-pointer transition-colors duration-200 hover:text-[#1f3471]">
+        <p className="pointer-events-none -translate-x-1/2 absolute font-['Inter:Medium',sans-serif] font-medium leading-[24px] left-1/2 not-italic text-[#333] text-[16px] text-center top-0 whitespace-nowrap transition-colors duration-200 hover:text-[#1f3471]">Program</p>
+        <span aria-hidden="true" className="pointer-events-none absolute left-1/2 -bottom-[3px] h-[2px] w-0 -translate-x-1/2 rounded-full bg-[#25a88d] transition-all duration-300 group-hover:w-[72%]" />
+      </button>
+      <div className="invisible absolute left-1/2 top-[38px] z-30 min-w-[220px] -translate-x-1/2 translate-y-1 rounded-[14px] border border-[#dce4f6] bg-[rgba(255,255,255,0.98)] p-[8px] opacity-0 shadow-[0px_14px_32px_rgba(31,52,113,0.16)] backdrop-blur-[4px] transition-all duration-200 group-hover:visible group-hover:translate-y-0 group-hover:opacity-100">
+        <div className="pointer-events-none absolute left-1/2 top-[-7px] h-[12px] w-[12px] -translate-x-1/2 rotate-45 border-l border-t border-[#dce4f6] bg-white" />
+        <button
+          type="button"
+          data-nav-target="career-path"
+          className="block w-full rounded-[10px] px-[12px] py-[10px] text-left text-[15px] font-medium text-[#333] transition-colors duration-200 hover:bg-[#eef4ff] hover:text-[#1f3471]"
+        >
+          Programs
+        </button>
+        <button
+          type="button"
+          data-nav-target="imed-online"
+          className="block w-full rounded-[10px] px-[12px] py-[10px] text-left text-[15px] font-medium text-[#333] transition-colors duration-200 hover:bg-[#eef4ff] hover:text-[#1f3471]"
+        >
+          Online Programs
+        </button>
+      </div>
+    </div>
   );
 }
 
 function Frame20() {
   return (
     <div className="h-[24px] relative shrink-0 w-[118px]">
-      <button data-nav-target="trusted-partners" className="group -translate-x-1/2 absolute block font-['Inter:Medium',sans-serif] font-medium leading-[0] left-[59px] not-italic text-[#333] text-[16px] text-center top-0 whitespace-nowrap transition-all duration-200 hover:-translate-y-0.5 hover:text-[#1f3471]">
-        <p className="leading-[24px] transition-colors duration-200 hover:text-[#1f3471]">Our Partners</p>
-        <span aria-hidden="true" className="absolute left-1/2 -bottom-[3px] h-[2px] w-0 -translate-x-1/2 rounded-full bg-[#25a88d] transition-all duration-300 group-hover:w-[82%]" />
+      <button data-nav-target="trusted-partners" className="group -translate-x-1/2 absolute block font-['Inter:Medium',sans-serif] font-medium leading-[0] left-[59px] not-italic text-[#333] text-[16px] text-center top-0 whitespace-nowrap cursor-pointer transition-colors duration-200 hover:text-[#1f3471]">
+        <p className="pointer-events-none leading-[24px] transition-colors duration-200 hover:text-[#1f3471]">Our Partners</p>
+        <span aria-hidden="true" className="pointer-events-none absolute left-1/2 -bottom-[3px] h-[2px] w-0 -translate-x-1/2 rounded-full bg-[#25a88d] transition-all duration-300 group-hover:w-[82%]" />
       </button>
     </div>
   );
@@ -263,27 +275,36 @@ function Frame20() {
 
 function Frame21() {
   return (
-    <button data-nav-target="about-imed" className="group block h-[24px] relative shrink-0 w-[109px] transition-all duration-200 hover:-translate-y-0.5 hover:text-[#1f3471]">
-      <p className="-translate-x-1/2 absolute font-['Inter:Medium',sans-serif] font-medium leading-[24px] left-[54.5px] not-italic text-[#333] text-[16px] text-center top-0 whitespace-nowrap transition-colors duration-200 hover:text-[#1f3471]">About Us</p>
-      <span aria-hidden="true" className="absolute left-1/2 -bottom-[3px] h-[2px] w-0 -translate-x-1/2 rounded-full bg-[#25a88d] transition-all duration-300 group-hover:w-[78%]" />
+    <button data-nav-target="about-imed" className="group block h-[24px] relative shrink-0 w-[109px] cursor-pointer transition-colors duration-200 hover:text-[#1f3471]">
+      <p className="pointer-events-none -translate-x-1/2 absolute font-['Inter:Medium',sans-serif] font-medium leading-[24px] left-[54.5px] not-italic text-[#333] text-[16px] text-center top-0 whitespace-nowrap transition-colors duration-200 hover:text-[#1f3471]">About Us</p>
+      <span aria-hidden="true" className="pointer-events-none absolute left-1/2 -bottom-[3px] h-[2px] w-0 -translate-x-1/2 rounded-full bg-[#25a88d] transition-all duration-300 group-hover:w-[78%]" />
+    </button>
+  );
+}
+
+function FrameBlogs() {
+  return (
+    <button data-nav-target="blogs" className="group block h-[24px] relative shrink-0 w-[64px] cursor-pointer transition-colors duration-200 hover:text-[#1f3471]">
+      <p className="pointer-events-none -translate-x-1/2 absolute font-['Inter:Medium',sans-serif] font-medium leading-[24px] left-1/2 not-italic text-[#333] text-[16px] text-center top-0 whitespace-nowrap transition-colors duration-200 hover:text-[#1f3471]">Blogs</p>
+      <span aria-hidden="true" className="pointer-events-none absolute left-1/2 -bottom-[3px] h-[2px] w-0 -translate-x-1/2 rounded-full bg-[#25a88d] transition-all duration-300 group-hover:w-[75%]" />
     </button>
   );
 }
 
 function Frame22() {
   return (
-    <button data-nav-target="contact-us" className="group block h-[24px] relative shrink-0 w-[95px] transition-all duration-200 hover:-translate-y-0.5 hover:text-[#1f3471]">
-      <p className="-translate-x-1/2 absolute font-['Inter:Medium',sans-serif] font-medium leading-[24px] left-[47.5px] not-italic text-[#333] text-[16px] text-center top-0 whitespace-nowrap transition-colors duration-200 hover:text-[#1f3471]">Contact Us</p>
-      <span aria-hidden="true" className="absolute left-1/2 -bottom-[3px] h-[2px] w-0 -translate-x-1/2 rounded-full bg-[#25a88d] transition-all duration-300 group-hover:w-[74%]" />
+    <button data-nav-target="contact-us" className="group block h-[24px] relative shrink-0 w-[95px] cursor-pointer transition-colors duration-200 hover:text-[#1f3471]">
+      <p className="pointer-events-none -translate-x-1/2 absolute font-['Inter:Medium',sans-serif] font-medium leading-[24px] left-[47.5px] not-italic text-[#333] text-[16px] text-center top-0 whitespace-nowrap transition-colors duration-200 hover:text-[#1f3471]">Contact Us</p>
+      <span aria-hidden="true" className="pointer-events-none absolute left-1/2 -bottom-[3px] h-[2px] w-0 -translate-x-1/2 rounded-full bg-[#25a88d] transition-all duration-300 group-hover:w-[74%]" />
     </button>
   );
 }
 
 function FrameSkillbridge() {
   return (
-    <button className="group block h-[24px] relative shrink-0 w-[96px] transition-all duration-200 hover:-translate-y-0.5 hover:text-[#1f3471]">
-      <p className="-translate-x-1/2 absolute font-['Inter:Medium',sans-serif] font-medium leading-[24px] left-[48px] not-italic text-[#333] text-[16px] text-center top-0 whitespace-nowrap transition-colors duration-200 hover:text-[#1f3471]">Skillbridge</p>
-      <span aria-hidden="true" className="absolute left-1/2 -bottom-[3px] h-[2px] w-0 -translate-x-1/2 rounded-full bg-[#25a88d] transition-all duration-300 group-hover:w-[74%]" />
+    <button className="group block h-[24px] relative shrink-0 w-[96px] cursor-pointer transition-colors duration-200 hover:text-[#1f3471]">
+      <p className="pointer-events-none -translate-x-1/2 absolute font-['Inter:Medium',sans-serif] font-medium leading-[24px] left-[48px] not-italic text-[#333] text-[16px] text-center top-0 whitespace-nowrap transition-colors duration-200 hover:text-[#1f3471]">Skillbridge</p>
+      <span aria-hidden="true" className="pointer-events-none absolute left-1/2 -bottom-[3px] h-[2px] w-0 -translate-x-1/2 rounded-full bg-[#25a88d] transition-all duration-300 group-hover:w-[74%]" />
     </button>
   );
 }
@@ -316,11 +337,11 @@ function AnimatedAchievement() {
 
 function Frame23() {
   return (
-    <div className="content-stretch flex gap-[26px] items-center justify-center relative shrink-0 w-[640px]">
+    <div className="content-stretch flex gap-[26px] items-center justify-center relative shrink-0 w-[700px]">
       <Frame18 />
-      <Frame19 />
       <Frame20 />
       <Frame21 />
+      <FrameBlogs />
       <Frame22 />
       <FrameSkillbridge />
     </div>
@@ -4281,7 +4302,7 @@ function Frame13() {
         <Component3 />
       </a>
       <a
-        href="https://youtube.com/@imedacademy-m5l?si=uiQHuizBdA9_3cGe"
+        href="https://www.youtube.com/@imedacademy-25"
         target="_blank"
         rel="noopener noreferrer"
         className="inline-flex"

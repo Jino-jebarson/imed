@@ -221,13 +221,13 @@ function Frame22() {
     <div className="content-stretch flex gap-[50px] items-center justify-center relative shrink-0 w-[510px]">
       {navbarLinks.map((item) => (
         <button
-          className="group block font-['Inter:Medium',sans-serif] font-medium leading-[24px] not-italic relative shrink-0 text-[#333] text-[16px] text-center transition-all duration-200 whitespace-nowrap hover:-translate-y-0.5 hover:text-[#1f3471]"
+          className="group block font-['Inter:Medium',sans-serif] font-medium leading-[24px] not-italic relative shrink-0 text-[#333] text-[16px] text-center transition-colors duration-200 whitespace-nowrap hover:text-[#1f3471]"
           key={item.label}
           onClick={() => scrollToOchaSection(item.target)}
           type="button"
         >
-          {item.label}
-          <span aria-hidden="true" className="absolute left-1/2 -bottom-[3px] h-[2px] w-0 -translate-x-1/2 rounded-full bg-[#25a88d] transition-all duration-300 group-hover:w-[78%]" />
+          <span className="pointer-events-none">{item.label}</span>
+          <span aria-hidden="true" className="absolute pointer-events-none left-1/2 -bottom-[3px] h-[2px] w-0 -translate-x-1/2 rounded-full bg-[#25a88d] transition-all duration-300 group-hover:w-[78%]" />
         </button>
       ))}
     </div>
@@ -3607,7 +3607,7 @@ function Frame11() {
     { label: "Facebook", href: "https://www.facebook.com/people/IMed-Academy/61587360444802/", Icon: Component1 },
     { label: "LinkedIn", href: "https://www.linkedin.com/company/imed-academy/", Icon: Component2 },
     { label: "Twitter", href: "https://twitter.com/imedacademy_", Icon: Component3 },
-    { label: "YouTube", href: "https://youtube.com/@imedacademy-m5l?si=uiQHuizBdA9_3cGe", Icon: Component4 },
+    { label: "YouTube", href: "https://www.youtube.com/@imedacademy-25", Icon: Component4 },
   ];
 
   return (
@@ -3767,4 +3767,5 @@ export default function Ocha() {
     </div>
   );
 }
+
 

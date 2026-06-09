@@ -1,7 +1,9 @@
 import { useState, type FormEvent } from "react";
 import careerBg from "./career-bg.webp";
 
-const API_BASE_URL = (import.meta.env.VITE_API_BASE_URL as string | undefined) || "";
+const API_BASE_URL = import.meta.env.PROD
+  ? ((import.meta.env.VITE_PROD_API_BASE_URL as string | undefined) || "")
+  : ((import.meta.env.VITE_API_BASE_URL as string | undefined) || "");
 
 type Props = {
   onClose: () => void;

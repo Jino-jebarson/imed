@@ -93,11 +93,11 @@ function Frame135() {
 
 function Frame17() {
   return (
-    <button data-nav-target="career-path" className="group block h-[24px] relative shrink-0 w-[75px] transition-all duration-200 hover:-translate-y-0.5 hover:text-[#1f3471]">
+    <button data-nav-target="career-path" className="group block h-[24px] relative shrink-0 w-[75px] transition-colors duration-200 hover:text-[#1f3471]">
       <p className="-translate-x-1/2 absolute font-['Inter:Medium',sans-serif] font-medium leading-[24px] left-[37.5px] not-italic text-[#333] text-[16px] text-center top-0 whitespace-nowrap transition-colors duration-200 hover:text-[#1f3471]">
         Program
       </p>
-      <span aria-hidden="true" className="absolute left-1/2 -bottom-[3px] h-[2px] w-0 -translate-x-1/2 rounded-full bg-[#25a88d] transition-all duration-300 group-hover:w-[72%]" />
+      <span aria-hidden="true" className="absolute pointer-events-none left-1/2 -bottom-[3px] h-[2px] w-0 -translate-x-1/2 rounded-full bg-[#25a88d] transition-all duration-300 group-hover:w-[72%]" />
     </button>
   );
 }
@@ -120,22 +120,22 @@ function Frame19() {
 
 function Frame20() {
   return (
-    <button data-nav-target="about-imed" className="group block h-[24px] relative shrink-0 w-[109px] transition-all duration-200 hover:-translate-y-0.5 hover:text-[#1f3471]">
+    <button data-nav-target="about-imed" className="group block h-[24px] relative shrink-0 w-[109px] transition-colors duration-200 hover:text-[#1f3471]">
       <p className="-translate-x-1/2 absolute font-['Inter:Medium',sans-serif] font-medium leading-[24px] left-[54.5px] not-italic text-[#333] text-[16px] text-center top-0 whitespace-nowrap transition-colors duration-200 hover:text-[#1f3471]">
         About Us
       </p>
-      <span aria-hidden="true" className="absolute left-1/2 -bottom-[3px] h-[2px] w-0 -translate-x-1/2 rounded-full bg-[#25a88d] transition-all duration-300 group-hover:w-[78%]" />
+      <span aria-hidden="true" className="absolute pointer-events-none left-1/2 -bottom-[3px] h-[2px] w-0 -translate-x-1/2 rounded-full bg-[#25a88d] transition-all duration-300 group-hover:w-[78%]" />
     </button>
   );
 }
 
 function Frame21() {
   return (
-    <button data-nav-target="contact-us" className="group block h-[24px] relative shrink-0 w-[95px] transition-all duration-200 hover:-translate-y-0.5 hover:text-[#1f3471]">
+    <button data-nav-target="contact-us" className="group block h-[24px] relative shrink-0 w-[95px] transition-colors duration-200 hover:text-[#1f3471]">
       <p className="-translate-x-1/2 absolute font-['Inter:Medium',sans-serif] font-medium leading-[24px] left-[47.5px] not-italic text-[#333] text-[16px] text-center top-0 whitespace-nowrap transition-colors duration-200 hover:text-[#1f3471]">
         Contact Us
       </p>
-      <span aria-hidden="true" className="absolute left-1/2 -bottom-[3px] h-[2px] w-0 -translate-x-1/2 rounded-full bg-[#25a88d] transition-all duration-300 group-hover:w-[74%]" />
+      <span aria-hidden="true" className="absolute pointer-events-none left-1/2 -bottom-[3px] h-[2px] w-0 -translate-x-1/2 rounded-full bg-[#25a88d] transition-all duration-300 group-hover:w-[74%]" />
     </button>
   );
 }
@@ -3671,6 +3671,7 @@ export default function GeriatricCareAssistance() {
     </div>
   );
 }
+
 
 
 

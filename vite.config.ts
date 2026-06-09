@@ -42,6 +42,7 @@ export default defineConfig({
         manualChunks(id) {
           // Vendor chunk
           if (id.includes('node_modules')) {
+            if (id.includes('jspdf') || id.includes('html2canvas') || id.includes('canvg') || id.includes('dompurify') || id.includes('fflate')) return 'pdf-tools';
             if (id.includes('recharts')) return 'recharts';
             if (id.includes('@radix-ui')) return 'radix-ui';
             return 'vendor';

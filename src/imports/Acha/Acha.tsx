@@ -74,9 +74,9 @@ function Frame139() {
 
 function Frame17() {
   return (
-    <button data-nav-target="career-path" className="group block h-[24px] relative shrink-0 w-[75px] transition-all duration-200 hover:-translate-y-0.5 hover:text-[#1f3471]">
+    <button data-nav-target="career-path" className="group block h-[24px] relative shrink-0 w-[75px] transition-colors duration-200 hover:text-[#1f3471]">
       <p className="-translate-x-1/2 [word-break:break-word] absolute font-['Inter:Medium',sans-serif] font-medium leading-[24px] left-[37.5px] not-italic text-[#333] text-[16px] text-center top-0 whitespace-nowrap">Program</p>
-      <span aria-hidden="true" className="absolute left-1/2 -bottom-[3px] h-[2px] w-0 -translate-x-1/2 rounded-full bg-[#25a88d] transition-all duration-300 group-hover:w-[72%]" />
+      <span aria-hidden="true" className="absolute pointer-events-none left-1/2 -bottom-[3px] h-[2px] w-0 -translate-x-1/2 rounded-full bg-[#25a88d] transition-all duration-300 group-hover:w-[72%]" />
     </button>
   );
 }
@@ -99,18 +99,18 @@ function Frame19() {
 
 function Frame20() {
   return (
-    <button data-nav-target="about-imed" className="group block h-[24px] relative shrink-0 w-[109px] transition-all duration-200 hover:-translate-y-0.5 hover:text-[#1f3471]">
+    <button data-nav-target="about-imed" className="group block h-[24px] relative shrink-0 w-[109px] transition-colors duration-200 hover:text-[#1f3471]">
       <p className="-translate-x-1/2 [word-break:break-word] absolute font-['Inter:Medium',sans-serif] font-medium leading-[24px] left-[54.5px] not-italic text-[#333] text-[16px] text-center top-0 whitespace-nowrap">About Us</p>
-      <span aria-hidden="true" className="absolute left-1/2 -bottom-[3px] h-[2px] w-0 -translate-x-1/2 rounded-full bg-[#25a88d] transition-all duration-300 group-hover:w-[78%]" />
+      <span aria-hidden="true" className="absolute pointer-events-none left-1/2 -bottom-[3px] h-[2px] w-0 -translate-x-1/2 rounded-full bg-[#25a88d] transition-all duration-300 group-hover:w-[78%]" />
     </button>
   );
 }
 
 function Frame21() {
   return (
-    <button data-nav-target="contact-us" className="group block h-[24px] relative shrink-0 w-[95px] transition-all duration-200 hover:-translate-y-0.5 hover:text-[#1f3471]">
+    <button data-nav-target="contact-us" className="group block h-[24px] relative shrink-0 w-[95px] transition-colors duration-200 hover:text-[#1f3471]">
       <p className="-translate-x-1/2 [word-break:break-word] absolute font-['Inter:Medium',sans-serif] font-medium leading-[24px] left-[47.5px] not-italic text-[#333] text-[16px] text-center top-0 whitespace-nowrap">Contact Us</p>
-      <span aria-hidden="true" className="absolute left-1/2 -bottom-[3px] h-[2px] w-0 -translate-x-1/2 rounded-full bg-[#25a88d] transition-all duration-300 group-hover:w-[74%]" />
+      <span aria-hidden="true" className="absolute pointer-events-none left-1/2 -bottom-[3px] h-[2px] w-0 -translate-x-1/2 rounded-full bg-[#25a88d] transition-all duration-300 group-hover:w-[74%]" />
     </button>
   );
 }
@@ -3550,7 +3550,7 @@ function Frame11() {
       <a href="https://www.facebook.com/people/IMed-Academy/61587360444802/" target="_blank" rel="noopener noreferrer" className="inline-flex" aria-label="Facebook"><Component1 /></a>
       <a href="https://www.linkedin.com/company/imed-academy/" target="_blank" rel="noopener noreferrer" className="inline-flex" aria-label="LinkedIn"><Component2 /></a>
       <a href="https://twitter.com/imedacademy_" target="_blank" rel="noopener noreferrer" className="inline-flex" aria-label="Twitter"><Component3 /></a>
-      <a href="https://youtube.com/@imedacademy-m5l?si=uiQHuizBdA9_3cGe" target="_blank" rel="noopener noreferrer" className="inline-flex" aria-label="YouTube"><Component4 /></a>
+      <a href="https://www.youtube.com/@imedacademy-25" target="_blank" rel="noopener noreferrer" className="inline-flex" aria-label="YouTube"><Component4 /></a>
     </div>
   );
 }
@@ -3690,3 +3690,4 @@ export default function Acha() {
     </div>
   );
 }
+

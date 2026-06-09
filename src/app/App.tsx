@@ -1,4 +1,4 @@
-import { Suspense, lazy, useEffect, useState } from "react";
+﻿import { Suspense, lazy, useEffect, useState } from "react";
 import FloatingWhatsApp from "./components/FloatingWhatsApp";
 
 const loadHomePage = () => import("../imports/HomePage/HomePage");
@@ -10,8 +10,11 @@ const loadGeriatricCareAssistance = () => import("../imports/GeriatricCareAssist
 const loadAcha = () => import("../imports/Acha/Acha.tsx");
 const loadOcha = () => import("../imports/Ocha/Ocha");
 const loadSkillbridge = () => import("../imports/Skillbrige/Skillbrige.jsx");
+const loadBlogs = () => import("../imports/Blogs/Acha-1-586");
 const loadPrivacyPolicy = () => import("../imports/PrivacyPolicy/PrivacyPolicy");
 const loadTermsAndConditions = () => import("../imports/TermsAndConditions/TermsAndConditions");
+const loadAdminCrm = () => import("../imports/AdminCrm/AdminCrm");
+const loadCertificateVerify = () => import("../imports/CertificateVerify/CertificateVerify");
 
 const HomePage = lazy(loadHomePage);
 const CareersPage = lazy(loadCareersPage);
@@ -22,8 +25,11 @@ const GeriatricCareAssistance = lazy(loadGeriatricCareAssistance);
 const Acha = lazy(loadAcha);
 const Ocha = lazy(loadOcha);
 const Skillbridge = lazy(loadSkillbridge);
+const BlogsPage = lazy(loadBlogs);
 const PrivacyPolicy = lazy(loadPrivacyPolicy);
 const TermsAndConditions = lazy(loadTermsAndConditions);
+const AdminCrm = lazy(loadAdminCrm);
+const CertificateVerify = lazy(loadCertificateVerify);
 
 const preloadByHash: Record<string, () => Promise<unknown>> = {
   "#emt": loadEmergencyMedicalTechnician,
@@ -33,6 +39,8 @@ const preloadByHash: Record<string, () => Promise<unknown>> = {
   "#acha": loadAcha,
   "#ocha": loadOcha,
   "#skillbridge": loadSkillbridge,
+  "#blogs": loadBlogs,
+  "#admin": loadAdminCrm,
   "#careers": loadCareersPage,
   "#privacy-policy": loadPrivacyPolicy,
   "#terms-and-conditions": loadTermsAndConditions,
@@ -106,6 +114,16 @@ const SEO_BY_HASH: Record<string, SeoConfig> = {
     description: "Explore SkillBridge by iMED Academy.",
     path: "/#skillbridge",
   },
+  "#blogs": {
+    title: "Blogs | iMED Academy",
+    description: "Read the latest blogs and insights from iMED Academy.",
+    path: "/#blogs",
+  },
+  "#admin": {
+    title: "Admin CRM | iMED Academy",
+    description: "iMED Academy CRM dashboard for admissions and student management.",
+    path: "/#admin",
+  },
 };
 
 function upsertMeta(attr: "name" | "property", key: string, value: string) {
@@ -167,6 +185,7 @@ export default function App() {
       preloadRoute("#gda");
       preloadRoute("#gca");
       preloadRoute("#acha");
+      preloadRoute("#blogs");
     };
 
     if ("requestIdleCallback" in window) {
@@ -191,6 +210,7 @@ export default function App() {
       "terms and conditions": "#terms-and-conditions",
       ocha: "#ocha",
       skillbridge: "#skillbridge",
+      blogs: "#blogs",
     };
     const navToId: Record<string, string> = {
       about: "why-imed",
@@ -240,6 +260,18 @@ export default function App() {
               window.scrollTo({ top: 0, behavior: "smooth" });
               return;
             }
+            window.scrollTo({ top: 0, behavior: "smooth" });
+            return;
+          }
+          if (sectionId === "blogs") {
+            preloadRoute("#blogs");
+            window.location.hash = "#blogs";
+            window.scrollTo({ top: 0, behavior: "smooth" });
+            return;
+          }
+          if (sectionId === "skillbridge") {
+            preloadRoute("#skillbridge");
+            window.location.hash = "#skillbridge";
             window.scrollTo({ top: 0, behavior: "smooth" });
             return;
           }
@@ -325,17 +357,27 @@ export default function App() {
     page = <CareersPage />;
   } else if (hash === "#skillbridge") {
     page = <Skillbridge />;
+  } else if (hash === "#blogs") {
+    page = <BlogsPage />;
+  } else if (hash === "#admin") {
+    page = <AdminCrm />;
+  } else if (hash.startsWith("#verify=")) {
+    page = <CertificateVerify certificateNumber={decodeURIComponent(hash.replace("#verify=", ""))} />;
   } else if (hash === "#privacy-policy") {
     page = <PrivacyPolicy />;
   } else if (hash === "#terms-and-conditions") {
     page = <TermsAndConditions />;
   }
 
+  const showFloatingWhatsApp = hash !== "#admin" && !hash.startsWith("#verify=");
+
   return (
     <>
       <style>{`button:not(:disabled), [role='button'], [data-name='Button'], [data-name='button']{cursor:pointer;}`}</style>
       <Suspense fallback={<div className="min-h-screen w-full bg-[#f4f7ff]" />}>{page}</Suspense>
-      <FloatingWhatsApp />
+      {showFloatingWhatsApp && <FloatingWhatsApp />}
     </>
   );
 }
+
+
