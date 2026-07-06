@@ -7,6 +7,8 @@ const loadEmergencyMedicalTechnician = () => import("../imports/EmergencyMedical
 const loadHospitalAdministration = () => import("../imports/HospitalAdministration/HospitalAdministration");
 const loadGeneralDutyAssistance = () => import("../imports/GeneralDutyAssistance/GeneralDutyAssistance");
 const loadGeriatricCareAssistance = () => import("../imports/GeriatricCareAssistance/GeriatricCareAssistance");
+const loadMlt = () => import("../imports/Mlt");
+const loadRadiology = () => import("../imports/Radiology");
 const loadAcha = () => import("../imports/Acha/Acha.tsx");
 const loadOcha = () => import("../imports/Ocha/Ocha");
 const loadSkillbridge = () => import("../imports/Skillbrige/Skillbrige.jsx");
@@ -22,6 +24,8 @@ const EmergencyMedicalTechnician = lazy(loadEmergencyMedicalTechnician);
 const HospitalAdministration = lazy(loadHospitalAdministration);
 const GeneralDutyAssistance = lazy(loadGeneralDutyAssistance);
 const GeriatricCareAssistance = lazy(loadGeriatricCareAssistance);
+const Mlt = lazy(loadMlt);
+const Radiology = lazy(loadRadiology);
 const Acha = lazy(loadAcha);
 const Ocha = lazy(loadOcha);
 const Skillbridge = lazy(loadSkillbridge);
@@ -36,6 +40,8 @@ const preloadByHash: Record<string, () => Promise<unknown>> = {
   "#ha": loadHospitalAdministration,
   "#gda": loadGeneralDutyAssistance,
   "#gca": loadGeriatricCareAssistance,
+  "#mlt": loadMlt,
+  "#radiology": loadRadiology,
   "#acha": loadAcha,
   "#ocha": loadOcha,
   "#skillbridge": loadSkillbridge,
@@ -93,6 +99,18 @@ const SEO_BY_HASH: Record<string, SeoConfig> = {
     description:
       "Join iMED Academy's Geriatric Care Assistance program and build a career in elderly care support.",
     path: "/#gca",
+  },
+  "#mlt": {
+    title: "MLT Course | iMED Academy",
+    description:
+      "Join iMED Academy's Medical Laboratory Technician program and build a healthcare career with practical training.",
+    path: "/#mlt",
+  },
+  "#radiology": {
+    title: "Radiology Course | iMED Academy",
+    description:
+      "Join iMED Academy's Radiology X-Ray Technician program and build a healthcare career with practical training.",
+    path: "/#radiology",
   },
   "#acha": {
     title: "ACHA Program | iMED Academy",
@@ -184,6 +202,8 @@ export default function App() {
       preloadRoute("#ha");
       preloadRoute("#gda");
       preloadRoute("#gca");
+      preloadRoute("#mlt");
+      preloadRoute("#radiology");
       preloadRoute("#acha");
       preloadRoute("#blogs");
     };
@@ -208,6 +228,10 @@ export default function App() {
       "privacy policy": "#privacy-policy",
       "terms of use": "#terms-and-conditions",
       "terms and conditions": "#terms-and-conditions",
+      mlt: "#mlt",
+      "medical laboratory technician": "#mlt",
+      radiology: "#radiology",
+      "x-ray technician": "#radiology",
       ocha: "#ocha",
       skillbridge: "#skillbridge",
       blogs: "#blogs",
@@ -349,6 +373,10 @@ export default function App() {
     page = <GeneralDutyAssistance />;
   } else if (hash === "#gca") {
     page = <GeriatricCareAssistance />;
+  } else if (hash === "#mlt") {
+    page = <Mlt />;
+  } else if (hash === "#radiology") {
+    page = <Radiology />;
   } else if (hash === "#acha") {
     page = <Acha />;
   } else if (hash === "#ocha") {

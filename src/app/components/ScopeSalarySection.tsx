@@ -4,7 +4,9 @@ type Role =
   | "Emergency Medical Technician"
   | "Hospital Administration"
   | "General Duty Assistance"
-  | "Geriatric Care Assistance";
+  | "Geriatric Care Assistance"
+  | "Medical Laboratory Technician"
+  | "Radiology X-Ray Technician";
 
 type Props = {
   defaultRole: Role;
@@ -17,6 +19,8 @@ const HEALTHCARE_ROLE_OPTIONS: Role[] = [
   "Hospital Administration",
   "General Duty Assistance",
   "Geriatric Care Assistance",
+  "Medical Laboratory Technician",
+  "Radiology X-Ray Technician",
 ];
 
 const CITY_TIER_OPTIONS = ["Tier 1 - Metro", "Tier 2 - Large City", "Tier 3 - Small City"];
@@ -54,6 +58,16 @@ function computeSalaryBreakdown(selection: {
       "Tier 1 - Metro": [18000, 30000],
       "Tier 2 - Large City": [15000, 24000],
       "Tier 3 - Small City": [12000, 18000],
+    },
+    "Medical Laboratory Technician": {
+      "Tier 1 - Metro": [22000, 36000],
+      "Tier 2 - Large City": [18000, 30000],
+      "Tier 3 - Small City": [15000, 24000],
+    },
+    "Radiology X-Ray Technician": {
+      "Tier 1 - Metro": [24000, 38000],
+      "Tier 2 - Large City": [19000, 32000],
+      "Tier 3 - Small City": [16000, 26000],
     },
   };
 
@@ -205,5 +219,3 @@ export default function ScopeSalarySection({
     </div>
   );
 }
-
-

@@ -7,7 +7,7 @@ import imgImage1744 from "./image1744.png";
 import imgImage1728 from "./image1728.webp";
 import imgImage1729 from "./image1729.webp";
 import imgDownload12 from "./download12.png";
-import imgImage1730 from "./ .png";
+import imgImage1730 from "./image1730.png";
 import imgImage1731 from "./image1731.png";
 import imgAlphonsaLogo768X2001 from "./alphonsa-logo768-x2001.png";
 import imgLogo1 from "./logo1.png";
@@ -4026,6 +4026,26 @@ function Frame4() {
       >
         GCA
       </button>
+      <button
+        type="button"
+        onClick={() => {
+          window.location.hash = "mlt";
+          window.scrollTo({ top: 0, behavior: "smooth" });
+        }}
+        className="cursor-pointer min-w-full relative shrink-0 text-left transition-colors duration-200 w-[min-content] hover:text-[#8ee2d2]"
+      >
+        MLT
+      </button>
+      <button
+        type="button"
+        onClick={() => {
+          window.location.hash = "radiology";
+          window.scrollTo({ top: 0, behavior: "smooth" });
+        }}
+        className="cursor-pointer min-w-full relative shrink-0 text-left transition-colors duration-200 w-[min-content] hover:text-[#8ee2d2]"
+      >
+        Radiology
+      </button>
     </div>
   );
 }
@@ -4345,7 +4365,7 @@ function Frame123({ onOpenCareers }: { onOpenCareers: () => void }) {
 
 function Frame6({ onOpenCareers }: { onOpenCareers: () => void }) {
   return (
-    <div className="bg-[#1f3471] h-[330px] relative shrink-0 w-full">
+    <div className="bg-[#1f3471] h-[420px] relative shrink-0 w-full">
       <Frame3 />
       <Frame123 onOpenCareers={onOpenCareers} />
     </div>

@@ -433,7 +433,7 @@ app.post("/api/auth/signup", async (req, res) => {
   if (!name || !email || !password) return sendError(res, 400, "Name, email, and password are required");
   if (String(password).length < 8) return sendError(res, 400, "Password must be at least 8 characters");
   const adminCount = await AdminUser.countDocuments();
-  if (adminCount >= 3) return sendError(res, 403, "Admin account limit reached");
+  if (adminCount >= 4) return sendError(res, 403, "Admin account limit reached");
   const existing = await AdminUser.findOne({ email: String(email).toLowerCase().trim() });
   if (existing) return sendError(res, 409, "Account already exists");
   const passwordHash = await bcrypt.hash(password, 10);
