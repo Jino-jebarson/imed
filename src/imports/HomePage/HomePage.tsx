@@ -12,7 +12,7 @@ import imgImage1731 from "./image1731.png";
 import imgAlphonsaLogo768X2001 from "./alphonsa-logo768-x2001.png";
 import imgLogo1 from "./logo1.png";
 import imgImage1732 from "./image1732.png";
-import imgKmcims1 from "./kmcims1.png";
+import imgKmcims1 from "./kmcims1.png"; 
 import imgDownload22 from "./download22.png";
 import imgDmhLogo1 from "./dmh-logo1.png";
 import imgLogo11 from "./logo11.png";
