@@ -108,7 +108,7 @@ function computeSalaryBreakdown(selection: {
 }
 
 export default function ScopeSalarySection({
-  defaultRole,
+  defaultRole,  
   topClassName = "top-[2954px]",
   allowRoleSelection = false,
 }: Props) {
@@ -186,7 +186,7 @@ export default function ScopeSalarySection({
         <div className="bg-gradient-to-br from-[#0f172b] via-[#1c398e] to-[#0f172b] p-[34px] text-white">
           <p className="text-[14px] text-[#46ecd5]">Estimated Monthly Salary</p>
           <p className="mt-[8px] text-[24px] font-bold">{healthcareRole}</p>
-          <p className="mt-[4px] text-[14px] text-[#bedbff]">{`${cityTier} · ${hospitalType} · ${experienceYears === 0 ? "Fresher" : `${experienceYears} yrs exp`} · ${shift}`}</p>
+          <p className="mt-[4px] text-[14px] text-[#bedbff]">{`${cityTier} ï¿½ ${hospitalType} ï¿½ ${experienceYears === 0 ? "Fresher" : `${experienceYears} yrs exp`} ï¿½ ${shift}`}</p>
           <p className="mt-[20px] text-[48px] font-bold leading-[48px]">{formatInr(salary.monthlyGross)}</p>
           <p className="text-[14px] text-[#bedbff]">per month, gross</p>
           <div className="mt-[24px] rounded-[14px] border border-[rgba(255,255,255,0.1)] bg-[rgba(255,255,255,0.05)] p-[20px]">

@@ -7,7 +7,7 @@ import imgImage1744 from "./image1744.png";
 import imgImage1728 from "./image1728.webp";
 import imgImage1729 from "./image1729.webp";
 import imgDownload12 from "./download12.png";
-import imgImage1730 from "./image1730.png";
+import imgImage1730 from "./ .png";
 import imgImage1731 from "./image1731.png";
 import imgAlphonsaLogo768X2001 from "./alphonsa-logo768-x2001.png";
 import imgLogo1 from "./logo1.png";
@@ -282,14 +282,14 @@ function Frame21() {
   );
 }
 
-function FrameBlogs() {
-  return (
-    <button data-nav-target="blogs" className="group block h-[24px] relative shrink-0 w-[64px] cursor-pointer transition-colors duration-200 hover:text-[#1f3471]">
-      <p className="pointer-events-none -translate-x-1/2 absolute font-['Inter:Medium',sans-serif] font-medium leading-[24px] left-1/2 not-italic text-[#333] text-[16px] text-center top-0 whitespace-nowrap transition-colors duration-200 hover:text-[#1f3471]">Blogs</p>
-      <span aria-hidden="true" className="pointer-events-none absolute left-1/2 -bottom-[3px] h-[2px] w-0 -translate-x-1/2 rounded-full bg-[#25a88d] transition-all duration-300 group-hover:w-[75%]" />
-    </button>
-  );
-}
+// function FrameBlogs() {
+//   return (
+//     <button data-nav-target="blogs" className="group block h-[24px] relative shrink-0 w-[64px] cursor-pointer transition-colors duration-200 hover:text-[#1f3471]">
+//       <p className="pointer-events-none -translate-x-1/2 absolute font-['Inter:Medium',sans-serif] font-medium leading-[24px] left-1/2 not-italic text-[#333] text-[16px] text-center top-0 whitespace-nowrap transition-colors duration-200 hover:text-[#1f3471]">Blogs</p>
+//       <span aria-hidden="true" className="pointer-events-none absolute left-1/2 -bottom-[3px] h-[2px] w-0 -translate-x-1/2 rounded-full bg-[#25a88d] transition-all duration-300 group-hover:w-[75%]" />
+//     </button>
+//   );
+// }
 
 function Frame22() {
   return (
@@ -341,10 +341,9 @@ function Frame23() {
       <Frame18 />
       <Frame20 />
       <Frame21 />
-      <FrameBlogs />
       <Frame22 />
       <FrameSkillbridge />
-    </div>
+    </div>  
   );
 }
 
@@ -3582,6 +3581,9 @@ function Form() {
             <option value="Emergency Medical Technician">Emergency Medical Technician</option>
             <option value="Hospital Administration">Hospital Administration</option>
             <option value="General Duty Assistance">General Duty Assistance</option>
+            <option value="OCHA">OCHA</option>
+            <option value="ACHA">ACHA</option>
+            <option value="GCA">GCA</option>
           </select>
         </div>
         <div className="content-stretch flex flex-col gap-[8px] h-[68px] items-start relative shrink-0 w-[380px]">
