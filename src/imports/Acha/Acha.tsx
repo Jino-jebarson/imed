@@ -3312,6 +3312,8 @@ function Frame2() {
       <button type="button" onClick={handleProgramClick("#ocha")} className="relative shrink-0 whitespace-nowrap text-left transition-colors duration-200 hover:text-[#8ee2d2]">OCHA</button>
       <button type="button" onClick={handleProgramClick("#acha", "home")} className="relative shrink-0 whitespace-nowrap text-left transition-colors duration-200 hover:text-[#8ee2d2]">ACHA</button>
       <button type="button" onClick={handleProgramClick("#gca")} className="relative shrink-0 whitespace-nowrap text-left transition-colors duration-200 hover:text-[#8ee2d2]">Geriatric Care Assistance</button>
+      <button type="button" onClick={handleProgramClick("#mlt")} className="relative shrink-0 whitespace-nowrap text-left transition-colors duration-200 hover:text-[#8ee2d2]">MLT</button>
+      <button type="button" onClick={handleProgramClick("#radiology")} className="relative shrink-0 whitespace-nowrap text-left transition-colors duration-200 hover:text-[#8ee2d2]">Radiology</button>
     </div>
   );
 }
@@ -3584,7 +3586,7 @@ function Frame72() {
 
 function Frame4() {
   return (
-    <div className="bg-[#1f3471] h-[328px] relative shrink-0 w-full">
+    <div className="bg-[#1f3471] h-[420px] relative shrink-0 w-full">
       <Frame1 />
       <Frame72 />
     </div>

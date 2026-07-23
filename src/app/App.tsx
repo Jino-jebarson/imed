@@ -7,8 +7,8 @@ const loadEmergencyMedicalTechnician = () => import("../imports/EmergencyMedical
 const loadHospitalAdministration = () => import("../imports/HospitalAdministration/HospitalAdministration");
 const loadGeneralDutyAssistance = () => import("../imports/GeneralDutyAssistance/GeneralDutyAssistance");
 const loadGeriatricCareAssistance = () => import("../imports/GeriatricCareAssistance/GeriatricCareAssistance");
-const loadMlt = () => import("../imports/Mlt");
-const loadRadiology = () => import("../imports/Radiology");
+const loadMlt = () => import("../imports/Mlt/mlt");
+const loadRadiology = () => import("../imports/Radiology/radiology");
 const loadAcha = () => import("../imports/Acha/Acha.tsx");
 const loadOcha = () => import("../imports/Ocha/Ocha");
 const loadSkillbridge = () => import("../imports/Skillbrige/Skillbrige.jsx");

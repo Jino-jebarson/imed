@@ -239,6 +239,8 @@ async function seedBaseData() {
     { name: "General Duty Assistant", code: "GDA", fee: 35000, duration: "4 months" },
     { name: "OCHA", code: "OCHA", fee: 30000, duration: "Online" },
     { name: "ACHA", code: "ACHA", fee: 65000, duration: "6 months" },
+    { name: "Medical Laboratory Technician", code: "MLT", fee: 55000, duration: "6 months" },
+    { name: "Radiology X-Ray Technician", code: "RADIOLOGY", fee: 55000, duration: "6 months" },
   ];
   await Promise.all(centres.map((centre) => Centre.updateOne({ name: centre.name }, { $set: { type: "branch" }, $setOnInsert: centre }, { upsert: true })));
   await Centre.updateMany({ name: { $nin: centres.map((centre) => centre.name) }, type: { $exists: false } }, { $set: { type: "franchise" } });
@@ -291,7 +293,7 @@ function isHeadBranchAdmin(user) {
 }
 
 function isFranchiseUser(user) {
-  return ["franchise_superadmin", "franchise_counsellor"].includes(user?.role) || Boolean(user?.franchiseId && !isHeadAdmin(user));
+  return ["franchise_superadmin", "franchise_counsellor"].includes(user?.role);
 }
 
 function isFranchiseSuperAdmin(user) {
@@ -310,8 +312,13 @@ function isHeadBranchScoped(user) {
   return ["admin", "counsellor"].includes(user?.role);
 }
 
-async function headOfficeBranchScope() {
-  const branches = await Centre.find({ active: true, type: "branch" }).select("_id name").lean();
+async function headOfficeBranchScope(user) {
+  const assignedBranchId = isHeadBranchScoped(user) && user?.franchiseId ? String(user.franchiseId) : "";
+  const branches = await Centre.find({
+    active: true,
+    type: "branch",
+    ...(assignedBranchId ? { _id: assignedBranchId } : {}),
+  }).select("_id name").lean();
   return {
     ids: branches.map((branch) => branch._id),
     names: branches.map((branch) => branch.name),
@@ -334,7 +341,7 @@ async function scopedDataFilter(req, query = {}) {
     if (!req.user.franchiseId) return { ...filter, franchiseId: emptyObjectId };
     filter.franchiseId = req.user.franchiseId;
   } else if (isHeadBranchScoped(req.user)) {
-    const branchScope = await headOfficeBranchScope();
+    const branchScope = await headOfficeBranchScope(req.user);
     filter.$or = [
       { franchiseId: { $in: branchScope.ids } },
       { centre: { $in: branchScope.names } },
@@ -348,7 +355,7 @@ async function canAccessRecord(req, record) {
     return Boolean(req.user.franchiseId && record?.franchiseId && String(record.franchiseId) === String(req.user.franchiseId));
   }
   if (isHeadBranchScoped(req.user)) {
-    const branchScope = await headOfficeBranchScope();
+    const branchScope = await headOfficeBranchScope(req.user);
     const recordFranchiseId = record?.franchiseId ? String(record.franchiseId) : "";
     return branchScope.ids.some((id) => String(id) === recordFranchiseId) || branchScope.names.includes(String(record?.centre || ""));
   }
@@ -360,12 +367,13 @@ async function resolveFranchiseFromRequest(req, centreName = "") {
     if (!req.user.franchiseId) return null;
     return Centre.findById(req.user.franchiseId).lean();
   }
+  const assignedBranchFilter = isHeadBranchScoped(req.user) && req.user.franchiseId ? { _id: req.user.franchiseId, type: "branch" } : {};
   const bodyFranchiseId = req.body?.franchiseId || req.query?.franchiseId;
   if (bodyFranchiseId && mongoose.isValidObjectId(String(bodyFranchiseId))) {
-    const centre = await Centre.findOne({ _id: bodyFranchiseId, ...(isHeadBranchAdmin(req.user) ? { type: "branch" } : {}) }).lean();
+    const centre = await Centre.findOne({ _id: bodyFranchiseId, ...(isHeadBranchScoped(req.user) ? { type: "branch" } : {}), ...assignedBranchFilter }).lean();
     if (centre) return centre;
   }
-  if (centreName) return Centre.findOne({ name: centreName, ...(isHeadBranchAdmin(req.user) ? { type: "branch" } : {}) }).lean();
+  if (centreName) return Centre.findOne({ name: centreName, ...(isHeadBranchScoped(req.user) ? { type: "branch" } : {}), ...assignedBranchFilter }).lean();
   return null;
 }
 
@@ -465,11 +473,19 @@ app.get("/api/certificates/verify/:certificateNumber", async (req, res) => {
   res.json({ ok: true, data: student });
 });
 
+app.get("/api/centres", async (_req, res) => {
+  const centres = await Centre.find({ active: true })
+    .select("name city type")
+    .sort({ type: 1, name: 1 })
+    .lean();
+  res.json({ ok: true, data: centres });
+});
+
 app.get("/api/admin/counsellors", requireAuth, requireFranchiseManager, async (req, res) => {
   const filter = isFranchiseSuperAdmin(req.user)
     ? { role: "franchise_counsellor", franchiseId: req.user.franchiseId || emptyObjectId }
     : isHeadBranchAdmin(req.user)
-      ? { role: { $in: ["admin", "counsellor"] } }
+      ? { role: { $in: ["admin", "counsellor"] }, ...(req.user.franchiseId ? { franchiseId: req.user.franchiseId } : {}) }
       : { role: { $in: ["superadmin", "admin", "counsellor", "franchise_superadmin", "franchise_counsellor"] } };
   const counsellors = await AdminUser.find(filter).select("name email role franchiseId").sort({ name: 1 }).lean();
   res.json({ ok: true, data: counsellors });
@@ -484,11 +500,13 @@ app.post("/api/admin/counsellors", requireAuth, requireFranchiseManager, async (
   if (isHeadBranchAdmin(req.user) && !["admin", "counsellor"].includes(role)) return sendError(res, 403, "Head admin can create only head office staff");
   if (role === "superadmin" && !isHeadSuperAdmin(req.user)) return sendError(res, 403, "Head super admin access required");
   if (!isHeadAdmin(req.user) && ["superadmin", "admin", "counsellor", "franchise_superadmin"].includes(role)) return sendError(res, 403, "Head admin access required");
-  const assignedFranchiseId = isFranchiseSuperAdmin(req.user) ? req.user.franchiseId : franchiseId;
-  if (["franchise_superadmin", "franchise_counsellor"].includes(role) && !mongoose.isValidObjectId(String(assignedFranchiseId || ""))) return sendError(res, 400, "Franchise is required");
-  if (["franchise_superadmin", "franchise_counsellor"].includes(role)) {
-    const centre = await Centre.findById(assignedFranchiseId).lean();
-    if (!centre) return sendError(res, 404, "Franchise not found");
+  const assignedFranchiseId = isFranchiseSuperAdmin(req.user) || isHeadBranchAdmin(req.user) ? req.user.franchiseId : franchiseId;
+  const needsAssignedCentre = ["admin", "counsellor", "franchise_superadmin", "franchise_counsellor"].includes(role);
+  if (needsAssignedCentre && !mongoose.isValidObjectId(String(assignedFranchiseId || ""))) return sendError(res, 400, ["admin", "counsellor"].includes(role) ? "Branch is required" : "Franchise is required");
+  if (needsAssignedCentre) {
+    const expectedType = ["admin", "counsellor"].includes(role) ? "branch" : "franchise";
+    const centre = await Centre.findOne({ _id: assignedFranchiseId, type: expectedType }).lean();
+    if (!centre) return sendError(res, 404, expectedType === "branch" ? "Branch not found" : "Franchise not found");
   }
   const existing = await AdminUser.findOne({ email: String(email).toLowerCase().trim() });
   if (existing) return sendError(res, 409, "Staff account already exists");
@@ -498,7 +516,7 @@ app.post("/api/admin/counsellors", requireAuth, requireFranchiseManager, async (
     email,
     passwordHash,
     role,
-    franchiseId: ["franchise_superadmin", "franchise_counsellor"].includes(role) ? assignedFranchiseId : undefined,
+    franchiseId: needsAssignedCentre ? assignedFranchiseId : undefined,
   });
   res.status(201).json({ ok: true, data: staffResponse(counsellor) });
 });
@@ -883,10 +901,11 @@ app.post("/api/admin/students/:id/payments", requireAuth, async (req, res) => {
 });
 
 app.get("/api/admin/centres", requireAuth, async (req, res) => {
+  const branchScope = isHeadBranchScoped(req.user) ? await headOfficeBranchScope(req.user) : null;
   const filter = isFranchiseUser(req.user)
     ? { active: true, _id: req.user.franchiseId || emptyObjectId }
     : isHeadBranchScoped(req.user)
-      ? { active: true, type: "branch" }
+      ? { active: true, type: "branch", _id: { $in: branchScope.ids } }
       : { active: true };
   const centres = await Centre.find(filter).sort({ name: 1 }).lean();
   res.json({ ok: true, data: centres });
@@ -910,17 +929,34 @@ app.post("/api/admin/centres", requireAuth, requireHeadAdmin, async (req, res) =
 app.patch("/api/admin/centres/:id", requireAuth, requireFranchiseManager, async (req, res) => {
   if (!mongoose.isValidObjectId(req.params.id)) return sendError(res, 400, "Invalid centre");
   if (isFranchiseSuperAdmin(req.user) && String(req.params.id) !== String(req.user.franchiseId || "")) return sendError(res, 403, "You can update only your franchise billing details");
-  const allowedCentreUpdates = (({ type, city, manager, billingLegalName, billingAddress, billingGstin, billingStateName, billingStateCode, billingEmail, billingPhone, bankAccountName, bankName, bankAccountNumber, bankIfsc, bankBranch }) => ({ type, city, manager, billingLegalName, billingAddress, billingGstin, billingStateName, billingStateCode, billingEmail, billingPhone, bankAccountName, bankName, bankAccountNumber, bankIfsc, bankBranch }))(req.body || {});
+  const existingCentre = await Centre.findById(req.params.id).lean();
+  if (!existingCentre) return sendError(res, 404, "Centre not found");
+  const allowedCentreUpdates = (({ name, type, city, manager, billingLegalName, billingAddress, billingGstin, billingStateName, billingStateCode, billingEmail, billingPhone, bankAccountName, bankName, bankAccountNumber, bankIfsc, bankBranch }) => ({ name, type, city, manager, billingLegalName, billingAddress, billingGstin, billingStateName, billingStateCode, billingEmail, billingPhone, bankAccountName, bankName, bankAccountNumber, bankIfsc, bankBranch }))(req.body || {});
   Object.keys(allowedCentreUpdates).forEach((key) => allowedCentreUpdates[key] === undefined && delete allowedCentreUpdates[key]);
+  if (!isHeadAdmin(req.user)) delete allowedCentreUpdates.name;
+  if (allowedCentreUpdates.name !== undefined) {
+    allowedCentreUpdates.name = String(allowedCentreUpdates.name || "").trim();
+    if (!allowedCentreUpdates.name) return sendError(res, 400, "Centre name is required");
+    const duplicate = await Centre.findOne({ _id: { $ne: req.params.id }, name: allowedCentreUpdates.name }).lean();
+    if (duplicate) return sendError(res, 409, "Branch or franchise already exists with this name");
+  }
   if (isHeadBranchAdmin(req.user) || isFranchiseSuperAdmin(req.user)) delete allowedCentreUpdates.type;
   if (allowedCentreUpdates.type && !["branch", "franchise"].includes(allowedCentreUpdates.type)) delete allowedCentreUpdates.type;
   const centre = await Centre.findByIdAndUpdate(req.params.id, { $set: allowedCentreUpdates }, { new: true, runValidators: true });
   if (!centre) return sendError(res, 404, "Centre not found");
+  if (allowedCentreUpdates.name && allowedCentreUpdates.name !== existingCentre.name) {
+    await Promise.all([
+      Lead.updateMany({ franchiseId: centre._id }, { $set: { centre: centre.name } }),
+      Student.updateMany({ franchiseId: centre._id }, { $set: { centre: centre.name } }),
+      Batch.updateMany({ franchiseId: centre._id }, { $set: { centre: centre.name } }),
+      Attendance.updateMany({ franchiseId: centre._id }, { $set: { centre: centre.name } }),
+    ]);
+  }
   res.json({ ok: true, data: centre });
 });
 
 app.get("/api/admin/courses", requireAuth, async (req, res) => {
-  const branchScope = isHeadBranchScoped(req.user) ? await headOfficeBranchScope() : null;
+  const branchScope = isHeadBranchScoped(req.user) ? await headOfficeBranchScope(req.user) : null;
   const filter = isFranchiseUser(req.user)
     ? { active: true, $or: [{ franchiseId: req.user.franchiseId || emptyObjectId }, { franchiseId: { $exists: false } }, { franchiseId: null }] }
     : isHeadBranchScoped(req.user)
@@ -935,7 +971,7 @@ app.post("/api/admin/courses", requireAuth, requireFranchiseManager, async (req,
   const course = await Course.create({
     ...req.body,
     fee: Number(req.body.fee || 0),
-    franchiseId: isFranchiseUser(req.user) ? req.user.franchiseId : isHeadBranchAdmin(req.user) ? undefined : req.body.franchiseId || undefined,
+    franchiseId: isFranchiseUser(req.user) || isHeadBranchAdmin(req.user) ? req.user.franchiseId : req.body.franchiseId || undefined,
   });
   res.status(201).json({ ok: true, data: course });
 });
@@ -960,7 +996,7 @@ app.patch("/api/admin/courses/:id", requireAuth, requireFranchiseManager, async 
 });
 
 app.get("/api/admin/batches", requireAuth, async (req, res) => {
-  const branchScope = isHeadBranchScoped(req.user) ? await headOfficeBranchScope() : null;
+  const branchScope = isHeadBranchScoped(req.user) ? await headOfficeBranchScope(req.user) : null;
   const filter = isFranchiseUser(req.user)
     ? { active: true, franchiseId: req.user.franchiseId || emptyObjectId }
     : isHeadBranchScoped(req.user)

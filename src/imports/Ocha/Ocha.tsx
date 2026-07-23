@@ -140,6 +140,8 @@ const footerProgramLinks = [
   { label: "OCHA", target: "home", className: "cursor-pointer min-w-full relative shrink-0 text-left transition-colors duration-200 w-[min-content] hover:text-[#8ee2d2]" },
   { label: "ACHA", hash: "#acha", className: "cursor-pointer min-w-full relative shrink-0 text-left transition-colors duration-200 w-[min-content] hover:text-[#8ee2d2]" },
   { label: "GCA", hash: "#gca", className: "cursor-pointer min-w-full relative shrink-0 text-left transition-colors duration-200 w-[min-content] hover:text-[#8ee2d2]" },
+  { label: "MLT", hash: "#mlt", className: "cursor-pointer min-w-full relative shrink-0 text-left transition-colors duration-200 w-[min-content] hover:text-[#8ee2d2]" },
+  { label: "Radiology", hash: "#radiology", className: "cursor-pointer min-w-full relative shrink-0 text-left transition-colors duration-200 w-[min-content] hover:text-[#8ee2d2]" },
 ];
 
 const footerCompanyLinks = [
@@ -3650,7 +3652,7 @@ function Frame68() {
 
 function Frame4() {
   return (
-    <div className="bg-[#1f3471] h-[330px] relative shrink-0 w-full">
+    <div className="bg-[#1f3471] h-[420px] relative shrink-0 w-full">
       <Frame1 />
       <Frame68 />
     </div>

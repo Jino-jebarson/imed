@@ -10,7 +10,7 @@ import imgDownload12 from "./download12.png";
 import imgImage1730 from "./image1730.png";
 import imgImage1731 from "./image1731.png";
 import imgAlphonsaLogo768X2001 from "./alphonsa-logo768-x2001.png";
-import imgLogo1 from "./logo1.png";
+import imgMedideskLogo from "./medidesk-logo.svg";
 import imgImage1732 from "./image1732.png";
 import imgKmcims1 from "./kmcims1.png"; 
 import imgDownload22 from "./download22.png";
@@ -782,9 +782,9 @@ function Frame151() {
       <div className="h-[32px] relative shrink-0 w-[112px]" data-name="download-1-1">
         <img loading="lazy" decoding="async" alt="" className="absolute inset-0 max-w-none object-contain pointer-events-none size-full" src={imgDownload11} />
       </div>
-      {/* <div className="h-[26px] relative shrink-0 w-[159px]" data-name="logo 1">
-        <img loading="lazy" decoding="async" alt="" className="absolute inset-0 max-w-none object-cover pointer-events-none size-full" src={imgLogo1} />
-      </div> */}
+      <div className="h-[26px] relative shrink-0 w-[159px]" data-name="medidesk-logo">
+        <img loading="lazy" decoding="async" alt="Medidesk" className="absolute inset-0 max-w-none object-contain pointer-events-none size-full" src={imgMedideskLogo} />
+      </div>
     </div>
   );
 }
@@ -1436,7 +1436,7 @@ function Frame73() {
 
 function About1() {
   return (
-    <div className="absolute bg-white content-stretch flex flex-col gap-[39px] items-center left-0 px-[32px] py-[60px] top-[7100.76px] w-[1440px]" data-name="About">
+    <div className="absolute bg-white content-stretch flex flex-col gap-[39px] items-center left-0 px-[32px] py-[60px] top-[7783.76px] w-[1440px]" data-name="About">
       <Container12 />
       <Frame73 />
     </div>
@@ -2439,14 +2439,125 @@ function FrameGca() {
   );
 }
 
+type ProgramCardProps = {
+  badge: string;
+  title: string;
+  subtitle: string;
+  duration: string;
+  roleLabel: string;
+  description: string;
+  highlights: string[];
+  salary: string;
+  hash: string;
+  gradient: string;
+};
+
+function ProgramCard({
+  badge,
+  title,
+  subtitle,
+  duration,
+  roleLabel,
+  description,
+  highlights,
+  salary,
+  hash,
+  gradient,
+}: ProgramCardProps) {
+  const handleClick = () => {
+    window.location.hash = hash;
+    window.scrollTo({ top: 0, behavior: "smooth" });
+  };
+
+  return (
+    <div className="bg-white h-[640px] overflow-clip relative rounded-[20px] shadow-[0px_10px_15px_-3px_rgba(37,99,235,0.15),0px_4px_6px_-4px_rgba(0,0,0,0.1),10px_40px_50px_0px_rgba(229,233,246,0.4),0px_6.478px_54.897px_0px_rgba(0,134,255,0.1)] shrink-0 transition-all duration-300 w-[410px] hover:-translate-y-2 hover:shadow-[0px_16px_24px_-6px_rgba(37,99,235,0.25),0px_10px_16px_-8px_rgba(0,0,0,0.12),12px_48px_58px_0px_rgba(229,233,246,0.5),0px_10px_60px_0px_rgba(0,134,255,0.15)]">
+      <div className="absolute h-[156px] left-0 overflow-clip right-0 rounded-[19.458px] top-0" style={{ backgroundImage: gradient }} data-name="Container">
+        <div className="absolute bg-white left-[312px] opacity-4 rounded-[40806480px] size-[146px] top-[71px]" data-name="Container" />
+        <div className="absolute bg-[rgba(37,168,141,0.33)] content-stretch flex items-center justify-center right-[24px] overflow-clip px-[14px] py-[7px] rounded-[6px] top-[22.24px]">
+          <p className="font-['Inter:Medium',sans-serif] font-medium leading-[11.036px] not-italic relative shrink-0 text-[#eee] text-[12px] whitespace-nowrap">{badge}</p>
+        </div>
+      </div>
+      <div className="absolute content-stretch flex flex-col gap-[8px] items-start leading-[normal] left-[41px] not-italic right-[41px] text-white top-[54px]">
+        <p className="font-['Inter:Bold',sans-serif] font-bold relative shrink-0 text-[20px] w-full">{title}</p>
+        <p className="font-['Inter:Regular',sans-serif] font-normal min-w-full relative shrink-0 text-[18px] w-[min-content]">{subtitle}</p>
+      </div>
+      <div className="absolute content-stretch flex flex-col gap-[9px] items-start left-[41px] top-[188px] w-[328px]">
+        <div className="content-stretch flex gap-[15px] items-center relative shrink-0">
+          <div className="content-stretch flex gap-[8px] items-center relative shrink-0">
+            <MingcuteTimeLine />
+            <p className="font-['Inter:Semi_Bold',sans-serif] font-semibold leading-[normal] not-italic relative shrink-0 text-[#333] text-[18px] whitespace-nowrap">{duration}</p>
+          </div>
+          <div className="content-stretch flex gap-[8px] items-center relative shrink-0">
+            <MingcuteHospitalLine />
+            <p className="font-['Inter:Semi_Bold',sans-serif] font-semibold leading-[normal] not-italic relative shrink-0 text-[#333] text-[18px] whitespace-nowrap">{roleLabel}</p>
+          </div>
+        </div>
+        <p className="font-['Inter:Regular',sans-serif] font-normal leading-[27px] not-italic relative shrink-0 text-[#333] text-[14px] w-full">{description}</p>
+        <div className="content-stretch flex flex-col gap-[10px] items-start relative shrink-0 w-full">
+          <p className="font-['Inter:Semi_Bold',sans-serif] font-semibold leading-[27px] min-w-full not-italic relative shrink-0 text-[#25a88d] text-[14px] w-[min-content]">Program Highlights</p>
+          <div className="content-stretch flex flex-col gap-[5px] items-start relative shrink-0 w-[328px]">
+            {highlights.map((highlight) => (
+              <div className="content-stretch flex gap-[15px] items-center relative shrink-0" key={highlight}>
+                <MdiTick />
+                <p className="font-['Inter:Regular',sans-serif] font-normal leading-[27px] not-italic relative shrink-0 text-[#333] text-[14px] whitespace-nowrap">{highlight}</p>
+              </div>
+            ))}
+          </div>
+        </div>
+      </div>
+      <div className="absolute content-stretch flex flex-col gap-[15px] items-start left-[41px] not-italic top-[475px] w-[328px]">
+        <p className="font-['Inter:Regular',sans-serif] font-normal leading-[normal] relative shrink-0 text-[#333] text-[16px] w-full">Starting Salary Range</p>
+        <p className="font-['Inter:Semi_Bold',sans-serif] font-semibold leading-[21px] relative shrink-0 text-[#25a88d] text-[18px] w-full">{salary}</p>
+      </div>
+      <div onClick={handleClick} className="-translate-x-1/2 absolute content-stretch flex h-[40px] items-center justify-center left-1/2 overflow-clip px-[112px] py-[8px] rounded-[6px] top-[553px] w-[328px] cursor-pointer" style={{ backgroundImage: "linear-gradient(140.961deg, rgb(53, 80, 159) 6.5327%, rgb(26, 56, 144) 53.048%, rgb(59, 99, 215) 99.563%), linear-gradient(90deg, rgb(37, 168, 141) 0%, rgb(37, 168, 141) 100%)" }}>
+        <p className="font-['Inter:Semi_Bold',sans-serif] font-semibold leading-[normal] not-italic relative shrink-0 text-[18px] text-white whitespace-nowrap">Explore Now</p>
+      </div>
+    </div>
+  );
+}
+
 function Frame47() {
   return (
-    <div className="content-stretch flex flex-wrap gap-[43px] items-start justify-center relative shrink-0 w-[1320px]">
+    <div className="content-stretch flex flex-wrap gap-[43px] items-start justify-start relative shrink-0 w-[1320px]">
       <FrameAcha />
       <Frame42 />
       <Frame37 />
       <FrameGca />
       <Frame58 />
+      <ProgramCard
+        badge="LAB TECH"
+        title="MLT Program"
+        subtitle="Medical Laboratory Technician"
+        duration="6 Months"
+        roleLabel="Lab Roles"
+        description="Classroom learning, lab practice, and diagnostic workflow training for entry-level laboratory careers."
+        highlights={[
+          "Sample collection and processing",
+          "Pathology lab equipment training",
+          "Reports and quality control basics",
+          "Placement assistance included",
+        ]}
+        salary="Rs 15,000 - Rs 28,000 /Month "
+        hash="mlt"
+        gradient="linear-gradient(114.164deg, rgb(82, 86, 100) 4.0585%, rgb(65, 72, 91) 53.425%, rgb(165, 174, 202) 102.79%)"
+      />
+      <ProgramCard
+        badge="IMAGING"
+        title="Radiology Program"
+        subtitle="Radiology X-Ray Technician"
+        duration="6 Months"
+        roleLabel="Imaging Roles"
+        description="Hands-on training for radiology department workflows, patient positioning, and imaging assistance."
+        highlights={[
+          "X-Ray positioning fundamentals",
+          "Radiology safety and protocols",
+          "Hospital department exposure",
+          "Placement assistance included",
+        ]}
+        salary="Rs 16,000 - Rs 30,000 /Month "
+        hash="radiology"
+        gradient="linear-gradient(111.567deg, rgb(53, 80, 159) 6.5327%, rgb(26, 56, 144) 53.048%, rgb(59, 99, 215) 99.563%)"
+      />
     </div>
   );
 }
@@ -2798,7 +2909,7 @@ function Frame72() {
 
 function About3() {
   return (
-    <div className="-translate-x-1/2 absolute content-stretch flex flex-col gap-[162px] h-[789px] items-center left-1/2 px-[32px] py-[60px] top-[6311.76px] w-[1440px]" style={{ backgroundImage: "linear-gradient(151.281deg, rgb(15, 23, 43) 0%, rgb(28, 57, 142) 50%, rgb(15, 23, 43) 100%), linear-gradient(105.348deg, rgb(53, 80, 159) 6.5327%, rgb(26, 56, 144) 53.048%, rgb(59, 99, 215) 99.563%), linear-gradient(90deg, rgb(31, 52, 113) 0%, rgb(31, 52, 113) 100%)" }} data-name="About">
+    <div className="-translate-x-1/2 absolute content-stretch flex flex-col gap-[162px] h-[789px] items-center left-1/2 px-[32px] py-[60px] top-[6994.76px] w-[1440px]" style={{ backgroundImage: "linear-gradient(151.281deg, rgb(15, 23, 43) 0%, rgb(28, 57, 142) 50%, rgb(15, 23, 43) 100%), linear-gradient(105.348deg, rgb(53, 80, 159) 6.5327%, rgb(26, 56, 144) 53.048%, rgb(59, 99, 215) 99.563%), linear-gradient(90deg, rgb(31, 52, 113) 0%, rgb(31, 52, 113) 100%)" }} data-name="About">
       <Container20 />
       <Frame72 />
     </div>
@@ -2851,7 +2962,7 @@ function Frame27() {
 
 function Container21() {
   return (
-    <div className="-translate-x-1/2 absolute content-stretch flex flex-col gap-[23px] h-[293px] items-center justify-center left-[calc(50%-0.5px)] px-[52px] py-[60px] shadow-[0px_25px_50px_0px_rgba(0,0,0,0.25)] top-[7902.76px] w-[1459px]" style={{ backgroundImage: "linear-gradient(168.645deg, rgb(15, 23, 43) 0%, rgb(28, 57, 142) 50%, rgb(15, 23, 43) 100%), linear-gradient(126.829deg, rgb(53, 80, 159) 6.5327%, rgb(26, 56, 144) 53.048%, rgb(59, 99, 215) 99.563%), linear-gradient(90deg, rgb(31, 52, 113) 0%, rgb(31, 52, 113) 100%)" }} data-name="Container">
+    <div className="-translate-x-1/2 absolute content-stretch flex flex-col gap-[23px] h-[293px] items-center justify-center left-[calc(50%-0.5px)] px-[52px] py-[60px] shadow-[0px_25px_50px_0px_rgba(0,0,0,0.25)] top-[8585.76px] w-[1459px]" style={{ backgroundImage: "linear-gradient(168.645deg, rgb(15, 23, 43) 0%, rgb(28, 57, 142) 50%, rgb(15, 23, 43) 100%), linear-gradient(126.829deg, rgb(53, 80, 159) 6.5327%, rgb(26, 56, 144) 53.048%, rgb(59, 99, 215) 99.563%), linear-gradient(90deg, rgb(31, 52, 113) 0%, rgb(31, 52, 113) 100%)" }} data-name="Container">
       <Heading9 />
       <Paragraph11 />
       <Frame27 />
@@ -3153,7 +3264,7 @@ function Frame67() {
 
 function WhyChooseUs() {
   return (
-    <div className="-translate-x-1/2 absolute bg-[#f5f7fb] h-[582px] left-1/2 overflow-clip top-[8195.76px] w-[1440px]" data-name="why choose us">
+    <div className="-translate-x-1/2 absolute bg-[#f5f7fb] h-[582px] left-1/2 overflow-clip top-[8878.76px] w-[1440px]" data-name="why choose us">
       <Frame101 />
       <div className="absolute h-[697px] left-[760px] top-[20px] w-[656px]" data-name="image 1679" />
       <Group37 />
@@ -3584,6 +3695,8 @@ function Form() {
             <option value="OCHA">OCHA</option>
             <option value="ACHA">ACHA</option>
             <option value="GCA">GCA</option>
+            <option value="MLT">MLT</option>
+            <option value="Radiology">Radiology</option>
           </select>
         </div>
         <div className="content-stretch flex flex-col gap-[8px] h-[68px] items-start relative shrink-0 w-[380px]">
@@ -3673,7 +3786,7 @@ function Container22() {
 
 function Contact() {
   return (
-    <div id="contact-us" className="absolute bg-white content-stretch flex flex-col h-[947px] items-start left-0 py-[60px] top-[8777.76px] w-[1440px]" data-name="Contact">
+    <div id="contact-us" className="absolute bg-white content-stretch flex flex-col h-[947px] items-start left-0 py-[60px] top-[9460.76px] w-[1440px]" data-name="Contact">
       <Container22 />
     </div>
   );
@@ -4398,7 +4511,7 @@ function Frame2() {
 
 function Frame17({ onOpenCareers }: { onOpenCareers: () => void }) {
   return (
-    <div className="absolute content-stretch flex flex-col items-center left-0 top-[9724.76px] w-[1440px]">
+    <div className="absolute content-stretch flex flex-col items-center left-0 top-[10407.76px] w-[1440px]">
       <Frame6 onOpenCareers={onOpenCareers} />
       <Frame2 />
     </div>
@@ -4512,6 +4625,8 @@ export function CareersFormModal({ onClose }: { onClose: () => void }) {
               <option value="Emergency Medical Technician">Emergency Medical Technician</option>
               <option value="Hospital Administration">Hospital Administration</option>
               <option value="General Duty Assistance">General Duty Assistance</option>
+              <option value="MLT">MLT</option>
+              <option value="Radiology">Radiology</option>
             </select>
           </label>
           <label className="col-span-1 md:col-span-2 flex flex-col">
@@ -5778,6 +5893,7 @@ export default function HomePage({ onOpenCareers }: { onOpenCareers: () => void 
           display: flex;
           width: max-content;
           align-items: center;
+          gap: 50px;
           will-change: transform;
           transform: translate3d(0,0,0);
         }
