@@ -1,4 +1,4 @@
-﻿import { Suspense, lazy, useEffect, useState } from "react";
+import { Suspense, lazy, useEffect, useState } from "react";
 import FloatingWhatsApp from "./components/FloatingWhatsApp";
 
 const loadHomePage = () => import("../imports/HomePage/HomePage");
@@ -42,7 +42,7 @@ const preloadByHash: Record<string, () => Promise<unknown>> = {
   "#gca": loadGeriatricCareAssistance,
   "#mlt": loadMlt,
   "#radiology": loadRadiology,
-  "#acha": loadAcha,
+  "#ahap": loadAcha,
   "#ocha": loadOcha,
   "#skillbridge": loadSkillbridge,
   "#blogs": loadBlogs,
@@ -112,10 +112,10 @@ const SEO_BY_HASH: Record<string, SeoConfig> = {
       "Join iMED Academy's Radiology X-Ray Technician program and build a healthcare career with practical training.",
     path: "/#radiology",
   },
-  "#acha": {
-    title: "ACHA Program | iMED Academy",
-    description: "Explore iMED Academy's Advance Certification in Hospital Administration (ACHA) program.",
-    path: "/#acha",
+  "#ahap": {
+    title: "AHAP Program | iMED Academy",
+    description: "Explore iMED Academy's Advanced Healthcare Administration Program (AHAP) program.",
+    path: "/#ahap",
   },
   "#ocha": {
     title: "OCHA Program | iMED Academy",
@@ -175,7 +175,14 @@ export default function App() {
   };
 
   useEffect(() => {
-    const onHashChange = () => setHash(window.location.hash);
+    const normalizeHash = () => {
+      if (["#acha", "#aahp"].includes(window.location.hash.toLowerCase())) {
+        window.history.replaceState(null, "", "#ahap");
+      }
+      setHash(window.location.hash);
+    };
+    normalizeHash();
+    const onHashChange = () => normalizeHash();
     window.addEventListener("hashchange", onHashChange);
     return () => window.removeEventListener("hashchange", onHashChange);
   }, []);
@@ -204,7 +211,7 @@ export default function App() {
       preloadRoute("#gca");
       preloadRoute("#mlt");
       preloadRoute("#radiology");
-      preloadRoute("#acha");
+      preloadRoute("#ahap");
       preloadRoute("#blogs");
     };
 
@@ -377,7 +384,7 @@ export default function App() {
     page = <Mlt />;
   } else if (hash === "#radiology") {
     page = <Radiology />;
-  } else if (hash === "#acha") {
+  } else if (hash === "#ahap") {
     page = <Acha />;
   } else if (hash === "#ocha") {
     page = <Ocha />;
@@ -387,7 +394,7 @@ export default function App() {
     page = <Skillbridge />;
   } else if (hash === "#blogs") {
     page = <BlogsPage />;
-  } else if (hash === "#admin") {
+  } else if (hash.startsWith("#admin")) {
     page = <AdminCrm />;
   } else if (hash.startsWith("#verify=")) {
     page = <CertificateVerify certificateNumber={decodeURIComponent(hash.replace("#verify=", ""))} />;
@@ -397,7 +404,7 @@ export default function App() {
     page = <TermsAndConditions />;
   }
 
-  const showFloatingWhatsApp = hash !== "#admin" && !hash.startsWith("#verify=");
+  const showFloatingWhatsApp = !hash.startsWith("#admin") && !hash.startsWith("#verify=");
 
   return (
     <>

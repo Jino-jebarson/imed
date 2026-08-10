@@ -16,7 +16,6 @@ import imgImage1985 from "./29f2d6db1d6688d1dfff636fa7cdaff25ea266ec.png";
 import imgImage1986 from "./101d526a61c64f2dd73310836c34460a73d9c045.png";
 import imgImage1987 from "./e0d60d400e60b912008ca22b80822cac46e5882a.png";
 import imgImage1997 from "./1620e75979fb3999014cd71fd6321d0ab106ac10.png";
-import imgImage1998 from "./d452c42791c9a5e90ad91e6c55c57a2a562e659e.png";
 import imgImage1991 from "./efce99c8540beea537407375a2289406ff8edc73.png";
 import imgImage1778 from "./e5f30930de7c28095c9cb62b6c7e3b639b91a483.png";
 import imgImage1779 from "./d464c6fc2e1126b068b797ce57283fbb02d379d5.png";
@@ -172,7 +171,7 @@ function Frame4() {
 
 function Frame5() {
   return (
-    <div className="[word-break:break-word] absolute content-stretch flex flex-col font-['Poppins',sans-serif] items-center leading-[46px] left-[790px] not-italic text-[#4a5565] text-[34px] top-[2196px] tracking-[2px] w-[436px]">
+    <div className="[word-break:break-word] absolute content-stretch flex flex-col font-['Poppins',sans-serif] items-center leading-[46px] left-[1120px] not-italic text-[#4a5565] text-[34px] top-[2196px] tracking-[2px] w-[436px]">
       <p className="relative shrink-0 w-full">PROGRAM DIRECTOR</p>
       <p className="relative shrink-0 text-center w-full">iMED ACADEMY</p>
     </div>
@@ -181,8 +180,8 @@ function Frame5() {
 
 function Group263() {
   return (
-    <div className="absolute contents left-[776px] top-[2017px]">
-      <div className="absolute h-0 left-[790.5px] top-[2175px] w-[435px]">
+    <div className="absolute contents left-[1106px] top-[2017px]">
+      <div className="absolute h-0 left-[1120.5px] top-[2175px] w-[435px]">
         <div className="absolute inset-[-4px_0_0_0]">
           <svg className="block size-full" fill="none" preserveAspectRatio="none" viewBox="0 0 435 4">
             <line id="Line 23" stroke="var(--stroke-0, #AC7C20)" strokeLinecap="round" strokeWidth="4" x1="2" x2="433" y1="2" y2="2" />
@@ -190,7 +189,7 @@ function Group263() {
         </div>
       </div>
       <Frame5 />
-      <div className="absolute h-[159px] left-[776px] top-[2017px] w-[467px]" data-name="image 1997">
+      <div className="absolute h-[159px] left-[1106px] top-[2017px] w-[467px]" data-name="image 1997">
         <div className="absolute inset-0 overflow-hidden pointer-events-none">
           <img alt="" className="absolute h-[133.56%] left-[-10.18%] max-w-none top-[-19.25%] w-[116.77%]" src={imgImage1997} />
         </div>
@@ -199,38 +198,9 @@ function Group263() {
   );
 }
 
-function Frame6() {
-  return (
-    <div className="[word-break:break-word] absolute content-stretch flex flex-col font-['Poppins',sans-serif] items-center leading-[46px] left-[1411.5px] not-italic text-[#4a5565] text-[34px] top-[2196px] tracking-[2px] w-[632px]">
-      <p className="relative shrink-0 whitespace-nowrap">{`HEAD TRAINING & ACADEMICS`}</p>
-      <p className="min-w-full relative shrink-0 text-center w-[min-content]">iMED ACADEMY</p>
-    </div>
-  );
-}
-
-function Group264() {
-  return (
-    <div className="absolute contents left-[1411.5px] top-[2023px]">
-      <div className="absolute h-0 left-[1411.5px] top-[2175px] w-[632px]">
-        <div className="absolute inset-[-4px_0_0_0]">
-          <svg className="block size-full" fill="none" preserveAspectRatio="none" viewBox="0 0 632 4">
-            <line id="Line 23" stroke="var(--stroke-0, #AC7C20)" strokeLinecap="round" strokeWidth="4" x1="2" x2="630" y1="2" y2="2" />
-          </svg>
-        </div>
-      </div>
-      <Frame6 />
-      <div className="absolute h-[137px] left-[1495.5px] top-[2023px] w-[464px]" data-name="image 1998">
-        <div className="absolute inset-0 overflow-hidden pointer-events-none">
-          <img alt="" className="absolute h-[161.1%] left-[-7.46%] max-w-none top-[-30.45%] w-[110.93%]" src={imgImage1998} />
-        </div>
-      </div>
-    </div>
-  );
-}
-
 function Frame7() {
   return (
-    <div className="[word-break:break-word] absolute content-stretch flex flex-col font-['Poppins',sans-serif] items-center leading-[46px] left-[2255.5px] not-italic text-[#4a5565] text-[34px] top-[2196px] tracking-[2px] w-[436px]">
+    <div className="[word-break:break-word] absolute content-stretch flex flex-col font-['Poppins',sans-serif] items-center leading-[46px] left-[1925.5px] not-italic text-[#4a5565] text-[34px] top-[2196px] tracking-[2px] w-[436px]">
       <p className="relative shrink-0 whitespace-nowrap">AUTHORIZED SIGNATORY</p>
       <p className="min-w-full relative shrink-0 text-center w-[min-content]">iMED ACADEMY</p>
     </div>
@@ -239,8 +209,8 @@ function Frame7() {
 
 function Group265() {
   return (
-    <div className="absolute contents left-[2213.5px] top-[1994px]">
-      <div className="absolute h-0 left-[2213.5px] top-[2175px] w-[520px]">
+    <div className="absolute contents left-[1883.5px] top-[1994px]">
+      <div className="absolute h-0 left-[1883.5px] top-[2175px] w-[520px]">
         <div className="absolute inset-[-4px_0_0_0]">
           <svg className="block size-full" fill="none" preserveAspectRatio="none" viewBox="0 0 520 4">
             <line id="Line 23" stroke="var(--stroke-0, #AC7C20)" strokeLinecap="round" strokeWidth="4" x1="2" x2="518" y1="2" y2="2" />
@@ -248,7 +218,7 @@ function Group265() {
         </div>
       </div>
       <Frame7 />
-      <div className="absolute h-[151px] left-[2241.5px] top-[1994px] w-[464px]" data-name="image 1991">
+      <div className="absolute h-[151px] left-[1911.5px] top-[1994px] w-[464px]" data-name="image 1991">
         <img alt="" className="absolute inset-0 max-w-none object-cover pointer-events-none size-full" src={imgImage1991} />
       </div>
     </div>
@@ -3145,6 +3115,15 @@ export default function IMedCertificate({
   issueDate = "10/06/2026",
   verifyUrl = "imedacademy.in/verify",
 }: IMedCertificateProps) {
+  const nameLength = studentName.trim().length;
+  const studentNameSize = nameLength > 26 ? 158 : nameLength > 22 ? 180 : nameLength > 18 ? 205 : nameLength > 14 ? 230 : 260;
+  const studentNameLineHeight = Math.round(studentNameSize * 0.72);
+  const studentNameTop = studentNameSize >= 260 ? 1128 : studentNameSize >= 230 ? 1148 : 1160;
+  const nameUnderlineTop = studentNameTop + studentNameLineHeight + 82;
+  const completedTextTop = nameUnderlineTop + 74;
+  const courseNameTop = completedTextTop + 84;
+  const descriptionTop = courseNameTop + 108;
+
   return (
     <div className="bg-white relative size-full" data-name="iMED Certificate">
       <div className="absolute h-[1937px] left-0 top-0 w-[3508px]" data-name="image 1975">
@@ -3175,15 +3154,15 @@ export default function IMedCertificate({
         </div>
       </div>
       <p className="[word-break:break-word] absolute font-['Inter',sans-serif] font-normal leading-[50px] left-[1509px] not-italic text-[#4a5565] text-[50px] top-[1073px] whitespace-nowrap">This is to certify that</p>
-      <p className="-translate-x-1/2 [word-break:break-word] absolute imed-certificate-student-name leading-[170px] left-[calc(50%+0.5px)] not-italic text-[#1f3471] text-[260px] text-center top-[1160px] whitespace-nowrap w-[1700px]">{studentName}</p>
-      <div className="-translate-x-1/2 absolute h-[82px] left-[calc(50%+0.5px)] top-[1351px] w-[1513px]" data-name="image 1986">
+      <p className="-translate-x-1/2 [word-break:break-word] absolute imed-certificate-student-name left-[calc(50%+0.5px)] not-italic text-[#1f3471] text-center whitespace-nowrap w-[1700px]" style={{ top: `${studentNameTop}px`, fontSize: studentNameSize, lineHeight: `${studentNameLineHeight}px` }}>{studentName}</p>
+      <div className="-translate-x-1/2 absolute h-[82px] left-[calc(50%+0.5px)] w-[1513px]" style={{ top: `${nameUnderlineTop}px` }} data-name="image 1986">
         <div className="absolute inset-0 overflow-hidden pointer-events-none">
           <img alt="" className="absolute h-[760.38%] left-0 max-w-none top-[-316.04%] w-full" src={imgImage1986} />
         </div>
       </div>
-      <p className="[word-break:break-word] absolute font-['Inter',sans-serif] font-normal leading-[50px] left-[calc(50%-373px)] not-italic text-[#4a5565] text-[50px] top-[1436px] whitespace-nowrap">has successfully completed the</p>
-      <p className="-translate-x-1/2 [word-break:break-word] absolute font-['Inter',sans-serif] font-normal leading-[65px] left-[calc(50%+0.5px)] not-italic text-[#4a5565] text-[50px] text-center top-[1628px] w-[2011px]">conducted by iMED Academy, with a comprehensive curriculum covering real-world hospital operations, patient coordination, and healthcare administration practices.</p>
-      <p className="-translate-x-1/2 [word-break:break-word] absolute font-['Inter',sans-serif] font-semibold leading-[62px] left-[calc(50%+0.5px)] not-italic text-[#25a88d] text-[64px] text-center top-[1520px] whitespace-nowrap w-[2000px]">{courseName}</p>
+      <p className="[word-break:break-word] absolute font-['Inter',sans-serif] font-normal leading-[50px] left-[calc(50%-373px)] not-italic text-[#4a5565] text-[50px] whitespace-nowrap" style={{ top: `${completedTextTop}px` }}>has successfully completed the</p>
+      <p className="-translate-x-1/2 [word-break:break-word] absolute font-['Inter',sans-serif] font-normal leading-[65px] left-[calc(50%+0.5px)] not-italic text-[#4a5565] text-[50px] text-center w-[2011px]" style={{ top: `${descriptionTop}px` }}>conducted by iMED Academy, with a comprehensive curriculum covering real-world hospital operations, patient coordination, and healthcare administration practices.</p>
+      <p className="-translate-x-1/2 [word-break:break-word] absolute font-['Inter',sans-serif] font-semibold leading-[62px] left-[calc(50%+0.5px)] not-italic text-[#25a88d] text-[64px] text-center whitespace-nowrap w-[2000px]" style={{ top: `${courseNameTop}px` }}>{courseName}</p>
       <Frame4 />
       <div className="absolute flex h-[459px] items-center justify-center left-[2822px] top-[1835px] w-0">
         <div className="flex-none rotate-90">
@@ -3197,7 +3176,6 @@ export default function IMedCertificate({
         </div>
       </div>
       <Group263 />
-      <Group264 />
       <Group265 />
       <div className="absolute h-[162.777px] left-[2260px] top-[204px] w-[679.667px]" data-name="image 1778">
         <div className="absolute inset-0 overflow-hidden pointer-events-none">

@@ -138,7 +138,7 @@ const footerProgramLinks = [
   { label: "Hospital Administration", hash: "#ha", className: "cursor-pointer relative shrink-0 text-left transition-colors duration-200 w-[264px] hover:text-[#8ee2d2]" },
   { label: "General Duty Assistance", hash: "#gda", className: "cursor-pointer min-w-full relative shrink-0 text-left transition-colors duration-200 w-[min-content] hover:text-[#8ee2d2]" },
   { label: "OCHA", target: "home", className: "cursor-pointer min-w-full relative shrink-0 text-left transition-colors duration-200 w-[min-content] hover:text-[#8ee2d2]" },
-  { label: "ACHA", hash: "#acha", className: "cursor-pointer min-w-full relative shrink-0 text-left transition-colors duration-200 w-[min-content] hover:text-[#8ee2d2]" },
+  { label: "AHAP", hash: "#ahap", className: "cursor-pointer min-w-full relative shrink-0 text-left transition-colors duration-200 w-[min-content] hover:text-[#8ee2d2]" },
   { label: "GCA", hash: "#gca", className: "cursor-pointer min-w-full relative shrink-0 text-left transition-colors duration-200 w-[min-content] hover:text-[#8ee2d2]" },
   { label: "MLT", hash: "#mlt", className: "cursor-pointer min-w-full relative shrink-0 text-left transition-colors duration-200 w-[min-content] hover:text-[#8ee2d2]" },
   { label: "Radiology", hash: "#radiology", className: "cursor-pointer min-w-full relative shrink-0 text-left transition-colors duration-200 w-[min-content] hover:text-[#8ee2d2]" },

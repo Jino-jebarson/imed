@@ -3,6 +3,7 @@ import { useMemo, useState } from "react";
 type Role =
   | "Emergency Medical Technician"
   | "Hospital Administration"
+  | "Advanced Healthcare Administration"
   | "General Duty Assistance"
   | "Geriatric Care Assistance"
   | "Medical Laboratory Technician"
@@ -17,6 +18,7 @@ type Props = {
 const HEALTHCARE_ROLE_OPTIONS: Role[] = [
   "Emergency Medical Technician",
   "Hospital Administration",
+  "Advanced Healthcare Administration",
   "General Duty Assistance",
   "Geriatric Care Assistance",
   "Medical Laboratory Technician",
@@ -45,6 +47,11 @@ function computeSalaryBreakdown(selection: {
       "Tier 3 - Small City": [14000, 20000],
     },
     "Hospital Administration": {
+      "Tier 1 - Metro": [35000, 58000],
+      "Tier 2 - Large City": [26000, 42000],
+      "Tier 3 - Small City": [20000, 30000],
+    },
+    "Advanced Healthcare Administration": {
       "Tier 1 - Metro": [35000, 58000],
       "Tier 2 - Large City": [26000, 42000],
       "Tier 3 - Small City": [20000, 30000],

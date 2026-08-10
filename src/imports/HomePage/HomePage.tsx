@@ -1,4 +1,4 @@
-﻿import { useEffect, useLayoutEffect, useRef, useState } from "react";
+import { useEffect, useLayoutEffect, useRef, useState } from "react";
 import svgPaths from "./svg-xnb1grkepi";
 import imgImage1712 from "../Ocha/36b610493eb683f0e81e17848fd143c365f117fd.png";
 import imgImage1740 from "./image1740.webp";
@@ -8,7 +8,6 @@ import imgImage1728 from "./image1728.webp";
 import imgImage1729 from "./image1729.webp";
 import imgDownload12 from "./download12.png";
 import imgImage1730 from "./image1730.png";
-import imgImage1731 from "./image1731.png";
 import imgAlphonsaLogo768X2001 from "./alphonsa-logo768-x2001.png";
 import imgMedideskLogo from "./medidesk-logo.svg";
 import imgImage1732 from "./image1732.png";
@@ -578,7 +577,7 @@ function Container4() {
 function Paragraph2() {
   return (
     <div className="h-[24px] relative shrink-0 w-full" data-name="Paragraph">
-      <p className="absolute font-['Inter:Bold',sans-serif] font-bold leading-[40px] left-0 not-italic text-[#101828] text-[25px] top-[-2px] whitespace-nowrap">40+</p>
+      <p className="absolute font-['Inter:Bold',sans-serif] font-bold leading-[40px] left-0 not-italic text-[#101828] text-[25px] top-[-2px] whitespace-nowrap">100+</p>
     </div>
   );
 }
@@ -764,11 +763,6 @@ function Frame151() {
       </div>
       <div className="h-[33px] relative shrink-0 w-[78px]" data-name="image 1730">
         <img loading="lazy" decoding="async" alt="" className="absolute inset-0 max-w-none object-cover pointer-events-none size-full" src={imgImage1730} />
-      </div>
-      <div className="h-[34px] relative shrink-0 w-[98px]" data-name="image 1731">
-        <div className="absolute inset-0 overflow-hidden pointer-events-none">
-          <img loading="lazy" decoding="async" alt="" className="absolute h-full left-[-11.36%] max-w-none top-0 w-[120.67%]" src={imgImage1731} />
-        </div>
       </div>
       <div className="h-[33px] relative shrink-0 w-[126px]" data-name="alphonsa-logo-768x200 1">
         <img loading="lazy" decoding="async" alt="" className="absolute inset-0 max-w-none object-cover pointer-events-none size-full" src={imgAlphonsaLogo768X2001} />
@@ -1722,7 +1716,7 @@ function Frame46() {
 
 function Frame37() {
   return (
-    <div className="bg-white h-[640px] overflow-clip relative rounded-[20px] shadow-[0px_10px_15px_-3px_rgba(37,99,235,0.15),0px_4px_6px_-4px_rgba(0,0,0,0.1),10px_40px_50px_0px_rgba(229,233,246,0.4),0px_6.478px_54.897px_0px_rgba(0,134,255,0.1)] shrink-0 transition-all duration-300 w-[410px] hover:-translate-y-2 hover:shadow-[0px_16px_24px_-6px_rgba(37,99,235,0.25),0px_10px_16px_-8px_rgba(0,0,0,0.12),12px_48px_58px_0px_rgba(229,233,246,0.5),0px_10px_60px_0px_rgba(0,134,255,0.15)]">
+    <div className="bg-white h-[640px] overflow-clip relative rounded-[20px] shadow-[0px_10px_15px_-3px_rgba(37,99,235,0.15),0px_4px_6px_-4px_rgba(0,0,0,0.1),10px_40px_50px_0px_rgba(229,233,246,0.4),0px_6.478px_54.897px_0px_rgba(0,134,255,0.1)] shrink-0 transition-all duration-300 w-[410px] hover:z-[2] hover:-translate-y-2 hover:shadow-[0px_16px_24px_-6px_rgba(37,99,235,0.25),0px_10px_16px_-8px_rgba(0,0,0,0.12),12px_48px_58px_0px_rgba(229,233,246,0.5),0px_10px_60px_0px_rgba(0,134,255,0.15)]">
       <Container14 />
       <Frame38 />
       <Frame44 />
@@ -1980,7 +1974,7 @@ function Frame55() {
 
 function Frame42() {
   return (
-    <div className="bg-white h-[640px] overflow-clip relative rounded-[20px] shadow-[0px_10px_15px_-3px_rgba(37,99,235,0.15),0px_4px_6px_-4px_rgba(0,0,0,0.1),10px_40px_50px_0px_rgba(229,233,246,0.4),0px_6.478px_54.897px_0px_rgba(0,134,255,0.1)] shrink-0 transition-all duration-300 w-[410px] hover:-translate-y-2 hover:shadow-[0px_16px_24px_-6px_rgba(37,99,235,0.25),0px_10px_16px_-8px_rgba(0,0,0,0.12),12px_48px_58px_0px_rgba(229,233,246,0.5),0px_10px_60px_0px_rgba(0,134,255,0.15)]">
+    <div className="bg-white h-[640px] overflow-clip relative rounded-[20px] shadow-[0px_10px_15px_-3px_rgba(37,99,235,0.15),0px_4px_6px_-4px_rgba(0,0,0,0.1),10px_40px_50px_0px_rgba(229,233,246,0.4),0px_6.478px_54.897px_0px_rgba(0,134,255,0.1)] shrink-0 transition-all duration-300 w-[410px] hover:z-[2] hover:-translate-y-2 hover:shadow-[0px_16px_24px_-6px_rgba(37,99,235,0.25),0px_10px_16px_-8px_rgba(0,0,0,0.12),12px_48px_58px_0px_rgba(229,233,246,0.5),0px_10px_60px_0px_rgba(0,134,255,0.15)]">
       <Container16 />
       <Frame48 />
       <Frame49 />
@@ -2224,7 +2218,7 @@ function Frame66() {
 
 function Frame58() {
   return (
-    <div className="bg-white h-[640px] overflow-clip relative rounded-[20px] shadow-[0px_10px_15px_-3px_rgba(37,99,235,0.15),0px_4px_6px_-4px_rgba(0,0,0,0.1),10px_40px_50px_0px_rgba(229,233,246,0.4),0px_6.478px_54.897px_0px_rgba(0,134,255,0.1)] shrink-0 transition-all duration-300 w-[410px] hover:-translate-y-2 hover:shadow-[0px_16px_24px_-6px_rgba(37,99,235,0.25),0px_10px_16px_-8px_rgba(0,0,0,0.12),12px_48px_58px_0px_rgba(229,233,246,0.5),0px_10px_60px_0px_rgba(0,134,255,0.15)]">
+    <div className="bg-white h-[640px] overflow-clip relative rounded-[20px] shadow-[0px_10px_15px_-3px_rgba(37,99,235,0.15),0px_4px_6px_-4px_rgba(0,0,0,0.1),10px_40px_50px_0px_rgba(229,233,246,0.4),0px_6.478px_54.897px_0px_rgba(0,134,255,0.1)] shrink-0 transition-all duration-300 w-[410px] hover:z-[2] hover:-translate-y-2 hover:shadow-[0px_16px_24px_-6px_rgba(37,99,235,0.25),0px_10px_16px_-8px_rgba(0,0,0,0.12),12px_48px_58px_0px_rgba(229,233,246,0.5),0px_10px_60px_0px_rgba(0,134,255,0.15)]">
       <Container18 />
       <Frame59 />
       <Frame60 />
@@ -2263,10 +2257,10 @@ function Container18Acha() {
 function Frame59Acha() {
   return (
     <div className="absolute content-stretch flex flex-col gap-[8px] items-start left-[41px] not-italic right-[41px] text-white top-[54px]">
-      <p className="font-['Inter:Bold',sans-serif] font-bold leading-[normal] relative shrink-0 text-[20px] whitespace-nowrap">ACHA Program</p>
+      <p className="font-['Inter:Bold',sans-serif] font-bold leading-[normal] relative shrink-0 text-[20px] whitespace-nowrap">AHAP Program</p>
       <div className="font-['Inter:Regular',sans-serif] font-normal leading-[0] min-w-full relative shrink-0 text-[18px] w-[min-content] whitespace-pre-wrap">
-        <p className="leading-[normal] mb-0">Advance Certification in Hospital</p>
-        <p className="leading-[normal]">Administration</p>
+        <p className="leading-[normal] mb-0">Advanced Healthcare</p>
+        <p className="leading-[normal]">Administration Program</p>
       </div>
     </div>
   );
@@ -2313,7 +2307,7 @@ function Frame61Acha() {
 
 function Frame66Acha() {
   const handleClick = () => {
-    window.location.hash = "acha";
+    window.location.hash = "ahap";
     window.scrollTo({ top: 0, behavior: "smooth" });
   };
 
@@ -2326,7 +2320,7 @@ function Frame66Acha() {
 
 function FrameAcha() {
   return (
-    <div className="bg-white h-[640px] overflow-clip relative rounded-[20px] shadow-[0px_10px_15px_-3px_rgba(37,99,235,0.15),0px_4px_6px_-4px_rgba(0,0,0,0.1),10px_40px_50px_0px_rgba(229,233,246,0.4),0px_6.478px_54.897px_0px_rgba(0,134,255,0.1)] shrink-0 transition-all duration-300 w-[410px] hover:-translate-y-2 hover:shadow-[0px_16px_24px_-6px_rgba(37,99,235,0.25),0px_10px_16px_-8px_rgba(0,0,0,0.12),12px_48px_58px_0px_rgba(229,233,246,0.5),0px_10px_60px_0px_rgba(0,134,255,0.15)]">
+    <div className="bg-white h-[640px] overflow-clip relative rounded-[20px] shadow-[0px_10px_15px_-3px_rgba(37,99,235,0.15),0px_4px_6px_-4px_rgba(0,0,0,0.1),10px_40px_50px_0px_rgba(229,233,246,0.4),0px_6.478px_54.897px_0px_rgba(0,134,255,0.1)] shrink-0 transition-all duration-300 w-[410px] hover:z-[2] hover:-translate-y-2 hover:shadow-[0px_16px_24px_-6px_rgba(37,99,235,0.25),0px_10px_16px_-8px_rgba(0,0,0,0.12),12px_48px_58px_0px_rgba(229,233,246,0.5),0px_10px_60px_0px_rgba(0,134,255,0.15)]">
       <Container18Acha />
       <Frame59Acha />
       <Frame61Acha />
@@ -2426,7 +2420,7 @@ function Frame66Gca() {
 
 function FrameGca() {
   return (
-    <div className="bg-white h-[640px] overflow-clip relative rounded-[20px] shadow-[0px_10px_15px_-3px_rgba(37,99,235,0.15),0px_4px_6px_-4px_rgba(0,0,0,0.1),10px_40px_50px_0px_rgba(229,233,246,0.4),0px_6.478px_54.897px_0px_rgba(0,134,255,0.1)] shrink-0 transition-all duration-300 w-[410px] hover:-translate-y-2 hover:shadow-[0px_16px_24px_-6px_rgba(37,99,235,0.25),0px_10px_16px_-8px_rgba(0,0,0,0.12),12px_48px_58px_0px_rgba(229,233,246,0.5),0px_10px_60px_0px_rgba(0,134,255,0.15)]">
+    <div className="bg-white h-[640px] overflow-clip relative rounded-[20px] shadow-[0px_10px_15px_-3px_rgba(37,99,235,0.15),0px_4px_6px_-4px_rgba(0,0,0,0.1),10px_40px_50px_0px_rgba(229,233,246,0.4),0px_6.478px_54.897px_0px_rgba(0,134,255,0.1)] shrink-0 transition-all duration-300 w-[410px] hover:z-[2] hover:-translate-y-2 hover:shadow-[0px_16px_24px_-6px_rgba(37,99,235,0.25),0px_10px_16px_-8px_rgba(0,0,0,0.12),12px_48px_58px_0px_rgba(229,233,246,0.5),0px_10px_60px_0px_rgba(0,134,255,0.15)]">
       <Container18Gca />
       <Frame59Gca />
       <Frame61Gca />
@@ -2441,6 +2435,7 @@ function FrameGca() {
 
 type ProgramCardProps = {
   badge: string;
+  availableIn?: string;
   title: string;
   subtitle: string;
   duration: string;
@@ -2454,6 +2449,7 @@ type ProgramCardProps = {
 
 function ProgramCard({
   badge,
+  availableIn,
   title,
   subtitle,
   duration,
@@ -2470,12 +2466,24 @@ function ProgramCard({
   };
 
   return (
-    <div className="bg-white h-[640px] overflow-clip relative rounded-[20px] shadow-[0px_10px_15px_-3px_rgba(37,99,235,0.15),0px_4px_6px_-4px_rgba(0,0,0,0.1),10px_40px_50px_0px_rgba(229,233,246,0.4),0px_6.478px_54.897px_0px_rgba(0,134,255,0.1)] shrink-0 transition-all duration-300 w-[410px] hover:-translate-y-2 hover:shadow-[0px_16px_24px_-6px_rgba(37,99,235,0.25),0px_10px_16px_-8px_rgba(0,0,0,0.12),12px_48px_58px_0px_rgba(229,233,246,0.5),0px_10px_60px_0px_rgba(0,134,255,0.15)]">
+    <div className="bg-white h-[640px] overflow-clip relative rounded-[20px] shadow-[0px_10px_15px_-3px_rgba(37,99,235,0.15),0px_4px_6px_-4px_rgba(0,0,0,0.1),10px_40px_50px_0px_rgba(229,233,246,0.4),0px_6.478px_54.897px_0px_rgba(0,134,255,0.1)] shrink-0 transition-all duration-300 w-[410px] hover:z-[2] hover:-translate-y-2 hover:shadow-[0px_16px_24px_-6px_rgba(37,99,235,0.25),0px_10px_16px_-8px_rgba(0,0,0,0.12),12px_48px_58px_0px_rgba(229,233,246,0.5),0px_10px_60px_0px_rgba(0,134,255,0.15)]">
       <div className="absolute h-[156px] left-0 overflow-clip right-0 rounded-[19.458px] top-0" style={{ backgroundImage: gradient }} data-name="Container">
         <div className="absolute bg-white left-[312px] opacity-4 rounded-[40806480px] size-[146px] top-[71px]" data-name="Container" />
         <div className="absolute bg-[rgba(37,168,141,0.33)] content-stretch flex items-center justify-center right-[24px] overflow-clip px-[14px] py-[7px] rounded-[6px] top-[22.24px]">
           <p className="font-['Inter:Medium',sans-serif] font-medium leading-[11.036px] not-italic relative shrink-0 text-[#eee] text-[12px] whitespace-nowrap">{badge}</p>
         </div>
+        {availableIn ? (
+          <div className="absolute content-stretch flex gap-[4px] items-center left-[41px] top-[26px]">
+            <svg aria-hidden="true" className="size-[16px] shrink-0" fill="none" viewBox="0 0 24 24">
+              <path d="M12 21s7-4.57 7-11a7 7 0 1 0-14 0c0 6.43 7 11 7 11Z" fill="white" />
+              <path d="M12 12.25a2.25 2.25 0 1 0 0-4.5 2.25 2.25 0 0 0 0 4.5Z" fill={gradient.includes("0, 104, 142") ? "#008ed0" : "#25a88d"} />
+            </svg>
+            <p className="font-['Inter:Regular',sans-serif] font-normal leading-[17px] not-italic text-[11.5px] text-white whitespace-nowrap">
+              <span>{`This course is available in `}</span>
+              <span className="font-['Inter:Extra_Bold',sans-serif] font-extrabold">{availableIn}</span>
+            </p>
+          </div>
+        ) : null}
       </div>
       <div className="absolute content-stretch flex flex-col gap-[8px] items-start leading-[normal] left-[41px] not-italic right-[41px] text-white top-[54px]">
         <p className="font-['Inter:Bold',sans-serif] font-bold relative shrink-0 text-[20px] w-full">{title}</p>
@@ -2517,47 +2525,165 @@ function ProgramCard({
 }
 
 function Frame47() {
+  const programCards: ProgramCardProps[] = [
+    {
+      badge: "FLAGSHIP",
+      availableIn: "KOCHI",
+      title: "AHAP Program",
+      subtitle: "Advanced Healthcare Administration Program",
+      duration: "6 Months",
+      roleLabel: "60+ Job Roles",
+      description: "3 Months Classroom & Practical Training + 3 Months Hospital Internship",
+      highlights: [
+        "GCC Readiness Track + Advance Professional Skills Training",
+        "NSDC + HSSC-aligned curriculum",
+        "Real Hospital Internship at partner facilities",
+      ],
+      salary: "Rs 20,000 - Rs 35,000 /Month ",
+      hash: "ahap",
+      gradient: "linear-gradient(114.1643080507927deg, rgb(0, 104, 142) 4.0585%, rgb(0, 155, 211) 53.425%, rgb(67, 127, 255) 102.79%)",
+    },
+    {
+      badge: "FLAGSHIP",
+      title: "Hospital Administration (HA) Program",
+      subtitle: "Certification in Hospital Administration",
+      duration: "6 Months",
+      roleLabel: "60+ Job Roles",
+      description: "4 Months Classroom & Practical Training + 2 Months Hospital Internship",
+      highlights: [
+        "Dual Certification - iMED Academy + HSSC (HFDC)",
+        "100% HSSC-aligned curriculum",
+        "Real Hospital Internship at partner facilities",
+        "Placement assistance from Day 1",
+      ],
+      salary: "Rs 18,000 - Rs 25,000 /Month ",
+      hash: "ha",
+      gradient: "linear-gradient(114.1643080507927deg, rgb(82, 86, 100) 4.0585%, rgb(65, 72, 91) 53.425%, rgb(165, 174, 202) 102.79%)",
+    },
+    {
+      badge: "HIGH DEMAND",
+      title: "EMT Program",
+      subtitle: "Certification in Emergency Medical Technology",
+      duration: "6 Months",
+      roleLabel: "Field Roles",
+      description: "3 Months Classroom & Practical Training + 3 Months field Internship",
+      highlights: [
+        "100% HSSC-aligned curriculum",
+        "Live emergency simulations & drills",
+        "Ambulance & Hospital Internship",
+        "Placement assistance included",
+      ],
+      salary: "Rs 15,000 - Rs 25,000 /Month ",
+      hash: "emt",
+      gradient: "linear-gradient(111.5667525473808deg, rgb(53, 80, 159) 6.5327%, rgb(26, 56, 144) 53.048%, rgb(59, 99, 215) 99.563%)",
+    },
+    {
+      badge: "HIGH DEMAND",
+      title: "GCA Program",
+      subtitle: "Certification in Geriatric Care Assistance",
+      duration: "6 Months",
+      roleLabel: "Care Roles",
+      description: "4 Months Classroom & Practical Training + 2 Months field Internship",
+      highlights: [
+        "NSDC + HSSC-aligned curriculum",
+        "Practical elderly care training",
+        "Home Care & Healthcare Facility Internship",
+        "Placement assistance included",
+      ],
+      salary: "Rs 15,000 - Rs 30,000 /Month ",
+      hash: "gca",
+      gradient: "linear-gradient(111.5667525473808deg, rgb(59, 28, 102) 6.5327%, rgb(106, 48, 147) 53.048%, rgb(160, 68, 255) 99.563%)",
+    },
+    {
+      badge: "IN DEMAND",
+      title: "GDA Program",
+      subtitle: "General Duty Assistant",
+      duration: "6 Months",
+      roleLabel: "Care Roles",
+      description: "Classroom learning, hospital exposure, and hands-on patient care support training.",
+      highlights: [
+        "Bedside care fundamentals",
+        "Hospital ward workflow training",
+        "Patient safety and hygiene skills",
+        "Placement assistance included",
+      ],
+      salary: "Rs 12,000 - Rs 22,000 /Month ",
+      hash: "gda",
+      gradient: "linear-gradient(113.74698825476804deg, rgb(16, 211, 130) 1.5712%, rgb(64, 194, 140) 49.325%, rgb(8, 109, 67) 97.079%)",
+    },
+    {
+      badge: "LAB TECH",
+      title: "MLT Program",
+      subtitle: "Medical Laboratory Technician",
+      duration: "6 Months",
+      roleLabel: "Lab Roles",
+      description: "Classroom learning, lab practice, and diagnostic workflow training for entry-level laboratory careers.",
+      highlights: [
+        "Sample collection and processing",
+        "Pathology lab equipment training",
+        "Reports and quality control basics",
+        "Placement assistance included",
+      ],
+      salary: "Rs 15,000 - Rs 28,000 /Month ",
+      hash: "mlt",
+      gradient: "linear-gradient(113.74698825476804deg, rgb(211, 16, 71) 1.5712%, rgb(194, 64, 101) 49.325%, rgb(109, 8, 10) 97.079%)",
+    },
+    {
+      badge: "IMAGING",
+      title: "Radiology Program",
+      subtitle: "Radiology X-Ray Technician",
+      duration: "6 Months",
+      roleLabel: "Imaging Roles",
+      description: "Hands-on training for radiology department workflows, patient positioning, and imaging assistance.",
+      highlights: [
+        "X-Ray positioning fundamentals",
+        "Radiology safety and protocols",
+        "Hospital department exposure",
+        "Placement assistance included",
+      ],
+      salary: "Rs 16,000 - Rs 30,000 /Month ",
+      hash: "radiology",
+      gradient: "linear-gradient(113.74698825476804deg, rgb(211, 127, 16) 1.5712%, rgb(194, 138, 64) 49.325%, rgb(109, 55, 8) 97.079%)",
+    },
+  ];
+  const [activeIndex, setActiveIndex] = useState(0);
+  const cardStep = 453;
+  const maxIndex = Math.max(programCards.length - 3, 0);
+  const goPrevious = () => setActiveIndex((current) => (current <= 0 ? maxIndex : current - 1));
+  const goNext = () => setActiveIndex((current) => (current >= maxIndex ? 0 : current + 1));
+
   return (
-    <div className="content-stretch flex flex-wrap gap-[43px] items-start justify-start relative shrink-0 w-[1320px]">
-      <FrameAcha />
-      <Frame42 />
-      <Frame37 />
-      <FrameGca />
-      <Frame58 />
-      <ProgramCard
-        badge="LAB TECH"
-        title="MLT Program"
-        subtitle="Medical Laboratory Technician"
-        duration="6 Months"
-        roleLabel="Lab Roles"
-        description="Classroom learning, lab practice, and diagnostic workflow training for entry-level laboratory careers."
-        highlights={[
-          "Sample collection and processing",
-          "Pathology lab equipment training",
-          "Reports and quality control basics",
-          "Placement assistance included",
-        ]}
-        salary="Rs 15,000 - Rs 28,000 /Month "
-        hash="mlt"
-        gradient="linear-gradient(114.164deg, rgb(82, 86, 100) 4.0585%, rgb(65, 72, 91) 53.425%, rgb(165, 174, 202) 102.79%)"
-      />
-      <ProgramCard
-        badge="IMAGING"
-        title="Radiology Program"
-        subtitle="Radiology X-Ray Technician"
-        duration="6 Months"
-        roleLabel="Imaging Roles"
-        description="Hands-on training for radiology department workflows, patient positioning, and imaging assistance."
-        highlights={[
-          "X-Ray positioning fundamentals",
-          "Radiology safety and protocols",
-          "Hospital department exposure",
-          "Placement assistance included",
-        ]}
-        salary="Rs 16,000 - Rs 30,000 /Month "
-        hash="radiology"
-        gradient="linear-gradient(111.567deg, rgb(53, 80, 159) 6.5327%, rgb(26, 56, 144) 53.048%, rgb(59, 99, 215) 99.563%)"
-      />
+    <div className="relative shrink-0 w-[1368px]">
+      <button
+        type="button"
+        aria-label="Previous programs"
+        onClick={goPrevious}
+        className="absolute left-[-25px] top-1/2 z-[5] flex size-[50px] -translate-y-1/2 items-center justify-center rounded-full border border-[#d6ece8] bg-white text-[#1f3471] shadow-[0px_12px_30px_rgba(31,52,113,0.18)] transition-all duration-200 hover:bg-[#25a88d] hover:text-white"
+      >
+        <svg aria-hidden="true" className="size-[24px]" fill="none" viewBox="0 0 24 24">
+          <path d="M15 18L9 12L15 6" stroke="currentColor" strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.4" />
+        </svg>
+      </button>
+      <div className="overflow-hidden rounded-[24px] px-[24px] py-[24px]">
+        <div
+          className="content-stretch flex gap-[43px] items-start justify-start transition-transform duration-500 ease-out"
+          style={{ transform: `translateX(-${activeIndex * cardStep}px)` }}
+        >
+          {programCards.map((program) => (
+            <ProgramCard key={program.hash} {...program} />
+          ))}
+        </div>
+      </div>
+      <button
+        type="button"
+        aria-label="Next programs"
+        onClick={goNext}
+        className="absolute right-[-25px] top-1/2 z-[5] flex size-[50px] -translate-y-1/2 items-center justify-center rounded-full border border-[#d6ece8] bg-white text-[#1f3471] shadow-[0px_12px_30px_rgba(31,52,113,0.18)] transition-all duration-200 hover:bg-[#25a88d] hover:text-white"
+      >
+        <svg aria-hidden="true" className="size-[24px]" fill="none" viewBox="0 0 24 24">
+          <path d="M9 6L15 12L9 18" stroke="currentColor" strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.4" />
+        </svg>
+      </button>
     </div>
   );
 }
@@ -3693,7 +3819,7 @@ function Form() {
             <option value="Hospital Administration">Hospital Administration</option>
             <option value="General Duty Assistance">General Duty Assistance</option>
             <option value="OCHA">OCHA</option>
-            <option value="ACHA">ACHA</option>
+            <option value="AHAP">AHAP</option>
             <option value="GCA">GCA</option>
             <option value="MLT">MLT</option>
             <option value="Radiology">Radiology</option>
@@ -4122,12 +4248,12 @@ function Frame4() {
       <button
         type="button"
         onClick={() => {
-          window.location.hash = "acha";
+          window.location.hash = "ahap";
           window.scrollTo({ top: 0, behavior: "smooth" });
         }}
         className="cursor-pointer min-w-full relative shrink-0 text-left transition-colors duration-200 w-[min-content] hover:text-[#8ee2d2]"
       >
-        ACHA
+        AHAP
       </button>
       <button
         type="button"
@@ -4756,7 +4882,7 @@ function Container34() {
 function Frame134() {
   return (
     <div className="content-stretch flex gap-[20px] items-center relative shrink-0 whitespace-nowrap">
-      <p className="font-['Inter:Semi_Bold',sans-serif] font-semibold leading-[normal] relative shrink-0 text-[40px]">40+</p>
+      <p className="font-['Inter:Semi_Bold',sans-serif] font-semibold leading-[normal] relative shrink-0 text-[40px]">100+</p>
       <p className="font-['Inter:Medium',sans-serif] font-medium leading-[39px] relative shrink-0 text-[20px]">Hospital Partners</p>
     </div>
   );

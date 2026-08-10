@@ -1,4 +1,4 @@
-﻿import { useLayoutEffect, useRef, useState, type MouseEvent } from "react";
+import { useLayoutEffect, useRef, useState, type MouseEvent } from "react";
 import svgPaths from "./svg-13aci5trdk";
 import imgImage1712 from "../Ocha/36b610493eb683f0e81e17848fd143c365f117fd.png";
 import imgImage1722 from "./image1722.webp";
@@ -709,7 +709,7 @@ function Frame107() {
   return (
     <div className="content-stretch flex flex-col items-start leading-[23px] not-italic relative shrink-0 text-[18px] w-[192px]">
       <p className="font-['Inter:Regular',sans-serif] font-normal min-w-full relative shrink-0 text-[#1f3471] w-[min-content]">Eligibility</p>
-      <p className="font-['Inter:Medium',sans-serif] font-medium relative shrink-0 text-[#333] text-center w-[216px]">12th Pass — Any Stream</p>
+      <p className="font-['Inter:Medium',sans-serif] font-medium relative shrink-0 text-[#333] text-center w-[216px]">12th Pass � Any Stream</p>
     </div>
   );
 }
@@ -871,7 +871,7 @@ function Frame119() {
   return (
     <div className="content-stretch flex gap-[15px] items-center relative shrink-0">
       <MdiTickCircleOutline10 />
-      <p className="font-['Inter:Medium',sans-serif] font-medium leading-[23px] not-italic relative shrink-0 text-[18px] text-center text-white whitespace-nowrap">Any stream eligible — Science, Commerce, or Arts</p>
+      <p className="font-['Inter:Medium',sans-serif] font-medium leading-[23px] not-italic relative shrink-0 text-[18px] text-center text-white whitespace-nowrap">Any stream eligible � Science, Commerce, or Arts</p>
     </div>
   );
 }
@@ -1018,7 +1018,7 @@ function Frame123() {
   return (
     <div className="content-stretch flex flex-col gap-[10px] items-start not-italic relative shrink-0 text-white w-[198px]">
       <p className="font-['Inter:Medium',sans-serif] font-medium leading-[39px] relative shrink-0 text-[18px] w-full">Entry-Level (Fresher)</p>
-      <p className="font-['Inter:Semi_Bold',sans-serif] font-semibold leading-[normal] relative shrink-0 text-[25px] w-full">3 – 5 LPA</p>
+      <p className="font-['Inter:Semi_Bold',sans-serif] font-semibold leading-[normal] relative shrink-0 text-[25px] w-full">3 � 5 LPA</p>
     </div>
   );
 }
@@ -1056,7 +1056,7 @@ function Frame125() {
   return (
     <div className="content-stretch flex flex-col gap-[10px] items-start not-italic relative shrink-0 text-white w-[198px]">
       <p className="font-['Inter:Medium',sans-serif] font-medium leading-[39px] relative shrink-0 text-[18px] w-full">Senior Administrator</p>
-      <p className="font-['Inter:Semi_Bold',sans-serif] font-semibold leading-[normal] relative shrink-0 text-[25px] w-full">12 – 20 LPA</p>
+      <p className="font-['Inter:Semi_Bold',sans-serif] font-semibold leading-[normal] relative shrink-0 text-[25px] w-full">12 � 20 LPA</p>
     </div>
   );
 }
@@ -1102,8 +1102,8 @@ function Frame98() {
 function Frame128() {
   return (
     <div className="content-stretch flex flex-col gap-[10px] items-start not-italic relative shrink-0 text-white w-[198px]">
-      <p className="font-['Inter:Medium',sans-serif] font-medium leading-[39px] relative shrink-0 text-[18px] w-full">Mid-Level (3–5 yrs)</p>
-      <p className="font-['Inter:Semi_Bold',sans-serif] font-semibold leading-[normal] relative shrink-0 text-[25px] w-full">6 – 10 LPA</p>
+      <p className="font-['Inter:Medium',sans-serif] font-medium leading-[39px] relative shrink-0 text-[18px] w-full">Mid-Level (3�5 yrs)</p>
+      <p className="font-['Inter:Semi_Bold',sans-serif] font-semibold leading-[normal] relative shrink-0 text-[25px] w-full">6 � 10 LPA</p>
     </div>
   );
 }
@@ -1215,7 +1215,7 @@ function Frame32() {
         <span className="leading-[22px] text-[#25a88d]">{`One Career Path `}</span>
       </p>
       <p className="absolute font-['Inter:Regular',sans-serif] font-normal leading-[0] left-[calc(50%-165.5px)] not-italic text-[#25a88d] text-[18px] top-[617px] whitespace-nowrap">
-        <span className="leading-[normal]">{`ðŸ‡®ðŸ‡³ `}</span>
+        <span className="leading-[normal]">{`🇮🇳 `}</span>
         <span className="leading-[normal] text-[#333]">Made in India built for Bharath Future</span>
       </p>
     </div>
@@ -1383,7 +1383,7 @@ function Text2() {
   return (
     <div className="h-[24px] relative shrink-0 w-[104px]" data-name="Text">
       <div className="bg-clip-padding border-0 border-[transparent] border-solid relative size-full">
-        <p className="absolute font-['Inter:Medium',sans-serif] font-medium leading-[24px] left-0 not-italic text-[#101828] text-[16px] top-[-2.2px] whitespace-nowrap">Tier 1 “ Metro</p>
+        <p className="absolute font-['Inter:Medium',sans-serif] font-medium leading-[24px] left-0 not-italic text-[#101828] text-[16px] top-[-2.2px] whitespace-nowrap">Tier 1 � Metro</p>
       </div>
     </div>
   );
@@ -1641,7 +1641,7 @@ function Heading11() {
 function Paragraph() {
   return (
     <div className="absolute h-[20px] left-0 top-[95.99px] w-[573.6px]" data-name="Paragraph">
-      <p className="absolute font-['Inter:Regular',sans-serif] font-normal leading-[20px] left-0 not-italic text-[#bedbff] text-[14px] top-[-0.2px] whitespace-nowrap">Tier 1 - Metro · Multi-speciality · 2 yrs exp · Day Shift</p>
+      <p className="absolute font-['Inter:Regular',sans-serif] font-normal leading-[20px] left-0 not-italic text-[#bedbff] text-[14px] top-[-0.2px] whitespace-nowrap">Tier 1 - Metro � Multi-speciality � 2 yrs exp � Day Shift</p>
     </div>
   );
 }
@@ -2905,7 +2905,7 @@ function Frame133() {
   return (
     <div className="content-stretch flex flex-col gap-[15px] items-start relative shrink-0 w-full">
       <Frame66 />
-      <p className="font-['Inter:Medium',sans-serif] font-medium leading-[normal] min-w-full not-italic relative shrink-0 text-[15px] text-white w-[min-content]">India’s Career Launchpad</p>
+      <p className="font-['Inter:Medium',sans-serif] font-medium leading-[normal] min-w-full not-italic relative shrink-0 text-[15px] text-white w-[min-content]">India�s Career Launchpad</p>
     </div>
   );
 }
@@ -3212,7 +3212,7 @@ function Frame2() {
       <button type="button" onClick={handleProgramClick("#ha")} className="relative shrink-0 text-left transition-colors duration-200 w-[264px] hover:text-[#8ee2d2]">Hospital Administration</button>
       <button type="button" onClick={handleProgramClick("#gda")} className="min-w-full relative shrink-0 text-left transition-colors duration-200 w-[min-content] hover:text-[#8ee2d2]">General Duty Assistance</button>
       <button type="button" onClick={handleProgramClick("#ocha")} className="min-w-full relative shrink-0 text-left transition-colors duration-200 w-[min-content] hover:text-[#8ee2d2]">OCHA</button>
-      <button type="button" onClick={handleProgramClick("#acha")} className="min-w-full relative shrink-0 text-left transition-colors duration-200 w-[min-content] hover:text-[#8ee2d2]">ACHA</button>
+      <button type="button" onClick={handleProgramClick("#ahap")} className="min-w-full relative shrink-0 text-left transition-colors duration-200 w-[min-content] hover:text-[#8ee2d2]">AHAP</button>
       <button type="button" onClick={handleProgramClick("#gca")} className="min-w-full relative shrink-0 text-left transition-colors duration-200 w-[min-content] hover:text-[#8ee2d2]">GCA</button>
       <button type="button" onClick={handleProgramClick("#mlt")} className="min-w-full relative shrink-0 text-left transition-colors duration-200 w-[min-content] hover:text-[#8ee2d2]">MLT</button>
       <button type="button" onClick={handleProgramClick("#radiology")} className="min-w-full relative shrink-0 text-left transition-colors duration-200 w-[min-content] hover:text-[#8ee2d2]">Radiology</button>

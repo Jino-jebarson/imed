@@ -1,4 +1,4 @@
-﻿import { useLayoutEffect, useRef, useState, type MouseEvent } from "react";
+import { useLayoutEffect, useRef, useState, type MouseEvent } from "react";
 import svgPaths from "./svg-rz0k21fs9a";
 import imgImage1712 from "../Ocha/36b610493eb683f0e81e17848fd143c365f117fd.png";
 import imgImage1722 from "./image1722.webp";
@@ -1021,7 +1021,7 @@ function Frame123() {
   return (
     <div className="content-stretch flex flex-col gap-[10px] items-start not-italic relative shrink-0 text-white w-[198px]">
       <p className="font-['Inter:Medium',sans-serif] font-medium leading-[39px] relative shrink-0 text-[18px] w-full">Entry-Level EMT</p>
-      <p className="font-['Inter:Semi_Bold',sans-serif] font-semibold leading-[normal] relative shrink-0 text-[25px] w-full">₹2.5 - 3.5 LPA</p>
+      <p className="font-['Inter:Semi_Bold',sans-serif] font-semibold leading-[normal] relative shrink-0 text-[25px] w-full">?2.5 - 3.5 LPA</p>
     </div>
   );
 }
@@ -1059,7 +1059,7 @@ function Frame125() {
   return (
     <div className="content-stretch flex flex-col gap-[10px] items-start not-italic relative shrink-0 text-white w-[198px]">
       <p className="font-['Inter:Medium',sans-serif] font-medium leading-[39px] relative shrink-0 text-[18px] w-[209px]">Senior EMT / Team Lead</p>
-      <p className="font-['Inter:Semi_Bold',sans-serif] font-semibold leading-[normal] min-w-full relative shrink-0 text-[25px] w-[min-content]">₹5.5 - 7 LPA</p>
+      <p className="font-['Inter:Semi_Bold',sans-serif] font-semibold leading-[normal] min-w-full relative shrink-0 text-[25px] w-[min-content]">?5.5 - 7 LPA</p>
     </div>
   );
 }
@@ -1106,7 +1106,7 @@ function Frame128() {
   return (
     <div className="content-stretch flex flex-col gap-[10px] items-start not-italic relative shrink-0 text-white w-[198px]">
       <p className="font-['Inter:Medium',sans-serif] font-medium leading-[39px] relative shrink-0 text-[18px] w-[235px]">Ambulance / ER Technician</p>
-      <p className="font-['Inter:Semi_Bold',sans-serif] font-semibold leading-[normal] min-w-full relative shrink-0 text-[25px] w-[min-content]">₹3.5 - 5 LPA</p>
+      <p className="font-['Inter:Semi_Bold',sans-serif] font-semibold leading-[normal] min-w-full relative shrink-0 text-[25px] w-[min-content]">?3.5 - 5 LPA</p>
     </div>
   );
 }
@@ -1144,7 +1144,7 @@ function Frame130() {
   return (
     <div className="content-stretch flex flex-col gap-[10px] items-start not-italic relative shrink-0 text-white w-[198px]">
       <p className="font-['Inter:Medium',sans-serif] font-medium leading-[39px] relative shrink-0 text-[18px] w-[287px]">Response Supervisor</p>
-      <p className="font-['Inter:Semi_Bold',sans-serif] font-semibold leading-[normal] min-w-full relative shrink-0 text-[25px] w-[min-content]">₹7.5 LPA+</p>
+      <p className="font-['Inter:Semi_Bold',sans-serif] font-semibold leading-[normal] min-w-full relative shrink-0 text-[25px] w-[min-content]">?7.5 LPA+</p>
     </div>
   );
 }
@@ -1636,7 +1636,7 @@ function Heading11() {
 function Paragraph() {
   return (
     <div className="absolute h-[20px] left-0 top-[95.99px] w-[573.6px]" data-name="Paragraph">
-      <p className="absolute font-['Inter:Regular',sans-serif] font-normal leading-[20px] left-0 not-italic text-[#bedbff] text-[14px] top-[-0.2px] whitespace-nowrap">Tier 1 - Metro · Multi-speciality · 2 yrs exp · Day Shift</p>
+      <p className="absolute font-['Inter:Regular',sans-serif] font-normal leading-[20px] left-0 not-italic text-[#bedbff] text-[14px] top-[-0.2px] whitespace-nowrap">Tier 1 - Metro � Multi-speciality � 2 yrs exp � Day Shift</p>
     </div>
   );
 }
@@ -1654,7 +1654,7 @@ function Container14() {
 function Container17() {
   return (
     <div className="h-[48px] relative shrink-0 w-full" data-name="Container">
-      <p className="absolute font-['Inter:Bold',sans-serif] font-bold leading-[48px] left-0 not-italic text-[48px] text-white top-[-3px] whitespace-nowrap">₹34,485</p>
+      <p className="absolute font-['Inter:Bold',sans-serif] font-bold leading-[48px] left-0 not-italic text-[48px] text-white top-[-3px] whitespace-nowrap">?34,485</p>
     </div>
   );
 }
@@ -1727,7 +1727,7 @@ function Text10() {
   return (
     <div className="h-[20px] relative shrink-0 w-[50.063px]" data-name="Text">
       <div className="bg-clip-padding border-0 border-[transparent] border-solid relative size-full">
-        <p className="absolute font-['Inter:Semi_Bold',sans-serif] font-semibold leading-[20px] left-0 not-italic text-[14px] text-white top-[-0.2px] whitespace-nowrap">₹26,620</p>
+        <p className="absolute font-['Inter:Semi_Bold',sans-serif] font-semibold leading-[20px] left-0 not-italic text-[14px] text-white top-[-0.2px] whitespace-nowrap">?26,620</p>
       </div>
     </div>
   );
@@ -1737,7 +1737,7 @@ function Text11() {
   return (
     <div className="h-[20px] relative shrink-0 w-[50.025px]" data-name="Text">
       <div className="bg-clip-padding border-0 border-[transparent] border-solid relative size-full">
-        <p className="absolute font-['Inter:Semi_Bold',sans-serif] font-semibold leading-[20px] left-0 not-italic text-[14px] text-white top-[-0.2px] whitespace-nowrap">₹42,350</p>
+        <p className="absolute font-['Inter:Semi_Bold',sans-serif] font-semibold leading-[20px] left-0 not-italic text-[14px] text-white top-[-0.2px] whitespace-nowrap">?42,350</p>
       </div>
     </div>
   );
@@ -1786,7 +1786,7 @@ function Text13() {
   return (
     <div className="h-[24px] relative shrink-0 w-[54.725px]" data-name="Text">
       <div className="bg-clip-padding border-0 border-[transparent] border-solid relative size-full">
-        <p className="absolute font-['Inter:Semi_Bold',sans-serif] font-semibold leading-[24px] left-0 not-italic text-[16px] text-white top-[-2.2px] whitespace-nowrap">₹24,140</p>
+        <p className="absolute font-['Inter:Semi_Bold',sans-serif] font-semibold leading-[24px] left-0 not-italic text-[16px] text-white top-[-2.2px] whitespace-nowrap">?24,140</p>
       </div>
     </div>
   );
@@ -1815,7 +1815,7 @@ function Text15() {
   return (
     <div className="h-[24px] relative shrink-0 w-[57.213px]" data-name="Text">
       <div className="bg-clip-padding border-0 border-[transparent] border-solid relative size-full">
-        <p className="absolute font-['Inter:Semi_Bold',sans-serif] font-semibold leading-[24px] left-0 not-italic text-[16px] text-white top-[-2.2px] whitespace-nowrap">₹10,345</p>
+        <p className="absolute font-['Inter:Semi_Bold',sans-serif] font-semibold leading-[24px] left-0 not-italic text-[16px] text-white top-[-2.2px] whitespace-nowrap">?10,345</p>
       </div>
     </div>
   );
@@ -1848,7 +1848,7 @@ function Text17() {
   return (
     <div className="h-[24px] relative shrink-0 w-[69.912px]" data-name="Text">
       <div className="bg-clip-padding border-0 border-[transparent] border-solid relative size-full">
-        <p className="absolute font-['Inter:Semi_Bold',sans-serif] font-semibold leading-[24px] left-0 not-italic text-[16px] text-white top-[-2.2px] whitespace-nowrap">₹4,13,820</p>
+        <p className="absolute font-['Inter:Semi_Bold',sans-serif] font-semibold leading-[24px] left-0 not-italic text-[16px] text-white top-[-2.2px] whitespace-nowrap">?4,13,820</p>
       </div>
     </div>
   );
@@ -1877,7 +1877,7 @@ function Text19() {
   return (
     <div className="h-[28px] relative shrink-0 w-[67.013px]" data-name="Text">
       <div className="bg-clip-padding border-0 border-[transparent] border-solid relative size-full">
-        <p className="absolute font-['Inter:Bold',sans-serif] font-bold leading-[28px] left-0 not-italic text-[#46ecd5] text-[18px] top-[-1.4px] whitespace-nowrap">₹30,347</p>
+        <p className="absolute font-['Inter:Bold',sans-serif] font-bold leading-[28px] left-0 not-italic text-[#46ecd5] text-[18px] top-[-1.4px] whitespace-nowrap">?30,347</p>
       </div>
     </div>
   );
@@ -3208,7 +3208,7 @@ function Frame2() {
       <button type="button" onClick={handleProgramClick("#ha")} className="relative shrink-0 text-left transition-colors duration-200 w-[264px] hover:text-[#8ee2d2]">Hospital Administration</button>
       <button type="button" onClick={handleProgramClick("#gda")} className="min-w-full relative shrink-0 text-left transition-colors duration-200 w-[min-content] hover:text-[#8ee2d2]">General Duty Assistance</button>
       <button type="button" onClick={handleProgramClick("#ocha")} className="min-w-full relative shrink-0 text-left transition-colors duration-200 w-[min-content] hover:text-[#8ee2d2]">OCHA</button>
-      <button type="button" onClick={handleProgramClick("#acha")} className="min-w-full relative shrink-0 text-left transition-colors duration-200 w-[min-content] hover:text-[#8ee2d2]">ACHA</button>
+      <button type="button" onClick={handleProgramClick("#ahap")} className="min-w-full relative shrink-0 text-left transition-colors duration-200 w-[min-content] hover:text-[#8ee2d2]">AHAP</button>
       <button type="button" onClick={handleProgramClick("#gca")} className="min-w-full relative shrink-0 text-left transition-colors duration-200 w-[min-content] hover:text-[#8ee2d2]">GCA</button>
       <button type="button" onClick={handleProgramClick("#mlt")} className="min-w-full relative shrink-0 text-left transition-colors duration-200 w-[min-content] hover:text-[#8ee2d2]">MLT</button>
       <button type="button" onClick={handleProgramClick("#radiology")} className="min-w-full relative shrink-0 text-left transition-colors duration-200 w-[min-content] hover:text-[#8ee2d2]">Radiology</button>

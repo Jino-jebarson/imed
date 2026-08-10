@@ -448,7 +448,7 @@ Source reviewed:
   - EMT
   - GDA
   - OCHA
-  - ACHA
+  - AAHP
   - MLT
   - RADIOLOGY
 - GST rate:

@@ -636,7 +636,7 @@ function Frame2() {
       <button type="button" onClick={() => { window.location.hash = "#ha"; window.scrollTo({ top: 0, behavior: "smooth" }); }} className="cursor-pointer relative shrink-0 text-left transition-colors duration-200 w-[264px] hover:text-[#8ee2d2]">Hospital Administration</button>
       <button type="button" onClick={() => { window.location.hash = "#gda"; window.scrollTo({ top: 0, behavior: "smooth" }); }} className="cursor-pointer min-w-full relative shrink-0 text-left transition-colors duration-200 w-[min-content] hover:text-[#8ee2d2]">General Duty Assistance</button>
       <button type="button" onClick={() => { window.location.hash = "#ocha"; window.scrollTo({ top: 0, behavior: "smooth" }); }} className="cursor-pointer relative shrink-0 text-left transition-colors duration-200 whitespace-nowrap hover:text-[#8ee2d2]">OCHA</button>
-      <button type="button" onClick={() => { window.location.hash = "#acha"; window.scrollTo({ top: 0, behavior: "smooth" }); }} className="cursor-pointer relative shrink-0 text-left transition-colors duration-200 whitespace-nowrap hover:text-[#8ee2d2]">ACHA</button>
+      <button type="button" onClick={() => { window.location.hash = "#ahap"; window.scrollTo({ top: 0, behavior: "smooth" }); }} className="cursor-pointer relative shrink-0 text-left transition-colors duration-200 whitespace-nowrap hover:text-[#8ee2d2]">AHAP</button>
       <button type="button" onClick={() => { window.location.hash = "#gca"; window.scrollTo({ top: 0, behavior: "smooth" }); }} className="cursor-pointer relative shrink-0 text-left transition-colors duration-200 whitespace-nowrap hover:text-[#8ee2d2]">Geriatric Care Assistance</button>
     </div>
   );
@@ -2563,7 +2563,7 @@ export default function Acha() {
         style={{
           transform: `scale(${pageScale})`,
         }}
-        data-name="ACHA"
+        data-name="AHAP"
       >
         <Frame15 />
         <Frame16 />

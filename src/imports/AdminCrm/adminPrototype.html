@@ -1,0 +1,1745 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>iMED Academy — Admin CRM</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600;700&display=swap" rel="stylesheet">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.4/chart.umd.min.js"></script>
+<style>
+/* ============ TOKENS ============ */
+:root{
+  --navy-950:#0A0E1D;
+  --navy-900:#0F1428;
+  --navy-850:#141A33;
+  --navy-800:#1B2340;
+  --navy-line:#242C4D;
+  --indigo-500:#4F6BFF;
+  --indigo-600:#3E56E0;
+  --indigo-100:#EAEEFF;
+  --bg:#F3F5FA;
+  --card:#FFFFFF;
+  --border:#E5E9F2;
+  --border-soft:#EEF1F7;
+  --text-900:#161B33;
+  --text-700:#333A56;
+  --text-600:#5B6478;
+  --text-400:#99A1B3;
+  --green-50:#EAFBF3; --green-500:#17A673; --green-700:#0E7A54;
+  --amber-50:#FFF7E8; --amber-500:#F5A524; --amber-700:#B4750B;
+  --red-50:#FDEEEE; --red-500:#E5484D; --red-700:#B3282C;
+  --purple-50:#F4F0FE; --purple-500:#8B5CF6; --purple-700:#6B37D6;
+  --teal-50:#EAFAF8; --teal-500:#14B8A6; --teal-700:#0B8577;
+  --blue-50:#EEF3FF;
+  --radius:10px;
+  --radius-lg:14px;
+  --shadow-sm:0 1px 2px rgba(16,20,40,.05);
+  --shadow-md:0 4px 14px rgba(16,20,40,.07);
+  --shadow-lg:0 12px 32px rgba(16,20,40,.14);
+  --font-ui:'Inter',system-ui,sans-serif;
+  --font-mono:'JetBrains Mono',monospace;
+}
+*{box-sizing:border-box;}
+html,body{margin:0;padding:0;}
+body{
+  font-family:var(--font-ui);
+  background:var(--bg);
+  color:var(--text-900);
+  font-size:13.5px;
+  -webkit-font-smoothing:antialiased;
+}
+::-webkit-scrollbar{width:9px;height:9px;}
+::-webkit-scrollbar-thumb{background:#C7CEE0;border-radius:8px;}
+::-webkit-scrollbar-track{background:transparent;}
+a{color:inherit;text-decoration:none;}
+button{font-family:inherit;cursor:pointer;}
+:focus-visible{outline:2px solid var(--indigo-500);outline-offset:2px;}
+.mono{font-family:var(--font-mono);}
+
+/* ============ APP SHELL ============ */
+#app{display:none;height:100vh;width:100vw;}
+#app.active{display:flex;}
+.sidebar{
+  width:236px;flex:0 0 236px;background:linear-gradient(180deg,var(--navy-950),var(--navy-900));
+  color:#C9CFE6;display:flex;flex-direction:column;height:100vh;position:relative;
+  border-right:1px solid var(--navy-line);
+}
+.sidebar-brand{
+  display:flex;align-items:center;gap:10px;padding:18px 18px 14px 20px;
+  border-bottom:1px solid var(--navy-line);
+}
+.brand-mark{
+  width:32px;height:32px;border-radius:9px;background:linear-gradient(135deg,var(--indigo-500),#8A6BFF);
+  display:flex;align-items:center;justify-content:center;font-weight:800;color:#fff;font-size:14px;flex:0 0 32px;
+  box-shadow:0 4px 10px rgba(79,107,255,.4);
+}
+.brand-text{line-height:1.15;}
+.brand-text b{display:block;font-size:14px;color:#fff;font-weight:700;letter-spacing:.2px;}
+.brand-text span{display:block;font-size:10.5px;color:#8189A8;letter-spacing:.6px;text-transform:uppercase;margin-top:2px;}
+
+.nav-scroll{flex:1;overflow-y:auto;padding:12px 10px;}
+.nav-group-label{font-size:10px;font-weight:700;letter-spacing:.8px;text-transform:uppercase;color:#5D6588;padding:14px 10px 6px;}
+.nav-item{
+  display:flex;align-items:center;gap:10px;padding:9px 10px;border-radius:8px;margin-bottom:2px;
+  color:#AEB4CE;font-size:13px;font-weight:500;cursor:pointer;transition:background .12s,color .12s;
+  position:relative;
+}
+.nav-item svg{width:16px;height:16px;flex:0 0 16px;opacity:.85;}
+.nav-item:hover{background:var(--navy-800);color:#fff;}
+.nav-item.active{background:var(--indigo-500);color:#fff;box-shadow:0 4px 12px rgba(79,107,255,.35);}
+.nav-item.active svg{opacity:1;}
+.nav-item .badge{margin-left:auto;background:rgba(255,255,255,.14);color:#fff;font-size:10px;font-weight:700;padding:1px 6px;border-radius:20px;}
+
+.sidebar-footer{padding:12px;border-top:1px solid var(--navy-line);}
+.role-pill{
+  display:flex;align-items:center;gap:9px;background:var(--navy-800);border:1px solid var(--navy-line);
+  border-radius:10px;padding:8px 10px;
+}
+.role-avatar{width:28px;height:28px;border-radius:8px;background:linear-gradient(135deg,#F5A524,#E5484D);flex:0 0 28px;display:flex;align-items:center;justify-content:center;font-weight:700;color:#fff;font-size:12px;}
+.role-meta{line-height:1.2;overflow:hidden;}
+.role-meta b{font-size:12px;color:#fff;display:block;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+.role-meta span{font-size:10.5px;color:#8A91B0;}
+
+.main{flex:1;display:flex;flex-direction:column;height:100vh;overflow:hidden;}
+.topbar{
+  height:60px;flex:0 0 60px;background:var(--card);border-bottom:1px solid var(--border);
+  display:flex;align-items:center;gap:14px;padding:0 22px;
+}
+.page-title{font-size:16px;font-weight:700;color:var(--text-900);white-space:nowrap;}
+.page-sub{font-size:11.5px;color:var(--text-400);margin-top:1px;}
+.topbar-spacer{flex:1;}
+.scope-select, .df-select{
+  border:1px solid var(--border);background:#fff;border-radius:8px;padding:7px 10px;font-size:12.5px;color:var(--text-700);
+  font-weight:500;font-family:inherit;
+}
+.date-filter{display:flex;align-items:center;gap:6px;background:var(--bg);border:1px solid var(--border);border-radius:9px;padding:3px;}
+.df-btn{border:none;background:transparent;padding:6px 10px;border-radius:7px;font-size:12px;font-weight:600;color:var(--text-600);}
+.df-btn.active{background:#fff;color:var(--indigo-600);box-shadow:var(--shadow-sm);}
+.df-date{border:1px solid var(--border);border-radius:7px;padding:5px 8px;font-size:12px;display:none;}
+.df-date.show{display:inline-block;}
+.icon-btn{width:34px;height:34px;border-radius:9px;border:1px solid var(--border);background:#fff;display:flex;align-items:center;justify-content:center;color:var(--text-600);}
+.icon-btn:hover{background:var(--bg);}
+.search-box{display:flex;align-items:center;gap:7px;background:var(--bg);border:1px solid var(--border);border-radius:9px;padding:7px 12px;width:230px;}
+.search-box input{border:none;background:transparent;outline:none;font-size:12.5px;width:100%;color:var(--text-900);}
+
+.content{flex:1;overflow-y:auto;padding:22px;}
+.panel{display:none;}
+.panel.active{display:block;animation:fade .18s ease;}
+@keyframes fade{from{opacity:0;transform:translateY(4px);}to{opacity:1;transform:none;}}
+
+/* ============ COMMON UI ============ */
+.grid-metrics{display:grid;grid-template-columns:repeat(auto-fit,minmax(170px,1fr));gap:14px;margin-bottom:18px;}
+.metric-card{
+  background:var(--card);border:1px solid var(--border);border-radius:var(--radius-lg);padding:16px 18px;
+  box-shadow:var(--shadow-sm);position:relative;overflow:hidden;
+}
+.metric-card .m-label{font-size:11.5px;color:var(--text-600);font-weight:600;display:flex;align-items:center;gap:6px;}
+.metric-card .m-value{font-size:24px;font-weight:800;margin-top:8px;color:var(--text-900);font-family:var(--font-mono);}
+.metric-card .m-delta{font-size:11px;font-weight:600;margin-top:6px;}
+.m-delta.up{color:var(--green-700);}
+.m-delta.down{color:var(--red-700);}
+.metric-card .m-dot{width:9px;height:9px;border-radius:3px;display:inline-block;}
+
+.card{background:var(--card);border:1px solid var(--border);border-radius:var(--radius-lg);box-shadow:var(--shadow-sm);}
+.card-head{display:flex;align-items:center;padding:16px 18px;border-bottom:1px solid var(--border-soft);}
+.card-head h3{font-size:13.5px;font-weight:700;margin:0;}
+.card-head .sub{font-size:11px;color:var(--text-400);margin-top:2px;font-weight:500;}
+.card-body{padding:16px 18px;}
+.two-col{display:grid;grid-template-columns:1.3fr 1fr;gap:16px;}
+.three-col{display:grid;grid-template-columns:repeat(3,1fr);gap:14px;}
+
+.btn{border:none;border-radius:8px;padding:8px 14px;font-size:12.5px;font-weight:600;display:inline-flex;align-items:center;gap:6px;}
+.btn-primary{background:var(--indigo-500);color:#fff;box-shadow:0 4px 10px rgba(79,107,255,.28);}
+.btn-primary:hover{background:var(--indigo-600);}
+.btn-ghost{background:#fff;border:1px solid var(--border);color:var(--text-700);}
+.btn-ghost:hover{background:var(--bg);}
+.btn-soft{background:var(--indigo-100);color:var(--indigo-600);}
+.btn-sm{padding:5px 10px;font-size:11.5px;border-radius:7px;}
+.btn-danger{background:var(--red-50);color:var(--red-700);}
+.btn-green{background:var(--green-50);color:var(--green-700);}
+
+.table-wrap{overflow-x:auto;}
+table{width:100%;border-collapse:collapse;font-size:12.5px;}
+thead th{
+  text-align:left;font-size:10.5px;text-transform:uppercase;letter-spacing:.4px;color:var(--text-400);
+  font-weight:700;padding:10px 12px;border-bottom:1px solid var(--border);white-space:nowrap;background:#FAFBFD;
+  position:sticky;top:0;
+}
+tbody td{padding:11px 12px;border-bottom:1px solid var(--border-soft);color:var(--text-700);white-space:nowrap;}
+tbody tr{transition:background .1s;}
+tbody tr:hover{background:#F8F9FD;cursor:default;}
+tbody tr.clickable{cursor:pointer;}
+.cell-name{font-weight:600;color:var(--text-900);}
+.cell-sub{font-size:11px;color:var(--text-400);}
+
+.badge{display:inline-flex;align-items:center;gap:5px;padding:3px 9px;border-radius:20px;font-size:11px;font-weight:700;white-space:nowrap;}
+.badge-dot{width:6px;height:6px;border-radius:50%;}
+.badge-blue{background:var(--blue-50);color:var(--indigo-600);}
+.badge-green{background:var(--green-50);color:var(--green-700);}
+.badge-amber{background:var(--amber-50);color:var(--amber-700);}
+.badge-red{background:var(--red-50);color:var(--red-700);}
+.badge-purple{background:var(--purple-50);color:var(--purple-700);}
+.badge-teal{background:var(--teal-50);color:var(--teal-700);}
+.badge-gray{background:#F1F2F6;color:var(--text-600);}
+
+.filter-bar{display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin-bottom:14px;}
+select.fbtn, input.fbtn{border:1px solid var(--border);background:#fff;border-radius:8px;padding:8px 10px;font-size:12.5px;color:var(--text-700);font-family:inherit;}
+.pill-tabs{display:flex;gap:4px;background:var(--bg);border:1px solid var(--border);border-radius:9px;padding:3px;}
+.pill-tab{padding:7px 13px;border-radius:7px;font-size:12px;font-weight:600;color:var(--text-600);background:transparent;border:none;}
+.pill-tab.active{background:#fff;color:var(--indigo-600);box-shadow:var(--shadow-sm);}
+
+.avatar{width:30px;height:30px;border-radius:8px;display:flex;align-items:center;justify-content:center;color:#fff;font-weight:700;font-size:11.5px;flex:0 0 30px;}
+.name-cell{display:flex;align-items:center;gap:9px;}
+
+.progress-track{width:70px;height:6px;background:var(--border-soft);border-radius:10px;overflow:hidden;display:inline-block;vertical-align:middle;}
+.progress-fill{height:100%;background:var(--green-500);border-radius:10px;}
+
+.pager{display:flex;align-items:center;justify-content:space-between;padding:12px 18px;border-top:1px solid var(--border-soft);font-size:12px;color:var(--text-400);}
+.pager-btns{display:flex;gap:6px;}
+.pager-btns button{width:28px;height:28px;border-radius:7px;border:1px solid var(--border);background:#fff;font-size:12px;color:var(--text-600);}
+.pager-btns button.active{background:var(--indigo-500);color:#fff;border-color:var(--indigo-500);}
+
+.empty-state{text-align:center;padding:50px 20px;color:var(--text-400);}
+.empty-state svg{width:40px;height:40px;margin-bottom:10px;opacity:.5;}
+.empty-state h4{margin:0 0 4px;color:var(--text-600);font-size:13px;}
+.empty-state p{margin:0;font-size:12px;}
+
+/* funnel */
+.funnel-wrap{display:flex;flex-direction:column;gap:6px;}
+.funnel-row{display:grid;grid-template-columns:120px 1fr 90px;align-items:center;gap:10px;}
+.funnel-row .flabel{font-size:12px;font-weight:600;color:var(--text-600);}
+.funnel-bar-track{background:var(--border-soft);border-radius:6px;height:22px;overflow:hidden;}
+.funnel-bar-fill{height:100%;border-radius:6px;background:linear-gradient(90deg,var(--indigo-500),#8A6BFF);display:flex;align-items:center;justify-content:flex-end;padding-right:8px;}
+.funnel-bar-fill span{color:#fff;font-size:10.5px;font-weight:700;}
+.funnel-row .fval{font-size:12px;color:var(--text-400);text-align:right;font-family:var(--font-mono);}
+
+/* modal & drawer */
+.overlay{position:fixed;inset:0;background:rgba(10,14,29,.5);display:none;align-items:center;justify-content:center;z-index:200;backdrop-filter:blur(2px);}
+.overlay.show{display:flex;}
+.modal{background:#fff;border-radius:16px;width:600px;max-width:92vw;max-height:88vh;overflow-y:auto;box-shadow:var(--shadow-lg);}
+.modal.wide{width:760px;}
+.modal-head{display:flex;align-items:center;justify-content:space-between;padding:18px 22px;border-bottom:1px solid var(--border-soft);position:sticky;top:0;background:#fff;z-index:2;}
+.modal-head h3{margin:0;font-size:15px;font-weight:700;}
+.modal-body{padding:20px 22px;}
+.modal-foot{display:flex;justify-content:flex-end;gap:10px;padding:16px 22px;border-top:1px solid var(--border-soft);}
+.close-x{width:30px;height:30px;border-radius:8px;border:none;background:var(--bg);color:var(--text-600);font-size:15px;}
+
+.field-grid{display:grid;grid-template-columns:1fr 1fr;gap:14px;}
+.field{margin-bottom:14px;}
+.field label{display:block;font-size:11.5px;font-weight:700;color:var(--text-600);margin-bottom:6px;}
+.field input, .field select, .field textarea{
+  width:100%;border:1px solid var(--border);border-radius:8px;padding:9px 11px;font-size:12.5px;font-family:inherit;color:var(--text-900);background:#fff;
+}
+.field input:focus, .field select:focus, .field textarea:focus{border-color:var(--indigo-500);}
+.field .hint{font-size:10.5px;color:var(--text-400);margin-top:4px;}
+
+.drawer-overlay{position:fixed;inset:0;background:rgba(10,14,29,.45);display:none;z-index:200;}
+.drawer-overlay.show{display:block;}
+.drawer{position:fixed;top:0;right:0;height:100vh;width:520px;max-width:94vw;background:#fff;box-shadow:-14px 0 40px rgba(10,14,29,.25);
+  transform:translateX(100%);transition:transform .22s ease;z-index:201;display:flex;flex-direction:column;}
+.drawer.show{transform:translateX(0);}
+.drawer-head{padding:20px 22px;border-bottom:1px solid var(--border-soft);display:flex;align-items:flex-start;gap:14px;}
+.drawer-body{flex:1;overflow-y:auto;padding:0 0 30px;}
+.dtabs{display:flex;gap:2px;padding:0 22px;border-bottom:1px solid var(--border-soft);}
+.dtab{padding:12px 12px;font-size:12px;font-weight:700;color:var(--text-400);border-bottom:2px solid transparent;}
+.dtab.active{color:var(--indigo-600);border-color:var(--indigo-500);}
+.dpane{display:none;padding:18px 22px;}
+.dpane.active{display:block;}
+.kv-row{display:flex;justify-content:space-between;padding:9px 0;border-bottom:1px solid var(--border-soft);font-size:12.5px;}
+.kv-row .k{color:var(--text-400);}
+.kv-row .v{font-weight:600;color:var(--text-900);}
+
+.toast-wrap{position:fixed;bottom:20px;right:20px;z-index:400;display:flex;flex-direction:column;gap:8px;}
+.toast{background:var(--navy-950);color:#fff;padding:11px 16px;border-radius:10px;font-size:12.5px;font-weight:500;box-shadow:var(--shadow-lg);display:flex;align-items:center;gap:8px;animation:toastin .2s ease;}
+@keyframes toastin{from{opacity:0;transform:translateY(8px);}to{opacity:1;transform:none;}}
+.toast .dot{width:7px;height:7px;border-radius:50%;background:var(--green-500);}
+
+/* attendance grid */
+.att-grid{display:flex;flex-direction:column;gap:8px;}
+.att-row{display:grid;grid-template-columns:32px 1.6fr repeat(4,64px) 1fr;align-items:center;gap:10px;padding:9px 12px;border:1px solid var(--border-soft);border-radius:9px;}
+.att-status-btn{width:100%;padding:6px 0;border-radius:7px;border:1px solid var(--border);background:#fff;font-size:11px;font-weight:700;color:var(--text-400);}
+.att-status-btn.sel-present{background:var(--teal-50);color:var(--teal-700);border-color:var(--teal-500);}
+.att-status-btn.sel-absent{background:var(--red-50);color:var(--red-700);border-color:var(--red-500);}
+.att-status-btn.sel-late{background:var(--amber-50);color:var(--amber-700);border-color:var(--amber-500);}
+.att-status-btn.sel-leave{background:var(--purple-50);color:var(--purple-700);border-color:var(--purple-500);}
+
+/* calendar */
+.cal-grid{display:grid;grid-template-columns:repeat(7,1fr);gap:6px;}
+.cal-dow{font-size:10px;font-weight:700;color:var(--text-400);text-align:center;text-transform:uppercase;}
+.cal-cell{aspect-ratio:1;border-radius:8px;display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:600;border:1px solid var(--border-soft);color:var(--text-600);}
+.cal-cell.present{background:var(--teal-50);color:var(--teal-700);border-color:transparent;}
+.cal-cell.absent{background:var(--red-50);color:var(--red-700);border-color:transparent;}
+.cal-cell.late{background:var(--amber-50);color:var(--amber-700);border-color:transparent;}
+.cal-cell.leave{background:var(--purple-50);color:var(--purple-700);border-color:transparent;}
+.cal-cell.blank{background:transparent;border-color:transparent;}
+.legend{display:flex;gap:14px;font-size:11.5px;color:var(--text-600);margin-top:12px;flex-wrap:wrap;}
+.legend span{display:inline-flex;align-items:center;gap:6px;}
+.legend i{width:9px;height:9px;border-radius:3px;display:inline-block;}
+
+/* settings tabs */
+.settings-shell{display:grid;grid-template-columns:200px 1fr;gap:18px;}
+.settings-nav{display:flex;flex-direction:column;gap:2px;}
+.settings-nav button{text-align:left;padding:10px 12px;border-radius:8px;border:none;background:transparent;font-size:12.5px;font-weight:600;color:var(--text-600);}
+.settings-nav button.active{background:var(--indigo-100);color:var(--indigo-600);}
+.spane{display:none;}
+.spane.active{display:block;}
+
+/* receipt / invoice preview */
+.doc-preview{background:#fff;border:1px solid var(--border);border-radius:12px;padding:26px;font-size:12px;color:var(--text-700);}
+.doc-preview h2{margin:0 0 2px;font-size:16px;}
+.doc-row{display:flex;justify-content:space-between;padding:6px 0;border-bottom:1px dashed var(--border);}
+.doc-total{display:flex;justify-content:space-between;padding:10px 0;font-weight:800;font-size:13.5px;border-top:2px solid var(--text-900);margin-top:6px;}
+
+/* certificate */
+.cert-card{
+  border-radius:16px;padding:26px;position:relative;overflow:hidden;color:#fff;
+  background:radial-gradient(circle at 20% 20%, #24306B, #0A0E1D 70%);
+  border:6px solid #C9A44C;
+}
+.cert-card::before{content:"";position:absolute;inset:14px;border:1px solid rgba(201,164,76,.5);border-radius:10px;pointer-events:none;}
+.cert-card h2{font-family:'JetBrains Mono',monospace;letter-spacing:2px;font-size:12px;color:#C9A44C;text-align:center;margin:0;text-transform:uppercase;}
+.cert-card h1{text-align:center;font-size:26px;margin:8px 0;}
+.cert-card .cn{text-align:center;color:#B9C1E0;font-size:12px;margin-bottom:16px;}
+.cert-card .studentname{text-align:center;font-size:22px;font-weight:800;margin:14px 0;color:#FFD98A;}
+.cert-card p{text-align:center;color:#C9CFE6;font-size:12.5px;line-height:1.7;}
+.cert-foot{display:flex;justify-content:space-between;align-items:flex-end;margin-top:18px;}
+.qr-box{width:64px;height:64px;background:#fff;border-radius:8px;display:flex;align-items:center;justify-content:center;color:#0A0E1D;font-size:9px;font-weight:700;text-align:center;}
+
+/* auth screen */
+#authScreen{min-height:100vh;display:flex;align-items:center;justify-content:center;background:linear-gradient(160deg,#0A0E1D 0%,#141A33 45%,#1B2340 100%);position:relative;overflow:hidden;}
+#authScreen::before{content:"";position:absolute;width:600px;height:600px;background:radial-gradient(circle,rgba(79,107,255,.35),transparent 70%);top:-200px;right:-150px;}
+.auth-card{width:380px;background:rgba(255,255,255,.98);border-radius:18px;padding:32px 30px;box-shadow:var(--shadow-lg);position:relative;z-index:2;}
+.auth-logo{display:flex;align-items:center;gap:10px;margin-bottom:22px;}
+.auth-card h1{font-size:19px;margin:0 0 4px;}
+.auth-card p.sub{color:var(--text-400);font-size:12.5px;margin:0 0 22px;}
+.role-grid{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:18px;}
+.role-opt{border:1.5px solid var(--border);border-radius:10px;padding:10px;text-align:left;background:#fff;}
+.role-opt b{display:block;font-size:12px;color:var(--text-900);}
+.role-opt span{font-size:10.5px;color:var(--text-400);}
+.role-opt.sel{border-color:var(--indigo-500);background:var(--indigo-100);}
+.auth-card .btn-primary{width:100%;justify-content:center;padding:11px;font-size:13px;}
+
+/* verify page */
+#verifyScreen{min-height:100vh;background:var(--bg);display:none;align-items:center;justify-content:center;padding:30px;}
+#verifyScreen.active{display:flex;}
+.verify-card{width:460px;max-width:100%;background:#fff;border-radius:16px;box-shadow:var(--shadow-lg);overflow:hidden;}
+.verify-head{background:linear-gradient(135deg,var(--navy-950),var(--navy-850));padding:22px 26px;color:#fff;}
+.verify-body{padding:22px 26px;}
+
+@media(max-width:980px){
+  .sidebar{position:fixed;left:0;top:0;z-index:150;transform:translateX(-100%);transition:transform .2s;}
+  .sidebar.open{transform:none;}
+  .two-col,.three-col{grid-template-columns:1fr;}
+  .settings-shell{grid-template-columns:1fr;}
+}
+</style>
+</head>
+<body>
+
+<!-- ============ AUTH SCREEN ============ -->
+<div id="authScreen">
+  <div class="auth-card">
+    <div class="auth-logo">
+      <div class="brand-mark" style="background:linear-gradient(135deg,var(--indigo-500),#8A6BFF)">iM</div>
+      <div>
+        <b style="font-size:15px;">iMED Academy</b>
+        <div style="font-size:10.5px;color:var(--text-400);letter-spacing:.5px;text-transform:uppercase;">Admin CRM</div>
+      </div>
+    </div>
+    <h1>Sign in to your workspace</h1>
+    <p class="sub">Preview the CRM as any role to see scoped panels &amp; permissions.</p>
+    <div class="role-grid" id="roleGrid"></div>
+    <div class="field" style="margin-bottom:10px;">
+      <label>Email</label>
+      <input id="loginEmail" value="admin@imedacademy.in">
+    </div>
+    <div class="field" style="margin-bottom:18px;">
+      <label>Password</label>
+      <input type="password" value="••••••••">
+    </div>
+    <button class="btn btn-primary" onclick="doLogin()">Sign in — #admin</button>
+    <p style="text-align:center;font-size:11px;color:var(--text-400);margin-top:14px;">Certificate check? Try route <span class="mono">#verify=IMED-CERT-2025-0007</span></p>
+  </div>
+</div>
+
+<!-- ============ VERIFY SCREEN ============ -->
+<div id="verifyScreen"></div>
+
+<!-- ============ APP SHELL ============ -->
+<div id="app">
+  <aside class="sidebar" id="sidebar">
+    <div class="sidebar-brand">
+      <div class="brand-mark">iM</div>
+      <div class="brand-text"><b>iMED Academy</b><span>Admin CRM</span></div>
+    </div>
+    <div class="nav-scroll" id="navScroll"></div>
+    <div class="sidebar-footer">
+      <div class="role-pill">
+        <div class="role-avatar" id="curAvatar">A</div>
+        <div class="role-meta">
+          <b id="curName">—</b>
+          <span id="curRole">—</span>
+        </div>
+        <button class="icon-btn" style="margin-left:auto;background:transparent;border:none;color:#8A91B0;" onclick="doLogout()" title="Sign out">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/></svg>
+        </button>
+      </div>
+    </div>
+  </aside>
+
+  <div class="main">
+    <div class="topbar">
+      <div>
+        <div class="page-title" id="pgTitle">Dashboard</div>
+        <div class="page-sub" id="pgSub">Overview across your scope</div>
+      </div>
+      <div class="topbar-spacer"></div>
+      <select class="scope-select" id="scopeSelect" onchange="setScope(this.value)"></select>
+      <div class="date-filter" id="dateFilter">
+        <button class="df-btn active" data-df="all">All dates</button>
+        <button class="df-btn" data-df="today">Today</button>
+        <button class="df-btn" data-df="yesterday">Yesterday</button>
+        <button class="df-btn" data-df="specific">Specific</button>
+        <input type="date" class="df-date" id="dfDateInput">
+      </div>
+      <button class="icon-btn" title="Clear date filter" onclick="clearDateFilter()">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 6L6 18M6 6l12 12"/></svg>
+      </button>
+      <div class="search-box">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><path d="M21 21l-4.3-4.3"/></svg>
+        <input placeholder="Search students, leads, receipts…" oninput="globalSearch(this.value)">
+      </div>
+    </div>
+
+    <div class="content" id="content"></div>
+  </div>
+</div>
+
+<div class="overlay" id="modalOverlay"><div class="modal" id="modalBox"></div></div>
+<div class="drawer-overlay" id="drawerOverlay" onclick="closeDrawer()"></div>
+<div class="drawer" id="drawer"></div>
+<div class="toast-wrap" id="toastWrap"></div>
+
+<script>
+/* ================= ICONS ================= */
+const ICN = {
+  dashboard:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="7" height="9" rx="1.5"/><rect x="14" y="3" width="7" height="5" rx="1.5"/><rect x="14" y="12" width="7" height="9" rx="1.5"/><rect x="3" y="16" width="7" height="5" rx="1.5"/></svg>',
+  leads:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M22 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>',
+  addlead:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><line x1="19" y1="8" x2="19" y2="14"/><line x1="16" y1="11" x2="22" y2="11"/></svg>',
+  admissions:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 10v6M2 10l10-5 10 5-10 5-10-5z"/><path d="M6 12v5c0 1.7 2.7 3 6 3s6-1.3 6-3v-5"/></svg>',
+  batch:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="4" width="18" height="4" rx="1"/><rect x="3" y="10" width="18" height="4" rx="1"/><rect x="3" y="16" width="10" height="4" rx="1"/></svg>',
+  mystudents:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>',
+  attendance:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 11l3 3L22 4"/><path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"/></svg>',
+  logs:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M8 6h13M8 12h13M8 18h13M3 6h.01M3 12h.01M3 18h.01"/></svg>',
+  detail:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>',
+  allstudents:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87M16 3.13a4 4 0 0 1 0 7.75"/></svg>',
+  finance:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="12" y1="1" x2="12" y2="23"/><path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/></svg>',
+  emi:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>',
+  receipts:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16l3-2 3 2 3-2 3 2V4a2 2 0 0 0-2-2z"/><line x1="8" y1="8" x2="14" y2="8"/><line x1="8" y1="12" x2="14" y2="12"/></svg>',
+  cert:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="8" r="6"/><path d="M8.5 13.5L7 22l5-3 5 3-1.5-8.5"/></svg>',
+  settings:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.7 1.7 0 0 0 .34 1.87l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.7 1.7 0 0 0-1.87-.34 1.7 1.7 0 0 0-1 1.55V21a2 2 0 0 1-4 0v-.09A1.7 1.7 0 0 0 9 19.4a1.7 1.7 0 0 0-1.87.34l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.7 1.7 0 0 0 .34-1.87 1.7 1.7 0 0 0-1.55-1H3a2 2 0 0 1 0-4h.09A1.7 1.7 0 0 0 4.6 9a1.7 1.7 0 0 0-.34-1.87l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.7 1.7 0 0 0 1.87.34H9a1.7 1.7 0 0 0 1-1.55V3a2 2 0 0 1 4 0v.09a1.7 1.7 0 0 0 1 1.55 1.7 1.7 0 0 0 1.87-.34l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.7 1.7 0 0 0-.34 1.87V9a1.7 1.7 0 0 0 1.55 1H21a2 2 0 0 1 0 4h-.09a1.7 1.7 0 0 0-1.51 1z"/></svg>',
+  profile:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>',
+};
+
+/* ================= MOCK DATA ================= */
+const COURSES = [
+  {code:'HA', name:'Hospital Administration', baseFee:45000},
+  {code:'EMT', name:'Emergency Medical Technician', baseFee:52000},
+  {code:'GDA', name:'General Duty Assistant', baseFee:38000},
+  {code:'OCHA', name:'Operation Theatre & Critical Healthcare Assistant', baseFee:60000},
+  {code:'AHAP', name:'Advanced Healthcare Administration Program', baseFee:65000},
+  {code:'MLT', name:'Medical Lab Technician', baseFee:48000},
+  {code:'RADIOLOGY', name:'Radiology Technician', baseFee:70000},
+];
+const CENTRES = ['Delhi','Kochi','Bangalore','Franchise – Pune (P. Sharma)','Franchise – Indore (R. Verma)'];
+const SOURCES = ['Meta','BTL','College','Referral'];
+const STAGES = ['New Lead','Contacted','Demo / Visit','Counselling','Enrolled','In Training','Course Completed','Placed'];
+const COUNSELLORS = ['Ritu Sharma','Ankit Verma','Neha Joshi','Suresh Pillai','Divya Nair'];
+
+function gstFee(base){ return Math.round(base*1.18); }
+function fmt(n){ return '₹'+Math.round(n).toLocaleString('en-IN'); }
+function initials(n){ return n.split(' ').map(w=>w[0]).slice(0,2).join('').toUpperCase(); }
+function avColor(seed){
+  const colors=['#4F6BFF','#17A673','#F5A524','#E5484D','#8B5CF6','#14B8A6','#EC4899'];
+  let h=0; for(const c of seed) h+=c.charCodeAt(0);
+  return colors[h%colors.length];
+}
+function uid(prefix){ return prefix+Math.random().toString(36).slice(2,7).toUpperCase(); }
+
+let LEADS = [
+  {id:'L1001', name:'Aakash Mehta', phone:'9876500011', parentMobile:'9876500012', email:'aakash.m@gmail.com', source:'Meta', centre:'Delhi', course:'EMT', counsellor:'Ritu Sharma', stage:'New Lead', priority:'Warm', city:'Delhi', expectedFee:gstFee(52000), nextFollowUp:'2026-07-24', notes:'Interested in evening batch.'},
+  {id:'L1002', name:'Priya Nair', phone:'9876500013', parentMobile:'9876500014', email:'priya.nair@gmail.com', source:'Referral', centre:'Kochi', course:'GDA', counsellor:'Suresh Pillai', stage:'Contacted', priority:'Hot', city:'Kochi', expectedFee:gstFee(38000), nextFollowUp:'2026-07-23', notes:'Referred by alumni.'},
+  {id:'L1003', name:'Rohit Sinha', phone:'9876500015', parentMobile:'9876500016', email:'rohit.sinha@gmail.com', source:'College', centre:'Bangalore', course:'MLT', counsellor:'Neha Joshi', stage:'Demo / Visit', priority:'Warm', city:'Bangalore', expectedFee:gstFee(48000), nextFollowUp:'2026-07-25', notes:''},
+  {id:'L1004', name:'Sneha Iyer', phone:'9876500017', parentMobile:'9876500018', email:'sneha.iyer@gmail.com', source:'BTL', centre:'Delhi', course:'RADIOLOGY', counsellor:'Ritu Sharma', stage:'Counselling', priority:'Hot', city:'Gurgaon', expectedFee:gstFee(70000), nextFollowUp:'2026-07-22', notes:'Awaiting loan approval.'},
+  {id:'L1005', name:'Farhan Ali', phone:'9876500019', parentMobile:'9876500020', email:'farhan.ali@gmail.com', source:'Meta', centre:'Franchise – Pune (P. Sharma)', course:'HA', counsellor:'Ankit Verma', stage:'New Lead', priority:'Cold', city:'Pune', expectedFee:gstFee(45000), nextFollowUp:'2026-07-28', notes:''},
+  {id:'L1006', name:'Kavya Reddy', phone:'9876500021', parentMobile:'9876500022', email:'kavya.r@gmail.com', source:'Referral', centre:'Bangalore', course:'OCHA', counsellor:'Neha Joshi', stage:'Demo / Visit', priority:'Warm', city:'Bangalore', expectedFee:gstFee(60000), nextFollowUp:'2026-07-26', notes:''},
+  {id:'L1007', name:'Vikram Singh', phone:'9876500023', parentMobile:'9876500024', email:'vikram.s@gmail.com', source:'College', centre:'Franchise – Indore (R. Verma)', course:'AHAP', counsellor:'Divya Nair', stage:'Contacted', priority:'Warm', city:'Indore', expectedFee:gstFee(65000), nextFollowUp:'2026-07-23', notes:''},
+  {id:'L1008', name:'Meera Pillai', phone:'9876500025', parentMobile:'9876500026', email:'meera.p@gmail.com', source:'Meta', centre:'Kochi', course:'EMT', counsellor:'Suresh Pillai', stage:'Counselling', priority:'Hot', city:'Kochi', expectedFee:gstFee(52000), nextFollowUp:'2026-07-22', notes:'Ready to admit this week.'},
+];
+
+let BATCHES = [
+  {id:'B01', name:'HA-Morning-01', course:'HA', centre:'Delhi', start:'2026-05-05'},
+  {id:'B02', name:'EMT-Evening-02', course:'EMT', centre:'Delhi', start:'2026-06-01'},
+  {id:'B03', name:'GDA-Morning-03', course:'GDA', centre:'Kochi', start:'2026-05-12'},
+  {id:'B04', name:'MLT-Day-01', course:'MLT', centre:'Bangalore', start:'2026-06-10'},
+  {id:'B05', name:'OCHA-Morning-01', course:'OCHA', centre:'Bangalore', start:'2026-04-20'},
+  {id:'B06', name:'RAD-Evening-01', course:'RADIOLOGY', centre:'Delhi', start:'2026-06-18'},
+];
+
+function mkPayments(total, paid, mode){
+  const pays=[]; let running=0; let n=1;
+  while(running<paid-1){
+    const amt = Math.min(Math.round(total*0.25), paid-running);
+    running+=amt;
+    pays.push({no:n++, date:'2026-0'+(3+n%4)+'-1'+n, amount:amt, mode: n%2? 'UPI':'Cash', recordedBy:'Front Office', receiptNo:'RCPT-2026-'+(1000+n)});
+  }
+  return pays;
+}
+
+let STUDENTS = [
+  {id:'S2001', leadId:'L-old-1', name:'Ishaan Kapoor', phone:'9876511001', parentMobile:'9876511002', email:'ishaan.k@gmail.com', centre:'Delhi', course:'HA', counsellor:'Ritu Sharma', batch:'HA-Morning-01', batchCommenceDate:'2026-05-05', admissionNumber:'IMED-2026-0001', discountAmount:2000, status:'In Training', totalFee:gstFee(45000), paidAmount:35000, certificate:null},
+  {id:'S2002', leadId:'L-old-2', name:'Ananya Das', phone:'9876511003', parentMobile:'9876511004', email:'ananya.d@gmail.com', centre:'Delhi', course:'EMT', counsellor:'Ritu Sharma', batch:'EMT-Evening-02', batchCommenceDate:'2026-06-01', admissionNumber:'IMED-2026-0002', discountAmount:0, status:'Enrolled', totalFee:gstFee(52000), paidAmount:20000, certificate:null},
+  {id:'S2003', leadId:'L-old-3', name:'Rahul Menon', phone:'9876511005', parentMobile:'9876511006', email:'rahul.m@gmail.com', centre:'Kochi', course:'GDA', counsellor:'Suresh Pillai', batch:'GDA-Morning-03', batchCommenceDate:'2026-05-12', admissionNumber:'IMED-2026-0003', discountAmount:1500, status:'Course Completed', totalFee:gstFee(38000), paidAmount:gstFee(38000)-1500, certificate:null},
+  {id:'S2004', leadId:'L-old-4', name:'Divya Krishnan', phone:'9876511007', parentMobile:'9876511008', email:'divya.k@gmail.com', centre:'Bangalore', course:'MLT', counsellor:'Neha Joshi', batch:'MLT-Day-01', batchCommenceDate:'2026-06-10', admissionNumber:'IMED-2026-0004', discountAmount:0, status:'In Training', totalFee:gstFee(48000), paidAmount:15000, certificate:null},
+  {id:'S2005', leadId:'L-old-5', name:'Manoj Kumar', phone:'9876511009', parentMobile:'9876511010', email:'manoj.k@gmail.com', centre:'Bangalore', course:'OCHA', counsellor:'Neha Joshi', batch:'OCHA-Morning-01', batchCommenceDate:'2026-04-20', admissionNumber:'IMED-2026-0005', discountAmount:3000, status:'Placed', totalFee:gstFee(60000), paidAmount:gstFee(60000)-3000, certificate:{number:'IMED-CERT-2026-0005', issueDate:'2026-07-01'}},
+  {id:'S2006', leadId:'L-old-6', name:'Sanya Kapoor', phone:'9876511011', parentMobile:'9876511012', email:'sanya.k@gmail.com', centre:'Delhi', course:'RADIOLOGY', counsellor:'Ritu Sharma', batch:'RAD-Evening-01', batchCommenceDate:'2026-06-18', admissionNumber:'IMED-2026-0006', discountAmount:0, status:'Enrolled', totalFee:gstFee(70000), paidAmount:25000, certificate:null},
+  {id:'S2007', leadId:'L-old-7', name:'Arjun Rao', phone:'9876511013', parentMobile:'9876511014', email:'arjun.r@gmail.com', centre:'Franchise – Pune (P. Sharma)', course:'HA', counsellor:'Ankit Verma', batch:'HA-Morning-01', batchCommenceDate:'2026-05-05', admissionNumber:'IMED-2026-0007', discountAmount:0, status:'Course Completed', totalFee:gstFee(45000), paidAmount:gstFee(45000), certificate:{number:'IMED-CERT-2026-0007', issueDate:'2026-07-10'}},
+  {id:'S2008', leadId:'L-old-8', name:'Neha Gupta', phone:'9876511015', parentMobile:'9876511016', email:'neha.g@gmail.com', centre:'Kochi', course:'EMT', counsellor:'Suresh Pillai', batch:'EMT-Evening-02', batchCommenceDate:'2026-06-01', admissionNumber:'IMED-2026-0008', discountAmount:0, status:'In Training', totalFee:gstFee(52000), paidAmount:10000, certificate:null},
+  {id:'S2009', leadId:'L-old-9', name:'Karthik Iyer', phone:'9876511017', parentMobile:'9876511018', email:'karthik.i@gmail.com', centre:'Bangalore', course:'AHAP', counsellor:'Neha Joshi', batch:null, batchCommenceDate:null, admissionNumber:'IMED-2026-0009', discountAmount:0, status:'Enrolled', totalFee:gstFee(65000), paidAmount:8000, certificate:null},
+  {id:'S2010', leadId:'L-old-10', name:'Pooja Shetty', phone:'9876511019', parentMobile:'9876511020', email:'pooja.s@gmail.com', centre:'Delhi', course:'HA', counsellor:'Ritu Sharma', batch:null, batchCommenceDate:null, admissionNumber:'IMED-2026-0010', discountAmount:0, status:'Enrolled', totalFee:gstFee(45000), paidAmount:5000, certificate:null},
+];
+STUDENTS.forEach(s=>{ s.payments = mkPayments(s.totalFee, s.paidAmount); s.emi = s.paidAmount < s.totalFee && Math.random()>0.4 ? {months:6, nextDate:'2026-08-05', monthly: Math.round((s.totalFee-s.paidAmount)/6)} : null; });
+
+let STAFF = [
+  {id:'U1', name:'Rakesh Bhatia', email:'admin@imedacademy.in', role:'admin', branch:'Delhi'},
+  {id:'U2', name:'Ritu Sharma', email:'ritu.sharma@imedacademy.in', role:'counsellor', branch:'Delhi'},
+  {id:'U3', name:'Suresh Pillai', email:'suresh.pillai@imedacademy.in', role:'counsellor', branch:'Kochi'},
+  {id:'U4', name:'Priyanka Sharma', email:'p.sharma@pune.imedacademy.in', role:'franchise_superadmin', branch:'Franchise – Pune'},
+  {id:'U5', name:'Ravi Verma', email:'r.verma@indore.imedacademy.in', role:'franchise_counsellor', branch:'Franchise – Indore'},
+];
+
+let BRANCH_BILLING = [
+  {name:'Delhi', type:'Owned', city:'Delhi', manager:'Rakesh Bhatia', legalName:'iMED Academy Pvt Ltd', gstin:'07AAAiM1234M1Z5', state:'Delhi', email:'delhi@imedacademy.in', phone:'011-45678900', address:'Plot 12, Karol Bagh, New Delhi'},
+  {name:'Kochi', type:'Owned', city:'Kochi', manager:'Suresh Pillai', legalName:'', gstin:'', state:'Kerala', email:'kochi@imedacademy.in', phone:'0484-2345678', address:'MG Road, Ernakulam, Kochi'},
+  {name:'Bangalore', type:'Owned', city:'Bangalore', manager:'Neha Joshi', legalName:'', gstin:'', state:'Karnataka', email:'blr@imedacademy.in', phone:'080-23456789', address:'Koramangala, Bangalore'},
+  {name:'Franchise – Pune', type:'Franchise', city:'Pune', manager:'Priyanka Sharma', legalName:'Sharma Health Institute', gstin:'27ABCPS5678N1Z2', state:'Maharashtra', email:'p.sharma@pune.imedacademy.in', phone:'020-34567890', address:'FC Road, Pune'},
+];
+
+/* ================= AUTH / ROLE STATE ================= */
+const ROLE_META = {
+  superadmin:{label:'Super Admin', name:'Rakesh Bhatia', scope:'all'},
+  admin:{label:'Admin (Delhi)', name:'Rakesh Bhatia', scope:'Delhi'},
+  counsellor:{label:'Counsellor', name:'Ritu Sharma', scope:'Delhi'},
+  franchise_superadmin:{label:'Franchise Super Admin', name:'Priyanka Sharma', scope:'Franchise – Pune (P. Sharma)'},
+  franchise_counsellor:{label:'Franchise Counsellor', name:'Ravi Verma', scope:'Franchise – Indore (R. Verma)'},
+};
+let session = null; // {role, name, scope}
+let currentScope = 'all';
+let dateFilterMode = 'all';
+let dateFilterValue = null;
+
+const PANEL_ACCESS = {
+  dashboard:['superadmin','admin','counsellor','franchise_superadmin','franchise_counsellor'],
+  leads:['superadmin','admin','franchise_superadmin'],
+  addlead:['superadmin','admin','franchise_superadmin'],
+  admissions:['superadmin','admin','franchise_superadmin'],
+  batch:['superadmin','admin','franchise_superadmin'],
+  mystudents:['superadmin','admin','counsellor','franchise_superadmin','franchise_counsellor'],
+  attendance:['superadmin','admin','counsellor','franchise_superadmin','franchise_counsellor'],
+  logs:['superadmin','admin','counsellor','franchise_superadmin','franchise_counsellor'],
+  allstudents:['superadmin','admin','franchise_superadmin'],
+  finance:['superadmin','admin','franchise_superadmin'],
+  emi:['superadmin','admin','franchise_superadmin'],
+  receipts:['superadmin','admin','counsellor','franchise_superadmin','franchise_counsellor'],
+  cert:['superadmin','admin','franchise_superadmin'],
+  settings:['superadmin','admin','franchise_superadmin'],
+  profile:['superadmin','admin','counsellor','franchise_superadmin','franchise_counsellor'],
+};
+const NAV_STRUCTURE = [
+  {group:'Overview', items:[
+    {key:'dashboard', label:'Dashboard', icon:'dashboard'},
+  ]},
+  {group:'Admissions', items:[
+    {key:'leads', label:'Leads', icon:'leads'},
+    {key:'addlead', label:'Add lead', icon:'addlead'},
+    {key:'admissions', label:'Admissions', icon:'admissions'},
+    {key:'batch', label:'Batch strength', icon:'batch'},
+  ]},
+  {group:'Students', items:[
+    {key:'mystudents', label:'My students', icon:'mystudents'},
+    {key:'allstudents', label:'All students', icon:'allstudents'},
+  ]},
+  {group:'Attendance', items:[
+    {key:'attendance', label:'Attendance', icon:'attendance'},
+    {key:'logs', label:'Attendance logs', icon:'logs'},
+  ]},
+  {group:'Finance', items:[
+    {key:'finance', label:'Finance', icon:'finance'},
+    {key:'emi', label:'EMI reminders', icon:'emi'},
+    {key:'receipts', label:'Receipts', icon:'receipts'},
+  ]},
+  {group:'Certification', items:[
+    {key:'cert', label:'Certificates', icon:'cert'},
+  ]},
+  {group:'Workspace', items:[
+    {key:'settings', label:'Settings', icon:'settings'},
+    {key:'profile', label:'Profile', icon:'profile'},
+  ]},
+];
+const PANEL_TITLES = {
+  dashboard:['Dashboard','Overview across your scope'],
+  leads:['Leads','Track and convert prospective students'],
+  addlead:['Add lead','Create a new prospective student record'],
+  admissions:['Admissions','Convert counselled leads into enrolled students'],
+  batch:['Batch strength','Batch-wise enrolment & capacity'],
+  mystudents:['My students','Students assigned to you'],
+  attendance:['Attendance',"Mark today's attendance"],
+  logs:['Attendance logs','Per-student attendance summary'],
+  attdetail:['Attendance detail','Calendar view for one student'],
+  allstudents:['All students','Every student across your scope'],
+  finance:['Finance','Billing, collection & dues'],
+  emi:['EMI reminders','Upcoming and overdue instalments'],
+  receipts:['Receipts','Tax invoices & payment receipts'],
+  cert:['Certificates','Issue and manage certificates'],
+  settings:['Settings','Staff, branches, fees & security'],
+  profile:['My profile','Account details & security'],
+};
+
+function doLogin(){
+  const sel = document.querySelector('.role-opt.sel');
+  const role = sel? sel.dataset.role : 'superadmin';
+  const meta = ROLE_META[role];
+  session = {role, name:meta.name, scope: role==='superadmin'?'all':meta.scope};
+  currentScope = session.scope;
+  location.hash = '#admin';
+  boot();
+}
+function doLogout(){ session=null; location.hash=''; document.getElementById('authScreen').style.display='flex'; document.getElementById('app').classList.remove('active'); }
+
+function buildRoleGrid(){
+  const grid = document.getElementById('roleGrid');
+  grid.innerHTML = Object.keys(ROLE_META).map((r,i)=>`
+    <button class="role-opt ${i===0?'sel':''}" data-role="${r}" onclick="selRole(this)">
+      <b>${ROLE_META[r].label}</b><span>${r}</span>
+    </button>`).join('');
+}
+function selRole(el){ document.querySelectorAll('.role-opt').forEach(x=>x.classList.remove('sel')); el.classList.add('sel'); }
+
+/* ================= SIDEBAR / NAV ================= */
+function renderSidebar(){
+  const nav = document.getElementById('navScroll');
+  let html='';
+  NAV_STRUCTURE.forEach(g=>{
+    const items = g.items.filter(it=>PANEL_ACCESS[it.key].includes(session.role));
+    if(!items.length) return;
+    html += `<div class="nav-group-label">${g.group}</div>`;
+    items.forEach(it=>{
+      html += `<div class="nav-item" data-panel="${it.key}" onclick="goPanel('${it.key}')">${ICN[it.icon]}<span>${it.label}</span></div>`;
+    });
+  });
+  nav.innerHTML = html;
+  document.getElementById('curAvatar').textContent = initials(session.name);
+  document.getElementById('curAvatar').style.background = avColor(session.name);
+  document.getElementById('curName').textContent = session.name;
+  document.getElementById('curRole').textContent = ROLE_META[session.role].label;
+}
+function renderScopeSelector(){
+  const sel = document.getElementById('scopeSelect');
+  if(session.role!=='superadmin'){
+    sel.style.display='none'; return;
+  }
+  sel.style.display='inline-block';
+  sel.innerHTML = `<option value="all">All branches / franchises</option>` + CENTRES.map(c=>`<option value="${c}">${c}</option>`).join('');
+  sel.value = currentScope;
+}
+function setScope(v){ currentScope=v; renderPanel(currentPanel); }
+
+document.getElementById('dateFilter').addEventListener('click',e=>{
+  const b=e.target.closest('.df-btn'); if(!b) return;
+  document.querySelectorAll('.df-btn').forEach(x=>x.classList.remove('active'));
+  b.classList.add('active'); dateFilterMode=b.dataset.df;
+  const inp=document.getElementById('dfDateInput');
+  if(dateFilterMode==='specific'){ inp.classList.add('show'); } else { inp.classList.remove('show'); }
+  renderPanel(currentPanel);
+});
+document.getElementById('dfDateInput').addEventListener('change',e=>{ dateFilterValue=e.target.value; renderPanel(currentPanel); });
+function clearDateFilter(){
+  dateFilterMode='all'; dateFilterValue=null;
+  document.querySelectorAll('.df-btn').forEach(x=>x.classList.remove('active'));
+  document.querySelector('.df-btn[data-df="all"]').classList.add('active');
+  document.getElementById('dfDateInput').classList.remove('show');
+  renderPanel(currentPanel);
+}
+function globalSearch(q){ /* light demo: no-op besides toast on enter in real product */ }
+
+/* ================= SCOPE HELPERS ================= */
+function inScope(centre){
+  if(session.role==='counsellor' || session.role==='admin') return true; // simplified branch scoping demo (Delhi default)
+  if(currentScope==='all') return true;
+  return centre===currentScope;
+}
+function scopedLeads(){ return LEADS.filter(l=>inScope(l.centre)); }
+function scopedStudents(){ return STUDENTS.filter(s=>inScope(s.centre)); }
+function myStudents(){ return scopedStudents().filter(s=> session.role.includes('counsellor') ? s.counsellor===session.name || true : true); }
+
+/* ================= ROUTER ================= */
+let currentPanel='dashboard';
+function goPanel(key, ctx){
+  if(!PANEL_ACCESS[key] || !PANEL_ACCESS[key].includes(session.role)){ toast('You do not have access to this panel.'); return; }
+  currentPanel=key;
+  document.querySelectorAll('.nav-item').forEach(n=>n.classList.toggle('active', n.dataset.panel===key));
+  renderPanel(key, ctx);
+}
+function renderPanel(key, ctx){
+  const [title,sub] = PANEL_TITLES[key] || ['','' ];
+  document.getElementById('pgTitle').textContent=title;
+  document.getElementById('pgSub').textContent=sub;
+  const c = document.getElementById('content');
+  c.innerHTML = RENDERERS[key] ? RENDERERS[key](ctx) : '<div class="empty-state">Coming soon.</div>';
+  if(key==='dashboard') mountDashboardCharts();
+  if(key==='finance') mountFinanceChart();
+}
+
+/* ================= TOASTS ================= */
+function toast(msg){
+  const w=document.getElementById('toastWrap');
+  const t=document.createElement('div'); t.className='toast';
+  t.innerHTML=`<span class="dot"></span>${msg}`;
+  w.appendChild(t);
+  setTimeout(()=>t.remove(),3200);
+}
+
+/* ================= RENDERERS ================= */
+const RENDERERS = {};
+
+/* ---- DASHBOARD ---- */
+RENDERERS.dashboard = function(){
+  const leads = scopedLeads(); const students = scopedStudents();
+  const activeLeads = leads.filter(l=>!['Enrolled'].includes(l.stage)).length;
+  const enrolled = students.length;
+  const conv = leads.length? Math.round((students.length/(students.length+leads.length))*100):0;
+  const collected = students.reduce((a,s)=>a+s.paidAmount,0);
+  const due = students.reduce((a,s)=>a+(s.totalFee-s.discountAmount-s.paidAmount),0);
+  const funnelCounts = STAGES.map(st=>{
+    if(['Enrolled','In Training','Course Completed','Placed'].includes(st)){
+      return students.filter(s=> st==='Enrolled'? true : s.status===st || (st==='Enrolled')).length;
+    }
+    return leads.filter(l=>l.stage===st).length;
+  });
+  // simplified true funnel counts
+  const trueFunnel = {
+    'New Lead': leads.filter(l=>l.stage==='New Lead').length,
+    'Contacted': leads.filter(l=>l.stage==='Contacted').length,
+    'Demo / Visit': leads.filter(l=>l.stage==='Demo / Visit').length,
+    'Counselling': leads.filter(l=>l.stage==='Counselling').length,
+    'Enrolled': students.length,
+    'In Training': students.filter(s=>s.status==='In Training').length,
+    'Course Completed': students.filter(s=>s.status==='Course Completed').length,
+    'Placed': students.filter(s=>s.status==='Placed').length,
+  };
+  const maxF = Math.max(...Object.values(trueFunnel),1);
+
+  const recent = [...students].slice(-6).reverse();
+
+  return `
+  <div class="grid-metrics">
+    ${metricCard('Active leads', activeLeads, 'var(--indigo-500)', '+12% this month','up')}
+    ${metricCard('Enrolled', enrolled, 'var(--green-500)', '+4 this week','up')}
+    ${metricCard('Conversion', conv+'%', 'var(--purple-500)', 'lead → student','')}
+    ${metricCard('Collected', fmt(collected), 'var(--teal-500)', 'across '+students.length+' students','')}
+    ${metricCard('Due', fmt(due), 'var(--red-500)', 'pending collection','down')}
+  </div>
+  <div class="two-col" style="margin-bottom:16px;">
+    <div class="card">
+      <div class="card-head"><div><h3>Admissions funnel</h3><div class="sub">New Lead → Placed, current scope</div></div></div>
+      <div class="card-body">
+        <div class="funnel-wrap">
+          ${Object.entries(trueFunnel).map(([k,v])=>`
+            <div class="funnel-row">
+              <div class="flabel">${k}</div>
+              <div class="funnel-bar-track"><div class="funnel-bar-fill" style="width:${Math.max((v/maxF)*100,6)}%"><span>${v}</span></div></div>
+              <div class="fval">${v} nos.</div>
+            </div>`).join('')}
+        </div>
+      </div>
+    </div>
+    <div class="card">
+      <div class="card-head"><div><h3>Performance by centre</h3><div class="sub">Share of enrolled students</div></div></div>
+      <div class="card-body" style="display:flex;flex-direction:column;align-items:center;">
+        <canvas id="centrePie" width="230" height="230"></canvas>
+      </div>
+    </div>
+  </div>
+  <div class="two-col">
+    <div class="card">
+      <div class="card-head"><div><h3>Recent admissions</h3><div class="sub">Latest enrolled students</div></div></div>
+      <div class="table-wrap"><table><thead><tr><th>Student</th><th>Course</th><th>Centre</th><th>Admission No.</th><th>Fee</th><th>Status</th></tr></thead><tbody>
+        ${recent.map(s=>`<tr class="clickable" onclick="openStudentProfile('${s.id}')">
+          <td>${nameCell(s.name)}</td><td>${s.course}</td><td>${s.centre}</td>
+          <td class="mono">${s.admissionNumber}</td><td class="mono">${fmt(s.totalFee)}</td>
+          <td>${statusBadge(s.status)}</td></tr>`).join('')}
+      </tbody></table></div>
+    </div>
+    <div class="card">
+      <div class="card-head"><div><h3>Collection status</h3><div class="sub">Paid vs due, this scope</div></div></div>
+      <div class="card-body" style="display:flex;flex-direction:column;align-items:center;">
+        <canvas id="collectPie" width="200" height="200"></canvas>
+        <div class="legend">
+          <span><i style="background:var(--green-500)"></i>Collected ${fmt(collected)}</span>
+          <span><i style="background:var(--red-500)"></i>Due ${fmt(due)}</span>
+        </div>
+      </div>
+    </div>
+  </div>`;
+};
+function metricCard(label,val,color,delta,dir){
+  return `<div class="metric-card">
+    <div class="m-label"><span class="m-dot" style="background:${color}"></span>${label}</div>
+    <div class="m-value">${val}</div>
+    <div class="m-delta ${dir}">${delta}</div>
+  </div>`;
+}
+function nameCell(n){
+  return `<div class="name-cell"><div class="avatar" style="background:${avColor(n)}">${initials(n)}</div><span class="cell-name">${n}</span></div>`;
+}
+function statusBadge(status){
+  const map={
+    'New Lead':'gray','Contacted':'blue','Demo / Visit':'purple','Counselling':'amber',
+    'Enrolled':'blue','In Training':'amber','Course Completed':'green','Placed':'green','Dropped':'red',
+    'Warm':'amber','Hot':'red','Cold':'gray',
+    'Paid':'green','Partial':'amber','Due':'red','Overdue':'red',
+    'Issued':'green','Not ready':'gray',
+  };
+  const cls = map[status]||'gray';
+  return `<span class="badge badge-${cls}"><span class="badge-dot" style="background:currentColor"></span>${status}</span>`;
+}
+function mountDashboardCharts(){
+  const students = scopedStudents();
+  const byCentre = {};
+  students.forEach(s=>{ byCentre[s.centre]=(byCentre[s.centre]||0)+1; });
+  const ctx1 = document.getElementById('centrePie');
+  if(ctx1){
+    new Chart(ctx1, {type:'doughnut', data:{
+      labels:Object.keys(byCentre),
+      datasets:[{data:Object.values(byCentre), backgroundColor:['#4F6BFF','#17A673','#F5A524','#8B5CF6','#14B8A6','#E5484D'], borderWidth:3, borderColor:'#fff'}]
+    }, options:{plugins:{legend:{position:'bottom', labels:{boxWidth:9,font:{size:10.5,family:'Inter'}}}}, cutout:'62%'}});
+  }
+  const collected = students.reduce((a,s)=>a+s.paidAmount,0);
+  const due = students.reduce((a,s)=>a+(s.totalFee-s.discountAmount-s.paidAmount),0);
+  const ctx2 = document.getElementById('collectPie');
+  if(ctx2){
+    new Chart(ctx2,{type:'doughnut', data:{labels:['Collected','Due'], datasets:[{data:[collected,due], backgroundColor:['#17A673','#E5484D'], borderWidth:3, borderColor:'#fff'}]},
+      options:{plugins:{legend:{display:false}}, cutout:'68%'}});
+  }
+}
+
+/* ---- LEADS ---- */
+RENDERERS.leads = function(){
+  const leads = scopedLeads();
+  return `
+  <div class="filter-bar">
+    <input class="fbtn" placeholder="Search leads…" style="width:200px" oninput="filterLeadsTable(this.value)">
+    <select class="fbtn" id="lfStage" onchange="filterLeadsTable()"><option value="">All stages</option>${STAGES.slice(0,4).map(s=>`<option>${s}</option>`).join('')}</select>
+    <select class="fbtn" id="lfCentre" onchange="filterLeadsTable()"><option value="">All centres</option>${CENTRES.map(c=>`<option>${c}</option>`).join('')}</select>
+    <select class="fbtn" id="lfCounsellor" onchange="filterLeadsTable()"><option value="">All counsellors</option>${COUNSELLORS.map(c=>`<option>${c}</option>`).join('')}</select>
+    <div style="flex:1"></div>
+    <button class="btn btn-ghost" onclick="toast('Excel template downloaded (demo).')">⭳ Download Excel</button>
+    <button class="btn btn-ghost" onclick="toast('Upload leads via Excel (xls/xlsx/csv/tsv) — demo only.')">⭱ Upload Excel</button>
+    <button class="btn btn-primary" onclick="goPanel('addlead')">+ Add lead</button>
+  </div>
+  <div class="card">
+    <div class="table-wrap"><table id="leadsTable"><thead><tr>
+      <th>Lead</th><th>Contact</th><th>Course</th><th>Source</th><th>Centre</th><th>Counsellor</th><th>Stage</th><th>Priority</th><th>Next follow-up</th><th></th>
+    </tr></thead><tbody>${leadsRows(leads)}</tbody></table></div>
+    <div class="pager"><span>Showing 1–${Math.min(25,leads.length)} of ${leads.length}</span>
+      <div class="pager-btns"><button class="active">1</button><button>2</button><button>›</button></div></div>
+  </div>`;
+};
+function leadsRows(leads){
+  if(!leads.length) return `<tr><td colspan="10"><div class="empty-state"><h4>No leads found</h4><p>Try clearing filters or add a new lead.</p></div></td></tr>`;
+  return leads.map(l=>`
+    <tr class="clickable" onclick="openLeadDrawer('${l.id}')">
+      <td>${nameCell(l.name)}<div class="cell-sub" style="margin-left:39px;">${l.id}</div></td>
+      <td>${l.phone}<div class="cell-sub">${l.city}</div></td>
+      <td>${l.course}</td>
+      <td><span class="badge badge-gray">${l.source}</span></td>
+      <td>${l.centre}</td>
+      <td>${l.counsellor}</td>
+      <td onclick="event.stopPropagation()">
+        <select class="fbtn" style="padding:5px 6px;font-size:11.5px" onchange="updateLeadStage('${l.id}',this.value)">
+          ${STAGES.slice(0,4).map(s=>`<option ${s===l.stage?'selected':''}>${s}</option>`).join('')}
+        </select>
+      </td>
+      <td>${statusBadge(l.priority)}</td>
+      <td>${l.nextFollowUp}</td>
+      <td onclick="event.stopPropagation()"><button class="btn btn-sm btn-soft" onclick="openLeadDrawer('${l.id}')">View</button></td>
+    </tr>`).join('');
+}
+function filterLeadsTable(){
+  const q=(event&&event.target&&event.target.tagName==='INPUT'?event.target.value:'').toLowerCase();
+  const stage=document.getElementById('lfStage').value;
+  const centre=document.getElementById('lfCentre').value;
+  const couns=document.getElementById('lfCounsellor').value;
+  let rows=scopedLeads().filter(l=>
+    (!q || l.name.toLowerCase().includes(q) || l.phone.includes(q)) &&
+    (!stage||l.stage===stage) && (!centre||l.centre===centre) && (!couns||l.counsellor===couns));
+  document.querySelector('#leadsTable tbody').innerHTML = leadsRows(rows);
+}
+function updateLeadStage(id,val){
+  const l=LEADS.find(x=>x.id===id); l.stage=val; toast(`${l.name} moved to “${val}”.`);
+}
+
+/* ---- ADD LEAD ---- */
+RENDERERS.addlead = function(){
+  return `
+  <div class="card" style="max-width:820px;">
+    <div class="card-head"><div><h3>New lead</h3><div class="sub">Auto-sets stage “New Lead”, priority “Warm”</div></div></div>
+    <div class="card-body">
+      <div class="field-grid">
+        <div class="field"><label>Full name*</label><input id="nlName" placeholder="e.g. Aditi Rao"></div>
+        <div class="field"><label>Phone*</label><input id="nlPhone" placeholder="10-digit mobile"></div>
+        <div class="field"><label>Parent mobile</label><input id="nlParent"></div>
+        <div class="field"><label>Email</label><input id="nlEmail"></div>
+        <div class="field"><label>Source</label><select id="nlSource">${SOURCES.map(s=>`<option>${s}</option>`).join('')}</select></div>
+        <div class="field"><label>Centre / franchise</label><select id="nlCentre">${CENTRES.map(c=>`<option>${c}</option>`).join('')}</select></div>
+        <div class="field"><label>Course</label><select id="nlCourse" onchange="updateExpectedFee()">${COURSES.map(c=>`<option value="${c.code}">${c.code} — ${c.name}</option>`).join('')}</select></div>
+        <div class="field"><label>Counsellor</label><select id="nlCounsellor">${COUNSELLORS.map(c=>`<option>${c}</option>`).join('')}</select></div>
+        <div class="field"><label>City</label><input id="nlCity"></div>
+        <div class="field"><label>Expected fee (incl. 18% GST)</label><input id="nlFee" readonly class="mono" value="${fmt(gstFee(COURSES[0].baseFee))}"></div>
+        <div class="field"><label>Next follow-up</label><input type="date" id="nlFollowUp"></div>
+        <div class="field"><label>Government proof</label><input type="file" accept=".pdf,.jpg,.jpeg,.png,.webp"><div class="hint">PDF/JPG/JPEG/PNG/WEBP, max 2 MB</div></div>
+        <div class="field"><label>Highest qualification certificate</label><input type="file" accept=".pdf,.jpg,.jpeg,.png,.webp"><div class="hint">PDF/JPG/JPEG/PNG/WEBP, max 2 MB</div></div>
+      </div>
+      <div class="field"><label>Notes</label><textarea id="nlNotes" rows="3" placeholder="Any context for the counselling team…"></textarea></div>
+    </div>
+    <div class="modal-foot" style="border-top:1px solid var(--border-soft);">
+      <button class="btn btn-ghost" onclick="goPanel('leads')">Cancel</button>
+      <button class="btn btn-primary" onclick="submitNewLead()">Save lead</button>
+    </div>
+  </div>`;
+};
+function updateExpectedFee(){
+  const code=document.getElementById('nlCourse').value;
+  const c=COURSES.find(x=>x.code===code);
+  document.getElementById('nlFee').value = fmt(gstFee(c.baseFee));
+}
+function submitNewLead(){
+  const name=document.getElementById('nlName').value.trim();
+  const phone=document.getElementById('nlPhone').value.trim();
+  if(!name||!phone){ toast('Full name and phone are required.'); return; }
+  const course=document.getElementById('nlCourse').value;
+  const c=COURSES.find(x=>x.code===course);
+  LEADS.unshift({
+    id:uid('L'), name, phone, parentMobile:document.getElementById('nlParent').value,
+    email:document.getElementById('nlEmail').value, source:document.getElementById('nlSource').value,
+    centre:document.getElementById('nlCentre').value, course, counsellor:document.getElementById('nlCounsellor').value,
+    stage:'New Lead', priority:'Warm', city:document.getElementById('nlCity').value,
+    expectedFee:gstFee(c.baseFee), nextFollowUp:document.getElementById('nlFollowUp').value||'—',
+    notes:document.getElementById('nlNotes').value,
+  });
+  toast(`Lead “${name}” created.`);
+  goPanel('leads');
+}
+
+/* ---- ADMISSIONS ---- */
+RENDERERS.admissions = function(){
+  const pool = scopedLeads().filter(l=>['Contacted','Demo / Visit','Counselling'].includes(l.stage));
+  return `
+  <div class="pill-tabs" style="margin-bottom:14px;">
+    <button class="pill-tab active">Ready for admission (${pool.length})</button>
+  </div>
+  <div class="card">
+    <div class="table-wrap"><table><thead><tr>
+      <th>Lead</th><th>Course</th><th>Centre</th><th>Counsellor</th><th>Stage</th><th>Expected fee</th><th></th>
+    </tr></thead><tbody>
+    ${pool.length? pool.map(l=>`
+      <tr>
+        <td>${nameCell(l.name)}</td><td>${l.course}</td><td>${l.centre}</td><td>${l.counsellor}</td>
+        <td>${statusBadge(l.stage)}</td><td class="mono">${fmt(l.expectedFee)}</td>
+        <td><button class="btn btn-sm btn-primary" onclick="admitLead('${l.id}')">Admit →</button></td>
+      </tr>`).join('') : `<tr><td colspan="7"><div class="empty-state"><h4>No leads ready</h4><p>Move leads to Contacted / Demo / Counselling to admit them.</p></div></td></tr>`}
+    </tbody></table></div>
+  </div>`;
+};
+function admitLead(id){
+  const l = LEADS.find(x=>x.id===id);
+  const year = new Date().getFullYear();
+  const seq = String(STUDENTS.length+1).padStart(4,'0');
+  const admissionNumber = `IMED-${year}-${seq}`;
+  const s = {
+    id: uid('S'), leadId:l.id, name:l.name, phone:l.phone, parentMobile:l.parentMobile, email:l.email,
+    centre:l.centre, course:l.course, counsellor:l.counsellor, batch:null, batchCommenceDate:null,
+    admissionNumber, discountAmount:0, status:'Enrolled', totalFee:l.expectedFee, paidAmount:0,
+    payments:[], emi:null, certificate:null,
+  };
+  STUDENTS.push(s);
+  l.stage='Enrolled';
+  toast(`${l.name} admitted as ${admissionNumber}.`);
+  renderPanel('admissions');
+}
+
+/* ---- BATCH STRENGTH ---- */
+RENDERERS.batch = function(ctx){
+  const students = scopedStudents();
+  const inBatch = students.filter(s=>s.batch).length;
+  const noBatch = students.length-inBatch;
+  const selected = ctx || (BATCHES[0] && BATCHES[0].id);
+  const batchStudents = students.filter(s=>s.batch===BATCHES.find(b=>b.id===selected)?.name);
+  return `
+  <div class="grid-metrics" style="grid-template-columns:repeat(3,1fr)">
+    ${metricCard('Students in batches', inBatch, 'var(--indigo-500)', '', '')}
+    ${metricCard('Total batches', BATCHES.length, 'var(--purple-500)', '', '')}
+    ${metricCard('No batch assigned', noBatch, 'var(--amber-500)', 'needs batch mapping', '')}
+  </div>
+  <div class="two-col">
+    <div class="card">
+      <div class="card-head"><div><h3>Batches</h3><div class="sub">Select to view roster</div></div></div>
+      <div class="table-wrap"><table><thead><tr><th>Batch</th><th>Course</th><th>Centre</th><th>Start date</th><th>Students</th></tr></thead><tbody>
+        ${BATCHES.map(b=>{
+          const cnt = STUDENTS.filter(s=>s.batch===b.name).length;
+          return `<tr class="clickable ${b.id===selected?'':''}" style="${b.id===selected?'background:#F8F9FD':''}" onclick="renderPanel('batch','${b.id}')">
+            <td class="cell-name">${b.name}</td><td>${b.course}</td><td>${b.centre}</td><td>${b.start}</td><td class="mono">${cnt}</td>
+          </tr>`;}).join('')}
+      </tbody></table></div>
+    </div>
+    <div class="card">
+      <div class="card-head"><div><h3>${BATCHES.find(b=>b.id===selected)?.name || 'Batch'} roster</h3><div class="sub">${batchStudents.length} students</div></div></div>
+      <div class="table-wrap"><table><thead><tr><th>Student</th><th>Admission No.</th><th>Status</th></tr></thead><tbody>
+        ${batchStudents.length? batchStudents.map(s=>`<tr class="clickable" onclick="openStudentProfile('${s.id}')"><td>${nameCell(s.name)}</td><td class="mono">${s.admissionNumber}</td><td>${statusBadge(s.status)}</td></tr>`).join('') : `<tr><td colspan="3"><div class="empty-state"><h4>No students yet</h4></div></td></tr>`}
+      </tbody></table></div>
+    </div>
+  </div>`;
+};
+
+/* ---- STUDENTS (shared table renderer) ---- */
+function studentsTable(list, showCounsellorAssign){
+  if(!list.length) return `<div class="empty-state"><h4>No students found</h4><p>Adjust filters or check back later.</p></div>`;
+  return `<div class="table-wrap"><table><thead><tr>
+    <th>Student</th><th>Course</th><th>Centre</th><th>Batch</th><th>Counsellor</th><th>Fee</th><th>Paid</th><th>Status</th><th></th>
+  </tr></thead><tbody>
+  ${list.map(s=>{
+    const pct = Math.min(100, Math.round((s.paidAmount/(s.totalFee-s.discountAmount))*100));
+    return `<tr class="clickable" onclick="openStudentProfile('${s.id}')">
+      <td>${nameCell(s.name)}<div class="cell-sub" style="margin-left:39px;">${s.admissionNumber}</div></td>
+      <td>${s.course}</td><td>${s.centre}</td><td>${s.batch||'<span class="cell-sub">Unassigned</span>'}</td>
+      <td onclick="event.stopPropagation()">${showCounsellorAssign?`<select class="fbtn" style="padding:5px 6px;font-size:11.5px" onchange="reassignCounsellor('${s.id}',this.value)">${COUNSELLORS.map(c=>`<option ${c===s.counsellor?'selected':''}>${c}</option>`).join('')}</select>`:s.counsellor}</td>
+      <td class="mono">${fmt(s.totalFee)}</td>
+      <td><span class="progress-track"><span class="progress-fill" style="width:${pct}%"></span></span> <span class="cell-sub">${pct}%</span></td>
+      <td onclick="event.stopPropagation()">
+        <select class="fbtn" style="padding:5px 6px;font-size:11.5px" onchange="updateStudentStatus('${s.id}',this.value)">
+          ${['Enrolled','In Training','Course Completed','Placed','Dropped'].map(st=>`<option ${st===s.status?'selected':''}>${st}</option>`).join('')}
+        </select>
+      </td>
+      <td onclick="event.stopPropagation()"><button class="btn btn-sm btn-soft" onclick="openStudentProfile('${s.id}')">Open</button></td>
+    </tr>`;}).join('')}
+  </tbody></table></div>`;
+}
+function updateStudentStatus(id,val){ const s=STUDENTS.find(x=>x.id===id); s.status=val; toast(`${s.name} status set to “${val}”.`); renderPanel(currentPanel); }
+function reassignCounsellor(id,val){ const s=STUDENTS.find(x=>x.id===id); s.counsellor=val; toast(`${s.name} reassigned to ${val}.`); }
+
+RENDERERS.mystudents = function(){
+  const list = myStudents();
+  return `
+  <div class="filter-bar">
+    <input class="fbtn" placeholder="Search my students…" style="width:220px" oninput="quickFilterCard(this,'mystudentsCard')">
+    <div style="flex:1"></div>
+    <button class="btn btn-ghost" onclick="toast('Excel exported (demo).')">⭳ Download Excel</button>
+  </div>
+  <div class="card" id="mystudentsCard" data-all='${JSON.stringify(list.map(s=>s.id))}'>
+    <div class="card-body" style="padding:0">${studentsTable(list,false)}</div>
+    <div class="pager"><span>Showing 1–${Math.min(25,list.length)} of ${list.length}</span><div class="pager-btns"><button class="active">1</button></div></div>
+  </div>`;
+};
+RENDERERS.allstudents = function(){
+  const list = scopedStudents();
+  return `
+  <div class="filter-bar">
+    <input class="fbtn" placeholder="Search all students…" style="width:220px" oninput="quickFilterCard(this,'allstudentsCard')">
+    <select class="fbtn" onchange="filterByStatus(this.value)"><option value="">All statuses</option>${['Enrolled','In Training','Course Completed','Placed','Dropped'].map(s=>`<option>${s}</option>`).join('')}</select>
+    <div style="flex:1"></div>
+    <button class="btn btn-ghost" onclick="toast('Excel exported (demo).')">⭳ Download Excel</button>
+  </div>
+  <div class="card" id="allstudentsCard">
+    <div class="card-body" style="padding:0">${studentsTable(list,true)}</div>
+    <div class="pager"><span>Showing 1–${Math.min(25,list.length)} of ${list.length}</span><div class="pager-btns"><button class="active">1</button></div></div>
+  </div>`;
+};
+function quickFilterCard(input,cardId){
+  const q=input.value.toLowerCase();
+  const list = (cardId==='mystudentsCard'?myStudents():scopedStudents()).filter(s=>s.name.toLowerCase().includes(q)||s.admissionNumber.toLowerCase().includes(q));
+  document.querySelector('#'+cardId+' .card-body').innerHTML = studentsTable(list, cardId==='allstudentsCard');
+}
+function filterByStatus(status){
+  const list = scopedStudents().filter(s=>!status||s.status===status);
+  document.querySelector('#allstudentsCard .card-body').innerHTML = studentsTable(list, true);
+}
+
+/* ---- ATTENDANCE ---- */
+let attDraft = {};
+RENDERERS.attendance = function(){
+  const list = myStudents();
+  attDraft = {}; list.forEach(s=>attDraft[s.id]='Present');
+  const counts = {Present:list.length,Absent:0,Late:0,Leave:0};
+  return `
+  <div class="filter-bar">
+    <input type="date" class="fbtn" value="2026-07-22">
+    <button class="btn btn-ghost" onclick="renderPanel('attendance')">↻ Refresh</button>
+    <div style="flex:1"></div>
+    <div class="badge badge-teal" id="cntPresent">Present ${counts.Present}</div>
+    <div class="badge badge-red" id="cntAbsent">Absent ${counts.Absent}</div>
+    <div class="badge badge-amber" id="cntLate">Late ${counts.Late}</div>
+    <div class="badge badge-purple" id="cntLeave">Leave ${counts.Leave}</div>
+    <button class="btn btn-primary" onclick="saveAttendance()">Save attendance</button>
+  </div>
+  <div class="card"><div class="card-body">
+    <div class="att-grid">
+      <div class="att-row" style="border:none;padding:0 12px 6px;color:var(--text-400);font-size:10.5px;font-weight:700;text-transform:uppercase;">
+        <div></div><div>Student</div><div style="text-align:center">Present</div><div style="text-align:center">Absent</div><div style="text-align:center">Late</div><div style="text-align:center">Leave</div><div>Note</div>
+      </div>
+      ${list.map((s,i)=>`
+      <div class="att-row" id="attrow-${s.id}">
+        <div class="cell-sub">${i+1}</div>
+        <div>${nameCell(s.name)}</div>
+        <button class="att-status-btn sel-present" onclick="setAtt('${s.id}','Present')" id="btn-${s.id}-Present">Present</button>
+        <button class="att-status-btn" onclick="setAtt('${s.id}','Absent')" id="btn-${s.id}-Absent">Absent</button>
+        <button class="att-status-btn" onclick="setAtt('${s.id}','Late')" id="btn-${s.id}-Late">Late</button>
+        <button class="att-status-btn" onclick="setAtt('${s.id}','Leave')" id="btn-${s.id}-Leave">Leave</button>
+        <input class="fbtn" placeholder="Optional note" style="font-size:11.5px;padding:6px 8px;">
+      </div>`).join('')}
+    </div>
+  </div></div>`;
+};
+function setAtt(sid,status){
+  attDraft[sid]=status;
+  ['Present','Absent','Late','Leave'].forEach(st=>{
+    document.getElementById(`btn-${sid}-${st}`).className = 'att-status-btn'+(st===status?` sel-${st.toLowerCase()}`:'');
+  });
+  const counts={Present:0,Absent:0,Late:0,Leave:0};
+  Object.values(attDraft).forEach(v=>counts[v]++);
+  document.getElementById('cntPresent').textContent='Present '+counts.Present;
+  document.getElementById('cntAbsent').textContent='Absent '+counts.Absent;
+  document.getElementById('cntLate').textContent='Late '+counts.Late;
+  document.getElementById('cntLeave').textContent='Leave '+counts.Leave;
+}
+function saveAttendance(){ toast('Attendance saved for '+Object.keys(attDraft).length+' students. ✓'); }
+
+RENDERERS.logs = function(){
+  const list = myStudents();
+  return `
+  <div class="filter-bar">
+    <input class="fbtn" placeholder="Search student…" style="width:220px" oninput="filterLogsTable(this.value)">
+    <div style="flex:1"></div>
+    <button class="btn btn-ghost" onclick="toast('Attendance log exported (demo).')">⭳ Download Excel</button>
+  </div>
+  <div class="card">
+    <div class="table-wrap"><table id="logsTable"><thead><tr><th>Student</th><th>Present</th><th>Absent</th><th>Late</th><th>Leave</th><th>Total</th><th></th></tr></thead>
+    <tbody>${logsRows(list)}</tbody></table></div>
+  </div>`;
+};
+function logsRows(list){
+  return list.map(s=>{
+    const seed = s.id.charCodeAt(1)+s.id.charCodeAt(2);
+    const present = 18+(seed%8), absent=1+(seed%4), late=seed%3, leave=seed%2, total=present+absent+late+leave;
+    return `<tr class="clickable" onclick="renderPanel('attdetail','${s.id}')">
+      <td>${nameCell(s.name)}</td>
+      <td><span class="badge badge-teal">${present}</span></td>
+      <td><span class="badge badge-red">${absent}</span></td>
+      <td><span class="badge badge-amber">${late}</span></td>
+      <td><span class="badge badge-purple">${leave}</span></td>
+      <td class="mono">${total}</td>
+      <td><button class="btn btn-sm btn-soft" onclick="event.stopPropagation();renderPanel('attdetail','${s.id}')">View detail</button></td>
+    </tr>`;
+  }).join('');
+}
+function filterLogsTable(q){
+  q=q.toLowerCase();
+  document.querySelector('#logsTable tbody').innerHTML = logsRows(myStudents().filter(s=>s.name.toLowerCase().includes(q)));
+}
+
+RENDERERS.attdetail = function(sid){
+  const s = STUDENTS.find(x=>x.id===sid) || myStudents()[0];
+  const dow=['S','M','T','W','T','F','S'];
+  const statuses=['present','present','absent','present','late','present','leave','present','present','present','present','absent','present','present','present','leave','present','present','present','present','present','absent','present','present','present','present','present','present','present','present'];
+  const firstDow = 3; // wed start
+  let cells='';
+  for(let i=0;i<firstDow;i++) cells+=`<div class="cal-cell blank"></div>`;
+  statuses.forEach((st,i)=>{ cells+=`<div class="cal-cell ${st}">${i+1}</div>`; });
+  return `
+  <button class="btn btn-ghost" style="margin-bottom:14px" onclick="goPanel('logs')">← Back to logs</button>
+  <div class="two-col">
+    <div class="card">
+      <div class="card-head"><div><h3>${s.name} — July 2026</h3><div class="sub">${s.admissionNumber} · ${s.course}</div></div></div>
+      <div class="card-body">
+        <div class="cal-grid">${dow.map(d=>`<div class="cal-dow">${d}</div>`).join('')}${cells}</div>
+        <div class="legend">
+          <span><i style="background:var(--teal-500)"></i>Present</span>
+          <span><i style="background:var(--red-500)"></i>Absent</span>
+          <span><i style="background:var(--amber-500)"></i>Late</span>
+          <span><i style="background:var(--purple-500)"></i>Leave</span>
+        </div>
+      </div>
+    </div>
+    <div class="card">
+      <div class="card-head"><div><h3>Filters &amp; stats</h3></div></div>
+      <div class="card-body">
+        <div class="field"><label>Date range</label><div style="display:flex;gap:8px;"><input type="date" class="fbtn" style="flex:1"><input type="date" class="fbtn" style="flex:1"></div></div>
+        <div class="field"><label>Status</label><select class="fbtn" style="width:100%"><option>All</option><option>Present</option><option>Absent</option><option>Late</option><option>Leave</option></select></div>
+        <div class="kv-row"><span class="k">Present days</span><span class="v">24</span></div>
+        <div class="kv-row"><span class="k">Absent days</span><span class="v">3</span></div>
+        <div class="kv-row"><span class="k">Late days</span><span class="v">1</span></div>
+        <div class="kv-row"><span class="k">Leave days</span><span class="v">2</span></div>
+        <div class="kv-row"><span class="k">Attendance %</span><span class="v">86.7%</span></div>
+        <button class="btn btn-ghost" style="width:100%;justify-content:center;margin-top:14px;" onclick="toast('Day-wise attendance exported (demo).')">⭳ Download day-wise Excel</button>
+      </div>
+    </div>
+  </div>`;
+};
+
+/* ---- FINANCE ---- */
+RENDERERS.finance = function(){
+  const students = scopedStudents();
+  const billed = students.reduce((a,s)=>a+s.totalFee,0);
+  const collected = students.reduce((a,s)=>a+s.paidAmount,0);
+  const due = billed - students.reduce((a,s)=>a+s.discountAmount,0) - collected;
+  return `
+  <div class="grid-metrics" style="grid-template-columns:repeat(4,1fr)">
+    ${metricCard('Total billed (incl. GST)', fmt(billed), 'var(--indigo-500)','','')}
+    ${metricCard('Collected', fmt(collected), 'var(--green-500)','','')}
+    ${metricCard('Pending due', fmt(due), 'var(--red-500)','','')}
+    ${metricCard('Students', students.length, 'var(--purple-500)','','')}
+  </div>
+  <div class="two-col">
+    <div class="card">
+      <div class="card-head"><div><h3>Fee ledger</h3><div class="sub">Per-student billing summary</div></div></div>
+      <div class="table-wrap"><table><thead><tr><th>Student</th><th>Centre</th><th>Course</th><th>Fee (incl. GST)</th><th>Paid</th><th>Due</th><th>Status</th></tr></thead><tbody>
+      ${students.map(s=>{
+        const netFee=s.totalFee-s.discountAmount; const due2=netFee-s.paidAmount;
+        const status = due2<=0?'Paid':(s.paidAmount>0?'Partial':'Due');
+        return `<tr class="clickable" onclick="openStudentProfile('${s.id}')">
+          <td>${nameCell(s.name)}</td><td>${s.centre}</td><td>${s.course}</td>
+          <td class="mono">${fmt(s.totalFee)}</td><td class="mono">${fmt(s.paidAmount)}</td><td class="mono">${fmt(Math.max(due2,0))}</td>
+          <td>${statusBadge(status)}</td></tr>`;
+      }).join('')}
+      </tbody></table></div>
+    </div>
+    <div class="card">
+      <div class="card-head"><div><h3>Billed vs collected</h3></div></div>
+      <div class="card-body" style="display:flex;flex-direction:column;align-items:center;">
+        <canvas id="financePie" width="200" height="200"></canvas>
+      </div>
+    </div>
+  </div>`;
+};
+function mountFinanceChart(){
+  const students = scopedStudents();
+  const collected = students.reduce((a,s)=>a+s.paidAmount,0);
+  const billed = students.reduce((a,s)=>a+s.totalFee-s.discountAmount,0);
+  const ctx = document.getElementById('financePie');
+  if(ctx) new Chart(ctx,{type:'pie', data:{labels:['Collected','Outstanding'],datasets:[{data:[collected, Math.max(billed-collected,0)], backgroundColor:['#4F6BFF','#F5A524'],borderWidth:3,borderColor:'#fff'}]}, options:{plugins:{legend:{position:'bottom',labels:{boxWidth:9,font:{size:10.5}}}}}});
+}
+
+/* ---- EMI REMINDERS ---- */
+RENDERERS.emi = function(){
+  const list = scopedStudents().filter(s=>s.emi).map(s=>({...s, overdue: s.emi.nextDate < '2026-07-22'}));
+  list.sort((a,b)=> (b.overdue-a.overdue));
+  return `
+  <div class="grid-metrics" style="grid-template-columns:repeat(3,1fr)">
+    ${metricCard('Due / overdue', list.filter(s=>s.overdue).length, 'var(--red-500)','','')}
+    ${metricCard('Upcoming this month', list.filter(s=>!s.overdue).length, 'var(--amber-500)','','')}
+    ${metricCard('Total due amount', fmt(list.reduce((a,s)=>a+s.emi.monthly,0)), 'var(--indigo-500)','','')}
+  </div>
+  <div class="filter-bar"><div style="flex:1"></div><button class="btn btn-ghost" onclick="toast('EMI list exported (demo).')">⭳ Download Excel</button></div>
+  <div class="card">
+    <div class="table-wrap"><table><thead><tr><th>Student</th><th>Course</th><th>Next EMI date</th><th>Amount due</th><th>Status</th><th></th></tr></thead><tbody>
+    ${list.length? list.map(s=>`<tr class="clickable" onclick="openStudentProfile('${s.id}')">
+      <td>${nameCell(s.name)}</td><td>${s.course}</td><td class="mono">${s.emi.nextDate}</td><td class="mono">${fmt(s.emi.monthly)}</td>
+      <td>${statusBadge(s.overdue?'Overdue':'Due')}</td>
+      <td onclick="event.stopPropagation()"><button class="btn btn-sm btn-green" onclick="toast('WhatsApp reminder sent to ${s.name.split(' ')[0]}.')">💬 WhatsApp reminder</button></td>
+    </tr>`).join('') : `<tr><td colspan="6"><div class="empty-state"><h4>No pending EMIs</h4></div></td></tr>`}
+    </tbody></table></div>
+  </div>`;
+};
+
+/* ---- RECEIPTS ---- */
+RENDERERS.receipts = function(){
+  const list = scopedStudents();
+  return `
+  <div class="filter-bar"><input class="fbtn" placeholder="Search student / admission no…" style="width:240px" oninput="filterReceiptsTable(this.value)"><div style="flex:1"></div></div>
+  <div class="card">
+    <div class="table-wrap"><table id="receiptsTable"><thead><tr><th>Student</th><th>Admission No.</th><th>Course</th><th>Receipts</th><th>Paid / Due</th><th></th></tr></thead>
+    <tbody>${receiptsRows(list)}</tbody></table></div>
+  </div>`;
+};
+function receiptsRows(list){
+  return list.map(s=>{
+    const due=Math.max(s.totalFee-s.discountAmount-s.paidAmount,0);
+    return `<tr class="clickable" onclick="openReceiptsDrawer('${s.id}')">
+      <td>${nameCell(s.name)}</td><td class="mono">${s.admissionNumber}</td><td>${s.course}</td>
+      <td class="mono">${s.payments.length}</td>
+      <td class="mono">${fmt(s.paidAmount)} / ${fmt(due)}</td>
+      <td><button class="btn btn-sm btn-soft" onclick="event.stopPropagation();openReceiptsDrawer('${s.id}')">View receipts</button></td>
+    </tr>`;
+  }).join('');
+}
+function filterReceiptsTable(q){
+  q=q.toLowerCase();
+  document.querySelector('#receiptsTable tbody').innerHTML = receiptsRows(scopedStudents().filter(s=>s.name.toLowerCase().includes(q)||s.admissionNumber.toLowerCase().includes(q)));
+}
+
+/* ---- CERTIFICATES ---- */
+RENDERERS.cert = function(){
+  const list = scopedStudents();
+  return `
+  <div class="filter-bar"><input class="fbtn" placeholder="Search student…" style="width:240px" oninput="filterCertTable(this.value)"><div style="flex:1"></div></div>
+  <div class="card">
+    <div class="table-wrap"><table id="certTable"><thead><tr><th>Student</th><th>Course</th><th>Status</th><th>Certificate No.</th><th>Issue date</th><th></th></tr></thead>
+    <tbody>${certRows(list)}</tbody></table></div>
+  </div>`;
+};
+function certRows(list){
+  return list.map(s=>{
+    const eligible = ['Course Completed','Placed'].includes(s.status) || s.certificate;
+    return `<tr>
+      <td>${nameCell(s.name)}</td><td>${s.course}</td>
+      <td>${s.certificate?statusBadge('Issued'):statusBadge(eligible?'Ready':'Not ready')}</td>
+      <td class="mono">${s.certificate?s.certificate.number:'—'}</td>
+      <td class="mono">${s.certificate?s.certificate.issueDate:'—'}</td>
+      <td>${s.certificate?`<button class="btn btn-sm btn-soft" onclick="openCertPreview('${s.id}')">View</button>`:
+        (eligible?`<button class="btn btn-sm btn-primary" onclick="issueCertificate('${s.id}')">Issue certificate</button>`:
+        `<button class="btn btn-sm btn-ghost" onclick="toast('${s.name} has not completed the course yet — current status: ${s.status}.')">Why not?</button>`)}</td>
+    </tr>`;
+  }).join('');
+}
+function filterCertTable(q){
+  q=q.toLowerCase();
+  document.querySelector('#certTable tbody').innerHTML = certRows(scopedStudents().filter(s=>s.name.toLowerCase().includes(q)));
+}
+function issueCertificate(sid){
+  const s = STUDENTS.find(x=>x.id===sid);
+  const year=new Date().getFullYear();
+  const seq=String(STUDENTS.filter(x=>x.certificate).length+1).padStart(4,'0');
+  s.certificate = {number:`IMED-CERT-${year}-${seq}`, issueDate:'2026-07-22'};
+  toast(`Certificate ${s.certificate.number} issued for ${s.name}.`);
+  renderPanel('cert');
+}
+function openCertPreview(sid){
+  const s = STUDENTS.find(x=>x.id===sid);
+  openModal(`
+    <div class="modal-head"><h3>Certificate preview</h3><button class="close-x" onclick="closeModal()">✕</button></div>
+    <div class="modal-body">
+      ${certificateMarkup(s)}
+    </div>
+    <div class="modal-foot">
+      <button class="btn btn-ghost" onclick="toast('Shared to WhatsApp (demo).')">💬 Share WhatsApp</button>
+      <button class="btn btn-primary" onclick="toast('Certificate PDF saved (demo).')">⭳ Print / Save PDF</button>
+    </div>`);
+}
+function certificateMarkup(s){
+  const url = location.origin+location.pathname+'#verify='+s.certificate.number;
+  return `<div class="cert-card">
+    <h2>iMED Academy · Certificate of Completion</h2>
+    <div class="cn">Certificate No. ${s.certificate.number}</div>
+    <p style="margin-top:22px;">This is to certify that</p>
+    <div class="studentname">${s.name}</div>
+    <p>has successfully completed the course<br><b style="color:#fff">${COURSES.find(c=>c.code===s.course)?.name}</b><br>at iMED Academy, ${s.centre}, awarded on ${s.certificate.issueDate}.</p>
+    <div class="cert-foot">
+      <div>
+        <div style="font-size:10.5px;color:#8A91B0;">Admission No.</div>
+        <div class="mono" style="font-size:12px;">${s.admissionNumber}</div>
+      </div>
+      <div class="qr-box">QR<br>VERIFY</div>
+    </div>
+  </div>
+  <div class="field" style="margin-top:14px;"><label>Verification link</label><input readonly class="mono" value="${url}"></div>`;
+}
+
+/* ---- SETTINGS ---- */
+RENDERERS.settings = function(){
+  return `
+  <div class="settings-shell">
+    <div class="settings-nav">
+      <button class="active" data-sp="staff" onclick="switchSettings('staff',this)">Staff access</button>
+      <button data-sp="billing" onclick="switchSettings('billing',this)">Branch / franchise billing</button>
+      <button data-sp="fees" onclick="switchSettings('fees',this)">Course fees</button>
+      <button data-sp="batches" onclick="switchSettings('batches',this)">Batches</button>
+      <button data-sp="security" onclick="switchSettings('security',this)">Security</button>
+    </div>
+    <div>
+      <div class="spane active" id="sp-staff">
+        <div class="card">
+          <div class="card-head"><div><h3>Staff directory</h3><div class="sub">${STAFF.length} accounts</div></div><div style="flex:1"></div><button class="btn btn-primary btn-sm" onclick="openAddStaffModal()">+ Add staff</button></div>
+          <div class="table-wrap"><table><thead><tr><th>Name</th><th>Email</th><th>Role</th><th>Branch / franchise</th></tr></thead><tbody>
+            ${STAFF.map(u=>`<tr><td>${nameCell(u.name)}</td><td>${u.email}</td><td>${statusBadge(u.role)}</td><td>${u.branch}</td></tr>`).join('')}
+          </tbody></table></div>
+        </div>
+      </div>
+      <div class="spane" id="sp-billing">
+        <div class="card">
+          <div class="card-head"><div><h3>Branch / franchise billing entities</h3><div class="sub">Blank fields fall back to iMED default billing entity</div></div><div style="flex:1"></div><button class="btn btn-primary btn-sm" onclick="toast('Add location form (demo).')">+ Add location</button></div>
+          <div class="card-body">
+            <input class="fbtn" style="width:260px;margin-bottom:14px;" placeholder="Search location…">
+            <div class="table-wrap"><table><thead><tr><th>Location</th><th>Type</th><th>City</th><th>Manager</th><th>GSTIN</th><th></th></tr></thead><tbody>
+              ${BRANCH_BILLING.map(b=>`<tr><td class="cell-name">${b.name}</td><td>${statusBadge(b.type==='Franchise'?'Enrolled':'Paid')}</td><td>${b.city}</td><td>${b.manager}</td><td class="mono">${b.gstin||'— (default entity)'}</td><td><button class="btn btn-sm btn-soft" onclick="toast('Edit billing details (demo).')">Edit</button></td></tr>`).join('')}
+            </tbody></table></div>
+          </div>
+        </div>
+      </div>
+      <div class="spane" id="sp-fees">
+        <div class="card">
+          <div class="card-head"><div><h3>Course fees</h3><div class="sub">Base fee before GST · global or location-specific</div></div><div style="flex:1"></div><button class="btn btn-primary btn-sm" onclick="toast('Add course form (demo).')">+ Add course</button></div>
+          <div class="table-wrap"><table><thead><tr><th>Code</th><th>Course</th><th>Base fee</th><th>GST (18%)</th><th>Payable</th><th></th></tr></thead><tbody>
+            ${COURSES.map(c=>`<tr><td class="mono cell-name">${c.code}</td><td>${c.name}</td><td class="mono">${fmt(c.baseFee)}</td><td class="mono">${fmt(c.baseFee*0.18)}</td><td class="mono">${fmt(gstFee(c.baseFee))}</td><td><button class="btn btn-sm btn-soft" onclick="toast('Edit fee — global or location override (demo).')">Edit</button></td></tr>`).join('')}
+          </tbody></table></div>
+        </div>
+      </div>
+      <div class="spane" id="sp-batches">
+        <div class="card">
+          <div class="card-head"><div><h3>Batches</h3></div><div style="flex:1"></div><button class="btn btn-primary btn-sm" onclick="toast('Add batch form (demo).')">+ Add batch</button></div>
+          <div class="table-wrap"><table><thead><tr><th>Batch name</th><th>Centre</th><th>Course</th><th>Commence date</th></tr></thead><tbody>
+            ${BATCHES.map(b=>`<tr><td class="cell-name">${b.name}</td><td>${b.centre}</td><td>${b.course}</td><td class="mono">${b.start}</td></tr>`).join('')}
+          </tbody></table></div>
+        </div>
+      </div>
+      <div class="spane" id="sp-security">
+        <div class="card" style="max-width:420px;">
+          <div class="card-head"><h3>Change password</h3></div>
+          <div class="card-body">
+            <div class="field"><label>Current password</label><input type="password"></div>
+            <div class="field"><label>New password</label><input type="password"></div>
+            <div class="field"><label>Confirm new password</label><input type="password"></div>
+            <button class="btn btn-primary" onclick="toast('Password updated (demo).')">Update password</button>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>`;
+};
+function switchSettings(key,btn){
+  document.querySelectorAll('.settings-nav button').forEach(b=>b.classList.remove('active'));
+  btn.classList.add('active');
+  document.querySelectorAll('.spane').forEach(p=>p.classList.remove('active'));
+  document.getElementById('sp-'+key).classList.add('active');
+}
+function openAddStaffModal(){
+  openModal(`
+    <div class="modal-head"><h3>Add staff</h3><button class="close-x" onclick="closeModal()">✕</button></div>
+    <div class="modal-body">
+      <div class="field-grid">
+        <div class="field"><label>Name</label><input id="stName"></div>
+        <div class="field"><label>Email</label><input id="stEmail"></div>
+        <div class="field"><label>Role</label><select id="stRole">${Object.keys(ROLE_META).map(r=>`<option value="${r}">${ROLE_META[r].label}</option>`).join('')}</select></div>
+        <div class="field"><label>Branch / franchise</label><select id="stBranch">${CENTRES.map(c=>`<option>${c}</option>`).join('')}</select></div>
+        <div class="field"><label>Password</label><input type="password" value="Welcome@123"></div>
+      </div>
+    </div>
+    <div class="modal-foot"><button class="btn btn-ghost" onclick="closeModal()">Cancel</button><button class="btn btn-primary" onclick="submitAddStaff()">Add staff</button></div>`);
+}
+function submitAddStaff(){
+  const name=document.getElementById('stName').value.trim();
+  if(!name){ toast('Name is required.'); return; }
+  STAFF.push({id:uid('U'), name, email:document.getElementById('stEmail').value, role:document.getElementById('stRole').value, branch:document.getElementById('stBranch').value});
+  toast(`Staff account created for ${name}.`);
+  closeModal(); renderPanel('settings');
+}
+
+/* ---- PROFILE (own) ---- */
+RENDERERS.profile = function(){
+  return `
+  <div class="card" style="max-width:520px;">
+    <div class="card-head" style="gap:14px;">
+      <div class="avatar" style="width:46px;height:46px;font-size:15px;background:${avColor(session.name)}">${initials(session.name)}</div>
+      <div><h3>${session.name}</h3><div class="sub">${ROLE_META[session.role].label} · scope: ${currentScope}</div></div>
+    </div>
+    <div class="card-body">
+      <div class="kv-row"><span class="k">Role</span><span class="v">${session.role}</span></div>
+      <div class="kv-row"><span class="k">Email</span><span class="v">${session.role==='superadmin'||session.role==='admin'?'admin@imedacademy.in':session.name.toLowerCase().replace(' ','.')+'@imedacademy.in'}</span></div>
+      <div class="kv-row"><span class="k">Access</span><span class="v">${Object.keys(PANEL_ACCESS).filter(k=>PANEL_ACCESS[k].includes(session.role)).length} panels</span></div>
+      <button class="btn btn-primary" style="margin-top:16px;" onclick="goPanel('settings')">Go to security settings</button>
+    </div>
+  </div>`;
+};
+
+/* ================= DRAWERS ================= */
+function openDrawer(html){
+  document.getElementById('drawer').innerHTML = html;
+  document.getElementById('drawer').classList.add('show');
+  document.getElementById('drawerOverlay').classList.add('show');
+}
+function closeDrawer(){
+  document.getElementById('drawer').classList.remove('show');
+  document.getElementById('drawerOverlay').classList.remove('show');
+}
+function switchDtab(key,el){
+  el.parentElement.querySelectorAll('.dtab').forEach(t=>t.classList.remove('active'));
+  el.classList.add('active');
+  el.closest('.drawer').querySelectorAll('.dpane').forEach(p=>p.classList.remove('active'));
+  el.closest('.drawer').querySelector('#dp-'+key).classList.add('active');
+}
+
+function openLeadDrawer(id){
+  const l = LEADS.find(x=>x.id===id);
+  openDrawer(`
+    <div class="drawer-head">
+      <div class="avatar" style="width:44px;height:44px;font-size:14px;background:${avColor(l.name)}">${initials(l.name)}</div>
+      <div style="flex:1"><h3 style="margin:0;font-size:15px;">${l.name}</h3><div class="cell-sub">${l.id} · ${l.course} · ${statusBadge(l.stage)}</div></div>
+      <button class="close-x" onclick="closeDrawer()">✕</button>
+    </div>
+    <div class="dtabs">
+      <div class="dtab active" onclick="switchDtab('info',this)">Details</div>
+      <div class="dtab" onclick="switchDtab('docs',this)">Documents</div>
+      <div class="dtab" onclick="switchDtab('act',this)">Activity</div>
+    </div>
+    <div class="drawer-body">
+      <div class="dpane active" id="dp-info">
+        <div class="kv-row"><span class="k">Phone</span><span class="v">${l.phone}</span></div>
+        <div class="kv-row"><span class="k">Parent mobile</span><span class="v">${l.parentMobile}</span></div>
+        <div class="kv-row"><span class="k">Email</span><span class="v">${l.email}</span></div>
+        <div class="kv-row"><span class="k">Source</span><span class="v">${l.source}</span></div>
+        <div class="kv-row"><span class="k">Centre</span><span class="v">${l.centre}</span></div>
+        <div class="kv-row"><span class="k">Counsellor</span><span class="v">${l.counsellor}</span></div>
+        <div class="kv-row"><span class="k">City</span><span class="v">${l.city}</span></div>
+        <div class="kv-row"><span class="k">Expected fee</span><span class="v">${fmt(l.expectedFee)}</span></div>
+        <div class="kv-row"><span class="k">Next follow-up</span><span class="v">${l.nextFollowUp}</span></div>
+        <div class="field" style="margin-top:14px;"><label>Notes</label><textarea rows="3">${l.notes||''}</textarea></div>
+        <button class="btn btn-primary" style="width:100%;justify-content:center;" onclick="toast('Lead updated.')">Save changes</button>
+        ${['Contacted','Demo / Visit','Counselling'].includes(l.stage)?`<button class="btn btn-green" style="width:100%;justify-content:center;margin-top:8px;" onclick="admitLead('${l.id}');closeDrawer()">Admit as student →</button>`:''}
+      </div>
+      <div class="dpane" id="dp-docs">
+        <div class="kv-row"><span class="k">Government proof</span><span class="v badge badge-green">Uploaded</span></div>
+        <div class="kv-row"><span class="k">Qualification certificate</span><span class="v badge badge-green">Uploaded</span></div>
+      </div>
+      <div class="dpane" id="dp-act">
+        <div class="kv-row"><span class="k">Lead created</span><span class="v">Source: ${l.source}</span></div>
+        <div class="kv-row"><span class="k">Stage changed</span><span class="v">→ ${l.stage}</span></div>
+        <div class="kv-row"><span class="k">Follow-up scheduled</span><span class="v">${l.nextFollowUp}</span></div>
+      </div>
+    </div>`);
+}
+
+function openStudentProfile(id){
+  const s = STUDENTS.find(x=>x.id===id);
+  const netFee = s.totalFee-s.discountAmount;
+  const due = Math.max(netFee-s.paidAmount,0);
+  const pct = Math.min(100,Math.round((s.paidAmount/netFee)*100));
+  openDrawer(`
+    <div class="drawer-head">
+      <div class="avatar" style="width:44px;height:44px;font-size:14px;background:${avColor(s.name)}">${initials(s.name)}</div>
+      <div style="flex:1"><h3 style="margin:0;font-size:15px;">${s.name}</h3><div class="cell-sub mono">${s.admissionNumber} · ${statusBadge(s.status)}</div></div>
+      <button class="close-x" onclick="closeDrawer()">✕</button>
+    </div>
+    <div class="dtabs">
+      <div class="dtab active" onclick="switchDtab('sum',this)">Summary</div>
+      <div class="dtab" onclick="switchDtab('journey',this)">Journey</div>
+      <div class="dtab" onclick="switchDtab('pay',this)">Payments</div>
+      <div class="dtab" onclick="switchDtab('emi',this)">EMI</div>
+      <div class="dtab" onclick="switchDtab('cert',this)">Certificate</div>
+    </div>
+    <div class="drawer-body">
+      <div class="dpane active" id="dp-sum">
+        <div class="grid-metrics" style="grid-template-columns:1fr 1fr;margin-bottom:10px;">
+          ${metricCard('Total fee', fmt(s.totalFee),'var(--indigo-500)','','')}
+          ${metricCard('Paid', fmt(s.paidAmount),'var(--green-500)','','')}
+        </div>
+        <div class="kv-row"><span class="k">Progress</span><span class="v"><span class="progress-track" style="width:100px"><span class="progress-fill" style="width:${pct}%"></span></span> ${pct}%</span></div>
+        <div class="kv-row"><span class="k">Due</span><span class="v">${fmt(due)}</span></div>
+        <div class="kv-row"><span class="k">Discount</span><span class="v">${fmt(s.discountAmount)}</span></div>
+        <div class="kv-row"><span class="k">Course</span><span class="v">${s.course}</span></div>
+        <div class="kv-row"><span class="k">Centre</span><span class="v">${s.centre}</span></div>
+        <div class="kv-row"><span class="k">Phone</span><span class="v">${s.phone}</span></div>
+        <div class="kv-row"><span class="k">Email</span><span class="v">${s.email}</span></div>
+        <div class="kv-row"><span class="k">Batch</span><span class="v">${s.batch||'Unassigned'} ${s.batch?`<button class="btn btn-sm btn-soft" style="margin-left:6px;" onclick="toast('Batch reassignment (demo).')">Change</button>`:`<button class="btn btn-sm btn-primary" style="margin-left:6px;" onclick="toast('Batch assignment (demo).')">Assign</button>`}</span></div>
+        <div class="kv-row"><span class="k">Counsellor</span><span class="v">${s.counsellor}</span></div>
+        <div class="field" style="margin-top:14px;"><label>Government proof / qualification docs</label><div style="display:flex;gap:8px;"><span class="badge badge-green">Govt. proof ✓</span><span class="badge badge-green">Qualification ✓</span></div></div>
+      </div>
+      <div class="dpane" id="dp-journey">
+        <div class="funnel-wrap">
+          ${STAGES.map(st=>{
+            const done = STAGES.indexOf(st) <= STAGES.indexOf(s.status==='Enrolled'?'Enrolled':s.status);
+            return `<div class="kv-row"><span class="k">${st}</span><span class="v">${done?statusBadge('Paid'):'—'}</span></div>`;
+          }).join('')}
+        </div>
+      </div>
+      <div class="dpane" id="dp-pay">
+        <div class="table-wrap"><table><thead><tr><th>#</th><th>Date</th><th>Mode</th><th>Amount</th><th>Receipt</th></tr></thead><tbody>
+        ${s.payments.map(p=>`<tr><td>${p.no}</td><td class="mono">${p.date}</td><td>${p.mode}</td><td class="mono">${fmt(p.amount)}</td><td class="mono">${p.receiptNo}</td></tr>`).join('')||`<tr><td colspan="5"><div class="empty-state"><h4>No payments yet</h4></div></td></tr>`}
+        </tbody></table></div>
+        <button class="btn btn-primary" style="width:100%;justify-content:center;margin-top:12px;" onclick="openRecordPayment('${s.id}')">+ Record payment</button>
+      </div>
+      <div class="dpane" id="dp-emi">
+        ${s.emi?`
+          <div class="kv-row"><span class="k">Plan</span><span class="v">${s.emi.months} months</span></div>
+          <div class="kv-row"><span class="k">Monthly EMI</span><span class="v">${fmt(s.emi.monthly)}</span></div>
+          <div class="kv-row"><span class="k">Next EMI date</span><span class="v">${s.emi.nextDate}</span></div>
+          <button class="btn btn-danger" style="width:100%;justify-content:center;margin-top:12px;" onclick="closeEmiPlan('${s.id}')">Close EMI plan</button>
+        `:`
+          <div class="field"><label>Months (2–12)</label><input type="number" id="emiMonths" min="2" max="12" value="6"></div>
+          <div class="field"><label>Next EMI date</label><input type="date" id="emiDate" value="2026-08-05"></div>
+          <button class="btn btn-primary" style="width:100%;justify-content:center;" onclick="saveEmiPlan('${s.id}')">Save EMI plan</button>
+        `}
+      </div>
+      <div class="dpane" id="dp-cert">
+        ${s.certificate? certificateMarkup(s) : `<div class="empty-state"><h4>Not ready</h4><p>Course not completed. Current status: ${s.status}</p></div>${['Course Completed','Placed'].includes(s.status)?`<button class="btn btn-primary" style="width:100%;justify-content:center;" onclick="issueCertificate('${s.id}');openStudentProfile('${s.id}')">Issue certificate</button>`:''}`}
+      </div>
+    </div>`);
+}
+function saveEmiPlan(id){
+  const s=STUDENTS.find(x=>x.id===id);
+  const months=+document.getElementById('emiMonths').value;
+  const due=s.totalFee-s.discountAmount-s.paidAmount;
+  s.emi={months, nextDate:document.getElementById('emiDate').value, monthly:Math.round(due/months)};
+  toast('EMI plan saved.'); openStudentProfile(id);
+}
+function closeEmiPlan(id){ const s=STUDENTS.find(x=>x.id===id); s.emi=null; toast('EMI plan closed.'); openStudentProfile(id); }
+
+function openRecordPayment(id){
+  closeDrawer();
+  openModal(`
+    <div class="modal-head"><h3>Record payment</h3><button class="close-x" onclick="closeModal()">✕</button></div>
+    <div class="modal-body">
+      <div class="field-grid">
+        <div class="field"><label>Amount</label><input type="number" id="rpAmount" placeholder="e.g. 10000"></div>
+        <div class="field"><label>Mode</label><select id="rpMode"><option>Cash</option><option>UPI</option><option>Card</option><option>Bank Transfer</option><option>EMI installment</option></select></div>
+      </div>
+      <div class="field"><label>Note</label><input id="rpNote" placeholder="Optional"></div>
+      <div class="field"><label><input type="checkbox" id="rpWA" checked style="width:auto;display:inline-block;margin-right:6px;">Send WhatsApp payment confirmation</label></div>
+    </div>
+    <div class="modal-foot"><button class="btn btn-ghost" onclick="closeModal()">Cancel</button><button class="btn btn-primary" onclick="submitPayment('${id}')">Record payment</button></div>`);
+}
+function submitPayment(id){
+  const amt=+document.getElementById('rpAmount').value;
+  if(!amt||amt<=0){ toast('Enter a valid amount.'); return; }
+  const s=STUDENTS.find(x=>x.id===id);
+  s.paidAmount+=amt;
+  s.payments.push({no:s.payments.length+1, date:'2026-07-22', amount:amt, mode:document.getElementById('rpMode').value, recordedBy:session.name, receiptNo:'RCPT-2026-'+(2000+s.payments.length)});
+  toast(`Payment of ${fmt(amt)} recorded${document.getElementById('rpWA').checked?' · WhatsApp sent':''}.`);
+  closeModal(); renderPanel(currentPanel);
+}
+
+function openReceiptsDrawer(id){
+  const s = STUDENTS.find(x=>x.id===id);
+  const netFee=s.totalFee-s.discountAmount;
+  openDrawer(`
+    <div class="drawer-head">
+      <div class="avatar" style="width:44px;height:44px;font-size:14px;background:${avColor(s.name)}">${initials(s.name)}</div>
+      <div style="flex:1"><h3 style="margin:0;font-size:15px;">${s.name}</h3><div class="cell-sub mono">${s.admissionNumber}</div></div>
+      <button class="close-x" onclick="closeDrawer()">✕</button>
+    </div>
+    <div class="dtabs">
+      <div class="dtab active" onclick="switchDtab('inv',this)">Tax invoice</div>
+      <div class="dtab" onclick="switchDtab('rcpts',this)">Payment receipts</div>
+    </div>
+    <div class="drawer-body">
+      <div class="dpane active" id="dp-inv">${taxInvoiceMarkup(s)}
+        <div style="display:flex;gap:8px;margin-top:14px;">
+          <button class="btn btn-ghost" style="flex:1;justify-content:center;" onclick="toast('Shared to WhatsApp (demo).')">💬 Share</button>
+          <button class="btn btn-primary" style="flex:1;justify-content:center;" onclick="toast('Invoice PDF saved (demo).')">⭳ Print / Save PDF</button>
+        </div>
+      </div>
+      <div class="dpane" id="dp-rcpts">
+        ${s.payments.length? s.payments.map(p=>receiptMarkup(s,p)).join('<div style="height:14px"></div>') : `<div class="empty-state"><h4>No payment receipts yet</h4></div>`}
+      </div>
+    </div>`);
+}
+function taxInvoiceMarkup(s){
+  const netFee=s.totalFee-s.discountAmount;
+  const base=Math.round(netFee/1.18);
+  const cgst=Math.round(base*0.09), sgst=Math.round(base*0.09);
+  const billing = BRANCH_BILLING.find(b=>s.centre.startsWith(b.name)) || {legalName:'iMED Academy Pvt Ltd', gstin:'07AAAiM1234M1Z5', state:'Delhi', address:'Plot 12, Karol Bagh, New Delhi'};
+  return `<div class="doc-preview">
+    <h2>Tax Invoice</h2>
+    <div class="cell-sub" style="margin-bottom:12px;">Invoice No. INV-2026-${s.admissionNumber.split('-').pop()} · HSN/SAC 999294</div>
+    <div class="doc-row"><span>Seller</span><span>${billing.legalName||'iMED Academy Pvt Ltd'}</span></div>
+    <div class="doc-row"><span>GSTIN</span><span class="mono">${billing.gstin||'07AAAiM1234M1Z5'}</span></div>
+    <div class="doc-row"><span>State / Place of supply</span><span>${billing.state}</span></div>
+    <div class="doc-row"><span>Buyer</span><span>${s.name}</span></div>
+    <div class="doc-row"><span>Course</span><span>${s.course}</span></div>
+    <div class="doc-row"><span>Taxable value</span><span class="mono">${fmt(base)}</span></div>
+    <div class="doc-row"><span>Discount</span><span class="mono">-${fmt(s.discountAmount)}</span></div>
+    <div class="doc-row"><span>CGST @9%</span><span class="mono">${fmt(cgst)}</span></div>
+    <div class="doc-row"><span>SGST @9%</span><span class="mono">${fmt(sgst)}</span></div>
+    <div class="doc-total"><span>Total payable</span><span class="mono">${fmt(netFee)}</span></div>
+    <div class="cell-sub" style="margin-top:8px;">Amount in words: Rupees ${netFee.toLocaleString('en-IN')} only</div>
+    <div class="doc-row" style="margin-top:10px;"><span>Paid</span><span class="mono">${fmt(s.paidAmount)}</span></div>
+    <div class="doc-row"><span>Balance</span><span class="mono">${fmt(Math.max(netFee-s.paidAmount,0))}</span></div>
+    <div class="cell-sub" style="margin-top:10px;">Bank details: iMED Academy Pvt Ltd · HDFC Bank · A/C 50200012345678 · IFSC HDFC0001234</div>
+  </div>`;
+}
+function receiptMarkup(s,p){
+  const before = s.payments.filter(x=>x.no<p.no).reduce((a,x)=>a+x.amount,0);
+  const till = before+p.amount;
+  const netFee=s.totalFee-s.discountAmount;
+  return `<div class="doc-preview">
+    <h2>Payment Receipt</h2>
+    <div class="cell-sub" style="margin-bottom:12px;">Receipt No. ${p.receiptNo}</div>
+    <div class="doc-row"><span>Admission No.</span><span class="mono">${s.admissionNumber}</span></div>
+    <div class="doc-row"><span>Course / Centre</span><span>${s.course} · ${s.centre}</span></div>
+    <div class="doc-row"><span>Payment type / mode</span><span>${p.mode}${s.emi?' · Installment '+p.no:''}</span></div>
+    <div class="doc-row"><span>Paid before this</span><span class="mono">${fmt(before)}</span></div>
+    <div class="doc-row"><span>This payment</span><span class="mono">${fmt(p.amount)}</span></div>
+    <div class="doc-total"><span>Paid till date</span><span class="mono">${fmt(till)}</span></div>
+    <div class="doc-row" style="margin-top:8px;"><span>Balance</span><span class="mono">${fmt(Math.max(netFee-till,0))}</span></div>
+    <div class="cell-sub" style="margin-top:8px;">Amount in words: Rupees ${p.amount.toLocaleString('en-IN')} only</div>
+    <div class="cell-sub" style="margin-top:6px;">Bank details: iMED Academy Pvt Ltd · HDFC Bank · A/C 50200012345678</div>
+  </div>`;
+}
+
+/* ================= MODAL ================= */
+function openModal(html){ document.getElementById('modalBox').innerHTML=html; document.getElementById('modalOverlay').classList.add('show'); }
+function closeModal(){ document.getElementById('modalOverlay').classList.remove('show'); }
+document.getElementById('modalOverlay').addEventListener('click',e=>{ if(e.target.id==='modalOverlay') closeModal(); });
+
+/* ================= CERT VERIFY PUBLIC PAGE ================= */
+function renderVerify(certNumber){
+  const s = STUDENTS.find(x=>x.certificate && x.certificate.number===certNumber);
+  const el = document.getElementById('verifyScreen');
+  el.innerHTML = `<div class="verify-card">
+    <div class="verify-head">
+      <div style="display:flex;align-items:center;gap:10px;"><div class="brand-mark">iM</div><div><b style="font-size:14px;">iMED Academy</b><div style="font-size:10.5px;color:#B9C1E0;">Certificate Verification</div></div></div>
+    </div>
+    <div class="verify-body">
+      ${s? `
+        <div class="badge badge-green" style="margin-bottom:14px;">✓ Certificate verified</div>
+        <div class="kv-row"><span class="k">Certificate No.</span><span class="v mono">${s.certificate.number}</span></div>
+        <div class="kv-row"><span class="k">Student</span><span class="v">${s.name}</span></div>
+        <div class="kv-row"><span class="k">Course</span><span class="v">${COURSES.find(c=>c.code===s.course)?.name}</span></div>
+        <div class="kv-row"><span class="k">Centre</span><span class="v">${s.centre}</span></div>
+        <div class="kv-row"><span class="k">Admission No.</span><span class="v mono">${s.admissionNumber}</span></div>
+        <div class="kv-row"><span class="k">Issue date</span><span class="v">${s.certificate.issueDate}</span></div>
+      `:`
+        <div class="badge badge-red" style="margin-bottom:14px;">✕ Not found</div>
+        <p style="color:var(--text-600);font-size:12.5px;">We couldn't verify certificate <span class="mono">${certNumber}</span>. Check the number and try again, or contact your centre.</p>
+      `}
+      <button class="btn btn-ghost" style="width:100%;justify-content:center;margin-top:16px;" onclick="location.hash='#admin'">Go to admin login</button>
+    </div>
+  </div>`;
+}
+
+/* ================= BOOT / ROUTING ================= */
+function boot(){
+  const hash = location.hash;
+  if(hash.startsWith('#verify=')){
+    document.getElementById('authScreen').style.display='none';
+    document.getElementById('app').classList.remove('active');
+    document.getElementById('verifyScreen').classList.add('active');
+    renderVerify(decodeURIComponent(hash.split('=')[1]));
+    return;
+  }
+  document.getElementById('verifyScreen').classList.remove('active');
+  if(!session){
+    document.getElementById('authScreen').style.display='flex';
+    document.getElementById('app').classList.remove('active');
+    return;
+  }
+  document.getElementById('authScreen').style.display='none';
+  document.getElementById('app').classList.add('active');
+  renderSidebar();
+  renderScopeSelector();
+  goPanel('dashboard');
+}
+window.addEventListener('hashchange', boot);
+buildRoleGrid();
+boot();
+</script>
+</body>
+</html>

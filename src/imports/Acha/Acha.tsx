@@ -3,6 +3,10 @@ import { useLayoutEffect, useRef, useState, type MouseEvent } from "react";
 import ScopeSalarySection from "../../app/components/ScopeSalarySection";
 import imgImage1712 from "./36b610493eb683f0e81e17848fd143c365f117fd.png";
 import imgImage1722 from "./21431af697decda7c8e4ab9f634f86a74bb820af.png";
+import imgImage1767 from "./7374881cf84260575e67de9d879bec5b67cd21a5.png";
+import imgImage2046 from "./b2af8a1ac5bea6b0655117df1d81832834bb478c.png";
+import imgImage2049 from "./c0df82747f23a2867afec57bb71a4a121a6b823d.png";
+import imgImage2050 from "./c97ea7f47b821ffe3aec2c450fecd5e1fcb35606.png";
 import imgImage1745 from "./29200434d2a6f1dc4935f368019979fca1309316.png";
 import imgFrame2095585627 from "./e7f0bd9ee2e813eea42b37a01d558afbb72a8882.png";
 import imgContainer from "./394846dbb485f14c21935fae1c55e8bf2eccdbe9.png";
@@ -12,14 +16,14 @@ import imgImage1718 from "./5915099e30d31d9fe1c6e5f291809fe3439e9de6.png";
 
 const achaFaqItems = [
   {
-    question: "What is ACHA?",
+    question: "What is AHAP?",
     answer:
-      "ACHA is iMED Academy's Advanced Certification in Hospital Administration designed for learners who want management-focused healthcare careers.",
+      "AHAP is iMED Academy's Advanced Healthcare Administration Program designed for learners who want management-focused healthcare careers.",
   },
   {
-    question: "How is ACHA different from the 3-year Hospital Administration program?",
+    question: "How is AHAP different from the 3-year Hospital Administration program?",
     answer:
-      "ACHA is a short-term, job-focused advanced certification with practical industry modules, unlike a long academic degree route.",
+      "AHAP is a short-term, job-focused advanced certification with practical industry modules, unlike a long academic degree route.",
   },
   {
     question: "Can I take this while working?",
@@ -29,17 +33,17 @@ const achaFaqItems = [
   {
     question: "Will I get a certificate?",
     answer:
-      "Yes. You receive an ACHA completion certificate after successful course completion and assessments.",
+      "Yes. You receive an AHAP completion certificate after successful course completion and assessments.",
   },
   {
-    question: "What salary can I expect after ACHA?",
+    question: "What salary can I expect after AHAP?",
     answer:
       "Salary depends on role, city, experience, and hospital type. Use the dynamic salary estimator to explore realistic ranges.",
   },
   {
     question: "Is a capstone project included?",
     answer:
-      "Yes. ACHA includes practical application components and project-driven learning for real-world readiness.",
+      "Yes. AHAP includes practical application components and project-driven learning for real-world readiness.",
   },
   {
     question: "Why should I choose a career in Hospital Administration?",
@@ -146,16 +150,45 @@ function NavBar() {
 function Frame36() {
   return (
     <div className="[word-break:break-word] content-stretch flex flex-col font-['Inter:Bold',sans-serif] font-bold items-start leading-[70px] not-italic relative shrink-0 text-[50px]">
-      <p className="h-[69px] relative shrink-0 text-white w-[601px]">Advance Certification in</p>
-      <p className="h-[69px] relative shrink-0 text-[#25a88d] w-[587px]">Hospital Administration</p>
+      <p className="h-[69px] relative shrink-0 text-[#1f3471] w-[601px]">Advanced Healthcare</p>
+      <p className="h-[69px] relative shrink-0 text-[#25a88d] w-[587px]">Administration Program</p>
     </div>
   );
 }
 
 function Frame140() {
   return (
-    <div className="bg-white content-stretch flex items-center justify-center px-[18px] py-[9px] relative rounded-[8px] shrink-0">
-      <p className="[word-break:break-word] font-['Inter:Semi_Bold',sans-serif] font-semibold leading-[32.5px] not-italic relative shrink-0 text-[#25a88d] text-[20px] w-[436px]">GCC Healthcare Readiness + Globally Benchmarked Curriculum</p>
+    <div className="bg-[rgba(37,168,141,0.2)] content-stretch flex items-center justify-center px-[18px] py-[9px] relative rounded-[8px] shrink-0">
+      <p className="[word-break:break-word] font-['Inter:Semi_Bold',sans-serif] font-semibold leading-[32.5px] not-italic relative shrink-0 text-[#25a88d] text-[20px] w-[370px]">GCC Healthcare Readiness + Globally Benchmarked Curriculum</p>
+    </div>
+  );
+}
+
+function FreeTabletBadge() {
+  return (
+    <div className="h-[126px] relative shrink-0 w-[318px]">
+      <div className="absolute border-[#edd5a0] border-[1.596px] border-solid h-[86px] left-0 rounded-[6px] top-[22px] w-[272px]" />
+      <p className="[word-break:break-word] absolute bg-clip-text bg-gradient-to-r font-['Inter:Semi_Bold',sans-serif] font-semibold from-[#edd5a0] leading-[18px] left-[58px] not-italic text-[17px] text-[transparent] to-[#ba9046] top-[43px] via-1/2 via-[#d2b374] whitespace-nowrap">FREE TABLET</p>
+      <p className="[word-break:break-word] absolute font-['Inter:Semi_Bold',sans-serif] font-semibold leading-[14px] left-[58px] not-italic text-[#1f3471] text-[10px] top-[64px] whitespace-nowrap">FOR EVERY STUDENT</p>
+      <p className="[word-break:break-word] absolute font-['Inter:Semi_Bold',sans-serif] font-semibold leading-[14px] left-[14px] not-italic text-[#1f3471] text-[10px] top-[89px] whitespace-nowrap">TO SUPPORT YOUR LEARNING</p>
+      <div className="absolute h-[41px] left-[14px] top-[40px] w-[40px]">
+        <img loading="eager" fetchPriority="high" decoding="async" alt="" className="absolute inset-0 max-w-none object-cover pointer-events-none size-full" src={imgImage2046} />
+      </div>
+      <div className="absolute h-[116px] left-[198px] top-[5px] w-[87px]">
+        <img loading="eager" fetchPriority="high" decoding="async" alt="" className="absolute inset-0 max-w-none object-cover pointer-events-none size-full" src={imgImage2049} />
+      </div>
+      <div className="absolute left-[270px] overflow-hidden size-[19px] top-0">
+        <img loading="eager" fetchPriority="high" decoding="async" alt="" className="absolute h-[108.57%] left-0 max-w-none top-0 w-[117.14%]" src={imgImage2050} />
+      </div>
+    </div>
+  );
+}
+
+function AhapHeroBadges() {
+  return (
+    <div className="content-stretch flex gap-[15px] items-center relative shrink-0">
+      <Frame140 />
+      <FreeTabletBadge />
     </div>
   );
 }
@@ -164,8 +197,8 @@ function Frame26() {
   return (
     <div className="content-stretch flex flex-col gap-[20px] items-start relative shrink-0 w-full">
       <Frame36 />
-      <Frame140 />
-      <p className="[word-break:break-word] font-['Inter:Regular',sans-serif] font-normal leading-[32.5px] not-italic relative shrink-0 text-[20px] text-white w-[684px]">Industry-oriented Advanced Certification in Hospital Administration with hands-on training and internship opportunities designed to prepare you for leadership roles in modern healthcare management.</p>
+      <AhapHeroBadges />
+      <p className="[word-break:break-word] font-['Inter:Regular',sans-serif] font-normal leading-[32.5px] not-italic relative shrink-0 text-[#1f3471] text-[20px] w-[684px]">Industry-oriented Advanced Healthcare Administration Program with hands-on training and internship opportunities designed to prepare you for leadership roles in modern healthcare management.</p>
     </div>
   );
 }
@@ -182,9 +215,9 @@ function Frame24() {
   return (
     <div className="h-[50px] relative rounded-[12px] shrink-0 w-[210px] cursor-pointer">
       <div className="content-stretch flex items-center justify-center overflow-clip px-[17px] py-[8px] relative rounded-[inherit] size-full">
-        <p className="[word-break:break-word] font-['Inter:Semi_Bold',sans-serif] font-semibold leading-[32.5px] not-italic relative shrink-0 text-[18px] text-white whitespace-nowrap">Talk to Expert</p>
+        <p className="[word-break:break-word] font-['Inter:Semi_Bold',sans-serif] font-semibold leading-[32.5px] not-italic relative shrink-0 text-[#25a88d] text-[18px] whitespace-nowrap">Talk to Expert</p>
       </div>
-      <div aria-hidden="true" className="absolute border border-solid border-white inset-0 pointer-events-none rounded-[12px]" />
+      <div aria-hidden="true" className="absolute border border-[#25a88d] border-solid inset-0 pointer-events-none rounded-[12px]" />
     </div>
   );
 }
@@ -200,7 +233,7 @@ function Frame25() {
 
 function Frame27() {
   return (
-    <div className="-translate-y-1/2 absolute content-stretch flex flex-col gap-[30px] h-[439px] items-start left-[67px] top-[calc(50%+0.5px)] w-[732px]">
+    <div className="-translate-y-1/2 absolute content-stretch flex flex-col gap-[10px] items-start left-[67px] top-1/2 w-[732px]">
       <Frame26 />
       <Frame25 />
     </div>
@@ -209,13 +242,18 @@ function Frame27() {
 
 function Frame15() {
   return (
-    <div id="home" className="absolute bg-[#1f3471] h-[666px] left-0 overflow-clip top-[66px] w-[1440px]">
-      <div className="-translate-x-1/2 -translate-y-1/2 absolute h-[668px] left-[calc(50%+250.5px)] opacity-47 top-[calc(50%+4px)] w-[939px]" data-name="image 1722">
+    <div id="home" className="absolute bg-white h-[666px] left-0 overflow-clip top-[66px] w-[1440px]">
+      <div className="-translate-x-1/2 -translate-y-1/2 absolute h-[673px] left-[calc(50%+250.5px)] top-[calc(50%-0.5px)] w-[947px]" data-name="image 1722">
         <div className="absolute inset-0 overflow-hidden pointer-events-none">
           <img loading="eager" fetchPriority="high" decoding="async" alt="" className="absolute h-full left-[-24.49%] max-w-none top-0 w-[142.28%]" src={imgImage1722} />
         </div>
       </div>
-      <div className="absolute bg-gradient-to-r from-[#1f3471] from-[12.981%] h-[665px] left-[488px] to-[rgba(31,52,113,0)] top-0 w-[311px]" />
+      <div className="absolute bg-gradient-to-l from-[rgba(255,255,255,0)] h-[665px] left-[488px] to-[75.962%] to-white top-0 w-[952px]" />
+      <div className="-translate-x-1/2 -translate-y-1/2 absolute h-[673px] left-[calc(50%+409px)] opacity-85 top-[calc(50%-0.5px)] w-[412px]" data-name="image 1767">
+        <div className="absolute inset-0 overflow-hidden pointer-events-none">
+          <img loading="eager" fetchPriority="high" decoding="async" alt="" className="absolute h-full left-[-159.7%] max-w-none top-0 w-[327.03%]" src={imgImage1767} />
+        </div>
+      </div>
       <Frame27 />
     </div>
   );
@@ -232,7 +270,7 @@ function Heading1() {
 function Heading2() {
   return (
     <div className="h-[48px] relative shrink-0 w-full" data-name="Heading 3">
-      <p className="-translate-x-1/2 [word-break:break-word] absolute font-['Inter:Bold',sans-serif] font-bold leading-[48px] left-[calc(50%+0.5px)] not-italic text-[#1f3471] text-[40px] text-center top-[-1px] whitespace-nowrap">What is Advance Certification in Hospital Administration?</p>
+      <p className="-translate-x-1/2 [word-break:break-word] absolute font-['Inter:Bold',sans-serif] font-bold leading-[48px] left-[calc(50%+0.5px)] not-italic text-[#1f3471] text-[40px] text-center top-[-1px] whitespace-nowrap">What is Advanced Healthcare Administration Program?</p>
     </div>
   );
 }
@@ -260,9 +298,9 @@ function Frame39() {
   return (
     <div className="content-stretch flex flex-col items-start relative shrink-0 w-full">
       <div className="[word-break:break-word] font-['Inter:Regular',sans-serif] font-normal leading-[0] not-italic relative shrink-0 text-[#4a5565] text-[20px] text-justify w-full whitespace-pre-wrap">
-        <p className="leading-[32.5px] mb-0">The Advance Certification in Hospital Administration (ACHA) is a senior-level program designed for graduates and working healthcare professionals aiming to move into mid-to-senior management roles in hospitals, health-tech, insurance, and consulting organizations across India.</p>
+        <p className="leading-[32.5px] mb-0">The Advanced Healthcare Administration Program (AHAP) is a senior-level program designed for graduates and working healthcare professionals aiming to move into mid-to-senior management roles in hospitals, health-tech, insurance, and consulting organizations across India.</p>
         <p className="leading-[32.5px] mb-0">​</p>
-        <p className="leading-[32.5px]">{`ACHA goes beyond foundational hospital administration to cover strategic management, healthcare finance, accreditation leadership, healthcare analytics, operations excellence, and policy. Graduates become equipped to lead departments, manage P&L, drive quality programs, and shape healthcare strategy.`}</p>
+        <p className="leading-[32.5px]">{`AHAP goes beyond foundational hospital administration to cover strategic management, healthcare finance, accreditation leadership, healthcare analytics, operations excellence, and policy. Graduates become equipped to lead departments, manage P&L, drive quality programs, and shape healthcare strategy.`}</p>
       </div>
     </div>
   );
@@ -1065,7 +1103,7 @@ function Frame47() {
 function Frame42() {
   return (
     <div className="content-stretch flex flex-col items-start relative shrink-0 w-[764px]">
-      <p className="[word-break:break-word] font-['Inter:Regular',sans-serif] font-normal h-[194px] leading-[32.5px] not-italic relative shrink-0 text-[#4a5565] text-[20px] text-justify w-full">{`India's healthcare sector is consolidating and professionalizing, with hospital chains, insurance providers, health-tech unicorns, and consulting firms competing for experienced administrators. ACHA graduates command senior roles in operations, quality, strategy, and business heads across the industry.`}</p>
+      <p className="[word-break:break-word] font-['Inter:Regular',sans-serif] font-normal h-[194px] leading-[32.5px] not-italic relative shrink-0 text-[#4a5565] text-[20px] text-justify w-full">{`India's healthcare sector is consolidating and professionalizing, with hospital chains, insurance providers, health-tech unicorns, and consulting firms competing for experienced administrators. AHAP graduates command senior roles in operations, quality, strategy, and business heads across the industry.`}</p>
     </div>
   );
 }
@@ -2024,7 +2062,7 @@ function Container4() {
 }
 
 function About4() {
-  return <ScopeSalarySection defaultRole="Hospital Administration" topClassName="top-[2954px]" />;
+  return <ScopeSalarySection defaultRole="Advanced Healthcare Administration" topClassName="top-[2954px]" />;
 }
 
 function Frame33() {
@@ -2543,7 +2581,7 @@ function Container31() {
 function Text20() {
   return (
     <div className="absolute h-[20px] left-[-0.2px] top-[15.8px] w-[192.425px]" data-name="Text">
-      <p className="[word-break:break-word] absolute font-['Inter:Medium',sans-serif] font-medium leading-[20px] left-0 not-italic text-[#0a0a0a] text-[20px] top-[-0.2px] whitespace-nowrap">What is ACHA?</p>
+      <p className="[word-break:break-word] absolute font-['Inter:Medium',sans-serif] font-medium leading-[20px] left-0 not-italic text-[#0a0a0a] text-[20px] top-[-0.2px] whitespace-nowrap">What is AHAP?</p>
     </div>
   );
 }
@@ -2585,7 +2623,7 @@ function Container34() {
 function Text21() {
   return (
     <div className="absolute h-[20px] left-[-0.2px] top-[15.8px] w-[192.425px]" data-name="Text">
-      <p className="[word-break:break-word] absolute font-['Inter:Medium',sans-serif] font-medium leading-[20px] left-0 not-italic text-[#0a0a0a] text-[20px] top-[-0.2px] whitespace-nowrap">How is ACHA different from the 3-year Hospital Administration program?</p>
+      <p className="[word-break:break-word] absolute font-['Inter:Medium',sans-serif] font-medium leading-[20px] left-0 not-italic text-[#0a0a0a] text-[20px] top-[-0.2px] whitespace-nowrap">How is AHAP different from the 3-year Hospital Administration program?</p>
     </div>
   );
 }
@@ -2711,7 +2749,7 @@ function Container37() {
 function Text24() {
   return (
     <div className="absolute h-[20px] left-[-0.2px] top-[15.8px] w-[192.425px]" data-name="Text">
-      <p className="[word-break:break-word] absolute font-['Inter:Medium',sans-serif] font-medium leading-[20px] left-0 not-italic text-[#0a0a0a] text-[20px] top-[-0.2px] whitespace-nowrap">What salary can I expect after ACHA?</p>
+      <p className="[word-break:break-word] absolute font-['Inter:Medium',sans-serif] font-medium leading-[20px] left-0 not-italic text-[#0a0a0a] text-[20px] top-[-0.2px] whitespace-nowrap">What salary can I expect after AHAP?</p>
     </div>
   );
 }
@@ -2895,7 +2933,7 @@ function About7({ openIndex, onToggle }: { openIndex: number | null; onToggle: (
 function Heading19() {
   return (
     <div className="content-stretch flex h-[36px] items-start relative shrink-0 w-[905px]" data-name="Heading 3">
-      <p className="[word-break:break-word] flex-[1_0_0] font-['Inter:Bold',sans-serif] font-bold leading-[36px] min-w-px not-italic relative text-[30px] text-center text-white">Ready to start your ACHA journey?</p>
+      <p className="[word-break:break-word] flex-[1_0_0] font-['Inter:Bold',sans-serif] font-bold leading-[36px] min-w-px not-italic relative text-[30px] text-center text-white">Ready to start your AHAP journey?</p>
     </div>
   );
 }
@@ -3310,7 +3348,7 @@ function Frame2() {
       <button type="button" onClick={handleProgramClick("#ha")} className="relative shrink-0 w-[264px] text-left transition-colors duration-200 hover:text-[#8ee2d2]">Hospital Administration</button>
       <button type="button" onClick={handleProgramClick("#gda")} className="min-w-full relative shrink-0 w-[min-content] text-left transition-colors duration-200 hover:text-[#8ee2d2]">General Duty Assistance</button>
       <button type="button" onClick={handleProgramClick("#ocha")} className="relative shrink-0 whitespace-nowrap text-left transition-colors duration-200 hover:text-[#8ee2d2]">OCHA</button>
-      <button type="button" onClick={handleProgramClick("#acha", "home")} className="relative shrink-0 whitespace-nowrap text-left transition-colors duration-200 hover:text-[#8ee2d2]">ACHA</button>
+      <button type="button" onClick={handleProgramClick("#ahap", "home")} className="relative shrink-0 whitespace-nowrap text-left transition-colors duration-200 hover:text-[#8ee2d2]">AHAP</button>
       <button type="button" onClick={handleProgramClick("#gca")} className="relative shrink-0 whitespace-nowrap text-left transition-colors duration-200 hover:text-[#8ee2d2]">Geriatric Care Assistance</button>
       <button type="button" onClick={handleProgramClick("#mlt")} className="relative shrink-0 whitespace-nowrap text-left transition-colors duration-200 hover:text-[#8ee2d2]">MLT</button>
       <button type="button" onClick={handleProgramClick("#radiology")} className="relative shrink-0 whitespace-nowrap text-left transition-colors duration-200 hover:text-[#8ee2d2]">Radiology</button>
@@ -3661,7 +3699,7 @@ export default function Acha() {
   return (
     <div
       className="bg-white overflow-x-hidden relative w-full"
-      data-name="ACHA"
+      data-name="AHAP"
       style={{ height: scaledHeight ? `${scaledHeight}px` : "100vh" }}
     >
       <div

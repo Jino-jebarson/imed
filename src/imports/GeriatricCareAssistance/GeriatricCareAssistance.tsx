@@ -53,7 +53,7 @@ const gcaFooterPrograms = [
   { label: "Hospital Administration", hash: "ha" },
   { label: "General Duty Assistance", hash: "gda" },
   { label: "OCHA", hash: "ocha" },
-  { label: "ACHA", hash: "acha" },
+  { label: "AHAP", hash: "ahap" },
   { label: "Geriatric Care Assistance", hash: "gca", scrollTarget: "home" },
   { label: "MLT", hash: "mlt" },
   { label: "Radiology", hash: "radiology" },
