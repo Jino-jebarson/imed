@@ -14,6 +14,7 @@ import {
   Download,
   Eye,
   EyeOff,
+  ExternalLink,
   FileText,
   GraduationCap,
   LayoutDashboard,
@@ -25,6 +26,7 @@ import {
   RefreshCw,
   Search,
   ShieldCheck,
+  Stethoscope,
   Trash2,
   UserPlus,
   UserRound,
@@ -68,6 +70,8 @@ const classNatures = ["Theoretical", "Practical"];
 const classDays = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"];
 const topicStatuses = ["Not Started", "In Progress", "Covered"];
 const practicalStatuses = ["Pending", "Completed", "Needs Repeat"];
+const internshipStatuses = ["Assigned", "Active", "Completed", "Terminated"];
+const internshipDurationUnits = ["days", "weeks", "months"];
 const fallbackCentres = ["Delhi", "Kochi", "Bangalore"];
 const fallbackCourses = ["HA", "EMT", "GDA", "OCHA", "AHAP"];
 const kochiCourseOptions = ["AHAP", "GCA"];
@@ -100,27 +104,32 @@ type Lead = { _id: string; fullName: string; phone: string; parentMobile?: strin
 type CashDeposit = { amount?: number; bank?: string; referenceNumber?: string; note?: string; proof?: DocumentFile; depositedBy?: string; by?: string; depositedAt?: string; createdAt?: string };
 type PaymentRecord = { amount?: number; mode?: string; paymentPurpose?: string; transactionId?: string; emiReference?: string; loanProviderName?: string; note?: string; proof?: DocumentFile; cashDeposits?: CashDeposit[]; by?: string; paidAt?: string };
 type StudentFeedback = { type?: string; status?: string; note?: string; nextFollowUpDate?: string; by?: string; at?: string };
-type Student = { _id: string; leadId?: string; fullName: string; phone: string; parentMobile?: string; email?: string; studentLocation?: string; centre?: string; franchiseId?: string; course?: string; counsellor?: string; teacher?: string; batch?: string; batchCommenceDate?: string; status: string; totalFee?: number; paidAmount?: number; admissionNumber?: string; admissionPaymentMode?: string; admissionUpfrontAmount?: number; admissionFinalizedAt?: string; admissionFinalizedBy?: string; discountAmount?: number; emiEnabled?: boolean; emiMonths?: number; emiAmount?: number; nextEmiDate?: string; certificateNumber?: string; certificateIssuedAt?: string; certificateStatus?: string; payments?: PaymentRecord[]; feedbacks?: StudentFeedback[]; createdAt?: string; updatedAt?: string };
+type InternshipAssignment = { _id?: string; facilityName?: string; facilityLocation?: string; supervisorName?: string; supervisorContact?: string; supervisorEmail?: string; facilityLatitude?: number; facilityLongitude?: number; allowedRadiusMeters?: number; startDate?: string; durationValue?: number; durationUnit?: string; expectedEndDate?: string; actualEndDate?: string; status?: string; departmentRotation?: string; assignedBy?: string; updatedAt?: string };
+type InternshipLog = { _id: string; date?: string; loginAt?: string; logoutAt?: string; loginPhoto?: DocumentFile; logoutPhoto?: DocumentFile; loginGps?: string; logoutGps?: string; hours?: number; flagged?: boolean; flagReason?: string };
+type LogbookEntry = { _id: string; date?: string; departmentArea?: string; activitiesPerformed?: string; keyLearnings?: string; challenges?: string; supervisorRemark?: string; verified?: boolean; verifiedBy?: string; verifiedAt?: string; createdAt?: string };
+type Student = { _id: string; leadId?: string; fullName: string; phone: string; parentMobile?: string; email?: string; studentLocation?: string; centre?: string; franchiseId?: string; course?: string; counsellor?: string; teacher?: string; batch?: string; batchCommenceDate?: string; status: string; totalFee?: number; paidAmount?: number; admissionNumber?: string; lmsAccessEnabled?: boolean; lmsAccessGeneratedAt?: string; lmsAccessGeneratedBy?: string; admissionPaymentMode?: string; admissionUpfrontAmount?: number; admissionFinalizedAt?: string; admissionFinalizedBy?: string; discountAmount?: number; emiEnabled?: boolean; emiMonths?: number; emiAmount?: number; nextEmiDate?: string; certificateNumber?: string; certificateIssuedAt?: string; certificateStatus?: string; payments?: PaymentRecord[]; feedbacks?: StudentFeedback[]; internshipAssignment?: InternshipAssignment | null; internshipLogs?: InternshipLog[]; logbookEntries?: LogbookEntry[]; createdAt?: string; updatedAt?: string };
 type Centre = { _id: string; name: string; type?: "branch" | "franchise"; city?: string; billingLegalName?: string; billingAddress?: string; billingGstin?: string; billingStateName?: string; billingStateCode?: string; billingEmail?: string; billingPhone?: string; bankAccountName?: string; bankName?: string; bankAccountNumber?: string; bankIfsc?: string; bankBranch?: string };
 type Course = { _id: string; name: string; code?: string; fee?: number; duration?: string; franchiseId?: string };
 type Counsellor = { _id?: string; name: string; email: string; role: string; franchiseId?: string };
 type Batch = { _id: string; name: string; centre?: string; franchiseId?: string; course?: string; assignedFaculty?: string[]; commenceDate: string };
-type Attendance = { _id?: string; studentId: string; studentName?: string; date?: string; nature?: "Theoretical" | "Practical"; status: "Present" | "Absent" | "Late" | "Leave"; note?: string; centre?: string; franchiseId?: string; batch?: string; course?: string; counsellor?: string; teacher?: string; markedBy?: string };
+type Attendance = { _id?: string; classSessionId?: string; studentId: string; studentName?: string; date?: string; nature?: "Theoretical" | "Practical"; status: "Present" | "Absent" | "Late" | "Leave"; note?: string; centre?: string; franchiseId?: string; batch?: string; course?: string; counsellor?: string; teacher?: string; markedBy?: string };
 type ClassSchedule = { _id: string; batchId: string; batchName: string; course?: string; centre?: string; franchiseId?: string; classType: string; nature: string; faculty: string; days?: string[]; startTime: string; endTime: string; startDate?: string; endDate?: string; note?: string };
 type ClassSession = { _id: string; scheduleId?: string; batchId: string; batchName: string; course?: string; centre?: string; franchiseId?: string; classType: string; nature: string; faculty: string; date: string; startTime: string; endTime: string; studentCount?: number; attendanceMarked?: boolean; googleCalendarEventId?: string; note?: string };
 type TopicProgress = { _id?: string; batchId: string; batchName?: string; course?: string; centre?: string; franchiseId?: string; module: string; topic: string; status: "Not Started" | "In Progress" | "Covered"; dateCovered?: string; faculty?: string; updatedBy?: string };
 type PracticalRecord = { _id?: string; batchId: string; batchName?: string; course?: string; centre?: string; franchiseId?: string; practicalName: string; module?: string; studentId: string; studentName?: string; dateConducted?: string; status: "Pending" | "Completed" | "Needs Repeat"; remarks?: string; faculty?: string; updatedBy?: string };
+type StudyNote = { _id: string; batchId: string; batchName?: string; course?: string; centre?: string; franchiseId?: string; title: string; module?: string; description?: string; file?: DocumentFile; referenceUrl?: string; resourceType?: "File" | "Video" | "Reference"; uploadedBy?: string; createdAt?: string };
 type AttendanceSummary = { studentId: string; studentName?: string; centre?: string; course?: string; batch?: string; counsellor?: string; teacher?: string; total: number; present: number; absent: number; late: number; leave: number; theoretical?: number; practical?: number; lastDate?: string };
 type AttendanceDetailFilters = { dateFrom: string; dateTo: string; status: string; nature: string };
 type Summary = { leadsThisMonth: number; totalLeads: number; enrolled: number; training: number; placed: number; lost: number; students: number; conversion: number; revenue: number; pending: number };
 type AttendanceStatus = Attendance["status"];
 type DatePreset = "all" | "today" | "yesterday" | "specific";
-type Panel = "dashboard" | "leads" | "addlead" | "admissions" | "batch" | "mystudents" | "attendance" | "logs" | "attdetail" | "allstudents" | "finance" | "emi" | "receipts" | "cert" | "settings" | "profile";
-type AcademicTab = "batches" | "overview" | "students" | "timetable" | "attendance" | "markAttendance" | "topics" | "practicals" | "logs" | "detail";
+type Panel = "dashboard" | "leads" | "addlead" | "admissions" | "batch" | "mystudents" | "attendance" | "logs" | "attdetail" | "allstudents" | "finance" | "emi" | "receipts" | "cert" | "internship" | "settings" | "profile";
+type AcademicTab = "batches" | "overview" | "students" | "timetable" | "attendance" | "markAttendance" | "topics" | "practicals" | "notes" | "logs" | "detail";
 type RoleScope = "all" | string;
 type ProfileTarget = { type: "lead"; data: Lead; mode?: "view" | "edit" } | { type: "student"; data: Student; mode?: "view" | "edit" } | null;
 type ReceiptSelection = { type: "invoice" } | { type: "payment"; index: number };
 type DeletePrompt = { title: string; message: string; confirmLabel?: string; tone?: "danger" | "logout"; onConfirm: () => Promise<void> };
+type LogbookReviewPrompt = { student: Student; entry: LogbookEntry; verified: boolean; remark: string };
 type LeadImportResult = { inserted: number; skipped?: { row: number; reason: string }[] };
 type DocumentFieldName = "governmentProof" | "highestQualificationCertificate";
 type DocumentPreviewRequest = { type: "lead" | "student"; id: string; field: DocumentFieldName; title: string; fileName?: string };
@@ -167,6 +176,7 @@ const navGroups: { group: string; items: { key: Panel; label: string; icon: Reac
     { key: "receipts", label: "Receipts", icon: <ReceiptText /> },
   ] },
   { group: "Certification", items: [{ key: "cert", label: "Certificates", icon: <Award /> }] },
+  { group: "Internship", items: [{ key: "internship", label: "Internship", icon: <Stethoscope /> }] },
   { group: "Workspace", items: [
     { key: "settings", label: "Settings", icon: <ShieldCheck /> },
     { key: "profile", label: "Profile", icon: <UserRound /> },
@@ -188,6 +198,7 @@ const panelTitles: Record<Panel, [string, string]> = {
   emi: ["EMI reminders", "Upcoming and overdue instalments"],
   receipts: ["Receipts", "Tax invoices and payment receipts"],
   cert: ["Certificates", "Issue and manage certificates"],
+  internship: ["Internship", "Hospital posting logs and GPS review"],
   settings: ["Settings", "Staff, branches, fees and security"],
   profile: ["Profile", "Lead and student details"],
 };
@@ -207,6 +218,17 @@ function dateInputValueFromOffset(offsetDays = 0) {
   return dateInputValue(date);
 }
 
+function dateInputValueFromDuration(startValue: string, durationValue: string | number, durationUnit = "months") {
+  const startDate = new Date(startValue);
+  const duration = Number(durationValue || 0);
+  if (Number.isNaN(startDate.getTime()) || !duration || duration < 1) return "";
+  const endDate = new Date(startDate);
+  if (durationUnit === "days") endDate.setDate(endDate.getDate() + duration);
+  else if (durationUnit === "weeks") endDate.setDate(endDate.getDate() + duration * 7);
+  else endDate.setMonth(endDate.getMonth() + duration);
+  return dateInputValue(endDate);
+}
+
 function formatCurrency(value = 0) {
   return new Intl.NumberFormat("en-IN", { style: "currency", currency: "INR", maximumFractionDigits: 0 }).format(value || 0);
 }
@@ -223,6 +245,49 @@ function formatDate(value?: string) {
 function formatDateTime(value?: string) {
   if (!value) return "-";
   return new Intl.DateTimeFormat("en-IN", { day: "2-digit", month: "short", year: "numeric", hour: "2-digit", minute: "2-digit" }).format(new Date(value));
+}
+
+function parseGps(value?: string) {
+  const match = String(value || "").match(/(-?\d+(?:\.\d+)?)\s*,\s*(-?\d+(?:\.\d+)?)/);
+  if (!match) return null;
+  const lat = Number(match[1]);
+  const lng = Number(match[2]);
+  return Number.isFinite(lat) && Number.isFinite(lng) ? { lat, lng } : null;
+}
+
+function gpsDistanceMeters(a?: string, b?: string) {
+  const first = parseGps(a);
+  const second = parseGps(b);
+  if (!first || !second) return null;
+  const toRad = (value: number) => (value * Math.PI) / 180;
+  const earthRadius = 6371000;
+  const dLat = toRad(second.lat - first.lat);
+  const dLng = toRad(second.lng - first.lng);
+  const lat1 = toRad(first.lat);
+  const lat2 = toRad(second.lat);
+  const haversine = Math.sin(dLat / 2) ** 2 + Math.cos(lat1) * Math.cos(lat2) * Math.sin(dLng / 2) ** 2;
+  return Math.round(earthRadius * 2 * Math.atan2(Math.sqrt(haversine), Math.sqrt(1 - haversine)));
+}
+
+function gpsMatchInfo(log: InternshipLog, assignment?: InternshipAssignment | null) {
+  const hasFacilityGps = Number.isFinite(Number(assignment?.facilityLatitude)) && Number.isFinite(Number(assignment?.facilityLongitude));
+  if (!log.loginGps && !log.logoutGps) return { label: "GPS not captured", detail: "Location permission was not available.", badge: "badge-gray" };
+  if (hasFacilityGps) {
+    const facilityGps = `${assignment?.facilityLatitude},${assignment?.facilityLongitude}`;
+    const radius = Math.max(25, Number(assignment?.allowedRadiusMeters || 200));
+    const loginDistance = log.loginGps ? gpsDistanceMeters(facilityGps, log.loginGps) : null;
+    const logoutDistance = log.logoutGps ? gpsDistanceMeters(facilityGps, log.logoutGps) : null;
+    const distances = [loginDistance, logoutDistance].filter((value): value is number => value !== null);
+    if (!distances.length) return { label: "GPS needs review", detail: "Saved location format could not be compared.", badge: "badge-amber" };
+    const maxDistance = Math.max(...distances);
+    if (maxDistance <= radius) return { label: "Hospital matched", detail: `Within ${maxDistance}m of assigned hospital.`, badge: "badge-green" };
+    return { label: "Hospital mismatch", detail: `About ${maxDistance}m from assigned hospital.`, badge: "badge-red" };
+  }
+  if (!log.loginGps || !log.logoutGps) return { label: "Waiting for GPS pair", detail: "One side location is captured.", badge: "badge-amber" };
+  const distance = gpsDistanceMeters(log.loginGps, log.logoutGps);
+  if (distance === null) return { label: "GPS needs review", detail: "Saved location format could not be compared.", badge: "badge-amber" };
+  if (distance <= 250) return { label: "Same location range", detail: `Login and logout are within ${distance}m.`, badge: "badge-green" };
+  return { label: "Location differs", detail: `Login and logout are about ${distance}m apart.`, badge: "badge-red" };
 }
 
 function followUpDueLabel(value?: string) {
@@ -711,6 +776,7 @@ export default function AdminCrm() {
   const [classSessions, setClassSessions] = useState<ClassSession[]>([]);
   const [topicProgress, setTopicProgress] = useState<TopicProgress[]>([]);
   const [practicalRecords, setPracticalRecords] = useState<PracticalRecord[]>([]);
+  const [studyNotes, setStudyNotes] = useState<StudyNote[]>([]);
   const [selectedClassSessionId, setSelectedClassSessionId] = useState("");
   const [classWeek, setClassWeek] = useState(dateInputValue(new Date()));
   const [classAttendanceDraft, setClassAttendanceDraft] = useState<Record<string, { status: AttendanceStatus; note: string }>>({});
@@ -724,6 +790,7 @@ export default function AdminCrm() {
   const [teachers, setTeachers] = useState<Counsellor[]>([]);
   const [leadMeta, setLeadMeta] = useState<PaginationMeta | null>(null);
   const [studentMeta, setStudentMeta] = useState<PaginationMeta | null>(null);
+  const [admissionPendingCount, setAdmissionPendingCount] = useState(0);
   const [roleScope, setRoleScope] = useState<RoleScope>("all");
   const [datePreset, setDatePreset] = useState<DatePreset>("all");
   const [selectedDate, setSelectedDate] = useState("");
@@ -738,6 +805,7 @@ export default function AdminCrm() {
   const [receiptStudent, setReceiptStudent] = useState<Student | null>(null);
   const [receiptSelection, setReceiptSelection] = useState<ReceiptSelection>({ type: "invoice" });
   const [deletePrompt, setDeletePrompt] = useState<DeletePrompt | null>(null);
+  const [logbookReviewPrompt, setLogbookReviewPrompt] = useState<LogbookReviewPrompt | null>(null);
   const [documentPreview, setDocumentPreview] = useState<DocumentPreviewState>(null);
   const [forgotPasswordOpen, setForgotPasswordOpen] = useState(false);
   const [showLoginPassword, setShowLoginPassword] = useState(false);
@@ -759,11 +827,13 @@ export default function AdminCrm() {
   const canUseLeads = isHeadAdmin || isFranchiseSuperAdmin || isCounsellorAccount;
   const canUseAttendance = isHeadAdmin || isFranchiseSuperAdmin || isTeacherAccount;
   const canUseAcademics = canUseAttendance;
+  const canUseInternship = isHeadAdmin || isFranchiseSuperAdmin || isTeacherAccount;
   const canManageSettings = isHeadAdmin || isFranchiseSuperAdmin;
   const canAssignCounsellors = isHeadAdmin || isFranchiseSuperAdmin;
   const canAssignTeachers = isHeadAdmin || isFranchiseSuperAdmin || isCounsellorAccount;
   const canManageFees = isHeadAdmin || isFranchiseSuperAdmin;
   const canManageCertificates = isHeadAdmin || isFranchiseSuperAdmin;
+  const canManageInternships = isHeadAdmin || isFranchiseSuperAdmin;
   const canDeleteRecords = isHeadAdmin || isFranchiseSuperAdmin;
   const canUseScopeFilter = isHeadAdmin;
   const selectedFranchise = canUseScopeFilter && roleScope !== "all" ? centres.find((centre) => centre._id === roleScope) : undefined;
@@ -772,11 +842,12 @@ export default function AdminCrm() {
   const centreOptions = centres.length ? centres.map((centre) => centre.name) : fallbackCentres;
   const courseOptions = courses.length ? courses.map((course) => course.code || course.name) : fallbackCourses;
   const teacherAssignedBatchNames = batches.filter((batch) => batch.assignedFaculty?.includes(user?.name || "")).map((batch) => batch.name);
-  const visibleStudents = panel === "mystudents" || (isStudentStaffAccount && ["attendance", "dashboard"].includes(panel))
+  const visibleStudents = panel === "mystudents" || (isStudentStaffAccount && ["attendance", "dashboard", "internship"].includes(panel))
     ? students.filter((student) => !isStudentStaffAccount || (isCounsellorAccount ? student.counsellor === user?.name : teacherAssignedBatchNames.includes(student.batch || "") || student.teacher === user?.name))
     : students;
+  const pendingLogbookReviewCount = visibleStudents.reduce((total, student) => total + (student.logbookEntries || []).filter((entry) => !entry.verified).length, 0);
   const [pageTitle, pageSub] = panelTitles[panel];
-  const scopeFilterPanels: Panel[] = ["dashboard", "leads", "admissions", "allstudents", "mystudents", "finance", "emi", "receipts", "cert", "attendance", "logs", "batch"];
+  const scopeFilterPanels: Panel[] = ["dashboard", "leads", "admissions", "allstudents", "mystudents", "finance", "emi", "receipts", "cert", "attendance", "logs", "batch", "internship"];
   const dateFilterPanels: Panel[] = ["dashboard", "leads", "admissions", "allstudents", "mystudents", "finance", "receipts", "cert"];
   const searchPanels: Panel[] = ["dashboard", "leads", "admissions"];
   const showScopeFilter = scopeFilterPanels.includes(panel);
@@ -789,12 +860,12 @@ export default function AdminCrm() {
     setDocumentPreview(null);
   };
 
-  const openDocumentPreview = async ({ type, id, field, title, fileName = "document" }: DocumentPreviewRequest) => {
+  const openSecurePreview = async (path: string, title: string, fileName = "document") => {
     if (!token) return toast.error("Please sign in again to preview documents");
     if (documentPreview && "url" in documentPreview) URL.revokeObjectURL(documentPreview.url);
     setDocumentPreview({ title, loading: true });
     try {
-      const response = await fetch(`${API_BASE_URL}/api/admin/documents/${type}/${id}/${field}`, {
+      const response = await fetch(`${API_BASE_URL}${path}`, {
         headers: { Authorization: `Bearer ${token}` },
       });
       if (!response.ok) {
@@ -809,6 +880,19 @@ export default function AdminCrm() {
       setDocumentPreview(null);
       toast.error(error instanceof Error ? error.message : "Unable to preview document");
     }
+  };
+
+  const openDocumentPreview = async ({ type, id, field, title, fileName = "document" }: DocumentPreviewRequest) => {
+    await openSecurePreview(`/api/admin/documents/${type}/${id}/${field}`, title, fileName);
+  };
+
+  const openInternshipPhotoPreview = async (student: Student, log: InternshipLog, photoType: "login" | "logout") => {
+    const photo = photoType === "login" ? log.loginPhoto : log.logoutPhoto;
+    await openSecurePreview(
+      `/api/admin/students/${student._id}/internship-logs/${log._id}/${photoType}`,
+      `${photoType === "login" ? "Log in" : "Log out"} selfie - ${student.fullName}`,
+      photo?.originalName || `${photoType}-selfie.jpg`,
+    );
   };
 
   async function api<T>(path: string, options: RequestInit = {}): Promise<ApiResult<T>> {
@@ -885,6 +969,16 @@ export default function AdminCrm() {
     setLeadMeta(res.meta || null);
   };
 
+  const loadAdmissionPendingCount = async () => {
+    if (!canUseLeads) {
+      setAdmissionPendingCount(0);
+      return;
+    }
+    const suffix = queryString({ franchiseId: scopedFranchiseId });
+    const res = await api<{ total: number }>(`/api/admin/admissions/pending-count${suffix}`, { headers: authedHeaders });
+    setAdmissionPendingCount(res.data?.total || 0);
+  };
+
   const loadStudents = async (page = studentPage) => {
     const suffix = queryString({
       centre: "",
@@ -897,6 +991,29 @@ export default function AdminCrm() {
     const res = await api<Student[]>(`/api/admin/students${suffix}`, { headers: authedHeaders });
     setStudents(res.data || []);
     setStudentMeta(res.meta || null);
+  };
+
+  const reviewLogbookEntry = async (student: Student, entry: LogbookEntry, verified = true, supervisorRemark?: string) => {
+    if (supervisorRemark === undefined) {
+      setLogbookReviewPrompt({
+        student,
+        entry,
+        verified,
+        remark: entry.supervisorRemark || (verified ? "Good progress" : ""),
+      });
+      return;
+    }
+    try {
+      await api<LogbookEntry>(`/api/admin/students/${student._id}/logbook/${entry._id}`, {
+        method: "PATCH",
+        headers: authedHeaders,
+        body: JSON.stringify({ verified, supervisorRemark: supervisorRemark.trim() }),
+      });
+      toast.success(verified ? "Logbook entry verified" : "Logbook entry moved back to pending");
+      await loadStudents();
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : "Unable to update logbook entry");
+    }
   };
 
   const loadAttendance = async () => {
@@ -962,6 +1079,13 @@ export default function AdminCrm() {
     setPracticalRecords(res.data || []);
   };
 
+  const loadStudyNotes = async () => {
+    if (!canUseAcademics) return;
+    const suffix = queryString({ franchiseId: scopedFranchiseId });
+    const res = await api<StudyNote[]>(`/api/admin/study-notes${suffix}`, { headers: authedHeaders });
+    setStudyNotes(res.data || []);
+  };
+
   const loadGoogleCalendarStatus = async () => {
     if (!isTeacherAccount) {
       setGoogleCalendarStatus(null);
@@ -974,7 +1098,7 @@ export default function AdminCrm() {
   const refreshAll = async () => {
     if (!token) return;
     try {
-      await Promise.all([loadMeta(), loadDashboard(), canUseLeads ? loadLeads(1) : Promise.resolve(), loadStudents(1), loadCounsellors(), loadTeachers(), isTeacherAccount ? loadGoogleCalendarStatus() : Promise.resolve(), canUseAcademics ? Promise.all([loadClassSchedules(), loadTopicProgress(), loadPracticalRecords()]) : Promise.resolve()]);
+      await Promise.all([loadMeta(), loadDashboard(), canUseLeads ? Promise.all([loadLeads(1), loadAdmissionPendingCount()]) : Promise.resolve(), loadStudents(1), loadCounsellors(), loadTeachers(), isTeacherAccount ? loadGoogleCalendarStatus() : Promise.resolve(), canUseAcademics ? Promise.all([loadClassSchedules(), loadTopicProgress(), loadPracticalRecords(), loadStudyNotes()]) : Promise.resolve()]);
     } catch (error) {
       toast.error(error instanceof Error ? error.message : "Unable to load CRM data");
     }
@@ -992,11 +1116,12 @@ export default function AdminCrm() {
 
   useEffect(() => { void refreshAll(); }, [token, scopedFranchiseId, selectedDate, canUseLeads, isTeacherAccount]);
   useEffect(() => { if (token && canUseLeads) void loadLeads(leadPage); }, [leadPage, filters.stage, filters.centre, filters.course, filters.counsellor, filters.leadFeedback, canUseLeads]);
+  useEffect(() => { if (token && canUseLeads) void loadAdmissionPendingCount(); }, [token, canUseLeads, scopedFranchiseId]);
   useEffect(() => { if (token) void loadStudents(studentPage); }, [studentPage, panel]);
   useEffect(() => { if (token && canManageSettings) void loadCounsellors(); }, [token, canManageSettings]);
   useEffect(() => { if (token && (canManageSettings || isCounsellorAccount)) void loadTeachers(); }, [token, canManageSettings, isCounsellorAccount]);
   useEffect(() => { if (token && (panel === "attendance" || (isTeacherAccount && panel === "dashboard"))) void loadAttendance(); }, [panel, isTeacherAccount, attendanceDateValue, visibleStudents.length]);
-  useEffect(() => { if (token && (panel === "batch" || (isTeacherAccount && panel === "dashboard"))) { void loadClassSchedules(); void loadClassSessions(); void loadAttendanceLogs(); void loadTopicProgress(); void loadPracticalRecords(); } }, [token, panel, scopedFranchiseId, classWeek, canUseAcademics, isTeacherAccount]);
+  useEffect(() => { if (token && (panel === "batch" || (isTeacherAccount && panel === "dashboard"))) { void loadClassSchedules(); void loadClassSessions(); void loadAttendanceLogs(); void loadTopicProgress(); void loadPracticalRecords(); void loadStudyNotes(); } }, [token, panel, scopedFranchiseId, classWeek, canUseAcademics, isTeacherAccount]);
   useEffect(() => { if (token && panel === "logs") void loadAttendanceLogs(); }, [panel, scopedFranchiseId]);
   useEffect(() => { if (token && (panel === "attdetail" || panel === "batch") && selectedAttendanceSummary) void loadAttendanceDetail(); }, [panel, selectedAttendanceSummary?.studentId, attendanceDetailFilters.dateFrom, attendanceDetailFilters.dateTo, attendanceDetailFilters.status, attendanceDetailFilters.nature, scopedFranchiseId]);
   useEffect(() => {
@@ -1009,19 +1134,20 @@ export default function AdminCrm() {
   }, [selectedClassSessionId, classSessions.length, students.length, batches.length, isTeacherAccount, user?.name]);
   useEffect(() => {
     const counsellorPanels = ["dashboard", "leads", "addlead", "admissions", "mystudents", "profile"];
-    const teacherPanels = ["dashboard", "batch", "mystudents", "profile"];
+    const teacherPanels = ["dashboard", "batch", "mystudents", "internship", "profile"];
     if (isCounsellorAccount && !counsellorPanels.includes(panel)) setPanel("dashboard");
     if (isTeacherAccount && !teacherPanels.includes(panel)) setPanel("dashboard");
     if (!isTeacherAccount && panel === "batch") setPanel("dashboard");
     if (!canManageFees && ["finance", "emi", "receipts"].includes(panel)) setPanel("dashboard");
     if (!canManageCertificates && panel === "cert") setPanel("dashboard");
-  }, [panel, isCounsellorAccount, isTeacherAccount, canManageFees, canManageCertificates]);
+    if (!canUseInternship && panel === "internship") setPanel("dashboard");
+  }, [panel, isCounsellorAccount, isTeacherAccount, canManageFees, canManageCertificates, canUseInternship]);
 
   const visibleNavGroups = useMemo(() => navGroups.map((group) => ({
     ...group,
     items: group.items.filter((item) => {
       if (isCounsellorAccount) return ["dashboard", "leads", "addlead", "admissions", "mystudents", "profile"].includes(item.key);
-      if (isTeacherAccount) return ["dashboard", "batch", "mystudents", "profile"].includes(item.key);
+      if (isTeacherAccount) return ["dashboard", "batch", "mystudents", "internship", "profile"].includes(item.key);
       if (item.key === "batch") return false;
       if (item.key === "attendance" || item.key === "logs") return false;
       if (item.key === "mystudents") return isStudentStaffAccount;
@@ -1029,10 +1155,11 @@ export default function AdminCrm() {
       if ((item.key === "attendance" || item.key === "logs") && !canUseAttendance) return false;
       if (["finance", "emi", "receipts"].includes(item.key) && !canManageFees) return false;
       if (item.key === "cert" && !canManageCertificates) return false;
+      if (item.key === "internship") return canUseInternship;
       if (item.key === "settings") return canManageSettings;
       return true;
     }),
-  })).filter((group) => group.items.length), [isCounsellorAccount, isTeacherAccount, isStudentStaffAccount, canUseAcademics, canUseAttendance, canManageSettings, canManageFees, canManageCertificates]);
+  })).filter((group) => group.items.length), [isCounsellorAccount, isTeacherAccount, isStudentStaffAccount, canUseAcademics, canUseAttendance, canManageSettings, canManageFees, canManageCertificates, canUseInternship]);
 
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);
@@ -1292,6 +1419,17 @@ export default function AdminCrm() {
     }
   };
 
+  const generateStudentLmsAccess = async (student: Student) => {
+    try {
+      const res = await api<Student>(`/api/admin/students/${student._id}/lms-access`, { method: "POST", headers: authedHeaders });
+      if (profile?.type === "student" && profile.data._id === student._id && res.data) setProfile({ type: "student", data: res.data });
+      toast.success("Student LMS login generated");
+      await refreshAll();
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : "Unable to generate Student LMS login");
+    }
+  };
+
   const deleteStudent = async (student: Student) => {
     setDeletePrompt({
       title: "Delete student",
@@ -1304,6 +1442,53 @@ export default function AdminCrm() {
           await refreshAll();
         } catch (error) {
           toast.error(error instanceof Error ? error.message : "Unable to delete student");
+        }
+      },
+    });
+  };
+
+  const saveStudentInternship = async (event: FormEvent<HTMLFormElement>, student: Student) => {
+    event.preventDefault();
+    const form = event.currentTarget;
+    const payload = Object.fromEntries(new FormData(form).entries());
+    const facilityName = String(payload.facilityName || "").trim();
+    const startDate = String(payload.startDate || "").trim();
+    const expectedEndDate = String(payload.expectedEndDate || "").trim();
+    const facilityLatitude = String(payload.facilityLatitude || "").trim();
+    const facilityLongitude = String(payload.facilityLongitude || "").trim();
+    if (!facilityName) return toast.error("Hospital/facility name is required");
+    if ((facilityLatitude && !facilityLongitude) || (!facilityLatitude && facilityLongitude)) return toast.error("Enter both hospital latitude and longitude");
+    if (facilityLatitude && (!Number.isFinite(Number(facilityLatitude)) || Number(facilityLatitude) < -90 || Number(facilityLatitude) > 90)) return toast.error("Enter a valid hospital latitude");
+    if (facilityLongitude && (!Number.isFinite(Number(facilityLongitude)) || Number(facilityLongitude) < -180 || Number(facilityLongitude) > 180)) return toast.error("Enter a valid hospital longitude");
+    if (!startDate) return toast.error("Start date is required");
+    if (!expectedEndDate) return toast.error("Expected end date is required");
+    if (new Date(expectedEndDate) < new Date(startDate)) return toast.error("Expected end date cannot be before start date");
+    try {
+      const res = await api<Student>(`/api/admin/students/${student._id}/internship`, {
+        method: "PUT",
+        headers: authedHeaders,
+        body: JSON.stringify(payload),
+      });
+      if (profile?.type === "student" && profile.data._id === student._id && res.data) setProfile({ type: "student", data: res.data });
+      toast.success(student.internshipAssignment ? "Internship assignment updated" : "Internship assigned");
+      await refreshAll();
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : "Unable to save internship assignment");
+    }
+  };
+
+  const deleteStudentInternship = async (student: Student) => {
+    setDeletePrompt({
+      title: "Remove internship",
+      message: `Remove internship assignment for "${student.fullName}"? Student internship logs and logbook entries for this assignment will also be removed.`,
+      onConfirm: async () => {
+        try {
+          const res = await api<Student>(`/api/admin/students/${student._id}/internship`, { method: "DELETE", headers: authedHeaders });
+          if (profile?.type === "student" && profile.data._id === student._id && res.data) setProfile({ type: "student", data: res.data });
+          toast.success("Internship assignment removed");
+          await refreshAll();
+        } catch (error) {
+          toast.error(error instanceof Error ? error.message : "Unable to remove internship assignment");
         }
       },
     });
@@ -1571,6 +1756,22 @@ export default function AdminCrm() {
     }
   };
 
+  const resetClassAttendance = (session: ClassSession) => {
+    setDeletePrompt({
+      title: "Clear attendance",
+      message: `Clear ${session.nature.toLowerCase()} attendance for ${session.batchName} on ${formatDate(session.date)}? Teacher can mark it again after clearing.`,
+      confirmLabel: "Clear",
+      tone: "danger",
+      onConfirm: async () => {
+        const res = await api<ClassSession>(`/api/admin/class-sessions/${session._id}/attendance`, { method: "DELETE", headers: authedHeaders });
+        const updated = res.data || { ...session, attendanceMarked: false, studentCount: 0 };
+        setClassSessions((current) => current.map((item) => item._id === session._id ? { ...item, ...updated, attendanceMarked: false, studentCount: 0 } : item));
+        setAttendance((current) => current.filter((record) => record.classSessionId !== session._id));
+        toast.success(res.message || "Attendance cleared");
+      },
+    });
+  };
+
   const updateTopicProgress = async (payload: { _id?: string; batchId: string; module: string; topic: string; status: string; faculty?: string }) => {
     try {
       const res = await api<TopicProgress>("/api/admin/topic-progress", { method: "PATCH", headers: authedHeaders, body: JSON.stringify(payload) });
@@ -1599,6 +1800,64 @@ export default function AdminCrm() {
         await api<TopicProgress>(`/api/admin/topic-progress/${topic._id}`, { method: "DELETE", headers: authedHeaders });
         setTopicProgress((current) => current.filter((row) => row._id !== topic._id));
         toast.success("Topic deleted");
+      },
+    });
+  };
+
+  const uploadStudyNote = async (event: FormEvent<HTMLFormElement>, batch: Batch) => {
+    event.preventDefault();
+    const form = event.currentTarget;
+    const formData = new FormData(form);
+    formData.set("batchId", batch._id);
+    try {
+      const response = await fetch(`${API_BASE_URL}/api/admin/study-notes`, {
+        method: "POST",
+        headers: { Authorization: `Bearer ${token}` },
+        body: formData,
+      });
+      const result = await response.json().catch(() => ({}));
+      if (!response.ok || result.ok === false) throw new Error(result.message || "Unable to upload note");
+      if (result.data) setStudyNotes((current) => [result.data, ...current.filter((note) => note._id !== result.data._id)]);
+      form.reset();
+      toast.success(result.message || "Study note uploaded");
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : "Unable to upload note");
+    }
+  };
+
+  const downloadStudyNote = async (note: StudyNote) => {
+    try {
+      const response = await fetch(`${API_BASE_URL}/api/admin/study-notes/${note._id}/download`, {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      if (!response.ok) {
+        const result = await response.json().catch(() => ({}));
+        throw new Error(result.message || "Unable to download note");
+      }
+      const blob = await response.blob();
+      const url = URL.createObjectURL(blob);
+      const link = document.createElement("a");
+      link.href = url;
+      link.download = note.file?.originalName || note.title || "study-note";
+      document.body.appendChild(link);
+      link.click();
+      link.remove();
+      URL.revokeObjectURL(url);
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : "Unable to download note");
+    }
+  };
+
+  const deleteStudyNote = (note: StudyNote) => {
+    setDeletePrompt({
+      title: "Delete note",
+      message: `Delete "${note.title}"? Students will no longer see this note.`,
+      confirmLabel: "Delete",
+      tone: "danger",
+      onConfirm: async () => {
+        await api<StudyNote>(`/api/admin/study-notes/${note._id}`, { method: "DELETE", headers: authedHeaders });
+        setStudyNotes((current) => current.filter((item) => item._id !== note._id));
+        toast.success("Study note deleted");
       },
     });
   };
@@ -1880,6 +2139,8 @@ export default function AdminCrm() {
                 {group.items.map((item) => (
                   <button key={item.key} className={`nav-item ${panel === item.key ? "active" : ""}`} onClick={() => { if (item.key === "profile") setProfile(null); setPanel(item.key); }}>
                     {item.icon}<span>{item.label}</span>
+                    {item.key === "admissions" && admissionPendingCount > 0 && <em className="nav-badge nav-badge-admission">{admissionPendingCount}</em>}
+                    {item.key === "internship" && pendingLogbookReviewCount > 0 && <em className="nav-badge">{pendingLogbookReviewCount}</em>}
                   </button>
                 ))}
               </div>
@@ -1929,18 +2190,19 @@ export default function AdminCrm() {
             {panel === "leads" && <LeadsPanel leads={leads} meta={leadMeta} filters={filters} setFilters={setFilters} centres={centreOptions} courses={courseOptions} canAssign={canAssignCounsellors} canDelete={canDeleteRecords} counsellors={counsellors} onSearch={() => loadLeads(1)} onPage={setLeadPage} onPatch={patchLead} onDelete={deleteLead} onEdit={(lead) => openProfile({ type: "lead", data: lead, mode: "edit" }, "leads")} onAddLead={() => setPanel("addlead")} onImportExcel={importLeadExcel} onOpen={openLeadDrawer} />}
             {panel === "addlead" && <AddLeadPanel centres={centreOptions} courses={courseOptions} onSubmit={addLead} />}
             {panel === "admissions" && <AdmissionsPanel leads={leads.filter((lead) => lead.stage === "Admission" && !students.some((student) => String(student.leadId || "") === String(lead._id)))} batches={batches} canAssign={canAssignCounsellors} counsellors={counsellors} centres={centreOptions} onPatch={patchLead} onConvert={convertLead} onOpen={openLeadDrawer} />}
-            {panel === "batch" && <BatchPanel batches={batches} students={students} schedules={classSchedulesState} sessions={classSessions} topicProgress={topicProgress} practicalRecords={practicalRecords} teachers={teachers} user={user} classWeek={classWeek} setClassWeek={setClassWeek} selectedBatchId={selectedBatchId} setSelectedBatchId={setSelectedBatchId} selectedSessionId={selectedClassSessionId} setSelectedSessionId={setSelectedClassSessionId} initialTab={batchResumeTab} classesGenerating={classesGenerating} attendanceDraft={classAttendanceDraft} setAttendanceDraft={setClassAttendanceDraft} attendanceLogs={attendanceSummaries} selectedAttendanceSummary={selectedAttendanceSummary} attendanceDetailLogs={attendanceDetailLogs} attendanceDetailFilters={attendanceDetailFilters} setAttendanceDetailFilters={setAttendanceDetailFilters} onSelectAttendanceSummary={setSelectedAttendanceSummary} onCreateSchedule={createClassSchedule} onGenerateWeek={generateWeeklyRoster} onSaveAttendance={saveClassAttendance} onTopicProgress={updateTopicProgress} onDeleteTopic={deleteTopicProgress} onCreateBatchPractical={createBatchPractical} onPracticalRecord={updatePracticalRecord} onOpen={(student) => { setBatchResumeTab("students"); openProfile({ type: "student", data: student }, "batch"); }} />}
+            {panel === "batch" && <BatchPanel batches={batches} students={students} schedules={classSchedulesState} sessions={classSessions} topicProgress={topicProgress} practicalRecords={practicalRecords} studyNotes={studyNotes} teachers={teachers} user={user} classWeek={classWeek} setClassWeek={setClassWeek} selectedBatchId={selectedBatchId} setSelectedBatchId={setSelectedBatchId} selectedSessionId={selectedClassSessionId} setSelectedSessionId={setSelectedClassSessionId} initialTab={batchResumeTab} classesGenerating={classesGenerating} attendanceDraft={classAttendanceDraft} setAttendanceDraft={setClassAttendanceDraft} attendanceLogs={attendanceSummaries} selectedAttendanceSummary={selectedAttendanceSummary} attendanceDetailLogs={attendanceDetailLogs} attendanceDetailFilters={attendanceDetailFilters} setAttendanceDetailFilters={setAttendanceDetailFilters} onSelectAttendanceSummary={setSelectedAttendanceSummary} onCreateSchedule={createClassSchedule} onGenerateWeek={generateWeeklyRoster} onSaveAttendance={saveClassAttendance} onResetAttendance={resetClassAttendance} onTopicProgress={updateTopicProgress} onDeleteTopic={deleteTopicProgress} onCreateBatchPractical={createBatchPractical} onPracticalRecord={updatePracticalRecord} onUploadStudyNote={uploadStudyNote} onDownloadStudyNote={downloadStudyNote} onDeleteStudyNote={deleteStudyNote} onOpen={(student) => { setBatchResumeTab("students"); openProfile({ type: "student", data: student }, "batch"); }} />}
             {panel === "mystudents" && <StudentsPanel title="My candidates" students={visibleStudents} meta={studentMeta} canAssign={canAssignTeachers} canDelete={canDeleteRecords} teachers={teachers} onPage={setStudentPage} onPatch={patchStudent} onDelete={deleteStudent} onEdit={(student) => openProfile({ type: "student", data: student, mode: "edit" }, "mystudents")} onOpen={(student) => openProfile({ type: "student", data: student }, "mystudents")} />}
             {panel === "allstudents" && <StudentsPanel title="All candidates" students={students} meta={studentMeta} canAssign={canAssignTeachers} canDelete={canDeleteRecords} teachers={teachers} onPage={setStudentPage} onPatch={patchStudent} onDelete={deleteStudent} onEdit={(student) => openProfile({ type: "student", data: student, mode: "edit" }, "allstudents")} onOpen={(student) => openProfile({ type: "student", data: student }, "allstudents")} />}
             {panel === "attendance" && <AttendancePanel students={visibleStudents} attendance={attendance} draft={attendanceDraft} setDraft={setAttendanceDraft} attendanceDate={attendanceDateValue} setAttendanceDate={setAttendanceDateValue} onRefresh={loadAttendance} onSave={saveAttendance} />}
             {panel === "logs" && <LogsPanel logs={attendanceSummaries} onSelect={(summary) => { setSelectedAttendanceSummary(summary); setPanel("attdetail"); }} />}
             {panel === "attdetail" && <AttendanceDetailPanel summary={selectedAttendanceSummary} logs={attendanceDetailLogs} filters={attendanceDetailFilters} setFilters={setAttendanceDetailFilters} onBack={() => setPanel("logs")} />}
+            {panel === "internship" && canUseInternship && <InternshipPanel students={visibleStudents} user={user} onPreviewPhoto={openInternshipPhotoPreview} onReviewLogbook={reviewLogbookEntry} />}
             {panel === "finance" && <FinancePanel students={students} meta={studentMeta} user={user} onPage={setStudentPage} onOpen={(student) => openProfile({ type: "student", data: student }, "finance")} onCashDeposit={recordCashDeposit} onDownloadCashDepositProof={downloadCashDepositProof} />}
             {panel === "emi" && <EmiPanel students={students} meta={studentMeta} onPage={setStudentPage} onOpen={(student) => openProfile({ type: "student", data: student }, "emi")} />}
             {panel === "receipts" && canManageFees && <ReceiptsPanel students={visibleStudents} meta={studentMeta} onPage={setStudentPage} onOpen={(student) => { setReceiptStudent(student); setReceiptSelection({ type: "invoice" }); }} />}
             {panel === "cert" && canManageCertificates && <CertificatePanel students={students} meta={studentMeta} onPage={setStudentPage} onIssue={issueCertificate} onOpen={(student) => openProfile({ type: "student", data: student }, "cert")} />}
             {panel === "settings" && canManageSettings && <SettingsPanel isHeadSuperAdmin={isHeadSuperAdmin} isHeadBranchAdmin={isHeadBranchAdmin} isFranchiseSuperAdmin={isFranchiseSuperAdmin} centres={centres} courses={courses} batches={batches} counsellors={counsellors} teachers={teachers} user={user} centreOptions={centreOptions} courseOptions={courseOptions} onAddStaff={addCounsellor} onAddCentre={(event) => addCentreOrCourse(event, "centres")} onUpdateCentreBilling={updateCentreBilling} onAddCourse={(event) => addCentreOrCourse(event, "courses")} onUpdateCourse={updateCourse} onDeleteCourse={deleteCourse} onAddBatch={addBatch} onUpdateBatch={updateBatch} onDeleteBatch={deleteBatch} onUpdatePassword={updatePassword} />}
-            {panel === "profile" && <ProfilePanel profile={profile} user={user} accessCount={visibleNavGroups.reduce((sum, group) => sum + group.items.length, 0)} canManageFees={canManageFees} canManageSettings={canManageSettings} canAssignTeachers={canAssignTeachers} canManageCertificates={canManageCertificates} centres={centreOptions} courses={courseOptions} batches={batches} teachers={teachers} onBack={closeProfile} onGoSettings={() => setPanel("settings")} onLeadPatch={patchLead} onStudentPatch={patchStudent} onPayment={addPayment} onDownloadPaymentProof={downloadPaymentProof} onFeedback={addStudentFeedback} onIssue={issueCertificate} onPreviewDocument={openDocumentPreview} />}
+            {panel === "profile" && <ProfilePanel profile={profile} user={user} accessCount={visibleNavGroups.reduce((sum, group) => sum + group.items.length, 0)} canManageFees={canManageFees} canManageSettings={canManageSettings} canAssignTeachers={canAssignTeachers} canManageCertificates={canManageCertificates} canManageInternships={canManageInternships} centres={centreOptions} courses={courseOptions} batches={batches} teachers={teachers} onBack={closeProfile} onGoSettings={() => setPanel("settings")} onLeadPatch={patchLead} onStudentPatch={patchStudent} onGenerateStudentLmsAccess={generateStudentLmsAccess} onInternshipSave={saveStudentInternship} onInternshipDelete={deleteStudentInternship} onPayment={addPayment} onDownloadPaymentProof={downloadPaymentProof} onFeedback={addStudentFeedback} onIssue={issueCertificate} onPreviewDocument={openDocumentPreview} onPreviewInternshipPhoto={openInternshipPhotoPreview} />}
           </section>
         </div>
       </div>
@@ -1962,6 +2224,17 @@ export default function AdminCrm() {
       />
       <DocumentPreviewModal preview={documentPreview} onClose={closeDocumentPreview} />
       <DeleteConfirmModal prompt={deletePrompt} onCancel={() => setDeletePrompt(null)} onConfirm={confirmDeletePrompt} />
+      <LogbookReviewModal
+        prompt={logbookReviewPrompt}
+        onRemarkChange={(remark) => setLogbookReviewPrompt((current) => current ? { ...current, remark } : current)}
+        onCancel={() => setLogbookReviewPrompt(null)}
+        onSubmit={async () => {
+          if (!logbookReviewPrompt) return;
+          const activePrompt = logbookReviewPrompt;
+          setLogbookReviewPrompt(null);
+          await reviewLogbookEntry(activePrompt.student, activePrompt.entry, activePrompt.verified, activePrompt.remark);
+        }}
+      />
     </main>
   );
 }
@@ -2290,6 +2563,125 @@ function CollectionStatus({ students }: { students: Student[] }) {
   </div></div>;
 }
 
+function InternshipPanel({ students, user, onPreviewPhoto, onReviewLogbook }: { students: Student[]; user: AdminUser | null; onPreviewPhoto: (student: Student, log: InternshipLog, photoType: "login" | "logout") => void; onReviewLogbook: (student: Student, entry: LogbookEntry, verified?: boolean, supervisorRemark?: string) => void }) {
+  const [query, setQuery] = useState("");
+  const [status, setStatus] = useState("all");
+  const [date, setDate] = useState(dateInputValue());
+  const [logbookStatus, setLogbookStatus] = useState("pending");
+  const [internshipTab, setInternshipTab] = useState<"logs" | "logbook">("logs");
+  const todayKey = dateInputValue();
+  const assignedStudents = students.filter((student) => student.internshipAssignment);
+  const rows = assignedStudents.flatMap((student) => (student.internshipLogs || []).map((log) => ({ student, log, gps: gpsMatchInfo(log, student.internshipAssignment) })));
+  const logbookRows = assignedStudents.flatMap((student) => (student.logbookEntries || []).map((entry) => ({ student, entry })));
+  const todayRows = rows.filter(({ log }) => dateInputValue(log.date) === todayKey);
+  const filteredRows = rows.filter(({ student, log, gps }) => {
+    const text = `${student.fullName} ${student.admissionNumber || ""} ${student.batch || ""} ${student.centre || ""} ${student.internshipAssignment?.facilityName || ""}`.toLowerCase();
+    const logState = log.loginAt && log.logoutAt ? "completed" : log.loginAt ? "pendingLogout" : "pendingLogin";
+    return (!query || text.includes(query.toLowerCase())) && (!date || dateInputValue(log.date) === date) && (status === "all" || status === logState || (status === "gpsReview" && ["Location differs", "GPS needs review"].includes(gps.label)));
+  });
+  const pendingLogout = todayRows.filter(({ log }) => log.loginAt && !log.logoutAt).length;
+  const completedToday = todayRows.filter(({ log }) => log.loginAt && log.logoutAt).length;
+  const gpsReview = rows.filter(({ gps }) => ["Location differs", "GPS needs review"].includes(gps.label)).length;
+  const pendingLogbooks = logbookRows.filter(({ entry }) => !entry.verified).length;
+  const filteredLogbooks = logbookRows.filter(({ student, entry }) => {
+    const text = `${student.fullName} ${student.admissionNumber || ""} ${student.batch || ""} ${entry.departmentArea || ""}`.toLowerCase();
+    return (!query || text.includes(query.toLowerCase())) && (logbookStatus === "all" || (logbookStatus === "pending" ? !entry.verified : Boolean(entry.verified)));
+  });
+  const scopeCopy = user?.role?.includes("teacher") ? "assigned students only" : user?.role === "superadmin" ? "all centres" : "current centre scope";
+
+  return (
+    <div className="internship-panel">
+      <div className="grid-metrics internship-metrics">
+        <MetricCard label="Assigned internships" value={assignedStudents.length} dot="#4F6BFF" delta={scopeCopy} />
+        <MetricCard label="Logged in today" value={todayRows.filter(({ log }) => log.loginAt).length} dot="#14B8A6" delta="duty started" />
+        <MetricCard label="Pending logout" value={pendingLogout} dot="#F5A524" delta="logout pending" down={pendingLogout > 0} />
+        <MetricCard label="GPS review" value={gpsReview} dot="#E5484D" delta="needs check" down={gpsReview > 0} />
+        <MetricCard label="Logbook review" value={pendingLogbooks} dot="#8B5CF6" delta="pending faculty review" down={pendingLogbooks > 0} />
+      </div>
+      <div className="pill-tabs internship-tabs">
+        <button type="button" className={`pill-tab ${internshipTab === "logs" ? "active" : ""}`} onClick={() => setInternshipTab("logs")}>Attendance logs</button>
+        <button type="button" className={`pill-tab ${internshipTab === "logbook" ? "active" : ""}`} onClick={() => setInternshipTab("logbook")}>Logbook review {pendingLogbooks > 0 && <em className="tab-badge">{pendingLogbooks}</em>}</button>
+      </div>
+      {internshipTab === "logs" && <div className="card internship-monitor-card">
+        <div className="card-head">
+          <div><h3>Internship monitoring</h3><div className="sub">{completedToday} completed today</div></div>
+          <span className="badge badge-blue">{filteredRows.length} records</span>
+        </div>
+        <div className="card-body internship-monitor-body">
+          <div className="filter-bar internship-filter-bar">
+            <div className="fbtn internship-search-field"><Search size={14} /><input value={query} onChange={(event) => setQuery(event.target.value)} placeholder="Search student, batch, hospital..." /></div>
+            <input className="fbtn internship-date-input" type="date" value={date} onChange={(event) => setDate(event.target.value)} />
+            <select className="fbtn" value={status} onChange={(event) => setStatus(event.target.value)}>
+              <option value="all">All logs</option>
+              <option value="completed">Completed</option>
+              <option value="pendingLogout">Pending logout</option>
+              <option value="pendingLogin">Pending login</option>
+              <option value="gpsReview">GPS review</option>
+            </select>
+          </div>
+          <div className="table-wrap internship-monitor-table-wrap">
+            <table className="internship-monitor-table">
+              <thead><tr><th>Student</th><th>Hospital</th><th>Date</th><th>Log in</th><th>Log out</th><th>Hours</th><th>Selfies</th><th>GPS</th></tr></thead>
+              <tbody>
+                {filteredRows.map(({ student, log, gps }) => (
+                  <tr key={`${student._id}-${log._id}`}>
+                    <td><div className="lead-name-cell internship-student-cell"><span className="avatar lead-avatar">{initials(student.fullName)}</span><div><div className="cell-name">{student.fullName}</div><div className="cell-sub">{student.admissionNumber || "-"} | {student.batch || "No batch"}</div></div></div></td>
+                    <td className="internship-hospital-cell">{student.internshipAssignment?.facilityName || "-"}<div className="cell-sub">{student.internshipAssignment?.facilityLocation || student.centre || "-"}</div></td>
+                    <td className="mono">{formatDate(log.date)}</td>
+                    <td className="mono">{formatDateTime(log.loginAt)}</td>
+                    <td className="mono">{formatDateTime(log.logoutAt)}</td>
+                    <td className="mono">{log.hours ? `${log.hours}h` : "-"}</td>
+                    <td><div className="action-icons">{log.loginPhoto?.storedName && <button type="button" className="action-icon-btn action-icon-primary" title="View login selfie" onClick={() => onPreviewPhoto(student, log, "login")}><Eye size={14} /></button>}{log.logoutPhoto?.storedName && <button type="button" className="action-icon-btn action-icon-primary" title="View logout selfie" onClick={() => onPreviewPhoto(student, log, "logout")}><Eye size={14} /></button>}{!log.loginPhoto?.storedName && !log.logoutPhoto?.storedName && <span className="cell-sub">Missing</span>}</div></td>
+                    <td className="internship-gps-status"><span className={`badge ${gps.badge}`}>{gps.label}</span><div className="cell-sub">{gps.detail}</div></td>
+                  </tr>
+                ))}
+                {!filteredRows.length && <tr><td colSpan={8}><div className="empty-state"><h4>No internship logs found</h4><p>Logs will appear here after students start internship attendance.</p></div></td></tr>}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </div>}
+      {internshipTab === "logbook" && <div className="card internship-logbook-card">
+        <div className="card-head">
+          <div><h3>Logbook review</h3><div className="sub">{user?.role?.includes("teacher") ? "Assigned students only" : "Student internship entries"}</div></div>
+          <div className="segmented tiny">
+            <button type="button" className={logbookStatus === "pending" ? "active" : ""} onClick={() => setLogbookStatus("pending")}>Pending</button>
+            <button type="button" className={logbookStatus === "verified" ? "active" : ""} onClick={() => setLogbookStatus("verified")}>Verified</button>
+            <button type="button" className={logbookStatus === "all" ? "active" : ""} onClick={() => setLogbookStatus("all")}>All</button>
+          </div>
+        </div>
+        <div className="card-body internship-logbook-list">
+          {filteredLogbooks.map(({ student, entry }) => (
+            <article className="internship-logbook-item" key={`${student._id}-${entry._id}`}>
+              <div className="lead-name-cell internship-student-cell">
+                <span className="avatar lead-avatar">{initials(student.fullName)}</span>
+                <div><div className="cell-name">{student.fullName}</div><div className="cell-sub">{student.admissionNumber || "-"} | {student.batch || "No batch"}</div></div>
+              </div>
+              <div className="internship-logbook-content">
+                <div className="internship-logbook-top"><b>{entry.departmentArea || "Internship entry"}</b><span>{formatDate(entry.date)}</span></div>
+                <div className="internship-logbook-notes">
+                  <div><span>Activities</span><p>{entry.activitiesPerformed || "-"}</p></div>
+                  <div><span>Key learnings</span><p>{entry.keyLearnings || "-"}</p></div>
+                  {entry.challenges && <div><span>Questions</span><p>{entry.challenges}</p></div>}
+                </div>
+              </div>
+              <div className="internship-logbook-actions">
+                <span className={`badge ${entry.verified ? "badge-green" : "badge-amber"}`}>{entry.verified ? "Verified" : "Pending Review"}</span>
+                {entry.verified ? (
+                  <button type="button" className="btn btn-ghost btn-sm" onClick={() => onReviewLogbook(student, entry, false)}><RefreshCw size={14} /> Reopen</button>
+                ) : (
+                  <button type="button" className="btn btn-primary btn-sm" onClick={() => onReviewLogbook(student, entry, true)}><CheckCircle2 size={14} /> Verify</button>
+                )}
+              </div>
+            </article>
+          ))}
+          {!filteredLogbooks.length && <div className="empty-state"><h4>No logbook entries found</h4><p>Student logbook entries will appear here after internship starts.</p></div>}
+        </div>
+      </div>}
+    </div>
+  );
+}
+
 type LeadFilters = { q: string; stage: string; centre: string; course: string; counsellor: string; leadFeedback: string };
 
 function LeadsPanel(props: { leads: Lead[]; meta: PaginationMeta | null; filters: LeadFilters; setFilters: (filters: LeadFilters) => void; centres: string[]; courses: string[]; canAssign: boolean; canDelete: boolean; counsellors: Counsellor[]; onSearch: () => void; onPage: (page: number) => void; onPatch: (id: string, updates: Partial<Lead>) => void; onDelete: (lead: Lead) => void; onEdit: (lead: Lead) => void; onAddLead: () => void; onImportExcel: (event: ChangeEvent<HTMLInputElement>) => void; onOpen: (lead: Lead) => void }) {
@@ -2331,6 +2723,13 @@ function AdmissionsPanel(props: { leads: Lead[]; batches: Batch[]; canAssign: bo
                   const courseMatches = !lead.course || !batch.course || String(batch.course).toUpperCase() === String(lead.course).toUpperCase();
                   return centreMatches && courseMatches;
                 });
+                const sameCourseBatches = props.batches.filter((batch) => !lead.course || !batch.course || String(batch.course).toUpperCase() === String(lead.course).toUpperCase());
+                const sameCentreBatches = props.batches.filter((batch) => !lead.centre || !batch.centre || batch.centre === lead.centre);
+                const batchMismatchHint = !sameCourseBatches.length
+                  ? "Course mismatch with existing batches"
+                  : !sameCentreBatches.length
+                    ? "Centre mismatch with existing batches"
+                    : "Check batch course and centre";
                 const selectedBatch = batchDrafts[lead._id] || "";
                 return (
                   <tr key={lead._id} className="clickable" onClick={() => props.onOpen(lead)}>
@@ -2340,8 +2739,13 @@ function AdmissionsPanel(props: { leads: Lead[]; batches: Batch[]; canAssign: bo
                     <td>{lead.counsellor || "-"}</td>
                     <td><span className={`badge ${stageBadgeClass(lead.stage)}`}>{lead.stage}</span></td>
                     <td className="mono">{formatCurrency(lead.expectedFee || 0)}</td>
-                    <td onClick={(event) => event.stopPropagation()}><select className="fbtn student-mini-select" value={selectedBatch} onChange={(event) => setBatchDrafts((drafts) => ({ ...drafts, [lead._id]: event.target.value }))}><option value="">Assign batch</option>{batchOptions.map((batch) => <option key={batch._id} value={batch.name}>{batch.name} - {formatDate(batch.commenceDate)}</option>)}</select>{!batchOptions.length && <div className="cell-sub">Create matching batch first</div>}</td>
-                    <td onClick={(event) => event.stopPropagation()}><button className="btn btn-primary btn-sm" disabled={!selectedBatch} onClick={() => props.onConvert(lead, selectedBatch)}>Enroll {"->"}</button></td>
+                    <td onClick={(event) => event.stopPropagation()}>
+                      <div className="admission-batch-cell">
+                        <select className="fbtn student-mini-select" value={selectedBatch} onChange={(event) => setBatchDrafts((drafts) => ({ ...drafts, [lead._id]: event.target.value }))}><option value="">Assign batch</option>{batchOptions.map((batch) => <option key={batch._id} value={batch.name}>{batch.name} - {formatDate(batch.commenceDate)}</option>)}</select>
+                        {!batchOptions.length && <div className="cell-sub admission-batch-hint"><b>No batch for {courseShortCode(lead.course) || "this course"} - {lead.centre || "this centre"}</b><span>{batchMismatchHint}</span></div>}
+                      </div>
+                    </td>
+                    <td className="admission-action-cell" onClick={(event) => event.stopPropagation()}><button className="btn btn-primary btn-sm" disabled={!selectedBatch} onClick={() => props.onConvert(lead, selectedBatch)}>Enroll {"->"}</button></td>
                   </tr>
                 );
               })}
@@ -2494,7 +2898,7 @@ function StudentPrototypeTable({ students, canAssign, canDelete, teachers, onPat
   );
 }
 
-function BatchPanel({ batches, students, schedules, sessions, topicProgress, practicalRecords, teachers, user, classWeek, setClassWeek, selectedBatchId, setSelectedBatchId, selectedSessionId, setSelectedSessionId, initialTab, classesGenerating, attendanceDraft, setAttendanceDraft, attendanceLogs, selectedAttendanceSummary, attendanceDetailLogs, attendanceDetailFilters, setAttendanceDetailFilters, onSelectAttendanceSummary, onCreateSchedule, onGenerateWeek, onSaveAttendance, onTopicProgress, onDeleteTopic, onCreateBatchPractical, onPracticalRecord, onOpen }: { batches: Batch[]; students: Student[]; schedules: ClassSchedule[]; sessions: ClassSession[]; topicProgress: TopicProgress[]; practicalRecords: PracticalRecord[]; teachers: Counsellor[]; user: AdminUser | null; classWeek: string; setClassWeek: (value: string) => void; selectedBatchId: string; setSelectedBatchId: (id: string) => void; selectedSessionId: string; setSelectedSessionId: (id: string) => void; initialTab?: AcademicTab; classesGenerating: boolean; attendanceDraft: Record<string, { status: AttendanceStatus; note: string }>; setAttendanceDraft: (value: Record<string, { status: AttendanceStatus; note: string }>) => void; attendanceLogs: AttendanceSummary[]; selectedAttendanceSummary: AttendanceSummary | null; attendanceDetailLogs: Attendance[]; attendanceDetailFilters: AttendanceDetailFilters; setAttendanceDetailFilters: (filters: AttendanceDetailFilters) => void; onSelectAttendanceSummary: (summary: AttendanceSummary | null) => void; onCreateSchedule: (event: FormEvent<HTMLFormElement>) => void | Promise<void>; onGenerateWeek: (batchId?: string, weekOverride?: string) => void; onSaveAttendance: (session: ClassSession, sessionStudents: Student[]) => void; onTopicProgress: (payload: { _id?: string; batchId: string; module: string; topic: string; status: string; faculty?: string }) => void; onDeleteTopic: (topic: TopicProgress) => void; onCreateBatchPractical: (payload: { batchId: string; students: Student[]; practicalName: string; module?: string; faculty?: string }) => void; onPracticalRecord: (payload: { batchId: string; studentId: string; practicalName: string; module?: string; status: string; remarks?: string; faculty?: string }) => void; onOpen: (student: Student) => void }) {
+function BatchPanel({ batches, students, schedules, sessions, topicProgress, practicalRecords, studyNotes, teachers, user, classWeek, setClassWeek, selectedBatchId, setSelectedBatchId, selectedSessionId, setSelectedSessionId, initialTab, classesGenerating, attendanceDraft, setAttendanceDraft, attendanceLogs, selectedAttendanceSummary, attendanceDetailLogs, attendanceDetailFilters, setAttendanceDetailFilters, onSelectAttendanceSummary, onCreateSchedule, onGenerateWeek, onSaveAttendance, onResetAttendance, onTopicProgress, onDeleteTopic, onCreateBatchPractical, onPracticalRecord, onUploadStudyNote, onDownloadStudyNote, onDeleteStudyNote, onOpen }: { batches: Batch[]; students: Student[]; schedules: ClassSchedule[]; sessions: ClassSession[]; topicProgress: TopicProgress[]; practicalRecords: PracticalRecord[]; studyNotes: StudyNote[]; teachers: Counsellor[]; user: AdminUser | null; classWeek: string; setClassWeek: (value: string) => void; selectedBatchId: string; setSelectedBatchId: (id: string) => void; selectedSessionId: string; setSelectedSessionId: (id: string) => void; initialTab?: AcademicTab; classesGenerating: boolean; attendanceDraft: Record<string, { status: AttendanceStatus; note: string }>; setAttendanceDraft: (value: Record<string, { status: AttendanceStatus; note: string }>) => void; attendanceLogs: AttendanceSummary[]; selectedAttendanceSummary: AttendanceSummary | null; attendanceDetailLogs: Attendance[]; attendanceDetailFilters: AttendanceDetailFilters; setAttendanceDetailFilters: (filters: AttendanceDetailFilters) => void; onSelectAttendanceSummary: (summary: AttendanceSummary | null) => void; onCreateSchedule: (event: FormEvent<HTMLFormElement>) => void | Promise<void>; onGenerateWeek: (batchId?: string, weekOverride?: string) => void; onSaveAttendance: (session: ClassSession, sessionStudents: Student[]) => void; onResetAttendance: (session: ClassSession) => void; onTopicProgress: (payload: { _id?: string; batchId: string; module: string; topic: string; status: string; faculty?: string }) => void; onDeleteTopic: (topic: TopicProgress) => void; onCreateBatchPractical: (payload: { batchId: string; students: Student[]; practicalName: string; module?: string; faculty?: string }) => void; onPracticalRecord: (payload: { batchId: string; studentId: string; practicalName: string; module?: string; status: string; remarks?: string; faculty?: string }) => void; onUploadStudyNote: (event: FormEvent<HTMLFormElement>, batch: Batch) => void; onDownloadStudyNote: (note: StudyNote) => void; onDeleteStudyNote: (note: StudyNote) => void; onOpen: (student: Student) => void }) {
   const [academicTab, setAcademicTab] = useState<AcademicTab>(initialTab || "batches");
   const [classModalOpen, setClassModalOpen] = useState(false);
   const [showTopicForm, setShowTopicForm] = useState(false);
@@ -2516,6 +2920,7 @@ function BatchPanel({ batches, students, schedules, sessions, topicProgress, pra
   const selectedSchedules = activeBatch ? schedules.filter((schedule) => schedule.batchName === activeBatch.name || String(schedule.batchId) === activeBatch._id) : [];
   const batchTopicProgress = activeBatch ? topicProgress.filter((row) => String(row.batchId) === activeBatch._id || row.batchName === activeBatch.name).sort((a, b) => `${a.module}-${a.topic}`.localeCompare(`${b.module}-${b.topic}`)) : [];
   const batchPracticalRecords = activeBatch ? practicalRecords.filter((row) => String(row.batchId) === activeBatch._id || row.batchName === activeBatch.name) : [];
+  const batchStudyNotes = activeBatch ? studyNotes.filter((note) => String(note.batchId) === activeBatch._id || note.batchName === activeBatch.name) : [];
   const selectedSession = sessions.find((session) => session._id === selectedSessionId);
   const selectedSessionBatch = selectedSession ? batches.find((batch) => batch.name === selectedSession.batchName || batch._id === String(selectedSession.batchId)) : undefined;
   const teacherOwnsSelectedSessionBatch = !isTeacher || selectedSessionBatch?.assignedFaculty?.includes(user?.name || "");
@@ -2650,6 +3055,7 @@ function BatchPanel({ batches, students, schedules, sessions, topicProgress, pra
             <button type="button" className={`academic-tab ${academicTab === "students" ? "active" : ""}`} onClick={() => setAcademicTab("students")}>Students</button>
             <button type="button" className={`academic-tab ${academicTab === "attendance" || academicTab === "timetable" || academicTab === "markAttendance" ? "active" : ""}`} onClick={() => setAcademicTab("attendance")}>Classes</button>
             <button type="button" className={`academic-tab ${academicTab === "topics" || academicTab === "practicals" ? "active" : ""}`} onClick={() => { setAcademicTab(progressTab === "practicals" ? "practicals" : "topics"); setShowTopicForm(false); setShowPracticalForm(false); }}>Progress</button>
+            <button type="button" className={`academic-tab ${academicTab === "notes" ? "active" : ""}`} onClick={() => setAcademicTab("notes")}>Notes</button>
             <button type="button" className={`academic-tab ${academicTab === "logs" || academicTab === "detail" ? "active" : ""}`} onClick={() => setAcademicTab("logs")}>Logs</button>
           </div>
         </>
@@ -2847,7 +3253,10 @@ function BatchPanel({ batches, students, schedules, sessions, topicProgress, pra
                 {!!selectedSessionStudents.length && (
                   <div className="class-attendance-save">
                     <span>Showing {filteredSessionStudents.length} of {selectedSessionStudents.length} candidates</span>
-                    <button className="btn btn-primary" disabled={selectedSession.attendanceMarked} onClick={() => onSaveAttendance(selectedSession, selectedSessionStudents)}>{selectedSession.attendanceMarked ? "Attendance saved" : `Save ${selectedSession.nature} attendance`}</button>
+                    <div className="class-attendance-actions">
+                      {selectedSession.attendanceMarked && <button type="button" className="btn btn-ghost btn-danger-soft" onClick={() => onResetAttendance(selectedSession)}><Trash2 size={14} /> Clear attendance</button>}
+                      <button className="btn btn-primary" disabled={selectedSession.attendanceMarked} onClick={() => onSaveAttendance(selectedSession, selectedSessionStudents)}>{selectedSession.attendanceMarked ? "Attendance saved" : `Save ${selectedSession.nature} attendance`}</button>
+                    </div>
                   </div>
                 )}
               </div>
@@ -3021,6 +3430,42 @@ function BatchPanel({ batches, students, schedules, sessions, topicProgress, pra
                 {activeBatch && !batchPracticalRecords.length && <tr><td colSpan={5}><div className="empty-state"><h4>No practicals created yet</h4><p>Add the first practical for this batch.</p></div></td></tr>}
               </tbody>
             </table>
+          </div>
+        </div>
+      ) : academicTab === "notes" ? (
+        <div className="card academic-card study-notes-card">
+          <div className="card-head">
+            <div><h3>{activeBatch ? `${activeBatch.name} notes` : "Study notes"}</h3><div className="sub">Upload notes and study files for students in this batch</div></div>
+            <button type="button" className="btn btn-ghost btn-sm" onClick={() => { setAcademicTab("batches"); setSelectedBatchId(""); }}>Change batch</button>
+          </div>
+          {activeBatch && (
+            <form className="academic-topic-form study-note-form" onSubmit={(event) => onUploadStudyNote(event, activeBatch)}>
+              <div className="field"><RequiredLabel required>Title</RequiredLabel><input name="title" placeholder="Module 1 notes" required /></div>
+              <div className="field"><RequiredLabel>Module</RequiredLabel><input name="module" placeholder="Healthcare Operations" /></div>
+              <div className="field"><RequiredLabel>File</RequiredLabel><input name="file" type="file" accept=".pdf,.doc,.docx,.ppt,.pptx,.xls,.xlsx,.csv,.jpg,.jpeg,.png,.webp,.txt" /></div>
+              <div className="field"><RequiredLabel>Video / reference URL</RequiredLabel><input name="referenceUrl" type="url" placeholder="https://youtube.com/..." /></div>
+              <div className="field full"><RequiredLabel>Description</RequiredLabel><input name="description" placeholder="Short message for students" /></div>
+              <button className="btn btn-primary"><Plus size={14} /> Share resource</button>
+            </form>
+          )}
+          <div className="study-note-list">
+            {batchStudyNotes.map((note) => (
+              <article className="study-note-row" key={note._id}>
+                <span className="study-note-icon"><FileText size={16} /></span>
+                <div>
+                  <b>{note.title}</b>
+                  <p>{note.module || "General"} | {note.resourceType || (note.referenceUrl ? "Reference" : "File")} | {note.file?.originalName || note.referenceUrl || "Study resource"} | {formatDate(note.createdAt)}{note.uploadedBy ? ` | ${note.uploadedBy}` : ""}</p>
+                  {note.description && <small>{note.description}</small>}
+                </div>
+                <div className="action-icons">
+                  {note.file?.storedName && <button type="button" className="action-icon-btn action-icon-primary" title="Download note" onClick={() => onDownloadStudyNote(note)}><Download size={14} /></button>}
+                  {note.referenceUrl && <button type="button" className="action-icon-btn action-icon-primary" title="Open reference" onClick={() => window.open(note.referenceUrl, "_blank", "noopener,noreferrer")}><ExternalLink size={14} /></button>}
+                  <button type="button" className="action-icon-btn action-icon-danger" title="Delete note" onClick={() => onDeleteStudyNote(note)}><Trash2 size={14} /></button>
+                </div>
+              </article>
+            ))}
+            {activeBatch && !batchStudyNotes.length && <div className="empty-state"><h4>No notes uploaded yet</h4><p>Upload notes once, and students in this batch can download them from LMS.</p></div>}
+            {!activeBatch && <div className="empty-state"><h4>Select a batch to manage notes</h4></div>}
           </div>
         </div>
       ) : academicTab === "logs" ? (
@@ -4151,8 +4596,8 @@ function SettingsPanel({ isHeadSuperAdmin, isHeadBranchAdmin, isFranchiseSuperAd
   );
 }
 
-function ProfilePanel({ profile, user, accessCount, canManageFees, canManageSettings, canAssignTeachers, canManageCertificates, centres, courses, batches, teachers, onBack, onGoSettings, onLeadPatch, onStudentPatch, onPayment, onDownloadPaymentProof, onFeedback, onIssue, onPreviewDocument }: { profile: ProfileTarget; user: AdminUser | null; accessCount: number; canManageFees: boolean; canManageSettings: boolean; canAssignTeachers: boolean; canManageCertificates: boolean; centres: string[]; courses: string[]; batches: Batch[]; teachers: Counsellor[]; onBack: () => void; onGoSettings: () => void; onLeadPatch: (id: string, updates: Partial<Lead>) => void; onStudentPatch: (id: string, updates: Partial<Student>) => void; onPayment: (event: FormEvent<HTMLFormElement>, student: Student) => void; onDownloadPaymentProof: (student: Student, payment: PaymentRecord, index: number) => void; onFeedback: (event: FormEvent<HTMLFormElement>, student: Student) => void; onIssue: (student: Student) => void; onPreviewDocument: (request: DocumentPreviewRequest) => void }) {
-  const [studentTab, setStudentTab] = useState<"sum" | "journey" | "admission" | "pay" | "emi" | "feedback" | "cert">("sum");
+function ProfilePanel({ profile, user, accessCount, canManageFees, canManageSettings, canAssignTeachers, canManageCertificates, canManageInternships, centres, courses, batches, teachers, onBack, onGoSettings, onLeadPatch, onStudentPatch, onGenerateStudentLmsAccess, onInternshipSave, onInternshipDelete, onPayment, onDownloadPaymentProof, onFeedback, onIssue, onPreviewDocument, onPreviewInternshipPhoto }: { profile: ProfileTarget; user: AdminUser | null; accessCount: number; canManageFees: boolean; canManageSettings: boolean; canAssignTeachers: boolean; canManageCertificates: boolean; canManageInternships: boolean; centres: string[]; courses: string[]; batches: Batch[]; teachers: Counsellor[]; onBack: () => void; onGoSettings: () => void; onLeadPatch: (id: string, updates: Partial<Lead>) => void; onStudentPatch: (id: string, updates: Partial<Student>) => void; onGenerateStudentLmsAccess: (student: Student) => void; onInternshipSave: (event: FormEvent<HTMLFormElement>, student: Student) => void; onInternshipDelete: (student: Student) => void; onPayment: (event: FormEvent<HTMLFormElement>, student: Student) => void; onDownloadPaymentProof: (student: Student, payment: PaymentRecord, index: number) => void; onFeedback: (event: FormEvent<HTMLFormElement>, student: Student) => void; onIssue: (student: Student) => void; onPreviewDocument: (request: DocumentPreviewRequest) => void; onPreviewInternshipPhoto: (student: Student, log: InternshipLog, photoType: "login" | "logout") => void }) {
+  const [studentTab, setStudentTab] = useState<"sum" | "journey" | "admission" | "pay" | "emi" | "internship" | "feedback" | "cert">("sum");
   const [leadTab, setLeadTab] = useState<"info" | "docs" | "act">("info");
   const [editMode, setEditMode] = useState(profile?.mode === "edit");
   const [paymentModeDraft, setPaymentModeDraft] = useState("Cash");
@@ -4172,6 +4617,10 @@ function ProfilePanel({ profile, user, accessCount, canManageFees, canManageSett
   const [editCourseDraft, setEditCourseDraft] = useState("");
   const [editCentreDraft, setEditCentreDraft] = useState("");
   const [editBatchDraft, setEditBatchDraft] = useState("");
+  const [internshipStartDraft, setInternshipStartDraft] = useState(dateInputValue());
+  const [internshipEndDraft, setInternshipEndDraft] = useState(dateInputValueFromDuration(dateInputValue(), 3, "months"));
+  const [internshipDurationDraft, setInternshipDurationDraft] = useState("3");
+  const [internshipDurationUnitDraft, setInternshipDurationUnitDraft] = useState("months");
   const profileId = profile?.data._id;
   useEffect(() => {
     setStudentTab("sum");
@@ -4205,6 +4654,17 @@ function ProfilePanel({ profile, user, accessCount, canManageFees, canManageSett
     setAdmissionEmiAmountDraft(String(profileStudent.emiAmount || Math.ceil(baseAmount / months)));
     setAdmissionNextEmiDateDraft(profileStudent.nextEmiDate ? dateInputValue(profileStudent.nextEmiDate) : dateInputValueFromOffset(12));
   }, [profileId, profileStudent?.admissionPaymentMode, profileStudent?.admissionUpfrontAmount, profileStudent?.totalFee, profileStudent?.discountAmount, profileStudent?.emiEnabled, profileStudent?.emiMonths, profileStudent?.emiAmount, profileStudent?.nextEmiDate, profileDue, profileNetFee]);
+  useEffect(() => {
+    if (!profileStudent) return;
+    const assignment = profileStudent.internshipAssignment;
+    const start = assignment?.startDate ? dateInputValue(assignment.startDate) : dateInputValue();
+    const duration = String(assignment?.durationValue || 3);
+    const unit = assignment?.durationUnit || "months";
+    setInternshipStartDraft(start);
+    setInternshipDurationDraft(duration);
+    setInternshipDurationUnitDraft(unit);
+    setInternshipEndDraft(assignment?.expectedEndDate ? dateInputValue(assignment.expectedEndDate) : (dateInputValueFromDuration(start, duration, unit) || dateInputValueFromOffset(90)));
+  }, [profileId, profileStudent?.internshipAssignment?.startDate, profileStudent?.internshipAssignment?.expectedEndDate, profileStudent?.internshipAssignment?.durationValue, profileStudent?.internshipAssignment?.durationUnit]);
 
   if (!profile) {
     return (
@@ -4331,6 +4791,18 @@ function ProfilePanel({ profile, user, accessCount, canManageFees, canManageSett
   const canDecideFees = normalizedStatus !== "Enrolled";
   const feesReady = ["Fees Decided", "Fees Collected", "Active Student", "Course Completed", "Alumni"].includes(normalizedStatus);
   const admissionPlanReady = Boolean(feesReady && student.admissionPaymentMode && netFee > 0);
+  const lmsAccessBlockReason = !feesReady
+    ? "Decide fees first"
+    : !admissionPlanReady
+      ? "Save final fee and payment plan"
+    : !student.admissionNumber
+      ? "Admission number required"
+      : !student.phone
+        ? "Registered phone required"
+        : !student.batch
+          ? "Batch assignment required"
+          : "";
+  const lmsAccessReady = !lmsAccessBlockReason;
   const admissionTotalFee = Math.max(0, Number(admissionTotalFeeDraft || 0));
   const admissionDiscount = Math.max(0, Number(admissionDiscountDraft || 0));
   const admissionNetFee = Math.max(0, admissionTotalFee - admissionDiscount);
@@ -4339,10 +4811,12 @@ function ProfilePanel({ profile, user, accessCount, canManageFees, canManageSett
   const isAdmissionEmiPlan = admissionPaymentModeDraft === "EMI" || isAdmissionPartialEmiPlan;
   const admissionUpfrontAmount = isAdmissionPartialEmiPlan ? Math.max(0, Number(admissionUpfrontDraft || 0)) : 0;
   const admissionEmiBalance = Math.max(0, admissionNetFee - Math.max(student.paidAmount || 0, admissionUpfrontAmount));
-  const tabs: { key: "sum" | "journey" | "admission" | "pay" | "emi" | "feedback" | "cert"; label: string }[] = [
+  const internshipAssignment = student.internshipAssignment || null;
+  const tabs: { key: "sum" | "journey" | "admission" | "pay" | "emi" | "internship" | "feedback" | "cert"; label: string }[] = [
     { key: "sum", label: "Summary" },
     { key: "journey", label: "Journey" },
     ...(canManageFees ? [{ key: "admission" as const, label: "Admission" }, { key: "pay" as const, label: "Payments" }, { key: "emi" as const, label: "EMI" }] : []),
+    ...(canManageInternships ? [{ key: "internship" as const, label: "Internship" }] : []),
   ];
   const activeStudentTab = tabs.some((tab) => tab.key === studentTab) ? studentTab : "sum";
   const recalculateEmiAmount = (monthsValue: string) => {
@@ -4360,6 +4834,25 @@ function ProfilePanel({ profile, user, accessCount, canManageFees, canManageSett
     setAdmissionEmiMonthsDraft(monthsValue);
     const baseAmount = isPartialEmiPaymentMode(admissionPaymentModeDraft) ? admissionEmiBalance : admissionDue || admissionNetFee || 0;
     setAdmissionEmiAmountDraft(monthsValue ? String(Math.ceil(baseAmount / months)) : "0");
+  };
+  const updateInternshipDuration = (start: string, duration: string, unit: string) => {
+    const nextEndDate = dateInputValueFromDuration(start, duration, unit);
+    if (nextEndDate) setInternshipEndDraft(nextEndDate);
+  };
+  const changeInternshipStart = (event: ChangeEvent<HTMLInputElement>) => {
+    const value = event.target.value;
+    setInternshipStartDraft(value);
+    updateInternshipDuration(value, internshipDurationDraft, internshipDurationUnitDraft);
+  };
+  const changeInternshipDuration = (event: ChangeEvent<HTMLInputElement>) => {
+    const value = event.target.value;
+    setInternshipDurationDraft(value);
+    updateInternshipDuration(internshipStartDraft, value, internshipDurationUnitDraft);
+  };
+  const changeInternshipDurationUnit = (event: ChangeEvent<HTMLSelectElement>) => {
+    const value = event.target.value;
+    setInternshipDurationUnitDraft(value);
+    updateInternshipDuration(internshipStartDraft, internshipDurationDraft, value);
   };
   const saveAdmissionPlan = (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
@@ -4526,6 +5019,7 @@ function ProfilePanel({ profile, user, accessCount, canManageFees, canManageSett
           <div className="kv-row"><span className="k">Batch</span><span className="v">{student.batch || "Unassigned"}</span></div>
           <div className="kv-row"><span className="k">Counsellor</span><span className="v">{student.counsellor || "-"}</span></div>
           <div className="kv-row"><span className="k">Teacher</span><span className="v">{student.teacher || "Unassigned"}</span></div>
+          <div className="kv-row"><span className="k">LMS access</span><span className="v">{student.lmsAccessEnabled ? <span className="badge badge-green">Enabled</span> : <span className="badge badge-gray">Not generated</span>}</span></div>
           <div className="field drawer-notes"><label>Status</label><select value={normalizedStatus} onChange={(event) => onStudentPatch(student._id, { status: event.target.value })}>{studentStatuses.map((status) => <option key={status}>{status}</option>)}</select></div>
         </div>}
         {activeStudentTab === "journey" && <div className="dpane active">{studentJourneyStages.map((stage) => {
@@ -4552,6 +5046,22 @@ function ProfilePanel({ profile, user, accessCount, canManageFees, canManageSett
             <div className="profile-edit-actions"><button className="btn btn-primary" disabled={!canDecideFees}><CheckCircle2 size={15} /> Save fees decided</button></div>
           </form>
           <div className="kv-row"><span className="k">Admission finalized</span><span className="v">{student.admissionFinalizedAt ? `${formatDate(student.admissionFinalizedAt)} by ${student.admissionFinalizedBy || "Admin"}` : "Not yet"}</span></div>
+          <div className="empty-state paid-empty lms-access-card">
+            <h4>Student LMS login</h4>
+            {student.lmsAccessEnabled ? (
+              <>
+                <p>Enabled for this student. Login with admission number and registered phone.</p>
+                <div className="kv-row"><span className="k">Admission no.</span><span className="v mono">{student.admissionNumber || "-"}</span></div>
+                <div className="kv-row"><span className="k">Phone</span><span className="v mono">{student.phone || "-"}</span></div>
+                <div className="kv-row"><span className="k">Generated</span><span className="v">{student.lmsAccessGeneratedAt ? `${formatDate(student.lmsAccessGeneratedAt)} by ${student.lmsAccessGeneratedBy || "Admin"}` : "Enabled"}</span></div>
+              </>
+            ) : (
+              <>
+                <p>{lmsAccessReady ? "Generate access after confirming admission, fees, and batch assignment." : lmsAccessBlockReason}</p>
+                {canManageFees && <button type="button" className="btn btn-primary" disabled={!lmsAccessReady} onClick={() => onGenerateStudentLmsAccess(student)}><CheckCircle2 size={15} /> Generate LMS login</button>}
+              </>
+            )}
+          </div>
         </div>}
         {activeStudentTab === "pay" && <div className="dpane active">
           <div className="table-wrap"><table><thead><tr><th>#</th><th>Date</th><th>Payment for</th><th>Mode</th><th>Reference</th><th>Amount</th><th>Recorded by</th><th>Receipt</th><th>Proof</th></tr></thead><tbody>{payments.map((payment, index) => <tr key={`${payment.paidAt || index}-${payment.amount || 0}`}><td>{index + 1}</td><td className="mono">{formatDate(payment.paidAt)}</td><td>{normalizePaymentPurpose(payment.paymentPurpose, payment.mode)}{payment.emiReference && <div className="cell-sub mono">{payment.emiReference}</div>}</td><td>{payment.mode || "-"}</td><td className="mono">{payment.transactionId || "-"}{payment.loanProviderName && <div className="cell-sub">{payment.loanProviderName}</div>}</td><td className="mono">{formatCurrency(payment.amount || 0)}</td><td>{payment.by || "-"}</td><td className="mono">{paymentReceiptNumber(student, index)}</td><td>{payment.proof?.storedName ? <button type="button" className="action-icon-btn action-icon-primary" title={payment.proof.originalName || "Download proof"} onClick={() => onDownloadPaymentProof(student, payment, index)}><Download size={14} /></button> : <span className="cell-sub">Missing</span>}</td></tr>)}{!payments.length && <tr><td colSpan={9}><div className="empty-state"><h4>No payments yet</h4></div></td></tr>}</tbody></table></div>
@@ -4579,6 +5089,34 @@ function ProfilePanel({ profile, user, accessCount, canManageFees, canManageSett
             <Field name="nextEmiDate" label="Next EMI date" type="date" defaultValue={student.nextEmiDate ? dateInputValue(student.nextEmiDate) : dateInputValueFromOffset(12)} required />
             <div className="profile-edit-actions"><button className="btn btn-primary"><CalendarDays size={15} /> {hasEmi ? "Update EMI plan" : "Save EMI plan"}</button>{hasEmi && <button type="button" className="btn btn-ghost" onClick={closeEmiPlan}>Close EMI plan</button>}</div>
           </form>) : <div className="empty-state"><h4>EMI updates restricted</h4><p>Admin access is required to manage EMI plans.</p></div>}
+        </div>}
+        {activeStudentTab === "internship" && <div className="dpane active">
+          <div className={`internship-status-card ${internshipAssignment ? "assigned" : ""}`}>
+            <div>
+              <span className={`badge ${internshipAssignment ? "badge-green" : "badge-amber"}`}>{internshipAssignment?.status || "Not assigned"}</span>
+              <h4>{internshipAssignment?.facilityName || "Internship not assigned yet"}</h4>
+              <p>{internshipAssignment ? `${formatDate(internshipAssignment.startDate)} to ${formatDate(internshipAssignment.expectedEndDate)}` : "Assign hospital posting details to unlock internship and logbook in the Student LMS."}</p>
+            </div>
+            {internshipAssignment && <button type="button" className="btn btn-ghost btn-sm" onClick={() => onInternshipDelete(student)}><Trash2 size={14} /> Remove</button>}
+          </div>
+          <form className="field-grid feedback-form internship-form" onSubmit={(event) => onInternshipSave(event, student)}>
+            <div className="field"><RequiredLabel required>Hospital / facility name</RequiredLabel><input name="facilityName" required defaultValue={internshipAssignment?.facilityName || ""} /></div>
+            <div className="field"><label>Facility location</label><input name="facilityLocation" defaultValue={internshipAssignment?.facilityLocation || student.centre || ""} /></div>
+            <div className="field"><label>Supervisor name</label><input name="supervisorName" defaultValue={internshipAssignment?.supervisorName || ""} /></div>
+            <div className="field"><label>Supervisor contact</label><input name="supervisorContact" defaultValue={internshipAssignment?.supervisorContact || ""} /></div>
+            <div className="field"><label>Supervisor email</label><input name="supervisorEmail" type="email" defaultValue={internshipAssignment?.supervisorEmail || ""} placeholder="supervisor@hospital.com" /></div>
+            <div className="field"><label>Hospital latitude</label><input name="facilityLatitude" type="number" step="any" min="-90" max="90" defaultValue={internshipAssignment?.facilityLatitude ?? ""} placeholder="9.931233" /><span className="field-help">From Google Maps hospital pin.</span></div>
+            <div className="field"><label>Hospital longitude</label><input name="facilityLongitude" type="number" step="any" min="-180" max="180" defaultValue={internshipAssignment?.facilityLongitude ?? ""} placeholder="76.267304" /><span className="field-help">Enter both latitude and longitude for GPS matching.</span></div>
+            <div className="field"><label>Allowed radius (meters)</label><input name="allowedRadiusMeters" type="number" min="25" step="1" defaultValue={internshipAssignment?.allowedRadiusMeters || 200} /><span className="field-help">Example: 200m around hospital.</span></div>
+            <div className="field"><RequiredLabel required>Start date</RequiredLabel><input name="startDate" type="date" required value={internshipStartDraft} onChange={changeInternshipStart} /></div>
+            <div className="field"><RequiredLabel required>Expected end date</RequiredLabel><input name="expectedEndDate" type="date" required value={internshipEndDraft} onChange={(event) => setInternshipEndDraft(event.target.value)} /></div>
+            <div className="field"><RequiredLabel required>Duration value</RequiredLabel><input name="durationValue" type="number" min="1" required value={internshipDurationDraft} onChange={changeInternshipDuration} /></div>
+            <div className="field"><RequiredLabel required>Duration unit</RequiredLabel><select name="durationUnit" required value={internshipDurationUnitDraft} onChange={changeInternshipDurationUnit}>{internshipDurationUnits.map((unit) => <option key={unit} value={unit}>{unit}</option>)}</select></div>
+            <div className="field"><RequiredLabel required>Status</RequiredLabel><select name="status" required defaultValue={internshipAssignment?.status || "Assigned"}>{internshipStatuses.map((status) => <option key={status}>{status}</option>)}</select></div>
+            <div className="field"><label>Department rotation</label><input name="departmentRotation" defaultValue={internshipAssignment?.departmentRotation || ""} placeholder="Front office, billing, ward, OPD..." /></div>
+            <div className="profile-edit-actions"><button className="btn btn-primary"><CheckCircle2 size={15} /> {internshipAssignment ? "Update internship" : "Assign internship"}</button></div>
+          </form>
+          {internshipAssignment && <div className="kv-row"><span className="k">Last updated</span><span className="v">{formatDate(internshipAssignment.updatedAt)} by {internshipAssignment.assignedBy || "Admin"}</span></div>}
         </div>}
         {activeStudentTab === "feedback" && <div className="dpane active">
           <form className="field-grid feedback-form" onSubmit={(event) => onFeedback(event, student)}>
@@ -4656,6 +5194,34 @@ function DeleteConfirmModal({ prompt, onCancel, onConfirm }: { prompt: DeletePro
   );
 }
 
+function LogbookReviewModal({ prompt, onRemarkChange, onCancel, onSubmit }: { prompt: LogbookReviewPrompt | null; onRemarkChange: (remark: string) => void; onCancel: () => void; onSubmit: () => void }) {
+  return (
+    <div className={`modal-overlay ${prompt ? "show" : ""}`} onClick={onCancel}>
+      {prompt && <div className="modal logbook-review-modal" onClick={(event) => event.stopPropagation()}>
+        <div className="modal-head"><h3>{prompt.verified ? "Verify logbook" : "Reopen logbook"}</h3><button className="close-x" onClick={onCancel}>x</button></div>
+        <div className="modal-body logbook-review-body">
+          <div className="delete-icon logout-icon"><MessageCircle size={20} /></div>
+          <div className="logbook-review-copy">
+            <p>{prompt.verified ? "Add a review remark before verifying this logbook entry." : "Add a reason before moving this logbook entry back to pending."}</p>
+            <div className="review-entry-snapshot">
+              <b>{prompt.student.fullName}</b>
+              <span>{prompt.entry.departmentArea || "Internship entry"} · {formatDate(prompt.entry.date)}</span>
+            </div>
+            <label className="field">
+              <span>Review remark</span>
+              <textarea value={prompt.remark} onChange={(event) => onRemarkChange(event.target.value)} rows={4} placeholder="Type faculty review remark..." autoFocus />
+            </label>
+          </div>
+        </div>
+        <div className="modal-actions delete-modal-actions">
+          <button type="button" className="btn btn-ghost" onClick={onCancel}>Cancel</button>
+          <button type="button" className={prompt.verified ? "btn btn-primary" : "btn btn-danger"} onClick={onSubmit}>{prompt.verified ? "Verify logbook" : "Reopen entry"}</button>
+        </div>
+      </div>}
+    </div>
+  );
+}
+
 function ForgotPasswordModal({ open, loading, onClose, onSubmit }: { open: boolean; loading: boolean; onClose: () => void; onSubmit: (event: FormEvent<HTMLFormElement>) => void }) {
   return (
     <div className={`modal-overlay ${open ? "show" : ""}`} onClick={onClose}>
@@ -4690,33 +5256,36 @@ function CrmStyles() {
       .imed-admin-prototype *{box-sizing:border-box}.imed-admin-prototype button{font-family:inherit;cursor:pointer}.imed-admin-prototype #app{display:flex;height:100vh;width:100vw}.imed-admin-prototype #authScreen{min-height:100vh;display:flex;align-items:center;justify-content:center;background:var(--bg)}
       .auth-card{width:min(420px,92vw);background:#fff;border:1px solid var(--border);border-radius:16px;padding:30px 28px 28px;box-shadow:0 12px 32px rgba(16,20,40,.14);display:grid;gap:0}.auth-logo{display:flex;gap:10px;align-items:center;margin-bottom:24px}.auth-logo div:last-child b{display:block;font-size:13px;line-height:1.15}.auth-logo div:last-child div{font-size:10.5px;color:var(--text-400);letter-spacing:.5px;text-transform:uppercase;margin-top:2px}.auth-card h1{font-size:22px;font-weight:500;line-height:1.25;margin:0 0 8px}.auth-card .sub{color:var(--text-400);margin:0 0 22px;font-size:14px}.auth-card .field{margin-bottom:12px}.auth-card .field label{margin-bottom:7px}.auth-card .field input{height:38px}.auth-field-row{display:flex;align-items:center;justify-content:space-between;gap:10px;margin-bottom:7px}.auth-field-row label{margin:0!important}.auth-link-btn{border:0;background:transparent;color:var(--indigo-600);font-size:11.5px;font-weight:700;padding:0}.auth-link-btn:hover{text-decoration:underline}.password-input-wrap{position:relative}.password-input-wrap input{padding-right:42px!important}.password-eye-btn{position:absolute;right:8px;top:50%;transform:translateY(-50%);width:28px;height:28px;border:0;background:transparent;color:var(--text-400);display:flex;align-items:center;justify-content:center;border-radius:7px}.password-eye-btn:hover{background:var(--blue-50);color:var(--indigo-600)}.auth-card .btn-primary{width:100%;height:38px;justify-content:center;margin-top:2px}
       .sidebar{width:236px;flex:0 0 236px;background:linear-gradient(180deg,var(--navy-950),var(--navy-900));color:#C9CFE6;display:flex;flex-direction:column;height:100vh;border-right:1px solid var(--navy-line)}.sidebar-brand{display:flex;align-items:center;gap:10px;padding:18px 18px 14px 20px;border-bottom:1px solid var(--navy-line)}.brand-mark{width:32px;height:32px;border-radius:9px;background:#fff;display:flex;align-items:center;justify-content:center;flex:0 0 32px;box-shadow:0 4px 10px rgba(15,23,42,.18);overflow:hidden}.brand-mark img{width:23px;height:29px;display:block;object-fit:contain}.brand-text b{display:block;font-size:14px;color:#fff}.brand-text span{display:block;font-size:10.5px;color:#8189A8;letter-spacing:.6px;text-transform:uppercase;margin-top:2px}
-      .nav-scroll{flex:1;overflow-y:auto;padding:12px 10px}.nav-group-label{font-size:10px;font-weight:700;letter-spacing:.8px;text-transform:uppercase;color:#5D6588;padding:14px 10px 6px}.nav-item{width:100%;border:0;display:flex;align-items:center;gap:10px;padding:9px 10px;border-radius:8px;margin-bottom:2px;background:transparent;color:#AEB4CE;font-size:13px;font-weight:500;text-align:left}.nav-item svg{width:16px;height:16px}.nav-item:hover{background:var(--navy-800);color:#fff}.nav-item.active{background:var(--indigo-500);color:#fff;box-shadow:0 4px 12px rgba(79,107,255,.35)}.mobile-logout{display:none}
+      .nav-scroll{flex:1;overflow-y:auto;padding:12px 10px}.nav-group-label{font-size:10px;font-weight:700;letter-spacing:.8px;text-transform:uppercase;color:#5D6588;padding:14px 10px 6px}.nav-item{position:relative;width:100%;border:0;display:flex;align-items:center;gap:10px;padding:9px 10px;border-radius:8px;margin-bottom:2px;background:transparent;color:#AEB4CE;font-size:13px;font-weight:500;text-align:left}.nav-item svg{width:16px;height:16px}.nav-item:hover{background:var(--navy-800);color:#fff}.nav-item.active{background:var(--indigo-500);color:#fff;box-shadow:0 4px 12px rgba(79,107,255,.35)}.nav-badge{margin-left:auto;min-width:19px;height:19px;border-radius:999px;background:var(--amber-500);color:#fff;display:inline-grid;place-items:center;padding:0 6px;font-size:10.5px;font-style:normal;font-weight:800;line-height:1;box-shadow:0 4px 10px rgba(245,158,11,.28)}.nav-badge-admission{min-width:24px;height:20px;background:#EAFBF3;color:#0E7A54;border:1px solid rgba(23,166,115,.28);box-shadow:0 0 0 3px rgba(23,166,115,.08);font-size:10px}.nav-item.active .nav-badge-admission{background:#fff;color:var(--indigo-600);border-color:rgba(255,255,255,.65);box-shadow:none}.mobile-logout{display:none}
       .sidebar-footer{padding:12px;border-top:1px solid var(--navy-line)}.role-pill{display:flex;align-items:center;gap:9px;background:var(--navy-800);border:1px solid var(--navy-line);border-radius:10px;padding:8px 10px}.role-avatar{width:28px;height:28px;border-radius:8px;background:linear-gradient(135deg,#F5A524,#E5484D);display:flex;align-items:center;justify-content:center;font-weight:700;color:#fff;font-size:12px}.role-meta{line-height:1.2;overflow:hidden}.role-meta b{font-size:12px;color:#fff;display:block;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}.role-meta span{font-size:10.5px;color:#8A91B0}.role-pill .icon-btn{margin-left:auto;background:transparent;border:0;color:#8A91B0}
       .main{flex:1;display:flex;flex-direction:column;height:100vh;overflow:hidden}.topbar{height:60px;flex:0 0 60px;background:#fff;border-bottom:1px solid var(--border);display:flex;align-items:center;gap:14px;padding:0 22px}.page-title{font-size:16px;font-weight:700}.page-sub{font-size:11.5px;color:var(--text-400);margin-top:1px}.topbar-spacer{flex:1}.scope-select,.df-select,.fbtn{border:1px solid var(--border);background:#fff;border-radius:8px;padding:7px 10px;font-size:12.5px;color:var(--text-700);font-weight:500;font-family:inherit}.scope-select-locked{background:var(--bg);color:var(--text-400)}.date-filter{display:flex;align-items:center;gap:6px;background:var(--bg);border:1px solid var(--border);border-radius:9px;padding:3px}.df-btn{border:none;background:transparent;padding:6px 10px;border-radius:7px;font-size:12px;font-weight:600;color:var(--text-600)}.df-btn.active{background:#fff;color:var(--indigo-600);box-shadow:0 1px 2px rgba(16,20,40,.05)}.df-date{border:1px solid var(--border);border-radius:7px;padding:5px 8px;font-size:12px;display:none}.df-date.show{display:inline-block}.icon-btn{width:34px;height:34px;border-radius:9px;border:1px solid var(--border);background:#fff;display:flex;align-items:center;justify-content:center;color:var(--text-600)}.search-box{display:flex;align-items:center;gap:7px;background:var(--bg);border:1px solid var(--border);border-radius:9px;padding:7px 12px;width:230px}.search-box input{border:none;background:transparent;outline:none;font-size:12.5px;width:100%;color:var(--text-900)}
       .content{flex:1;overflow-y:auto;padding:22px}.grid-metrics{display:grid;grid-template-columns:repeat(auto-fit,minmax(170px,1fr));gap:14px;margin-bottom:18px}.metric-card,.card{background:#fff;border:1px solid var(--border);border-radius:14px;box-shadow:0 1px 2px rgba(16,20,40,.05)}.metric-card{padding:16px 18px;position:relative;overflow:hidden}.m-label{font-size:11.5px;color:var(--text-600);font-weight:600;display:flex;align-items:center;gap:6px}.m-value{font-size:24px;font-weight:800;margin-top:8px;color:#061633;font-family:JetBrains Mono,monospace}.m-delta{font-size:11px;font-weight:600;margin-top:6px}.m-delta.up{color:var(--green-700)}.m-delta.down{color:var(--red-700)}.m-dot{width:9px;height:9px;border-radius:3px;display:inline-block}.two-col{display:grid;grid-template-columns:1.3fr 1fr;gap:16px;margin-bottom:16px}.lower-grid{grid-template-columns:1fr 1fr .75fr}.card-head{display:flex;align-items:center;gap:12px;padding:16px 18px;border-bottom:1px solid var(--border-soft)}.card-head h3{font-size:13.5px;font-weight:700;margin:0}.card-head .sub{font-size:11px;color:var(--text-400);margin-top:2px}.card-head button,.card-head input{margin-left:auto}.card-body{padding:16px 18px}.funnel-wrap{display:flex;flex-direction:column;gap:6px}.funnel-row{display:grid;grid-template-columns:120px 1fr 90px;align-items:center;gap:10px}.flabel{font-size:12px;font-weight:600;color:var(--text-600)}.funnel-bar-track{background:var(--border-soft);border-radius:6px;height:22px;overflow:hidden}.funnel-bar-fill{height:100%;border-radius:6px;background:linear-gradient(90deg,var(--indigo-500),#8A6BFF);display:flex;align-items:center;justify-content:flex-end;padding-right:8px}.funnel-bar-fill span{color:#fff;font-size:10.5px;font-weight:700}.fval{font-size:12px;color:var(--text-400);text-align:right;font-family:JetBrains Mono,monospace}
       .filter-bar{display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin-bottom:14px}.btn{border:none;border-radius:8px;padding:8px 14px;font-size:12.5px;font-weight:600;display:inline-flex;align-items:center;gap:6px;text-decoration:none}.btn-primary{background:var(--indigo-500);color:#fff;box-shadow:0 4px 10px rgba(79,107,255,.28)}.btn-ghost{background:#fff;border:1px solid var(--border);color:var(--text-700)}.btn-soft{background:var(--indigo-100);color:var(--indigo-600)}.btn-whatsapp{background:#e8f8ef;color:#047a43}.btn-danger{background:var(--red-700);color:#fff;box-shadow:0 4px 10px rgba(229,72,77,.22)}.btn-sm{padding:5px 10px;font-size:11.5px;border-radius:7px}.btn:disabled{opacity:.55;cursor:not-allowed}.file-upload-btn{position:relative;overflow:hidden;cursor:pointer}.file-upload-btn input{position:absolute;inset:0;opacity:0;cursor:pointer}.action-icons{display:flex;align-items:center;gap:6px}.action-icon-btn{width:30px;height:30px;border:1px solid var(--border);border-radius:8px;background:#fff;color:var(--text-600);display:inline-flex;align-items:center;justify-content:center}.action-icon-btn:hover{background:var(--bg);color:var(--text-900)}.action-icon-primary{background:var(--indigo-100);border-color:#dbe2ff;color:var(--indigo-600)}.action-icon-danger{background:var(--red-50);border-color:#f7d7d7;color:var(--red-700)}.action-icon-whatsapp{background:#e8f8ef;border-color:#c8eed9;color:#047a43}.delete-modal,.forgot-modal{width:390px;max-width:92vw;overflow:hidden}.delete-modal .modal-head,.forgot-modal .modal-head{padding:18px 18px 16px}.delete-modal-body,.forgot-modal-body{display:flex;gap:14px;align-items:center;padding:20px 18px}.delete-modal-body p,.forgot-modal-body p{margin:0;color:var(--text-700);line-height:1.45;min-width:0}.forgot-email-field{margin-top:12px}.forgot-email-field input{height:38px}.delete-icon{width:38px;height:38px;border-radius:10px;background:var(--red-50);color:var(--red-700);display:flex;align-items:center;justify-content:center;flex:0 0 38px}.logout-icon{background:var(--indigo-100);color:var(--indigo-600)}.delete-modal-actions{display:flex;justify-content:flex-end;gap:10px;padding:0 18px 18px}.delete-modal-actions .btn{min-width:66px;justify-content:center}.pamphlet-select{height:32px;border:1px solid #dbe2ff;border-radius:8px;background:var(--indigo-100);color:var(--indigo-600);font-size:11.5px;font-weight:700;padding:0 8px;max-width:150px}.pamphlet-select.compact{width:92px;height:30px;padding:0 6px}.table-wrap{overflow-x:auto}table{width:100%;border-collapse:collapse;font-size:12.5px}thead th{text-align:left;font-size:10.5px;text-transform:uppercase;letter-spacing:.4px;color:var(--text-400);font-weight:700;padding:10px 12px;border-bottom:1px solid var(--border);white-space:nowrap;background:#FAFBFD}tbody td{padding:11px 12px;border-bottom:1px solid var(--border-soft);color:var(--text-700);white-space:nowrap}tbody tr:hover{background:#F8F9FD}.clickable{cursor:pointer}.cell-name,.nm{font-weight:700;color:var(--text-900)}.cell-sub,.mt{font-size:11px;color:var(--text-400)}.mini-select,.mini-input{max-width:160px;border:1px solid var(--border);border-radius:7px;padding:5px 7px;background:#fff}.tag{font-size:12px;border-radius:999px;padding:6px 10px;font-weight:700}.tag.green{background:var(--green-50);color:var(--green-700)}.tag.purple{background:var(--purple-50);color:var(--purple-700)}.tag.amber{background:var(--amber-50);color:var(--amber-700)}.tag.blue{background:var(--blue-50);color:var(--indigo-600)}.tag.red{background:var(--red-50);color:var(--red-700)}
-      .badge{display:inline-flex;align-items:center;gap:5px;padding:3px 9px;border-radius:20px;font-size:11px;font-weight:700;white-space:nowrap}.badge-gray{background:#f1f2f6;color:var(--text-600)}.badge-amber{background:var(--amber-50);color:var(--amber-700)}.badge-red{background:var(--red-50);color:var(--red-700)}.badge-green{background:var(--green-50);color:var(--green-700)}.badge-blue{background:var(--blue-50);color:var(--indigo-600)}.badge-purple{background:var(--purple-50);color:var(--purple-700)}.btn-green{background:var(--green-50);color:var(--green-700)}.leads-filter-bar{gap:10px;margin-bottom:14px}.leads-filter-bar .fbtn{height:34px}.leads-filter-bar .lead-search-input{width:200px}.leads-filter-bar .filter-spacer{flex:1}.leads-card{border-radius:14px;overflow:hidden}.leads-table-wrap{overflow-x:auto}.leads-table{min-width:1220px}.leads-table thead th{height:38px;padding:10px 12px;background:#fafbfd;color:#99a1b3;font-size:10.5px;letter-spacing:.4px}.leads-table tbody td{height:58px;padding:10px 12px;color:#333a56}.leads-table tbody tr:hover{background:#f8f9fd}.lead-name-cell{display:flex;align-items:center;gap:9px}.avatar{width:30px;height:30px;border-radius:8px;display:flex;align-items:center;justify-content:center;color:#fff;font-weight:700;font-size:11.5px;flex:0 0 30px}.lead-avatar{background:#eef3ff;color:#4f6bff;border-radius:8px}.leads-table .cell-name{font-size:12.5px;font-weight:700;color:#161b33}.leads-table .cell-sub{font-size:11px;color:#99a1b3;margin-top:3px}.leads-table .mini-select,.leads-table .stage-select{height:29px;max-width:150px;border:1px solid var(--border);border-radius:7px;background:#fff;padding:5px 8px;font-size:11.5px;color:var(--text-700)}.leads-table .stage-select{max-width:118px}.leads-table .feedback-select{max-width:132px;font-weight:700;border-radius:999px}.feedback-select.badge-red{background:var(--red-50);color:var(--red-700);border-color:#f7d7d7}.feedback-select.badge-gray{background:#f1f2f6;color:var(--text-600)}.feedback-select.badge-amber{background:var(--amber-50);color:var(--amber-700);border-color:#f5dfaf}.feedback-select.badge-blue{background:var(--blue-50);color:var(--indigo-600);border-color:#dbe2ff}.feedback-select.badge-green{background:var(--green-50);color:var(--green-700);border-color:#caefdf}.leads-table .btn-soft{background:var(--indigo-100);color:var(--indigo-600);box-shadow:none}.leads-table .empty-state h4{margin:0 0 4px;color:var(--text-600);font-size:13px}.leads-table .empty-state p{margin:0;font-size:12px;color:var(--text-400)}.pill-tabs{display:flex;gap:4px;background:var(--bg);border:1px solid var(--border);border-radius:9px;padding:3px}.pill-tab{padding:7px 13px;border-radius:7px;font-size:12px;font-weight:600;color:var(--text-600);background:transparent;border:none}.pill-tab.active{background:#fff;color:var(--indigo-600);box-shadow:0 1px 2px rgba(16,20,40,.05)}.admissions-tabs{width:max-content;margin-bottom:14px}.admissions-card{border-radius:14px;overflow:hidden}.admissions-table{min-width:860px}.admissions-table thead th{height:38px;padding:10px 12px;background:#fafbfd;color:#99a1b3;font-size:10.5px;letter-spacing:.4px}.admissions-table tbody td{height:58px;padding:11px 12px;color:#333a56}.admissions-table tbody tr:hover{background:#f8f9fd}.admissions-table .cell-name{font-size:12.5px;font-weight:700;color:#161b33}.admissions-table .cell-sub{font-size:11px;color:#99a1b3;margin-top:3px}.mono{font-family:JetBrains Mono,monospace}.admissions-table .btn-primary{box-shadow:0 4px 10px rgba(79,107,255,.22)}
+      .badge{display:inline-flex;align-items:center;gap:5px;padding:3px 9px;border-radius:20px;font-size:11px;font-weight:700;white-space:nowrap}.badge-gray{background:#f1f2f6;color:var(--text-600)}.badge-amber{background:var(--amber-50);color:var(--amber-700)}.badge-red{background:var(--red-50);color:var(--red-700)}.badge-green{background:var(--green-50);color:var(--green-700)}.badge-blue{background:var(--blue-50);color:var(--indigo-600)}.badge-purple{background:var(--purple-50);color:var(--purple-700)}.btn-green{background:var(--green-50);color:var(--green-700)}.leads-filter-bar{gap:10px;margin-bottom:14px}.leads-filter-bar .fbtn{height:34px}.leads-filter-bar .lead-search-input{width:200px}.leads-filter-bar .filter-spacer{flex:1}.leads-card{border-radius:14px;overflow:hidden}.leads-table-wrap{overflow-x:auto}.leads-table{min-width:1220px}.leads-table thead th{height:38px;padding:10px 12px;background:#fafbfd;color:#99a1b3;font-size:10.5px;letter-spacing:.4px}.leads-table tbody td{height:58px;padding:10px 12px;color:#333a56}.leads-table tbody tr:hover{background:#f8f9fd}.lead-name-cell{display:flex;align-items:center;gap:9px}.avatar{width:30px;height:30px;border-radius:8px;display:flex;align-items:center;justify-content:center;color:#fff;font-weight:700;font-size:11.5px;flex:0 0 30px}.lead-avatar{background:#eef3ff;color:#4f6bff;border-radius:8px}.leads-table .cell-name{font-size:12.5px;font-weight:700;color:#161b33}.leads-table .cell-sub{font-size:11px;color:#99a1b3;margin-top:3px}.leads-table .mini-select,.leads-table .stage-select{height:29px;max-width:150px;border:1px solid var(--border);border-radius:7px;background:#fff;padding:5px 8px;font-size:11.5px;color:var(--text-700)}.leads-table .stage-select{max-width:118px}.leads-table .feedback-select{max-width:132px;font-weight:700;border-radius:999px}.feedback-select.badge-red{background:var(--red-50);color:var(--red-700);border-color:#f7d7d7}.feedback-select.badge-gray{background:#f1f2f6;color:var(--text-600)}.feedback-select.badge-amber{background:var(--amber-50);color:var(--amber-700);border-color:#f5dfaf}.feedback-select.badge-blue{background:var(--blue-50);color:var(--indigo-600);border-color:#dbe2ff}.feedback-select.badge-green{background:var(--green-50);color:var(--green-700);border-color:#caefdf}.leads-table .btn-soft{background:var(--indigo-100);color:var(--indigo-600);box-shadow:none}.leads-table .empty-state h4{margin:0 0 4px;color:var(--text-600);font-size:13px}.leads-table .empty-state p{margin:0;font-size:12px;color:var(--text-400)}.pill-tabs{display:flex;gap:4px;background:var(--bg);border:1px solid var(--border);border-radius:9px;padding:3px}.pill-tab{padding:7px 13px;border-radius:7px;font-size:12px;font-weight:600;color:var(--text-600);background:transparent;border:none}.pill-tab.active{background:#fff;color:var(--indigo-600);box-shadow:0 1px 2px rgba(16,20,40,.05)}.admissions-tabs{width:max-content;margin-bottom:14px}.admissions-card{border-radius:14px;overflow:hidden}.admissions-table{min-width:980px;table-layout:fixed}.admissions-table th:nth-child(1){width:180px}.admissions-table th:nth-child(2){width:82px}.admissions-table th:nth-child(3){width:92px}.admissions-table th:nth-child(4){width:120px}.admissions-table th:nth-child(5){width:116px}.admissions-table th:nth-child(6){width:120px}.admissions-table th:nth-child(7){width:230px}.admissions-table th:nth-child(8){width:104px}.admissions-table thead th{height:38px;padding:10px 12px;background:#fafbfd;color:#99a1b3;font-size:10.5px;letter-spacing:.4px}.admissions-table tbody td{height:70px;padding:10px 12px;color:#333a56;vertical-align:middle}.admissions-table tbody tr:hover{background:#f8f9fd}.admissions-table .cell-name{font-size:12.5px;font-weight:700;color:#161b33}.admissions-table .cell-sub{font-size:11px;color:#99a1b3;margin-top:3px}.admission-batch-cell{display:grid;align-content:center;gap:5px;max-width:214px}.admissions-table .student-mini-select{width:142px;max-width:100%;height:32px}.admission-batch-hint{display:grid;gap:1px;max-width:214px;color:var(--text-400);margin-top:0}.admission-batch-hint b{color:var(--amber-700);font-size:10.5px;line-height:1.2;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}.admission-batch-hint span{font-size:10px;line-height:1.2;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}.admission-action-cell{text-align:right}.admission-action-cell .btn{height:32px;min-width:82px;justify-content:center}.mono{font-family:JetBrains Mono,monospace}.admissions-table .btn-primary{box-shadow:0 4px 10px rgba(79,107,255,.22)}
       .drawer-overlay{position:fixed;inset:0;background:rgba(10,14,29,.45);display:none;z-index:200}.drawer-overlay.show{display:block}.drawer{position:fixed;top:0;right:0;height:100vh;width:520px;max-width:94vw;background:#fff;box-shadow:-14px 0 40px rgba(10,14,29,.25);transform:translateX(100%);transition:transform .22s ease;z-index:201;display:flex;flex-direction:column}.drawer.show{transform:translateX(0)}.drawer-head{padding:20px 22px;border-bottom:1px solid var(--border-soft);display:flex;align-items:flex-start;gap:14px}.drawer-avatar{width:44px;height:44px;font-size:14px;background:linear-gradient(135deg,var(--indigo-500),#8A6BFF)}.drawer-title{flex:1;min-width:0}.drawer-title h3{margin:0;font-size:15px;line-height:1.25;color:var(--text-900)}.drawer-title .cell-sub{display:flex;align-items:center;gap:6px;flex-wrap:wrap;margin-top:4px}.close-x{width:30px;height:30px;border-radius:8px;border:none;background:var(--bg);color:var(--text-600);font-size:15px}.drawer-body{flex:1;overflow-y:auto;padding:0 0 30px}.dtabs{display:flex;gap:2px;padding:0 22px;border-bottom:1px solid var(--border-soft)}.dtab{padding:12px 12px;font-size:12px;font-weight:700;color:var(--text-400);border:0;background:transparent;border-bottom:2px solid transparent}.dtab.active{color:var(--indigo-600);border-color:var(--indigo-500)}.dpane{display:none;padding:18px 22px}.dpane.active{display:block}.kv-row{display:flex;justify-content:space-between;gap:18px;padding:9px 0;border-bottom:1px solid var(--border-soft);font-size:12.5px}.kv-row .k{color:var(--text-400)}.kv-row .v{font-weight:600;color:var(--text-900);text-align:right;overflow-wrap:anywhere}.drawer-notes{margin-top:14px}.drawer-full-btn{width:100%;justify-content:center;margin-top:12px}.drawer-admit-btn{margin-top:8px}
       .batch-metrics{grid-template-columns:repeat(3,1fr);margin-bottom:18px}.batch-card-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:16px}.batch-select-card{border:1px solid var(--border);background:#fff;border-radius:14px;padding:18px;text-align:left;box-shadow:0 1px 2px rgba(16,20,40,.05);cursor:pointer;transition:transform .16s ease,box-shadow .16s ease,border-color .16s ease}.batch-select-card:hover{transform:translateY(-2px);border-color:#b9c5ff;box-shadow:0 14px 30px rgba(79,107,255,.12)}.batch-select-top{display:flex;align-items:center;justify-content:space-between;margin-bottom:18px}.batch-select-card h3{margin:0 0 6px;font-size:16px;color:#061633}.batch-select-stats{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-top:18px}.batch-select-stats span{border:1px solid var(--border-soft);border-radius:9px;padding:9px 8px;color:var(--text-400);font-size:11px}.batch-select-stats b{display:block;color:#061633;font-size:15px}.calendar-connect-card{display:flex;align-items:center;justify-content:space-between;gap:14px;padding:15px 18px;margin-bottom:16px}.calendar-connect-card h3{margin:0 0 4px;font-size:15px;color:#061633}.calendar-connect-card .sub{font-size:12px;color:var(--text-400)}.calendar-connect-actions{display:flex;align-items:center;gap:8px;flex-wrap:wrap;justify-content:flex-end}.teacher-batches-card{margin-bottom:16px}.teacher-batches-card .card-body{padding:16px 18px}.teacher-batch-grid{grid-template-columns:repeat(auto-fit,minmax(280px,340px));align-items:stretch}.teacher-batch-grid .batch-select-card{min-height:176px;display:flex;flex-direction:column}.teacher-batch-grid .batch-select-stats{margin-top:auto;padding-top:18px}.teacher-action-grid{align-items:stretch}.teacher-action-grid>.card{min-height:258px}.teacher-row-list .crow{display:grid;grid-template-columns:minmax(0,1fr) auto;align-items:center;gap:16px;min-height:72px}.teacher-row-list .who{min-width:0}.teacher-row-list .who>div{min-width:0}.teacher-row-list .nm,.teacher-row-list .mt{overflow:hidden;text-overflow:ellipsis;display:block}.teacher-row-list .nm{line-height:1.35}.teacher-row-list .mt{white-space:nowrap}.teacher-update-tag{min-width:78px;max-width:96px;justify-content:center;text-align:center;white-space:normal;line-height:1.2;padding:8px 10px}.selected-batch-head{margin-bottom:16px}.batch-grid{grid-template-columns:1.2fr .9fr;gap:16px}.batch-grid-single{display:grid;grid-template-columns:1fr;gap:16px}.batch-card{border-radius:14px;overflow:hidden}.batch-card .card-head{min-height:64px}.batch-table,.batch-roster-table{min-width:100%}.batch-table thead th,.batch-roster-table thead th{height:38px;padding:10px 12px;background:#fafbfd;color:#99a1b3;font-size:10.5px;letter-spacing:.4px}.batch-table tbody td,.batch-roster-table tbody td{height:56px;padding:11px 12px;color:#333a56}.batch-table tbody tr:hover,.batch-roster-table tbody tr:hover{background:#f8f9fd}.batch-table .selected-row{background:#f8f9fd}.batch-table .cell-name{font-weight:700;color:#161b33}.batch-roster-table .cell-name{font-size:12.5px;font-weight:700;color:#161b33}.batch-roster-table .cell-sub{font-size:11px;color:#99a1b3;margin-top:3px}
       .academic-shell{display:grid;gap:16px}.academic-selected-head{display:flex;align-items:center;justify-content:space-between;gap:14px;background:#fff;border:1px solid var(--border);border-radius:14px;padding:15px 18px;box-shadow:0 1px 2px rgba(16,20,40,.04)}.academic-selected-head h3{margin:0;font-size:17px;color:#061633}.academic-tabs{display:flex;gap:6px;width:max-content;max-width:100%;overflow-x:auto;background:#fff;border:1px solid var(--border);border-radius:10px;padding:4px;box-shadow:0 1px 2px rgba(16,20,40,.04)}.academic-tab{border:0;background:transparent;color:var(--text-600);border-radius:8px;padding:8px 13px;font-size:12.5px;font-weight:700;white-space:nowrap}.academic-tab.active{background:var(--indigo-500);color:#fff;box-shadow:0 4px 12px rgba(79,107,255,.25)}.academic-tab:disabled{opacity:.38;cursor:not-allowed}.batch-switch{display:flex;gap:8px;overflow-x:auto;padding-bottom:2px}.batch-pill{flex:0 0 178px;background:#fff;border:1px solid var(--border);border-radius:10px;padding:11px 14px;text-align:left;cursor:pointer;box-shadow:0 1px 2px rgba(16,20,40,.04)}.batch-pill.selected{border-color:var(--indigo-500);box-shadow:0 0 0 1px var(--indigo-500) inset}.batch-pill span{display:block}.batch-pill .course{font-size:10.5px;color:var(--indigo-600);font-weight:800;text-transform:uppercase;letter-spacing:.04em}.batch-pill .nm{font-weight:800;color:#061633;font-size:13.5px;margin:3px 0}.batch-pill .meta{font-size:11px;color:var(--text-400)}.academic-card{border-radius:14px;overflow:hidden}.academic-overview-grid{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:12px}.class-list{padding:0 18px 4px}.class-list-item{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:13px 0;border-bottom:1px solid var(--border-soft)}.class-list-item:last-child{border-bottom:0}.class-list-item .badge+.badge{margin-left:6px}.class-list-meta{margin-left:8px;color:var(--text-600);font-size:12px}.class-faculty{color:var(--text-400);font-size:12px;font-weight:700;white-space:nowrap}.academic-banner{display:flex;align-items:center;justify-content:space-between;gap:14px;background:var(--indigo-100);border:1px solid #cfd7ff;border-radius:12px;padding:13px 16px;color:var(--indigo-600);font-weight:700}.academic-banner-copy{display:grid;gap:8px}.class-color-legend{display:flex;align-items:center;gap:12px;flex-wrap:wrap}.class-color-legend span{display:inline-flex;align-items:center;gap:6px;color:var(--text-600);font-size:11.5px;font-weight:800}.class-color-legend i{width:12px;height:12px;border-radius:4px;border:1px solid var(--indigo-500);background:var(--indigo-100);box-shadow:0 1px 2px rgba(16,20,40,.05)}.class-color-legend i.practical{border-color:#f2bd62;background:var(--amber-50)}.academic-banner-actions,.academic-head-actions{display:flex;align-items:center;gap:8px;flex-wrap:wrap}.academic-banner .fbtn{height:34px;background:#fff}.academic-log-shell{display:grid;gap:12px}.academic-log-head{display:flex;align-items:center;justify-content:space-between}.academic-log-head h3{margin:0;font-size:15px;color:#061633}.academic-log-head .sub{font-size:12px;color:var(--text-400);margin-top:3px}.academic-roster-table{min-width:920px;width:100%;border-collapse:collapse}.academic-roster-table th{height:38px;padding:10px 8px;background:#fafbfd;color:#99a1b3;font-size:10.5px;letter-spacing:.4px;text-align:left}.academic-roster-table td{vertical-align:top;min-width:112px;padding:8px;border-bottom:1px solid var(--border-soft);color:#333a56}.academic-roster-table td:first-child{min-width:150px}.roster-slot{display:block;width:100%;border:1px solid var(--indigo-500);background:var(--indigo-100);color:var(--text-700);border-radius:9px;padding:7px 8px;text-align:left;margin-bottom:5px;font-size:11px}.roster-slot.practical{border-color:#f2bd62;background:var(--amber-50)}.roster-slot.selected{box-shadow:0 0 0 2px rgba(79,107,255,.22)}.roster-slot.preview{border-style:dashed;opacity:.55;filter:saturate(.6);pointer-events:none}.roster-slot strong,.roster-slot span,.roster-slot em{display:block}.roster-slot strong{font-size:11.5px;color:#061633}.roster-slot.preview strong{color:var(--text-600)}.roster-slot span{color:var(--text-600);margin-top:2px}.roster-slot em{font-style:normal;color:var(--text-400);font-size:10.5px;margin-top:3px}.roster-empty{color:var(--text-400);font-size:12px}.academic-topic-form{display:grid;grid-template-columns:1fr 1.2fr auto;gap:12px;align-items:end;padding:16px 18px;border-top:1px solid var(--border-soft);background:#fbfcff}.academic-topic-form .field{margin:0}.academic-tracker-list{padding:6px 18px 14px}.academic-tracker-row{display:grid;grid-template-columns:minmax(0,1fr) 172px 78px;align-items:center;gap:12px;padding:13px 0;border-bottom:1px solid var(--border-soft)}.academic-tracker-row:last-child{border-bottom:0}.tracker-select{height:36px;border:1px solid var(--border);border-radius:9px;background:#fff;padding:0 10px;color:#061633;font-size:12px;font-weight:800}.tracker-covered,.tracker-completed{background:var(--teal-50);border-color:#b8eee7;color:var(--teal-700)}.tracker-in-progress,.tracker-needs-repeat{background:var(--amber-50);border-color:#f5dfaf;color:var(--amber-700)}.tracker-not-started,.tracker-pending{background:#f8f9fd;color:var(--text-600)}.topic-edit-modal{width:600px;max-width:calc(100vw - 24px);overflow:hidden}.topic-edit-body{grid-template-columns:repeat(2,minmax(0,1fr));padding:20px 22px 10px}.topic-edit-body .field:last-child{grid-column:1 / 2}.topic-edit-actions{display:flex;justify-content:flex-end;gap:10px;padding:12px 22px 22px}.topic-edit-actions .btn{min-width:104px;justify-content:center}.practical-table{min-width:860px;width:100%;border-collapse:collapse}.practical-table th{height:38px;padding:10px 14px;background:#fafbfd;color:#99a1b3;font-size:10.5px;letter-spacing:.4px;text-align:left}.practical-table td{padding:12px 14px;border-bottom:1px solid var(--border-soft);vertical-align:middle}.compact-row-button{border:0;background:transparent;padding:0;text-align:left}.compact-row-button span span{display:block}.practical-note{width:100%;height:34px}.academic-modal{width:650px;max-width:calc(100vw - 24px);overflow:hidden;background:#f8f9fd}.academic-modal .modal-head{position:static;padding:18px 22px;background:#fff}.academic-modal .modal-body{padding:18px 22px 20px;background:#f8f9fd}.academic-modal .modal-foot{padding:16px 22px;background:#fff}.class-context{display:flex;align-items:center;gap:11px;background:#fff;border:1px solid var(--border);border-radius:12px;padding:12px 14px;margin-bottom:14px;box-shadow:0 1px 2px rgba(16,20,40,.04)}.class-context strong,.class-context em{display:block}.class-context strong{font-size:13.5px;color:#061633;font-weight:900}.class-context em{font-style:normal;color:var(--text-400);font-size:11.5px;margin-top:2px}.academic-steps{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px;margin:0 0 20px}.academic-steps button{position:relative;display:flex;align-items:center;gap:8px;border:1px solid var(--border);background:#fff;border-radius:10px;padding:9px 10px;text-align:left;color:var(--text-400);font-weight:800;cursor:default}.academic-steps button.done{cursor:pointer}.academic-steps button span{width:22px;height:22px;border-radius:999px;display:grid;place-items:center;background:#eef1f8;color:#6c7487;font-size:11px}.academic-steps button em{font-style:normal;font-size:12px}.academic-steps button.active{border-color:var(--indigo-500);color:var(--indigo-600);box-shadow:0 0 0 1px rgba(79,107,255,.15) inset}.academic-steps button.active span,.academic-steps button.done span{background:var(--indigo-500);color:#fff}.academic-steps button.done{color:#061633}.academic-modal .field{margin-bottom:18px}.academic-modal .field label{margin-bottom:9px}.academic-choice-section{display:grid;gap:20px}.mini-label{font-size:11px;font-weight:900;color:var(--text-400);text-transform:uppercase;letter-spacing:.04em;margin-bottom:9px}.academic-choice-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px}.academic-choice{position:relative;display:grid;grid-template-columns:auto 1fr;align-items:start;gap:12px;min-height:112px;border:1px solid var(--border);background:#fff;border-radius:14px;padding:15px 42px 36px 15px;text-align:left;color:#061633;box-shadow:0 2px 7px rgba(16,20,40,.04);cursor:pointer;transition:border-color .18s ease,box-shadow .18s ease,transform .18s ease,background .18s ease}.academic-choice:hover{border-color:#bdc8ff;box-shadow:0 12px 28px rgba(79,107,255,.13);transform:translateY(-2px)}.academic-choice.active{border-color:var(--indigo-500);background:linear-gradient(180deg,#fff,#f4f6ff);box-shadow:0 0 0 1px rgba(79,107,255,.22) inset,0 14px 32px rgba(79,107,255,.16)}.academic-choice.active:before{content:"";position:absolute;left:0;top:14px;bottom:14px;width:4px;border-radius:0 999px 999px 0;background:var(--indigo-500)}.choice-icon{width:40px;height:40px;border-radius:12px;display:grid;place-items:center;background:var(--indigo-100);color:var(--indigo-600)}.academic-choice.active .choice-icon{background:var(--indigo-500);color:#fff}.academic-choice strong,.academic-choice em{display:block}.academic-choice strong{font-size:14px;font-weight:900}.academic-choice em{font-style:normal;color:var(--text-400);font-size:11.5px;line-height:1.4;margin-top:5px}.academic-choice small{position:absolute;left:15px;bottom:12px;display:inline-flex;align-items:center;height:22px;border-radius:999px;background:#f2f4fb;color:var(--text-600);font-size:10.5px;font-weight:900;padding:0 9px}.academic-choice.active small{background:#e8fff5;color:var(--teal-700)}.choice-check{position:absolute;right:13px;top:13px;color:#c3c9d8}.academic-choice.active .choice-check{color:var(--teal-600)}.academic-seg{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px}.academic-chip,.academic-day{border:1px solid var(--border);background:#fff;color:var(--text-600);border-radius:999px;padding:10px 12px;font-size:12px;font-weight:800;cursor:pointer;min-height:36px}.academic-chip.on,.academic-day.on{border-color:var(--indigo-500);background:var(--indigo-100);color:var(--indigo-600)}.academic-day{width:42px;padding:8px 0}.academic-review{border:1px dashed var(--border);border-radius:10px;padding:14px;text-align:left;background:#fff}@media (max-width:1100px){.academic-overview-grid{grid-template-columns:repeat(2,minmax(0,1fr))}}@media (max-width:900px){.academic-topic-form{grid-template-columns:1fr 1fr}.academic-topic-form .btn{height:38px}}@media (max-width:640px){.academic-selected-head{align-items:flex-start;flex-direction:column}.academic-banner{align-items:flex-start;flex-direction:column}.academic-choice-grid,.academic-overview-grid{grid-template-columns:1fr}.academic-topic-form,.topic-edit-body{grid-template-columns:1fr}.topic-edit-body .field:last-child{grid-column:auto}.topic-edit-actions{padding:10px 16px 18px}.academic-tracker-row{grid-template-columns:1fr}.academic-modal{width:calc(100vw - 18px)}.academic-steps button{padding:8px 7px}.academic-steps button em{font-size:11px}}
       .students-filter-bar{gap:10px;margin-bottom:14px}.students-filter-bar .fbtn{height:34px;width:220px}.students-filter-bar .filter-spacer{flex:1}.students-card{border-radius:14px;overflow:hidden}.students-table-body{padding:0}.students-table-wrap{overflow-x:auto}.students-table{min-width:1080px}.students-table thead th{height:38px;padding:10px 12px;background:#fafbfd;color:#99a1b3;font-size:10.5px;letter-spacing:.4px}.students-table tbody td{height:58px;padding:10px 12px;color:#333a56}.students-table tbody tr:hover{background:#f8f9fd}.students-table .cell-name{font-size:12.5px;font-weight:700;color:#161b33}.students-table .cell-sub{font-size:11px;color:#99a1b3;margin-top:3px}.student-mini-select{height:29px;max-width:150px;border:1px solid var(--border);border-radius:7px;background:#fff;padding:5px 8px;font-size:11.5px;color:var(--text-700)}.progress-track{width:70px;height:6px;background:var(--border-soft);border-radius:10px;overflow:hidden;display:inline-block;vertical-align:middle}.progress-fill{height:100%;background:var(--green-500);border-radius:10px;display:block}.students-table .btn-soft{background:var(--indigo-100);color:var(--indigo-600);box-shadow:none}.students-table .empty-state h4{margin:0 0 4px;color:var(--text-600);font-size:13px}.students-table .empty-state p{margin:0;font-size:12px;color:var(--text-400)}
       .badge-teal{background:var(--teal-50);color:var(--teal-700)}.attendance-filter-bar{gap:10px;margin-bottom:14px}.attendance-filter-bar .fbtn{height:34px}.attendance-filter-bar .filter-spacer{flex:1}.attendance-card{border-radius:14px;overflow:hidden}.attendance-card .card-body{padding:16px 18px}.att-grid{display:flex;flex-direction:column;gap:8px}.att-row{display:grid;grid-template-columns:32px minmax(180px,1.6fr) repeat(4,64px) minmax(160px,1fr);align-items:center;gap:10px;padding:9px 12px;border:1px solid var(--border-soft);border-radius:9px}.att-head{border:none;padding:0 12px 6px;color:var(--text-400);font-size:10.5px;font-weight:700;text-transform:uppercase}.att-head>div:nth-child(n+3):nth-child(-n+6){text-align:center}.att-status-btn{height:30px;border:1px solid var(--border);background:#fff;border-radius:8px;color:var(--text-600);font-size:11.5px;font-weight:700}.att-status-btn.sel-present{background:var(--teal-50);border-color:#b8eee7;color:var(--teal-700)}.att-status-btn.sel-absent{background:var(--red-50);border-color:#f6cccc;color:var(--red-700)}.att-status-btn.sel-late{background:var(--amber-50);border-color:#f5dfaf;color:var(--amber-700)}.att-status-btn.sel-leave{background:var(--purple-50);border-color:#ded2fb;color:var(--purple-700)}.att-note{width:100%;height:32px;font-size:11.5px;padding:6px 8px}.attendance-card .cell-name{font-size:12.5px;font-weight:700;color:#161b33}.attendance-card .cell-sub{font-size:11px;color:#99a1b3}
       .logs-filter-bar{gap:10px;margin-bottom:14px}.logs-filter-bar .fbtn{height:34px;width:220px}.logs-filter-bar .filter-spacer{flex:1}.logs-card{border-radius:14px;overflow:hidden}.logs-table-wrap{overflow-x:auto}.logs-table{min-width:820px}.logs-table thead th{height:38px;padding:10px 12px;background:#fafbfd;color:#99a1b3;font-size:10.5px;letter-spacing:.4px}.logs-table tbody td{height:58px;padding:10px 12px;color:#333a56}.logs-table tbody tr:hover{background:#f8f9fd}.logs-table .cell-name{font-size:12.5px;font-weight:700;color:#161b33}.logs-table .cell-sub{font-size:11px;color:#99a1b3;margin-top:3px}.logs-table .btn-soft{background:var(--indigo-100);color:var(--indigo-600);box-shadow:none}.logs-table .empty-state h4{margin:0;color:var(--text-600);font-size:13px}
+      .study-note-form{grid-template-columns:1fr 1fr 240px 1fr auto}.study-note-form .field.full{grid-column:1 / -2}.study-note-list{display:grid;gap:10px;padding:14px 18px 18px}.study-note-row{display:grid;grid-template-columns:42px minmax(0,1fr) auto;align-items:center;gap:12px;border:1px solid var(--border-soft);border-radius:12px;background:#fff;padding:12px 14px}.study-note-icon{width:42px;height:42px;border-radius:12px;background:var(--indigo-100);color:var(--indigo-600);display:grid;place-items:center}.study-note-row b{display:block;font-size:13px;color:var(--text-900);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}.study-note-row p{margin:4px 0 0;color:var(--text-400);font-size:11.5px;line-height:1.35}.study-note-row small{display:block;margin-top:5px;color:var(--text-600);font-size:11.5px;line-height:1.35}.study-notes-card .empty-state{border:1px dashed var(--border);border-radius:12px;background:#fbfcff}
       .attdetail-back{margin-bottom:14px}.attdetail-grid{grid-template-columns:1.2fr .8fr;gap:16px}.attdetail-card{border-radius:14px;overflow:hidden}.cal-grid{display:grid;grid-template-columns:repeat(7,1fr);gap:6px}.cal-dow{text-align:center;font-size:10.5px;font-weight:800;color:var(--text-400);padding:0 0 4px}.cal-cell{aspect-ratio:1;border-radius:8px;display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:700;border:1px solid var(--border-soft);color:var(--text-600);background:#fff}.cal-cell.present{background:var(--teal-100);color:var(--teal-700);border-color:#8ee8dc}.cal-cell.absent{background:var(--red-100);color:var(--red-700);border-color:#f7b7b9}.cal-cell.late{background:var(--amber-50);color:var(--amber-700);border-color:#f5dfaf}.cal-cell.leave{background:var(--purple-50);color:var(--purple-700);border-color:#ded2fb}.cal-cell.blank{background:transparent;border-color:transparent}.legend{display:flex;gap:14px;font-size:11.5px;color:var(--text-600);margin-top:12px;flex-wrap:wrap}.legend span{display:inline-flex;align-items:center;gap:6px}.legend i{width:9px;height:9px;border-radius:3px;display:inline-block}.date-range-row{display:flex;gap:8px}.date-range-row .fbtn{flex:1;min-width:0}.attdetail-status{width:100%}.attdetail-download{width:100%;justify-content:center;margin-top:14px}
       .finance-metrics{grid-template-columns:repeat(4,1fr)}.finance-grid{grid-template-columns:1.35fr .75fr}.finance-card{border-radius:14px;overflow:hidden}.finance-table-wrap{overflow-x:auto}.finance-table{min-width:920px}.finance-table thead th{height:38px;padding:10px 12px;background:#fafbfd;color:#99a1b3;font-size:10.5px;letter-spacing:.4px}.finance-table tbody td{height:58px;padding:10px 12px;color:#333a56}.finance-table tbody tr:hover{background:#f8f9fd}.finance-table .cell-name{font-size:12.5px;font-weight:700;color:#161b33}.finance-table .cell-sub{font-size:11px;color:#99a1b3;margin-top:3px}.finance-chart-body{display:flex;flex-direction:column;align-items:center;gap:18px}.finance-chart-body .donut-legend{width:100%;min-width:0}
       .emi-metrics{grid-template-columns:repeat(3,1fr)}.emi-filter-bar{gap:10px;margin-bottom:14px}.emi-filter-bar .filter-spacer{flex:1}.emi-card{border-radius:14px;overflow:hidden}.emi-table-wrap{overflow-x:auto}.emi-table{min-width:880px}.emi-table thead th{height:38px;padding:10px 12px;background:#fafbfd;color:#99a1b3;font-size:10.5px;letter-spacing:.4px}.emi-table tbody td{height:58px;padding:10px 12px;color:#333a56}.emi-table tbody tr:hover{background:#f8f9fd}.emi-table .cell-name{font-size:12.5px;font-weight:700;color:#161b33}.emi-table .cell-sub{font-size:11px;color:#99a1b3;margin-top:3px}.emi-table .btn-green{white-space:nowrap}
       .receipts-filter-bar{gap:10px;margin-bottom:14px}.receipts-filter-bar .fbtn{height:34px;width:240px}.receipts-filter-bar .filter-spacer{flex:1}.receipts-card{border-radius:14px;overflow:hidden}.receipts-table-wrap{overflow-x:auto}.receipts-table{min-width:900px}.receipts-table thead th{height:38px;padding:10px 12px;background:#fafbfd;color:#99a1b3;font-size:10.5px;letter-spacing:.4px}.receipts-table tbody td{height:58px;padding:10px 12px;color:#333a56}.receipts-table tbody tr:hover{background:#f8f9fd}.receipts-table .cell-name{font-size:12.5px;font-weight:700;color:#161b33}.receipts-table .cell-sub{font-size:11px;color:#99a1b3;margin-top:3px}.receipt-drawer{width:720px;max-width:96vw}.receipt-tabs{overflow-x:auto}.receipt-tabs .dtab{white-space:nowrap}.receipt-drawer-body{padding:18px 0 28px;background:#fff}.invoice-card{background:#fff!important;border:0!important;box-shadow:none!important;border-radius:0!important;padding:0 18px!important;overflow:auto!important}.invoice-actions{width:min(820px,100%);margin:14px auto 0;display:flex;justify-content:flex-end;gap:10px;flex-wrap:wrap}.tax-invoice{width:820px;max-width:none;margin:0 auto;background:#fff;color:#111;font-family:Arial,Helvetica,sans-serif;font-size:11px;line-height:1.32;border:1px solid #555}.tax-title{text-align:center;font-weight:700;padding:8px 0;border-bottom:1px solid #555}.invoice-top-grid{display:grid;grid-template-columns:1fr 1fr;border-bottom:1px solid #555}.invoice-seller{padding:8px;display:grid;gap:2px;border-right:1px solid #555;min-height:190px}.invoice-seller strong,.invoice-buyer strong{font-size:12px}.invoice-meta-grid{display:grid;grid-template-columns:1fr 1fr}.invoice-meta-grid>div{min-height:31px;padding:5px 6px;border-right:1px solid #777;border-bottom:1px solid #777;display:grid;align-content:start;gap:2px}.invoice-meta-grid>div:nth-child(2n){border-right:0}.invoice-meta-grid span,.invoice-buyer>span:first-child,.amount-words span,.tax-words span{font-size:10px}.invoice-meta-grid b{font-size:10.5px}.invoice-terms{grid-column:1/-1;min-height:58px!important;border-bottom:0!important}.invoice-buyer{padding:8px;display:grid;gap:2px;border-bottom:1px solid #555;min-height:95px}.invoice-items,.gst-summary{width:100%;border-collapse:collapse;table-layout:fixed}.invoice-items th,.invoice-items td,.gst-summary th,.gst-summary td{border-right:1px solid #777;border-bottom:1px solid #777;padding:5px 6px;vertical-align:top;line-height:1.28}.invoice-items th:last-child,.invoice-items td:last-child,.gst-summary th:last-child,.gst-summary td:last-child{border-right:0;text-align:right}.invoice-items th{font-weight:400;text-align:center;vertical-align:middle;height:24px}.invoice-items td:nth-child(1){width:42px;text-align:center}.invoice-items td:nth-child(2){width:38%}.invoice-items td:nth-child(3),.invoice-items td:nth-child(4),.invoice-items td:nth-child(5),.invoice-items td:nth-child(6){text-align:center}.payment-items td:nth-child(2){width:42%;text-align:left}.payment-items td:nth-child(3),.payment-items td:nth-child(4){text-align:center}.payment-items td:nth-child(5){text-align:right}.payment-summary th,.payment-summary td{text-align:right!important}.payment-summary th:first-child,.payment-summary td:first-child{text-align:left!important}.invoice-items tbody tr:not(.invoice-total-row){height:32px}.invoice-items small{display:block;font-size:10px;margin-top:2px;line-height:1.25}.tax-line{text-align:right;font-weight:700}.invoice-total-row td{font-weight:700;border-top:1px solid #555}.invoice-total-row td:first-child{text-align:right}.amount-words{position:relative;padding:6px 8px;border-bottom:1px solid #555;display:grid;gap:2px}.amount-words em{position:absolute;right:8px;top:6px;font-style:normal;font-size:10px}.gst-summary th{font-size:10px;font-weight:400;text-align:center;vertical-align:middle}.gst-summary td{text-align:right}.gst-summary td:first-child{text-align:left}.tax-words{padding:6px 8px;border-bottom:1px solid #555;display:flex;gap:8px}.invoice-bottom{display:grid;grid-template-columns:1.1fr .9fr;min-height:112px}.invoice-bottom>div{padding:8px;display:grid;align-content:start;gap:3px}.bank-details{border-left:1px solid #555}.bank-details>b{margin-top:10px;text-align:right}.bank-details em{text-align:right;font-style:normal;margin-top:20px}.paid-due{margin-top:8px;font-weight:700}.invoice-footer{text-align:center;font-size:10px;padding:5px;border-top:1px solid #555}
       .tax-invoice th,.tax-invoice td{white-space:normal;overflow-wrap:anywhere}.tax-invoice td:last-child,.tax-invoice .invoice-total-row td:last-child,.tax-invoice .gst-summary td:not(:first-child){white-space:nowrap}.invoice-col-sl{width:46px}.invoice-col-particulars{width:31%}.invoice-col-hsn{width:84px}.invoice-col-qty{width:76px}.invoice-col-rate{width:70px}.invoice-col-per{width:64px}.invoice-col-amount{width:126px}.gst-col-hsn{width:98px}.gst-col-taxable{width:116px}.gst-col-rate{width:94px}.gst-col-amount{width:112px}.gst-col-total{width:124px}
-      .cert-filter-bar{gap:10px;margin-bottom:14px}.cert-filter-bar .fbtn{height:34px;width:240px}.cert-filter-bar .filter-spacer{flex:1}.cert-card-table{border-radius:14px;overflow:hidden}.cert-table-wrap{overflow-x:auto}.cert-table{min-width:880px}.cert-table thead th{height:38px;padding:10px 12px;background:#fafbfd;color:#99a1b3;font-size:10.5px;letter-spacing:.4px}.cert-table tbody td{height:58px;padding:10px 12px;color:#333a56}.cert-table tbody tr:hover{background:#f8f9fd}.cert-table .cell-name{font-size:12.5px;font-weight:700;color:#161b33}.cert-table .cell-sub{font-size:11px;color:#99a1b3;margin-top:3px}.modal-overlay{position:fixed;inset:0;background:rgba(10,14,29,.45);display:none;align-items:center;justify-content:center;z-index:220;padding:18px}.modal-overlay.show{display:flex}.modal{background:#fff;border-radius:16px;width:600px;max-width:92vw;max-height:88vh;overflow-y:auto;box-shadow:0 18px 48px rgba(10,14,29,.28)}.cert-modal{width:min(1280px,96vw)}.modal-head{display:flex;align-items:center;justify-content:space-between;padding:18px 22px;border-bottom:1px solid var(--border-soft);position:sticky;top:0;background:#fff;z-index:2}.modal-head h3{margin:0;font-size:15px;font-weight:700}.modal-body{padding:20px 22px}.modal-foot{display:flex;justify-content:flex-end;gap:10px;padding:16px 22px;border-top:1px solid var(--border-soft)}.document-preview-modal{width:min(1040px,96vw);height:min(820px,92vh);max-height:92vh;display:flex;flex-direction:column;overflow:hidden}.document-preview-head{position:relative;top:auto;flex:0 0 auto}.document-preview-actions{display:flex;align-items:center;gap:8px}.document-preview-body{flex:1;min-height:0;background:#eef2f8;display:grid;place-items:center;padding:12px;overflow:auto}.document-preview-frame{width:100%;height:100%;border:0;background:#fff;border-radius:10px}.document-preview-image{display:block;max-width:100%;max-height:100%;object-fit:contain;background:#fff;border-radius:10px;box-shadow:0 12px 34px rgba(15,23,42,.16)}.certificate-card{background:#fff;border:1px solid var(--border);border-radius:13px;padding:22px;display:grid;gap:16px;overflow:auto}.certificate-preview-shell{padding:10px}.imed-certificate-exact-frame{width:1220px;height:862.49px;max-width:none;margin:0 auto;overflow:hidden;background:#fff;box-shadow:0 18px 44px rgba(17,33,61,.08)}.imed-certificate-exact-frame>div{width:3508px;height:2480px;transform:scale(.3477765);transform-origin:top left}.cert-verify-field{margin-top:14px}
+      .cert-filter-bar{gap:10px;margin-bottom:14px}.cert-filter-bar .fbtn{height:34px;width:240px}.cert-filter-bar .filter-spacer{flex:1}.cert-card-table{border-radius:14px;overflow:hidden}.cert-table-wrap{overflow-x:auto}.cert-table{min-width:880px}.cert-table thead th{height:38px;padding:10px 12px;background:#fafbfd;color:#99a1b3;font-size:10.5px;letter-spacing:.4px}.cert-table tbody td{height:58px;padding:10px 12px;color:#333a56}.cert-table tbody tr:hover{background:#f8f9fd}.cert-table .cell-name{font-size:12.5px;font-weight:700;color:#161b33}.cert-table .cell-sub{font-size:11px;color:#99a1b3;margin-top:3px}.modal-overlay{position:fixed;inset:0;background:rgba(10,14,29,.45);display:none;align-items:center;justify-content:center;z-index:220;padding:18px}.modal-overlay.show{display:flex}.modal{background:#fff;border-radius:16px;width:600px;max-width:92vw;max-height:88vh;overflow-y:auto;box-shadow:0 18px 48px rgba(10,14,29,.28)}.cert-modal{width:min(1280px,96vw)}.modal-head{display:flex;align-items:center;justify-content:space-between;padding:18px 22px;border-bottom:1px solid var(--border-soft);position:sticky;top:0;background:#fff;z-index:2}.modal-head h3{margin:0;font-size:15px;font-weight:700}.modal-body{padding:20px 22px}.modal-foot{display:flex;justify-content:flex-end;gap:10px;padding:16px 22px;border-top:1px solid var(--border-soft)}.logbook-review-modal{width:520px;max-width:calc(100vw - 24px);overflow:hidden}.logbook-review-body{display:grid;grid-template-columns:38px minmax(0,1fr);gap:14px;align-items:start;padding:20px 22px 14px}.logbook-review-copy p{margin:0 0 12px;color:var(--text-700);font-size:13px;line-height:1.45}.review-entry-snapshot{display:grid;gap:3px;background:#f8f9fd;border:1px solid var(--border-soft);border-radius:11px;padding:10px 12px;margin-bottom:14px}.review-entry-snapshot b{font-size:13px;color:var(--text-900)}.review-entry-snapshot span{font-size:11.5px;color:var(--text-400);font-weight:700}.logbook-review-copy .field{margin:0}.logbook-review-copy .field span{display:block;margin-bottom:7px;color:var(--text-600);font-size:12px;font-weight:800}.logbook-review-copy textarea{width:100%;resize:vertical;border:1px solid var(--border);border-radius:10px;padding:10px 12px;font:inherit;color:var(--text-900);outline:none}.logbook-review-copy textarea:focus{border-color:var(--indigo-500);box-shadow:0 0 0 3px rgba(79,107,255,.12)}.document-preview-modal{width:min(1040px,96vw);height:min(820px,92vh);max-height:92vh;display:flex;flex-direction:column;overflow:hidden}.document-preview-head{position:relative;top:auto;flex:0 0 auto}.document-preview-actions{display:flex;align-items:center;gap:8px}.document-preview-body{flex:1;min-height:0;background:#eef2f8;display:grid;place-items:center;padding:12px;overflow:auto}.document-preview-frame{width:100%;height:100%;border:0;background:#fff;border-radius:10px}.document-preview-image{display:block;max-width:100%;max-height:100%;object-fit:contain;background:#fff;border-radius:10px;box-shadow:0 12px 34px rgba(15,23,42,.16)}.certificate-card{background:#fff;border:1px solid var(--border);border-radius:13px;padding:22px;display:grid;gap:16px;overflow:auto}.certificate-preview-shell{padding:10px}.imed-certificate-exact-frame{width:1220px;height:862.49px;max-width:none;margin:0 auto;overflow:hidden;background:#fff;box-shadow:0 18px 44px rgba(17,33,61,.08)}.imed-certificate-exact-frame>div{width:3508px;height:2480px;transform:scale(.3477765);transform-origin:top left}.cert-verify-field{margin-top:14px}
       .document-actions{display:flex;align-items:center;justify-content:flex-end;gap:8px;min-width:0}.document-actions .badge{max-width:220px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}.document-actions .btn{height:30px;padding:0 10px;gap:6px;white-space:nowrap}
       @media print{@page certificate-page{size:A4 landscape;margin:0}@page receipt-page{size:A4 portrait;margin:8mm}html,body{background:#fff!important;overflow:visible!important}body.imed-print-certificate{width:297mm;height:210mm;overflow:hidden!important}body.imed-print-certificate *{visibility:hidden!important}body.imed-print-certificate .certificate-export-target,body.imed-print-certificate .certificate-export-target *{visibility:visible!important}body.imed-print-certificate .certificate-export-target{page:certificate-page;position:fixed!important;inset:0!important;width:297mm!important;height:210mm!important;margin:0!important;background:#fff!important;overflow:hidden!important}body.imed-print-certificate .certificate-export-target .certificate-card{border:0!important;border-radius:0!important;padding:0!important;box-shadow:none!important;width:297mm!important;height:210mm!important;overflow:hidden!important}body.imed-print-certificate .certificate-export-target .imed-certificate-exact-frame{width:297mm!important;height:210mm!important;margin:0!important;box-shadow:none!important;border-radius:0!important;overflow:hidden!important}body.imed-print-certificate .certificate-export-target .imed-certificate-exact-frame>div{width:3508px!important;height:2480px!important;transform:scale(.32)!important;transform-origin:top left!important}body.imed-print-receipt *{visibility:hidden!important}body.imed-print-receipt .receipt-print-target,body.imed-print-receipt .receipt-print-target *{visibility:visible!important}body.imed-print-receipt .receipt-print-target{page:receipt-page;position:absolute!important;left:0!important;top:0!important;width:100%!important;max-width:none!important;margin:0!important;padding:0!important;background:#fff!important;overflow:visible!important}body.imed-print-receipt .receipt-print-target .tax-invoice{width:100%!important;min-width:0!important;margin:0!important;box-shadow:none!important}}
       .crow{display:flex;align-items:center;justify-content:space-between;gap:14px;padding:12px 0;border-bottom:1px solid var(--border-soft)}.crow:last-child{border-bottom:0}.who{display:flex;align-items:center;gap:11px}.mini{width:32px;height:32px;border-radius:999px;background:var(--blue-50);color:var(--indigo-600);display:inline-flex;align-items:center;justify-content:center;font-size:12px;font-weight:800}.row-list{display:grid}.row-button{width:100%;border:0;background:transparent;text-align:left}.collection-box{display:grid;gap:8px}.collection-box strong{font-size:23px;color:#061633}.collection-box span{color:var(--text-400)}.cash-deposit-card{margin-bottom:16px}.cash-deposit-table{min-width:980px}.cash-deposit-form{display:grid;grid-template-columns:90px 132px 150px 150px 130px 120px 150px auto;gap:8px;align-items:center}.cash-deposit-form input{height:34px;border:1px solid var(--border);border-radius:8px;padding:7px 9px;font-size:11.5px;font-family:inherit;color:var(--text-900);background:#fff;min-width:0}.cash-deposit-form input[type=file]{padding:6px;background:#fff}.cash-deposit-history{display:grid;gap:5px}.cash-deposit-history div{display:flex;flex-wrap:wrap;gap:6px 10px;align-items:center}.cash-deposit-history b{font-size:12px}.cash-deposit-history span{font-size:11px;color:var(--text-400)}.field-grid{display:grid;grid-template-columns:1fr 1fr;gap:14px}.field{margin-bottom:0}.field.full{grid-column:1/-1}.field label{display:block;font-size:11.5px;font-weight:700;color:var(--text-600);margin-bottom:6px}.required-star{color:var(--red-500);font-weight:800;margin-left:3px}.field input,.field select,.field textarea{width:100%;border:1px solid var(--border);border-radius:8px;padding:9px 11px;font-size:12.5px;font-family:inherit;color:var(--text-900);background:#fff}.field input[type=file]{padding:7px 9px}.field textarea{min-height:70px}.field-help{display:block;margin-top:5px;font-size:10.5px;color:var(--text-400)}.day-picker{display:flex;flex-wrap:wrap;gap:8px}.day-picker label{display:flex!important;align-items:center;gap:6px;border:1px solid var(--border);border-radius:999px;padding:7px 10px;background:#fff;margin:0!important}.class-card{margin-bottom:16px}.class-att-grid .att-row{min-width:760px}.pager{display:flex;align-items:center;justify-content:space-between;padding:12px 18px;border-top:1px solid var(--border-soft);font-size:12px;color:var(--text-400)}.pager-btns{display:flex;gap:6px}.pager-btns button{min-width:40px;height:28px;border-radius:7px;border:1px solid var(--border);background:#fff;font-size:12px;color:var(--text-600)}.pager-btns button.active{background:var(--indigo-500);color:#fff;border-color:var(--indigo-500)}.empty-state{text-align:center;padding:34px 20px;color:var(--text-400)}.settings-shell{display:grid;grid-template-columns:1fr 1fr;gap:16px}.settings-prototype-shell{grid-template-columns:220px minmax(0,1fr);align-items:start}.settings-nav{background:#fff;border:1px solid var(--border);border-radius:14px;padding:10px;display:grid;gap:4px;box-shadow:0 1px 2px rgba(16,20,40,.05)}.settings-nav button{border:0;background:transparent;color:var(--text-600);border-radius:9px;padding:10px 12px;text-align:left;font-size:12.5px;font-weight:700}.settings-nav button.active{background:var(--indigo-500);color:#fff;box-shadow:0 4px 12px rgba(79,107,255,.28)}.settings-pane-wrap{min-width:0}.settings-card{border-radius:14px;overflow:hidden}.settings-card .card-head button{margin-left:auto}.settings-table-wrap{overflow-x:auto}.settings-table{min-width:760px}.settings-table thead th{height:38px;padding:10px 12px;background:#fafbfd;color:#99a1b3;font-size:10.5px;letter-spacing:.4px}.settings-table tbody td{height:58px;padding:10px 12px;color:#333a56}.settings-table tbody tr:hover{background:#f8f9fd}.settings-table .cell-name{font-size:12.5px;font-weight:700;color:#161b33}.settings-table .cell-sub{font-size:11px;color:#99a1b3;margin-top:3px}.settings-search-body{padding-bottom:0}.settings-search-body .fbtn{width:260px;height:34px}.settings-add-form{border-bottom:1px solid var(--border-soft);background:#fafbfd}.settings-security-card{max-width:420px}.settings-security-card .card-body{display:grid;gap:14px}.staff-role-note>div{border:1px solid var(--border-soft);border-radius:8px;background:#fafbfd;color:var(--text-600);font-size:12px;line-height:1.4;padding:10px 11px}.pill-list{display:flex;flex-wrap:wrap;gap:10px;padding:0 18px 18px}.pill-list span{padding:8px 12px;border-radius:999px;background:var(--blue-50);color:var(--indigo-600);font-weight:700}.profile-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:16px}.profile-grid b{display:block;color:var(--text-400);font-size:11px;text-transform:uppercase;margin-bottom:5px}.profile-grid p{margin:0;font-weight:700}.payment-form{grid-column:1/-1;display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:12px;align-items:start}.payment-form-actions{grid-column:1/-1;display:flex;justify-content:flex-end;padding-top:2px}.payment-form-actions .btn{min-width:150px}.profile-own-card{max-width:520px;border-radius:14px;overflow:hidden}.profile-own-head{gap:14px}.profile-own-avatar{width:46px;height:46px;font-size:15px;background:linear-gradient(135deg,var(--indigo-500),#8A6BFF);color:#fff}.profile-security-btn{margin-top:16px}.profile-shell{max-width:760px;border-radius:14px;overflow:hidden}.profile-head{padding:20px 22px;border-bottom:1px solid var(--border-soft);display:flex;align-items:flex-start;gap:14px}.profile-title{flex:1;min-width:0}.profile-title h3{margin:0;font-size:15px;line-height:1.25}.profile-title .cell-sub{display:flex;align-items:center;gap:6px;flex-wrap:wrap;margin-top:4px}.profile-tabs{padding:0 22px;overflow-x:auto}.profile-drawer-body{padding-bottom:18px}.profile-metrics{grid-template-columns:1fr 1fr;margin-bottom:10px}.profile-metrics .metric-card{padding:14px}.profile-metrics .m-value{font-size:21px}.profile-metrics .m-delta:empty{display:none}.profile-progress{width:100px}.profile-payment-form{margin-top:12px;grid-template-columns:repeat(2,minmax(0,1fr))}.profile-payment-form .btn{height:38px;justify-content:center}.profile-edit-form{padding:18px 22px}.profile-edit-actions{grid-column:1/-1;display:flex;justify-content:flex-end;gap:10px;border-top:1px solid var(--border-soft);padding-top:14px}.feedback-form{padding-bottom:16px;border-bottom:1px solid var(--border-soft)}.feedback-timeline{display:grid;gap:10px;margin-top:16px}.feedback-item{border:1px solid var(--border-soft);border-radius:10px;padding:12px;background:#fff}.feedback-item>div:first-child{display:flex;align-items:center;justify-content:space-between;gap:10px}.feedback-item b{font-size:12.5px}.feedback-item p{margin:8px 0;color:var(--text-700);line-height:1.45}.profile-shell .table-wrap{border:1px solid var(--border-soft);border-radius:10px;overflow:auto}.profile-shell table thead th{background:#fafbfd}.profile-shell .certificate-card{border-radius:10px}
+      .internship-status-card{display:flex;align-items:center;justify-content:space-between;gap:14px;margin-bottom:14px;border:1px solid var(--border-soft);border-radius:12px;background:linear-gradient(135deg,#fff 0%,#fff9ef 100%);padding:14px}.internship-status-card.assigned{background:linear-gradient(135deg,#fff 0%,#effdf7 100%)}.internship-status-card h4{margin:8px 0 4px;font-size:14px;color:var(--text-900)}.internship-status-card p{margin:0;color:var(--text-400);font-size:11.5px;line-height:1.45}.internship-form{margin-top:0}.internship-form .profile-edit-actions{padding-top:14px}.internship-panel{display:grid;gap:16px}.internship-metrics{grid-template-columns:repeat(4,1fr)}.internship-monitor-card{border-radius:14px;overflow:hidden}.internship-monitor-body{padding:14px 18px 18px}.internship-filter-bar{margin-bottom:14px}.internship-filter-bar .fbtn{height:34px}.internship-search-field{width:280px;display:flex;align-items:center;gap:8px;padding:0 11px}.internship-search-field svg{flex:0 0 14px}.internship-filter-bar .internship-search-field input{height:auto;width:100%;min-width:0;border:0;background:transparent;outline:0;padding:0;font-size:12.5px;color:var(--text-900);font-family:inherit}.internship-date-input{width:156px}.internship-monitor-table{min-width:1120px;table-layout:fixed}.internship-monitor-table thead th{height:38px;padding:10px 12px;background:#fafbfd;color:#99a1b3;font-size:10.5px;letter-spacing:.4px}.internship-monitor-table tbody td{height:62px;padding:10px 12px;color:#333a56;vertical-align:middle;overflow:hidden}.internship-monitor-table th:nth-child(1){width:250px}.internship-monitor-table th:nth-child(2){width:160px}.internship-monitor-table th:nth-child(3){width:104px}.internship-monitor-table th:nth-child(4),.internship-monitor-table th:nth-child(5){width:160px}.internship-monitor-table th:nth-child(6){width:72px}.internship-monitor-table th:nth-child(7){width:86px}.internship-monitor-table th:nth-child(8){width:228px}.internship-monitor-table tbody tr:hover{background:#f8f9fd}.internship-monitor-table .cell-name{font-size:12.5px;font-weight:700;color:#161b33}.internship-monitor-table .cell-sub{font-size:11px;color:#99a1b3;margin-top:3px}.internship-student-cell{min-width:0}.internship-student-cell>div{min-width:0}.internship-student-cell .cell-name,.internship-student-cell .cell-sub,.internship-hospital-cell,.internship-hospital-cell .cell-sub{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}.internship-monitor-table td.mono{font-size:11px;white-space:nowrap}.internship-gps-status{overflow:visible!important}.internship-gps-status .badge{max-width:100%;overflow:hidden;text-overflow:ellipsis}.internship-gps-status .cell-sub{white-space:normal;line-height:1.35}
+      .internship-metrics{grid-template-columns:repeat(auto-fit,minmax(170px,1fr))}.internship-tabs{width:max-content;max-width:100%;margin:0;overflow-x:auto}.internship-tabs .pill-tab{white-space:nowrap;display:inline-flex;align-items:center;gap:7px}.tab-badge{min-width:18px;height:18px;border-radius:999px;background:var(--amber-500);color:#fff;display:inline-grid;place-items:center;padding:0 6px;font-size:10px;font-style:normal;font-weight:800}.internship-logbook-card{border-radius:14px;overflow:hidden}.internship-logbook-card .segmented.tiny{margin-left:auto}.internship-logbook-card .segmented.tiny button{height:30px;padding:0 10px;font-size:11.5px}.internship-logbook-list{display:grid;gap:10px;background:#fbfcff}.internship-logbook-item{display:grid;grid-template-columns:230px minmax(0,1fr) 142px;gap:14px;align-items:start;background:#fff;border:1px solid var(--border-soft);border-radius:12px;padding:12px}.internship-logbook-content{min-width:0}.internship-logbook-top{display:flex;align-items:center;justify-content:space-between;gap:12px;margin-bottom:10px}.internship-logbook-top b{font-size:13px;color:var(--text-900);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}.internship-logbook-top span{font-size:11px;color:var(--text-400);font-weight:700;white-space:nowrap}.internship-logbook-notes{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px}.internship-logbook-notes>div{border:1px solid var(--border-soft);border-radius:10px;background:#fafbfd;padding:9px 10px}.internship-logbook-notes>div:nth-child(3){grid-column:1/-1}.internship-logbook-notes span{display:block;color:var(--indigo-600);font-size:10.5px;font-weight:800;text-transform:uppercase;letter-spacing:.35px}.internship-logbook-notes p{margin:5px 0 0;color:var(--text-700);font-size:12px;line-height:1.45;white-space:normal}.internship-logbook-actions{display:grid;justify-items:end;align-content:start;gap:10px}.internship-logbook-actions .btn{white-space:nowrap}.internship-logbook-list .empty-state{background:#fff;border:1px dashed var(--border);border-radius:12px}@media(max-width:1100px){.internship-logbook-item{grid-template-columns:1fr}.internship-logbook-actions{justify-items:start;display:flex;align-items:center;justify-content:space-between}.internship-logbook-card .segmented.tiny{margin-left:0}}@media(max-width:900px){.study-note-form{grid-template-columns:1fr 1fr}.study-note-form .field.full{grid-column:1/-1}.study-note-form .btn{justify-content:center}}@media(max-width:700px){.internship-tabs{width:100%}.internship-tabs .pill-tab{flex:1;justify-content:center}.internship-logbook-notes{grid-template-columns:1fr}.internship-logbook-actions{align-items:flex-start;flex-direction:column}.internship-logbook-top{align-items:flex-start;flex-direction:column;gap:4px}.study-note-form{grid-template-columns:1fr}.study-note-row{grid-template-columns:38px minmax(0,1fr);align-items:start}.study-note-row .action-icons{grid-column:1/-1;justify-content:flex-end}.study-note-icon{width:38px;height:38px}}
       .chart-body{display:flex;align-items:center;gap:22px;flex-wrap:wrap}.donut-wrap{position:relative;flex:0 0 auto;display:flex;align-items:center;justify-content:center}.donut-center{position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center;pointer-events:none}.donut-center strong{font-size:19px;font-weight:800;color:#061633;font-family:JetBrains Mono,monospace;line-height:1.1}.donut-center span{font-size:10px;color:var(--text-400);font-weight:600;text-transform:uppercase;letter-spacing:.3px;margin-top:2px}.donut-legend{flex:1;min-width:160px;display:flex;flex-direction:column;gap:9px}.donut-legend-row{display:grid;grid-template-columns:9px 1fr auto auto;align-items:center;gap:9px;font-size:12px}.donut-legend-row .dot{width:9px;height:9px;border-radius:3px}.donut-legend-row .lbl{color:var(--text-700);font-weight:600;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}.donut-legend-row .val{color:var(--text-400);font-family:JetBrains Mono,monospace;font-size:11px}.donut-legend-row .pct{color:var(--text-900);font-weight:700;min-width:34px;text-align:right}
       .main,.content,.card,.metric-card,.table-wrap,.settings-pane-wrap,.profile-title,.drawer-title{min-width:0}.table-wrap{max-width:100%;overflow-x:auto}.filter-bar{display:flex;align-items:center;flex-wrap:wrap;gap:10px}.filter-bar .fbtn,.filter-bar select,.filter-bar input{max-width:100%}.drawer{max-width:96vw}.drawer-body{overflow-x:hidden}.att-grid{overflow-x:auto;padding-bottom:2px}.att-row{min-width:760px}.modal-body,.card-body{min-width:0}.invoice-card,.certificate-card{max-width:100%}.date-filter,.dtabs,.settings-nav,.pager-btns,.nav-scroll,.table-wrap,.att-grid,.invoice-card,.certificate-card,.certificate-preview-shell{scrollbar-width:none;-ms-overflow-style:none}.date-filter::-webkit-scrollbar,.dtabs::-webkit-scrollbar,.settings-nav::-webkit-scrollbar,.pager-btns::-webkit-scrollbar,.nav-scroll::-webkit-scrollbar,.table-wrap::-webkit-scrollbar,.att-grid::-webkit-scrollbar,.invoice-card::-webkit-scrollbar,.certificate-card::-webkit-scrollbar,.certificate-preview-shell::-webkit-scrollbar{display:none}
       .roster-lanes{display:grid;grid-template-rows:minmax(92px,auto) minmax(92px,auto);gap:5px}.roster-lane{min-height:92px}.roster-lane .roster-slot{position:relative;min-height:87px;margin-bottom:0}.roster-slot .roster-date{color:var(--indigo-600);font-size:10.5px;font-weight:700}.roster-slot.practical .roster-date{color:var(--amber-700)}.roster-slot.selected{border-width:2px!important;background:#fff!important;box-shadow:0 0 0 3px rgba(79,107,255,.16),0 10px 24px rgba(79,107,255,.18)!important;transform:translateY(-1px)}.roster-slot.practical.selected{box-shadow:0 0 0 3px rgba(245,158,11,.18),0 10px 24px rgba(245,158,11,.18)!important}
-      .class-attendance-shell{display:grid;gap:12px}.class-attendance-tools{display:flex;align-items:center;gap:10px;flex-wrap:wrap;padding-bottom:2px}.class-attendance-search{width:260px;height:34px;background:#fff}.class-attendance-filters{overflow-x:auto}.class-attendance-save{position:sticky;bottom:0;z-index:3;display:flex;align-items:center;justify-content:space-between;gap:12px;margin:4px -18px -16px;padding:12px 18px;background:rgba(255,255,255,.96);border-top:1px solid var(--border-soft);box-shadow:0 -8px 22px rgba(16,20,40,.06)}.class-attendance-save span{color:var(--text-400);font-size:12px;font-weight:700}.class-attendance-save .btn{white-space:nowrap}
+      .class-attendance-shell{display:grid;gap:12px}.class-attendance-tools{display:flex;align-items:center;gap:10px;flex-wrap:wrap;padding-bottom:2px}.class-attendance-search{width:260px;height:34px;background:#fff}.class-attendance-filters{overflow-x:auto}.class-attendance-save{position:sticky;bottom:0;z-index:3;display:flex;align-items:center;justify-content:space-between;gap:12px;margin:4px -18px -16px;padding:12px 18px;background:rgba(255,255,255,.96);border-top:1px solid var(--border-soft);box-shadow:0 -8px 22px rgba(16,20,40,.06)}.class-attendance-save span{color:var(--text-400);font-size:12px;font-weight:700}.class-attendance-save .btn{white-space:nowrap}.class-attendance-actions{display:flex;align-items:center;justify-content:flex-end;gap:8px;flex-wrap:wrap}.btn-danger-soft{background:var(--red-50);border-color:#f7d7d7;color:var(--red-700)}
       @media(max-width:1200px){.lower-grid{grid-template-columns:1fr 1fr}.finance-metrics{grid-template-columns:repeat(2,minmax(0,1fr))}.finance-grid,.attdetail-grid{grid-template-columns:1fr}.settings-prototype-shell{grid-template-columns:190px minmax(0,1fr)}}
-      @media(max-width:1100px){.sidebar{width:74px;flex-basis:74px}.brand-text,.nav-group-label,.nav-item span,.role-meta{display:none}.sidebar-brand,.nav-item{justify-content:center}.two-col,.settings-shell,.lower-grid,.batch-grid{grid-template-columns:1fr}.batch-card-grid{grid-template-columns:repeat(2,minmax(0,1fr))}.topbar{height:auto;min-height:0;flex:0 0 auto;display:grid;grid-template-columns:1fr;align-items:stretch;padding:14px;gap:10px}.topbar-spacer{display:none}.search-box{width:100%}.date-filter{flex-wrap:wrap}.field-grid,.profile-grid,.payment-form{grid-template-columns:1fr}.card-head{align-items:flex-start;flex-wrap:wrap}.card-head button,.card-head input{margin-left:0}.settings-prototype-shell{grid-template-columns:1fr}.settings-nav{display:flex;overflow-x:auto;white-space:nowrap}.settings-nav button{flex:0 0 auto}.batch-metrics,.emi-metrics{grid-template-columns:repeat(2,minmax(0,1fr))}}
+      @media(max-width:1100px){.sidebar{width:74px;flex-basis:74px}.brand-text,.nav-group-label,.nav-item span,.role-meta{display:none}.sidebar-brand,.nav-item{justify-content:center}.nav-badge{position:absolute;right:12px;top:7px;margin:0;min-width:17px;height:17px;padding:0 5px;font-size:9.5px}.two-col,.settings-shell,.lower-grid,.batch-grid{grid-template-columns:1fr}.batch-card-grid{grid-template-columns:repeat(2,minmax(0,1fr))}.topbar{height:auto;min-height:0;flex:0 0 auto;display:grid;grid-template-columns:1fr;align-items:stretch;padding:14px;gap:10px}.topbar-spacer{display:none}.search-box{width:100%}.date-filter{flex-wrap:wrap}.field-grid,.profile-grid,.payment-form{grid-template-columns:1fr}.card-head{align-items:flex-start;flex-wrap:wrap}.card-head button,.card-head input{margin-left:0}.settings-prototype-shell{grid-template-columns:1fr}.settings-nav{display:flex;overflow-x:auto;white-space:nowrap}.settings-nav button{flex:0 0 auto}.batch-metrics,.emi-metrics{grid-template-columns:repeat(2,minmax(0,1fr))}}
       @media(max-width:800px){.topbar{display:flex;flex-direction:column;align-items:stretch;gap:8px}.scope-select{width:100%;height:36px}.date-filter{width:100%;overflow-x:auto;justify-content:flex-start;flex-wrap:nowrap}.df-btn{flex:0 0 auto}.df-date.show{width:100%}.topbar>.icon-btn{align-self:flex-end;flex:0 0 34px}.search-box{width:100%;min-height:38px;flex:0 0 auto}.filter-bar{align-items:stretch}.filter-bar .fbtn,.filter-bar select,.filter-bar input,.logs-filter-bar .fbtn,.receipts-filter-bar .fbtn,.cert-filter-bar .fbtn{width:100%;min-width:0}.filter-spacer{display:none}.drawer{width:100vw!important;max-width:100vw;border-radius:0}.receipt-drawer{width:100vw;max-width:100vw}.drawer-head{padding:16px}.drawer-body{padding:14px}.receipt-drawer-body{padding:14px 0 24px}.invoice-card{padding:0 10px!important}.tax-invoice{min-width:720px}.invoice-actions{padding:0 10px}.profile-shell{max-width:none}.modal{width:100%;max-width:100%;border-radius:14px}.delete-modal{width:390px;max-width:calc(100vw - 20px)}.modal-overlay{padding:10px}.modal-body,.modal-head,.modal-foot{padding-left:16px;padding-right:16px}.modal-foot{flex-wrap:wrap}.modal-foot .btn,.modal-actions .btn{flex:1;justify-content:center}.delete-modal-actions .btn{flex:0 0 auto}.date-range-row{flex-direction:column}.finance-metrics,.batch-metrics,.emi-metrics{grid-template-columns:1fr}.chart-body{flex-direction:column;align-items:stretch}.donut-wrap{align-self:center}.donut-legend{width:100%}.pager{align-items:flex-start;gap:10px;flex-direction:column}.pager-btns{width:100%;overflow-x:auto}.profile-edit-actions{justify-content:stretch;flex-wrap:wrap}.profile-edit-actions .btn{flex:1;justify-content:center}}
       @media(max-width:700px){.imed-admin-prototype #app{display:block;min-height:100vh;height:100vh;overflow:hidden}.sidebar{position:fixed;left:0;right:0;bottom:0;top:auto;width:100%;height:76px;z-index:20;display:flex;flex-direction:row;border-right:0;border-top:1px solid var(--navy-line)}.sidebar-brand,.sidebar-footer{display:none}.nav-scroll{display:flex;overflow-x:auto;overflow-y:hidden;padding:0;scrollbar-width:none}.nav-scroll::-webkit-scrollbar{display:none}.nav-scroll>div{display:contents}.nav-item{min-width:72px;height:76px;border-radius:0;display:grid;place-items:center;gap:5px;font-size:10px;margin:0;padding:8px 6px}.nav-item svg{width:17px;height:17px}.nav-item span{display:block;max-width:64px;text-align:center;line-height:1.15;white-space:normal}.mobile-logout{display:grid;color:#FCA5A5}.mobile-logout:hover{background:var(--navy-800);color:#fff}.main{height:calc(100vh - 76px);width:100%;overflow:hidden}.content{padding:12px 10px 18px}.grid-metrics,.batch-card-grid{grid-template-columns:1fr;gap:10px}.metric-card{padding:14px}.m-value{font-size:21px}.funnel-row{grid-template-columns:88px minmax(0,1fr) 56px}.topbar{position:sticky;top:0;z-index:10;box-shadow:0 1px 0 var(--border)}.page-title{font-size:15px}.page-sub{font-size:11px}.field-grid,.profile-grid,.payment-form{grid-template-columns:1fr}.card-head,.card-body{padding-left:14px;padding-right:14px}.attendance-card .card-body{padding:14px 10px}.att-row{min-width:700px}.cal-grid{gap:4px}.cal-cell{font-size:11px;border-radius:7px}.profile-head{padding:16px 14px}.profile-tabs{padding:0 14px}.dtabs{overflow-x:auto}.dtab{white-space:nowrap}.certificate-preview-shell{padding:0;overflow-x:auto}.imed-certificate-exact-frame{transform:scale(.48);transform-origin:top left;margin:0;width:1220px}.cert-modal .certificate-card{padding:10px;overflow:auto}}
       @media(max-width:420px){.content{padding-left:8px;padding-right:8px}.auth-card{padding:22px 18px}.topbar{padding:12px 10px}.date-filter{padding:3px}.df-btn{padding:6px 8px}.metric-card,.card{border-radius:12px}.card-head,.card-body{padding-left:12px;padding-right:12px}.funnel-row{grid-template-columns:76px minmax(0,1fr) 48px;gap:7px}.flabel,.fval{font-size:11px}.invoice-card{padding:0 6px!important}.tax-invoice{min-width:680px;font-size:10px}.drawer-head{padding:14px 12px}.drawer-body{padding:12px}.modal-overlay{padding:6px}.modal-head,.modal-body,.modal-foot{padding-left:12px;padding-right:12px}.settings-nav{border-radius:12px}.nav-item{min-width:68px}.att-row{min-width:660px}.profile-metrics{grid-template-columns:1fr}.crow{align-items:flex-start}.who{min-width:0}.who>div{min-width:0}.who .cell-name,.who .cell-sub{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}.collection-box strong{font-size:21px}}

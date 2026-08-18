@@ -16,6 +16,7 @@ const loadBlogs = () => import("../imports/Blogs/Acha-1-586");
 const loadPrivacyPolicy = () => import("../imports/PrivacyPolicy/PrivacyPolicy");
 const loadTermsAndConditions = () => import("../imports/TermsAndConditions/TermsAndConditions");
 const loadAdminCrm = () => import("../imports/AdminCrm/AdminCrm");
+const loadStudentLms = () => import("../imports/StudentLms/StudentLms");
 const loadCertificateVerify = () => import("../imports/CertificateVerify/CertificateVerify");
 
 const HomePage = lazy(loadHomePage);
@@ -33,6 +34,7 @@ const BlogsPage = lazy(loadBlogs);
 const PrivacyPolicy = lazy(loadPrivacyPolicy);
 const TermsAndConditions = lazy(loadTermsAndConditions);
 const AdminCrm = lazy(loadAdminCrm);
+const StudentLms = lazy(loadStudentLms);
 const CertificateVerify = lazy(loadCertificateVerify);
 
 const preloadByHash: Record<string, () => Promise<unknown>> = {
@@ -47,6 +49,7 @@ const preloadByHash: Record<string, () => Promise<unknown>> = {
   "#skillbridge": loadSkillbridge,
   "#blogs": loadBlogs,
   "#admin": loadAdminCrm,
+  "#student": loadStudentLms,
   "#careers": loadCareersPage,
   "#privacy-policy": loadPrivacyPolicy,
   "#terms-and-conditions": loadTermsAndConditions,
@@ -141,6 +144,11 @@ const SEO_BY_HASH: Record<string, SeoConfig> = {
     title: "Admin CRM | iMED Academy",
     description: "iMED Academy CRM dashboard for admissions and student management.",
     path: "/#admin",
+  },
+  "#student": {
+    title: "Student LMS | iMED Academy",
+    description: "iMED Academy student learning portal for timetable, attendance, progress, and internship logbook.",
+    path: "/#student",
   },
 };
 
@@ -396,6 +404,8 @@ export default function App() {
     page = <BlogsPage />;
   } else if (hash.startsWith("#admin")) {
     page = <AdminCrm />;
+  } else if (hash.startsWith("#student")) {
+    page = <StudentLms />;
   } else if (hash.startsWith("#verify=")) {
     page = <CertificateVerify certificateNumber={decodeURIComponent(hash.replace("#verify=", ""))} />;
   } else if (hash === "#privacy-policy") {
@@ -404,7 +414,7 @@ export default function App() {
     page = <TermsAndConditions />;
   }
 
-  const showFloatingWhatsApp = !hash.startsWith("#admin") && !hash.startsWith("#verify=");
+  const showFloatingWhatsApp = !hash.startsWith("#admin") && !hash.startsWith("#student") && !hash.startsWith("#verify=");
 
   return (
     <>

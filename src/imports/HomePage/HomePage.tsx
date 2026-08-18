@@ -40,7 +40,7 @@ import imgImage1718 from "./image1718.png";
 import imgImage1709 from "./image1709.webp";
 import imgImage1723 from "./image1723.webp";
 import imgContainer from "./container.png";
-import imgHomePopup from "./homepopup.jpeg";
+import imgHomePopup from "./websiteNewPopup.png";
 
 const API_BASE_URL = import.meta.env.PROD
   ? ((import.meta.env.VITE_PROD_API_BASE_URL as string | undefined) || "")
@@ -424,7 +424,7 @@ function Frame162() {
 
 function Frame24() {
   return (
-    <div className="bg-[#25a88d] content-stretch flex h-[50px] items-center justify-center overflow-clip px-[17px] py-[8px] relative rounded-[12px] shrink-0 w-[220px] cursor-pointer">
+    <div data-nav-target="contact-us" className="bg-[#25a88d] content-stretch flex h-[50px] items-center justify-center overflow-clip px-[17px] py-[8px] relative rounded-[12px] shrink-0 w-[220px] cursor-pointer">
       <p className="font-['Inter:Semi_Bold',sans-serif] font-semibold leading-[32.5px] not-italic relative shrink-0 text-[18px] text-white whitespace-nowrap">{`Apply Now `}</p>
     </div>
   );
@@ -432,7 +432,7 @@ function Frame24() {
 
 function Frame25() {
   return (
-    <div className="h-[50px] relative rounded-[12px] shrink-0 w-[210px] cursor-pointer">
+    <div data-nav-target="contact-us" className="h-[50px] relative rounded-[12px] shrink-0 w-[210px] cursor-pointer">
       <div className="content-stretch flex items-center justify-center overflow-clip px-[17px] py-[8px] relative rounded-[inherit] size-full">
         <p className="font-['Inter:Semi_Bold',sans-serif] font-semibold leading-[32.5px] not-italic relative shrink-0 text-[#25a88d] text-[18px] whitespace-nowrap">Talk to Expert</p>
       </div>
@@ -2478,10 +2478,7 @@ function ProgramCard({
               <path d="M12 21s7-4.57 7-11a7 7 0 1 0-14 0c0 6.43 7 11 7 11Z" fill="white" />
               <path d="M12 12.25a2.25 2.25 0 1 0 0-4.5 2.25 2.25 0 0 0 0 4.5Z" fill={gradient.includes("0, 104, 142") ? "#008ed0" : "#25a88d"} />
             </svg>
-            <p className="font-['Inter:Regular',sans-serif] font-normal leading-[17px] not-italic text-[11.5px] text-white whitespace-nowrap">
-              <span>{`This course is available in `}</span>
-              <span className="font-['Inter:Extra_Bold',sans-serif] font-extrabold">{availableIn}</span>
-            </p>
+            <p className="font-['Inter:Extra_Bold',sans-serif] font-extrabold leading-[17px] not-italic text-[11.5px] text-white whitespace-nowrap">{availableIn}</p>
           </div>
         ) : null}
       </div>
@@ -3060,7 +3057,7 @@ function Paragraph11() {
 
 function Frame28() {
   return (
-    <div className="bg-[#25a88d] content-stretch flex h-[50px] items-center justify-center overflow-clip px-[17px] py-[8px] relative rounded-[12px] shrink-0 w-[220px] cursor-pointer">
+    <div data-nav-target="contact-us" className="bg-[#25a88d] content-stretch flex h-[50px] items-center justify-center overflow-clip px-[17px] py-[8px] relative rounded-[12px] shrink-0 w-[220px] cursor-pointer">
       <p className="font-['Inter:Semi_Bold',sans-serif] font-semibold leading-[32.5px] not-italic relative shrink-0 text-[18px] text-white whitespace-nowrap">{`Apply Now `}</p>
     </div>
   );
@@ -3068,7 +3065,7 @@ function Frame28() {
 
 function Frame29() {
   return (
-    <div className="h-[50px] relative rounded-[12px] shrink-0 w-[210px] cursor-pointer">
+    <div data-nav-target="contact-us" className="h-[50px] relative rounded-[12px] shrink-0 w-[210px] cursor-pointer">
       <div className="content-stretch flex items-center justify-center overflow-clip px-[17px] py-[8px] relative rounded-[inherit] size-full">
         <p className="font-['Inter:Semi_Bold',sans-serif] font-semibold leading-[32.5px] not-italic relative shrink-0 text-[18px] text-white whitespace-nowrap">Talk to Expert</p>
       </div>
@@ -5988,9 +5985,9 @@ export default function HomePage({ onOpenCareers }: { onOpenCareers: () => void 
                   type="button"
                   onClick={closePopup}
                   aria-label="Close popup"
-                  className="absolute right-3 top-3 z-20 flex h-10 w-10 items-center justify-center rounded-full border border-[#d6ece8] bg-white text-[#24406f] shadow-[0_8px_20px_rgba(0,0,0,0.15)]"
+                  className="absolute right-2 top-2 z-20 flex h-8 w-8 items-center justify-center rounded-full border border-[#d6ece8] bg-white text-[#24406f] shadow-[0_8px_20px_rgba(0,0,0,0.15)] sm:right-3 sm:top-3 sm:h-10 sm:w-10"
                 >
-                  <svg viewBox="0 0 24 24" className="h-[18px] w-[18px]" fill="none" aria-hidden="true">
+                  <svg viewBox="0 0 24 24" className="h-[15px] w-[15px] sm:h-[18px] sm:w-[18px]" fill="none" aria-hidden="true">
                     <path d="M6 6L18 18M18 6L6 18" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" />
                   </svg>
                 </button>

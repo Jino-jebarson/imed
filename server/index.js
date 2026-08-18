@@ -50,6 +50,14 @@ const leadDocumentUpload = multer({
     callback(validMime || validName ? null : new Error("Only PDF, JPG, PNG or WEBP documents are allowed"), validMime || validName);
   },
 });
+const studyNoteUpload = multer({
+  storage: multer.memoryStorage(),
+  limits: { fileSize: 10 * 1024 * 1024 },
+  fileFilter(_req, file, callback) {
+    const validName = /\.(pdf|docx?|pptx?|xlsx?|csv|jpe?g|png|webp|txt)$/i.test(file.originalname || "");
+    callback(validName ? null : new Error("Only PDF, Word, PPT, Excel, image, CSV or TXT notes are allowed"), validName);
+  },
+});
 const leadDocumentDir = path.join(process.cwd(), "uploads", "lead-documents");
 const GST_RATE = 0.18;
 const paymentModes = ["Cash", "UPI", "Card", "Bank Transfer", "Loan Provider"];
@@ -310,6 +318,9 @@ const studentSchema = new mongoose.Schema({
   batch: { type: String, default: "" },
   batchCommenceDate: { type: Date },
   admissionNumber: { type: String, default: "" },
+  lmsAccessEnabled: { type: Boolean, default: false },
+  lmsAccessGeneratedAt: { type: Date },
+  lmsAccessGeneratedBy: { type: String, default: "" },
   admissionPaymentMode: { type: String, enum: [...admissionPaymentModeValues, ""], default: "" },
   admissionUpfrontAmount: { type: Number, default: 0 },
   admissionFinalizedAt: { type: Date },
@@ -426,12 +437,31 @@ const practicalRecordSchema = new mongoose.Schema({
 }, { timestamps: true });
 practicalRecordSchema.index({ batchId: 1, practicalName: 1, studentId: 1 }, { unique: true });
 
+const studyNoteSchema = new mongoose.Schema({
+  batchId: { type: mongoose.Schema.Types.ObjectId, ref: "Batch", required: true },
+  batchName: { type: String, required: true, trim: true },
+  course: { type: String, default: "" },
+  centre: { type: String, default: "" },
+  franchiseId: { type: mongoose.Schema.Types.ObjectId, ref: "Centre" },
+  title: { type: String, required: true, trim: true },
+  module: { type: String, default: "", trim: true },
+  description: { type: String, default: "", trim: true },
+  file: { type: documentFileSchema, default: undefined },
+  referenceUrl: { type: String, default: "", trim: true },
+  resourceType: { type: String, enum: ["File", "Video", "Reference"], default: "File" },
+  uploadedBy: { type: String, default: "" },
+}, { timestamps: true });
+
 const internshipAssignmentSchema = new mongoose.Schema({
   studentId: { type: mongoose.Schema.Types.ObjectId, ref: "Student", required: true, unique: true },
   facilityName: { type: String, required: true, trim: true },
   facilityLocation: { type: String, default: "", trim: true },
   supervisorName: { type: String, default: "", trim: true },
   supervisorContact: { type: String, default: "", trim: true },
+  supervisorEmail: { type: String, default: "", trim: true, lowercase: true },
+  facilityLatitude: { type: Number },
+  facilityLongitude: { type: Number },
+  allowedRadiusMeters: { type: Number, default: 200 },
   startDate: { type: Date, required: true },
   durationValue: { type: Number, default: 3 },
   durationUnit: { type: String, enum: ["days", "weeks", "months"], default: "months" },
@@ -485,6 +515,7 @@ const ClassSchedule = mongoose.model("ClassSchedule", classScheduleSchema);
 const ClassSession = mongoose.model("ClassSession", classSessionSchema);
 const TopicProgress = mongoose.model("TopicProgress", topicProgressSchema);
 const PracticalRecord = mongoose.model("PracticalRecord", practicalRecordSchema);
+const StudyNote = mongoose.model("StudyNote", studyNoteSchema);
 const InternshipAssignment = mongoose.model("InternshipAssignment", internshipAssignmentSchema);
 const InternshipLog = mongoose.model("InternshipLog", internshipLogSchema);
 const LogbookEntry = mongoose.model("LogbookEntry", logbookEntrySchema);
@@ -530,7 +561,11 @@ async function seedBaseData() {
 
 function signToken(user) {
   return jwt.sign({ id: user._id.toString(), email: user.email, name: user.name, role: user.role, franchiseId: user.franchiseId?.toString() || "" }, jwtSecret, { expiresIn: "7d" });
-} 
+}
+
+function signStudentToken(student) {
+  return jwt.sign({ studentId: student._id.toString(), purpose: "student-lms" }, jwtSecret, { expiresIn: "30d" });
+}
 
 function publicAppBaseUrl(req) {
   const configured = process.env.APP_BASE_URL || process.env.PUBLIC_APP_URL || "";
@@ -690,6 +725,23 @@ async function requireAuth(req, res, next) {
   }
 }
 
+async function requireStudentAuth(req, res, next) {
+  try {
+    const header = req.headers.authorization || "";
+    const token = header.startsWith("Bearer ") ? header.slice(7) : "";
+    if (!token) return sendError(res, 401, "Student login required");
+    const payload = jwt.verify(token, jwtSecret);
+    if (payload.purpose !== "student-lms" || !mongoose.isValidObjectId(String(payload.studentId || ""))) return sendError(res, 401, "Invalid student session");
+    const student = await Student.findById(payload.studentId).lean();
+    if (!student) return sendError(res, 401, "Invalid student session");
+    if (!student.lmsAccessEnabled) return sendError(res, 403, "Student LMS access is not generated yet");
+    req.student = student;
+    next();
+  } catch {
+    return sendError(res, 401, "Invalid student session");
+  }
+}
+
 function adminScopeFilter(query = {}) {
   const filter = {};
   if (query.centre) filter.centre = String(query.centre);
@@ -738,12 +790,31 @@ function canManageCertificates(user) {
   return isHeadAdmin(user) || isFranchiseSuperAdmin(user);
 }
 
+function canManageInternships(user) {
+  return isHeadAdmin(user) || isFranchiseSuperAdmin(user);
+}
+
 function canUseLeads(user) {
   return isHeadAdmin(user) || isFranchiseSuperAdmin(user) || isCounsellorAccount(user);
 }
 
 function canAssignStaff(user) {
   return isHeadAdmin(user) || isFranchiseSuperAdmin(user);
+}
+
+function canManageStudentLmsAccess(user) {
+  return isHeadAdmin(user) || isFranchiseSuperAdmin(user);
+}
+
+function studentLmsAccessBlockReason(student = {}) {
+  const status = normalizeStudentStatus(student.status);
+  const readyStatus = ["Fees Decided", "Fees Collected", "Active Student", "Course Completed", "Alumni"].includes(status);
+  if (!readyStatus) return "Decide fees before generating Student LMS login";
+  if (Math.max(0, Number(student.totalFee || 0) - Number(student.discountAmount || 0)) <= 0 || !student.admissionPaymentMode) return "Save final fee and payment plan before generating Student LMS login";
+  if (!student.admissionNumber) return "Admission number is required before generating Student LMS login";
+  if (!student.phone) return "Registered phone number is required before generating Student LMS login";
+  if (!student.batch) return "Assign a batch before generating Student LMS login";
+  return "";
 }
 
 function canUseAttendance(user) {
@@ -905,11 +976,16 @@ async function canAccessRecord(req, record) {
   const hasTeacherOwner = rawRecord && Object.prototype.hasOwnProperty.call(rawRecord, "teacher");
   const counsellorOwner = String(rawRecord?.counsellor || "");
   const teacherOwner = String(rawRecord?.teacher || "");
+  const recordBatchName = String(rawRecord?.batch || rawRecord?.batchName || rawRecord?.name || "");
   if (isFranchiseUser(req.user)) {
     const inFranchise = Boolean(req.user.franchiseId && record?.franchiseId && String(record.franchiseId) === String(req.user.franchiseId));
     if (!inFranchise) return false;
     if (isCounsellorAccount(req.user) && hasCounsellorOwner) return counsellorOwner === req.user.name;
-    if (isTeacherAccount(req.user) && hasTeacherOwner) return teacherOwner === req.user.name;
+    if (isTeacherAccount(req.user)) {
+      if (hasTeacherOwner && teacherOwner === req.user.name) return true;
+      const teacherScope = await teacherAcademicBatchScope(req.user);
+      return teacherScope.batchNames.includes(recordBatchName);
+    }
     return true;
   }
   if (isHeadBranchScoped(req.user)) {
@@ -918,7 +994,11 @@ async function canAccessRecord(req, record) {
     const inBranch = branchScope.ids.some((id) => String(id) === recordFranchiseId) || branchScope.names.includes(String(record?.centre || ""));
     if (!inBranch) return false;
     if (isCounsellorAccount(req.user) && hasCounsellorOwner) return counsellorOwner === req.user.name;
-    if (isTeacherAccount(req.user) && hasTeacherOwner) return teacherOwner === req.user.name;
+    if (isTeacherAccount(req.user)) {
+      if (hasTeacherOwner && teacherOwner === req.user.name) return true;
+      const teacherScope = await teacherAcademicBatchScope(req.user);
+      return teacherScope.batchNames.includes(recordBatchName);
+    }
     return true;
   }
   return true;
@@ -962,6 +1042,9 @@ function dateFilter(query = {}) {
 }
 
 function attendanceDate(value = "") {
+  if (value instanceof Date && !Number.isNaN(value.getTime())) {
+    return new Date(Date.UTC(value.getFullYear(), value.getMonth(), value.getDate()));
+  }
   const parts = String(value).split("-").map(Number);
   if (parts.length !== 3 || parts.some(Number.isNaN)) return null;
   const [year, month, day] = parts;
@@ -1022,6 +1105,16 @@ app.get("/api/health", (_req, res) => {
 
 function studentAdminResponse(student = {}) {
   const data = typeof student.toObject === "function" ? student.toObject() : { ...student };
+  return data;
+}
+
+async function studentAdminWithInternshipResponse(student = {}) {
+  const data = studentAdminResponse(student);
+  if (!data?._id) return data;
+  data.internshipAssignment = await InternshipAssignment.findOne({ studentId: data._id }).lean();
+  data.internshipLogs = data.internshipAssignment
+    ? await InternshipLog.find({ assignmentId: data.internshipAssignment._id, studentId: data._id }).sort({ date: -1 }).limit(60).lean()
+    : [];
   return data;
 }
 
@@ -1111,6 +1204,179 @@ app.post("/api/auth/reset-password", async (req, res) => {
 
 app.get("/api/auth/me", requireAuth, (req, res) => {
   res.json({ ok: true, user: staffResponse(req.user) });
+});
+
+app.post("/api/student/auth/login", async (req, res) => {
+  const identifier = String(req.body?.identifier || "").trim();
+  const phone = normalizePhone(req.body?.phone || "");
+  if (!identifier || !phone) return sendError(res, 400, "Admission number and phone are required");
+  const student = await Student.findOne({
+    $or: [
+      { admissionNumber: identifier },
+      { email: identifier.toLowerCase() },
+    ],
+  });
+  if (!student) return sendError(res, 401, "Invalid admission number or phone");
+  if (!student.lmsAccessEnabled) return sendError(res, 403, "Student LMS access is not generated yet");
+  const normalizedStudentPhone = normalizePhone(student.phone || "").replace(/\D/g, "");
+  const normalizedInputPhone = phone.replace(/\D/g, "");
+  if (!normalizedStudentPhone || !normalizedInputPhone || !normalizedStudentPhone.endsWith(normalizedInputPhone.slice(-10))) {
+    return sendError(res, 401, "Invalid admission number or phone");
+  }
+  res.json({ ok: true, token: signStudentToken(student), student: studentAdminResponse(student) });
+});
+
+app.get("/api/student/me", requireStudentAuth, async (req, res) => {
+  const student = req.student;
+  const batch = student.batch ? await Batch.findOne({ name: student.batch, active: true }).lean() : null;
+  const batchFilter = batch ? { $or: [{ batchId: batch._id }, { batchName: batch.name }] } : { batchName: student.batch || "" };
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+  const classVisibleFrom = new Date(today);
+  [student.lmsAccessGeneratedAt, student.admissionFinalizedAt, student.batchCommenceDate].forEach((value) => {
+    if (!value) return;
+    const date = new Date(value);
+    if (Number.isNaN(date.getTime())) return;
+    date.setHours(0, 0, 0, 0);
+    if (date > classVisibleFrom) classVisibleFrom.setTime(date.getTime());
+  });
+  const [sessions, attendance, topics, practicals, studyNotes, internship, logbookEntries] = await Promise.all([
+    student.batch ? ClassSession.find({ ...(batch ? batchFilter : { batchName: student.batch }), date: { $gte: classVisibleFrom } }).sort({ date: 1, startTime: 1 }).limit(90).lean() : [],
+    Attendance.find({ studentId: student._id }).sort({ date: -1 }).limit(180).lean(),
+    batch ? TopicProgress.find(batchFilter).sort({ module: 1, topic: 1 }).lean() : [],
+    batch ? PracticalRecord.find({ ...batchFilter, studentId: student._id }).sort({ module: 1, practicalName: 1 }).lean() : [],
+    batch ? StudyNote.find(batchFilter).sort({ createdAt: -1 }).lean() : [],
+    InternshipAssignment.findOne({ studentId: student._id }).lean(),
+    LogbookEntry.find({ studentId: student._id }).sort({ date: -1 }).limit(60).lean(),
+  ]);
+  const internshipLogs = internship ? await InternshipLog.find({ assignmentId: internship._id, studentId: student._id }).sort({ date: -1 }).limit(60).lean() : [];
+  const attendanceHeld = attendance.length;
+  const attended = attendance.filter((row) => ["Present", "Late"].includes(row.status)).length;
+  const attendancePercent = attendanceHeld ? Math.round((attended / attendanceHeld) * 100) : 0;
+  const coveredTopics = topics.filter((row) => row.status === "Covered").length;
+  const completedPracticals = practicals.filter((row) => row.status === "Completed").length;
+  const nextClass = sessions.find((session) => new Date(session.date) >= today && !session.attendanceMarked) || null;
+  res.json({
+    ok: true,
+    data: {
+      student: studentAdminResponse(student),
+      batch,
+      phase: internship && ["Assigned", "Active"].includes(internship.status) ? "Internship" : "Classroom",
+      summary: {
+        attendanceHeld,
+        attended,
+        attendancePercent,
+        topicTotal: topics.length,
+        coveredTopics,
+        topicPercent: topics.length ? Math.round((coveredTopics / topics.length) * 100) : 0,
+        practicalTotal: practicals.length,
+        completedPracticals,
+        practicalPercent: practicals.length ? Math.round((completedPracticals / practicals.length) * 100) : 0,
+        nextClass,
+      },
+      sessions,
+      attendance,
+      topics,
+      practicals,
+      studyNotes,
+      internship,
+      internshipLogs,
+      logbookEntries,
+    },
+  });
+});
+
+app.post("/api/student/internship/log", requireStudentAuth, leadDocumentUpload.single("photo"), async (req, res) => {
+  const type = String(req.body?.type || "").trim();
+  if (!["login", "logout"].includes(type)) return sendError(res, 400, "Choose log in or log out");
+  if (!req.file) return sendError(res, 400, "Photo is required");
+  const assignment = await InternshipAssignment.findOne({ studentId: req.student._id, status: { $in: ["Assigned", "Active"] } });
+  if (!assignment) return sendError(res, 400, "No active internship assignment found");
+  const day = attendanceDate(new Date());
+  if (!day) return sendError(res, 400, "Invalid internship log date");
+  const now = new Date();
+  const startDay = attendanceDate(assignment.startDate);
+  const endDay = attendanceDate(assignment.expectedEndDate);
+  if ((startDay && day < startDay) || (endDay && day > endDay)) return sendError(res, 400, "Internship attendance is allowed only during assigned dates");
+  const photo = saveLeadDocument(req.file);
+  const gps = String(req.body?.gps || "").trim();
+  const existing = await InternshipLog.findOne({ assignmentId: assignment._id, studentId: req.student._id, date: day });
+  if (type === "login" && existing?.loginAt) return sendError(res, 400, existing.logoutAt ? "Today internship attendance is already completed" : "Already logged in today");
+  if (type === "logout" && !existing?.loginAt) return sendError(res, 400, "Log in before logging out");
+  if (type === "logout" && existing?.logoutAt) return sendError(res, 400, "Today internship attendance is already completed");
+  const update = type === "login"
+    ? { loginAt: now, loginPhoto: photo, loginGps: gps }
+    : { logoutAt: now, logoutPhoto: photo, logoutGps: gps, hours: Math.max(0, Number(((now.getTime() - new Date(existing.loginAt).getTime()) / 36e5).toFixed(2))) };
+  const log = await InternshipLog.findOneAndUpdate(
+    { assignmentId: assignment._id, studentId: req.student._id, date: day },
+    { $set: update, $setOnInsert: { assignmentId: assignment._id, studentId: req.student._id, date: day } },
+    { returnDocument: "after", upsert: true, runValidators: true },
+  );
+  if (assignment.status === "Assigned") {
+    assignment.status = "Active";
+    await assignment.save();
+  }
+  res.json({ ok: true, data: log });
+});
+
+app.get("/api/student/internship/logs", requireStudentAuth, async (req, res) => {
+  const assignment = await InternshipAssignment.findOne({ studentId: req.student._id }).lean();
+  if (!assignment) return res.json({ ok: true, data: [], meta: paginationMeta(0, 1, 10) });
+  const page = Math.max(1, Number(req.query.page || 1));
+  const limit = Math.min(30, Math.max(1, Number(req.query.limit || 10)));
+  const filter = { assignmentId: assignment._id, studentId: req.student._id };
+  const [total, logs] = await Promise.all([
+    InternshipLog.countDocuments(filter),
+    InternshipLog.find(filter).sort({ date: -1 }).skip((page - 1) * limit).limit(limit).lean(),
+  ]);
+  res.json({ ok: true, data: logs, meta: paginationMeta(total, page, limit) });
+});
+
+app.post("/api/student/logbook", requireStudentAuth, async (req, res) => {
+  const assignment = await InternshipAssignment.findOne({ studentId: req.student._id, status: { $in: ["Assigned", "Active"] } }).lean();
+  if (!assignment) return sendError(res, 400, "No active internship assignment found");
+  const day = attendanceDate(req.body?.date || new Date());
+  const today = attendanceDate(new Date());
+  if (!day || !today || day.getTime() !== today.getTime()) return sendError(res, 400, "Logbook can be submitted only for today");
+  const attendanceLog = await InternshipLog.findOne({ assignmentId: assignment._id, studentId: req.student._id, date: day }).lean();
+  if (!attendanceLog?.loginAt || !attendanceLog?.logoutAt) return sendError(res, 400, "Complete internship log in and log out before submitting logbook");
+  const departmentArea = String(req.body?.departmentArea || "").trim();
+  const activitiesPerformed = String(req.body?.activitiesPerformed || "").trim();
+  const keyLearnings = String(req.body?.keyLearnings || "").trim();
+  if (!departmentArea || !activitiesPerformed || !keyLearnings) return sendError(res, 400, "Department, activities, and key learnings are required");
+  const existing = await LogbookEntry.findOne({ assignmentId: assignment._id, studentId: req.student._id, date: day });
+  if (existing && Date.now() - new Date(existing.createdAt).getTime() > 24 * 60 * 60 * 1000) return sendError(res, 400, "This logbook entry is locked after 24 hours");
+  const entry = await LogbookEntry.findOneAndUpdate(
+    { assignmentId: assignment._id, studentId: req.student._id, date: day },
+    {
+      $set: {
+        assignmentId: assignment._id,
+        studentId: req.student._id,
+        date: day,
+        departmentArea,
+        activitiesPerformed,
+        keyLearnings,
+        challenges: String(req.body?.challenges || "").trim(),
+      },
+    },
+    { new: true, upsert: true, runValidators: true },
+  );
+  res.json({ ok: true, data: entry });
+});
+
+app.patch("/api/admin/students/:id/logbook/:entryId", requireAuth, async (req, res) => {
+  const student = await Student.findById(req.params.id).lean();
+  if (!student) return sendError(res, 404, "Student not found");
+  if (!(await canAccessRecord(req, student))) return sendError(res, 403, "You can access only permitted records");
+  const entry = await LogbookEntry.findOne({ _id: req.params.entryId, studentId: student._id });
+  if (!entry) return sendError(res, 404, "Logbook entry not found");
+  const verified = Boolean(req.body?.verified);
+  entry.verified = verified;
+  entry.supervisorRemark = String(req.body?.supervisorRemark || "").trim();
+  entry.verifiedBy = verified ? (req.user.name || req.user.email || "Admin") : "";
+  entry.verifiedAt = verified ? new Date() : undefined;
+  await entry.save();
+  res.json({ ok: true, data: entry });
 });
 
 app.get("/api/admin/google-calendar/status", requireAuth, async (req, res) => {
@@ -1365,7 +1631,6 @@ app.get("/api/admin/leads", requireAuth, async (req, res) => {
   if (course) filter.course = course;
   if (counsellor) filter.counsellor = counsellor;
   if (isCounsellorAccount(req.user)) filter.counsellor = req.user.name;
-  if (isTeacherAccount(req.user)) filter.teacher = req.user.name;
   Object.assign(filter, await scopedDataFilter(req, req.query));
   if (q) {
     const searchFilter = [{ fullName: { $regex: q, $options: "i" } }, { phone: { $regex: q, $options: "i" } }, { email: { $regex: q, $options: "i" } }];
@@ -1382,6 +1647,21 @@ app.get("/api/admin/leads", requireAuth, async (req, res) => {
     Lead.find(filter).sort({ updatedAt: -1 }).skip(skip).limit(limit).lean(),
   ]);
   res.json({ ok: true, data: leads, meta: paginationMeta(total, page, limit) });
+});
+
+app.get("/api/admin/admissions/pending-count", requireAuth, async (req, res) => {
+  if (!canUseLeads(req.user)) return sendError(res, 403, "Lead access is restricted to counsellor and admin accounts");
+  const leadFilter = { stage: "Admission" };
+  Object.assign(leadFilter, await scopedDataFilter(req, req.query));
+  if (isCounsellorAccount(req.user)) leadFilter.counsellor = req.user.name;
+
+  const studentFilter = { leadId: { $exists: true, $ne: null } };
+  Object.assign(studentFilter, await scopedDataFilter(req, req.query));
+  if (isCounsellorAccount(req.user)) studentFilter.counsellor = req.user.name;
+
+  const convertedLeadIds = await Student.distinct("leadId", studentFilter);
+  const total = await Lead.countDocuments({ ...leadFilter, _id: { $nin: convertedLeadIds } });
+  res.json({ ok: true, data: { total } });
 });
 
 app.post("/api/admin/leads", requireAuth, leadDocumentUpload.fields([
@@ -1715,7 +1995,16 @@ app.get("/api/admin/students", requireAuth, async (req, res) => {
   }
   Object.assign(filter, await scopedDataFilter(req, req.query));
   if (isCounsellorAccount(req.user)) filter.counsellor = req.user.name;
-  if (isTeacherAccount(req.user)) filter.teacher = req.user.name;
+  if (isTeacherAccount(req.user)) {
+    const teacherScope = await teacherAcademicBatchScope(req.user);
+    const teacherFilter = { $or: [{ teacher: req.user.name }, { batch: { $in: teacherScope.batchNames } }] };
+    if (filter.$or) {
+      filter.$and = [...(filter.$and || []), { $or: filter.$or }, teacherFilter];
+      delete filter.$or;
+    } else {
+      filter.$and = [...(filter.$and || []), teacherFilter];
+    }
+  }
   if (q) {
     const searchFilter = [{ fullName: { $regex: q, $options: "i" } }, { phone: { $regex: q, $options: "i" } }, { email: { $regex: q, $options: "i" } }];
     if (filter.$or) {
@@ -1730,7 +2019,65 @@ app.get("/api/admin/students", requireAuth, async (req, res) => {
     Student.countDocuments(filter),
     Student.find(filter).sort({ updatedAt: -1 }).skip(skip).limit(limit).lean(),
   ]);
-  res.json({ ok: true, data: students, meta: paginationMeta(total, page, limit) });
+  const internshipRows = await InternshipAssignment.find({ studentId: { $in: students.map((student) => student._id) } }).lean();
+  const internshipByStudent = new Map(internshipRows.map((row) => [String(row.studentId), row]));
+  const internshipLogs = internshipRows.length ? await InternshipLog.find({ assignmentId: { $in: internshipRows.map((row) => row._id) } }).sort({ date: -1 }).limit(300).lean() : [];
+  const logbookEntries = internshipRows.length ? await LogbookEntry.find({ assignmentId: { $in: internshipRows.map((row) => row._id) } }).sort({ date: -1 }).limit(300).lean() : [];
+  const logsByStudent = new Map();
+  for (const log of internshipLogs) {
+    const key = String(log.studentId);
+    const existing = logsByStudent.get(key) || [];
+    if (existing.length < 20) existing.push(log);
+    logsByStudent.set(key, existing);
+  }
+  const logbookByStudent = new Map();
+  for (const entry of logbookEntries) {
+    const key = String(entry.studentId);
+    const existing = logbookByStudent.get(key) || [];
+    if (existing.length < 20) existing.push(entry);
+    logbookByStudent.set(key, existing);
+  }
+  res.json({
+    ok: true,
+    data: students.map((student) => ({
+      ...student,
+      internshipAssignment: internshipByStudent.get(String(student._id)) || null,
+      internshipLogs: logsByStudent.get(String(student._id)) || [],
+      logbookEntries: logbookByStudent.get(String(student._id)) || [],
+    })),
+    meta: paginationMeta(total, page, limit),
+  });
+});
+
+app.get("/api/admin/students/:id/internship-logs/:logId/:photoType", requireAuth, async (req, res) => {
+  if (!["login", "logout"].includes(req.params.photoType)) return sendError(res, 400, "Invalid internship photo request");
+  const student = await Student.findById(req.params.id).select("franchiseId centre teacher batch").lean();
+  if (!student) return sendError(res, 404, "Student not found");
+  if (!(await canAccessRecord(req, student))) return sendError(res, 403, "You can access only permitted records");
+  const log = await InternshipLog.findOne({ _id: req.params.logId, studentId: student._id }).lean();
+  if (!log) return sendError(res, 404, "Internship log not found");
+  const photo = req.params.photoType === "login" ? log.loginPhoto : log.logoutPhoto;
+  if (!photo?.storedName) return sendError(res, 404, "Internship selfie not found");
+  const filePath = path.join(leadDocumentDir, photo.storedName);
+  if (!filePath.startsWith(leadDocumentDir) || !fs.existsSync(filePath)) return sendError(res, 404, "Internship selfie not found");
+  const fileName = String(photo.originalName || `${req.params.photoType}-selfie.jpg`).replace(/[\r\n"]/g, "");
+  res.setHeader("Content-Type", photo.mimeType || "image/jpeg");
+  res.setHeader("Content-Disposition", `inline; filename="${fileName}"; filename*=UTF-8''${encodeURIComponent(fileName)}`);
+  res.sendFile(filePath);
+});
+
+app.patch("/api/admin/students/:id/logbook/:entryId", requireAuth, async (req, res) => {
+  const student = await Student.findById(req.params.id).lean();
+  if (!student) return sendError(res, 404, "Student not found");
+  if (!(await canAccessRecord(req, student))) return sendError(res, 403, "You can access only permitted records");
+  const verified = req.body?.verified !== false;
+  const entry = await LogbookEntry.findOneAndUpdate(
+    { _id: req.params.entryId, studentId: student._id },
+    { $set: { verified, verifiedBy: req.user.name, verifiedAt: verified ? new Date() : null, supervisorRemark: String(req.body?.supervisorRemark || "").trim() } },
+    { new: true, runValidators: true },
+  ).lean();
+  if (!entry) return sendError(res, 404, "Logbook entry not found");
+  res.json({ ok: true, data: entry });
 });
 
 app.get("/api/admin/attendance", requireAuth, async (req, res) => {
@@ -1945,7 +2292,108 @@ app.patch("/api/admin/students/:id", requireAuth, async (req, res) => {
   if (Object.prototype.hasOwnProperty.call(allowedStudentUpdates, "status") && student.leadId && ["Enrolled", "Alumni"].includes(student.status)) {
     await Lead.findByIdAndUpdate(student.leadId, { $set: { stage: student.status }, $push: { activities: { type: "stage", message: `Student status synced to ${student.status}`, by: req.user.name } } });
   }
-  res.json({ ok: true, data: studentAdminResponse(student) });
+  res.json({ ok: true, data: await studentAdminWithInternshipResponse(student) });
+});
+
+app.post("/api/admin/students/:id/lms-access", requireAuth, async (req, res) => {
+  if (!canManageStudentLmsAccess(req.user)) return sendError(res, 403, "Student LMS access can be generated only by admin accounts");
+  const existingStudent = await Student.findById(req.params.id).lean();
+  if (!existingStudent) return sendError(res, 404, "Student not found");
+  if (!(await canAccessRecord(req, existingStudent))) return sendError(res, 403, "You can access only permitted records");
+  const blocked = studentLmsAccessBlockReason(existingStudent);
+  if (blocked) return sendError(res, 400, blocked);
+  const student = await Student.findByIdAndUpdate(
+    req.params.id,
+    {
+      $set: {
+        lmsAccessEnabled: true,
+        lmsAccessGeneratedAt: new Date(),
+        lmsAccessGeneratedBy: req.user.name || req.user.email || "Admin",
+      },
+      $push: {
+        activities: {
+          type: "lms",
+          message: "Student LMS login generated",
+          by: req.user.name || req.user.email || "Admin",
+        },
+      },
+    },
+    { new: true, runValidators: true }
+  );
+  res.json({ ok: true, data: await studentAdminWithInternshipResponse(student) });
+});
+
+app.put("/api/admin/students/:id/internship", requireAuth, async (req, res) => {
+  if (!canManageInternships(req.user)) return sendError(res, 403, "Internship assignment is restricted to admin accounts");
+  const student = await Student.findById(req.params.id).lean();
+  if (!student) return sendError(res, 404, "Student not found");
+  if (!(await canAccessRecord(req, student))) return sendError(res, 403, "You can access only permitted records");
+  const facilityName = String(req.body?.facilityName || "").trim();
+  const facilityLocation = String(req.body?.facilityLocation || "").trim();
+  const supervisorName = String(req.body?.supervisorName || "").trim();
+  const supervisorContact = String(req.body?.supervisorContact || "").trim();
+  const supervisorEmail = String(req.body?.supervisorEmail || "").trim().toLowerCase();
+  const facilityLatitude = req.body?.facilityLatitude === "" || req.body?.facilityLatitude === undefined ? undefined : Number(req.body.facilityLatitude);
+  const facilityLongitude = req.body?.facilityLongitude === "" || req.body?.facilityLongitude === undefined ? undefined : Number(req.body.facilityLongitude);
+  const radiusInput = Number(req.body?.allowedRadiusMeters || 200);
+  const allowedRadiusMeters = Number.isFinite(radiusInput) ? Math.max(25, radiusInput) : 200;
+  const startDate = attendanceDate(req.body?.startDate || "");
+  const durationValue = Math.max(1, Number(req.body?.durationValue || 3));
+  const durationUnit = String(req.body?.durationUnit || "months").trim();
+  const expectedEndDate = attendanceDate(req.body?.expectedEndDate || "") || (startDate ? internshipExpectedEndDate(startDate, durationValue, durationUnit) : null);
+  const status = String(req.body?.status || "Assigned").trim();
+  if (!facilityName) return sendError(res, 400, "Hospital/facility name is required");
+  if (supervisorEmail && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(supervisorEmail)) return sendError(res, 400, "Enter a valid supervisor email");
+  if (facilityLatitude !== undefined && (!Number.isFinite(facilityLatitude) || facilityLatitude < -90 || facilityLatitude > 90)) return sendError(res, 400, "Enter a valid hospital latitude");
+  if (facilityLongitude !== undefined && (!Number.isFinite(facilityLongitude) || facilityLongitude < -180 || facilityLongitude > 180)) return sendError(res, 400, "Enter a valid hospital longitude");
+  if ((facilityLatitude === undefined) !== (facilityLongitude === undefined)) return sendError(res, 400, "Enter both hospital latitude and longitude");
+  if (!startDate) return sendError(res, 400, "Start date is required");
+  if (!expectedEndDate) return sendError(res, 400, "Expected end date is required");
+  if (!["days", "weeks", "months"].includes(durationUnit)) return sendError(res, 400, "Choose a valid duration unit");
+  if (!["Assigned", "Active", "Completed", "Terminated"].includes(status)) return sendError(res, 400, "Choose a valid internship status");
+  if (expectedEndDate < startDate) return sendError(res, 400, "Expected end date cannot be before start date");
+  const assignment = await InternshipAssignment.findOneAndUpdate(
+    { studentId: student._id },
+    {
+      $set: {
+        studentId: student._id,
+        facilityName,
+        facilityLocation,
+        supervisorName,
+        supervisorContact,
+        supervisorEmail,
+        facilityLatitude,
+        facilityLongitude,
+        allowedRadiusMeters,
+        startDate,
+        durationValue,
+        durationUnit,
+        expectedEndDate,
+        actualEndDate: status === "Completed" ? (attendanceDate(req.body?.actualEndDate || "") || new Date()) : undefined,
+        status,
+        departmentRotation: String(req.body?.departmentRotation || "").trim(),
+        assignedBy: req.user.name || req.user.email || "Admin",
+      },
+    },
+    { new: true, upsert: true, runValidators: true },
+  );
+  res.json({ ok: true, data: { ...(await studentAdminWithInternshipResponse(student)), internshipAssignment: assignment } });
+});
+
+app.delete("/api/admin/students/:id/internship", requireAuth, async (req, res) => {
+  if (!canManageInternships(req.user)) return sendError(res, 403, "Internship assignment is restricted to admin accounts");
+  const student = await Student.findById(req.params.id).lean();
+  if (!student) return sendError(res, 404, "Student not found");
+  if (!(await canAccessRecord(req, student))) return sendError(res, 403, "You can access only permitted records");
+  const assignment = await InternshipAssignment.findOne({ studentId: student._id }).lean();
+  if (assignment) {
+    await Promise.all([
+      InternshipAssignment.deleteOne({ _id: assignment._id }),
+      InternshipLog.deleteMany({ assignmentId: assignment._id }),
+      LogbookEntry.deleteMany({ assignmentId: assignment._id }),
+    ]);
+  }
+  res.json({ ok: true, data: await studentAdminWithInternshipResponse(student) });
 });
 
 app.delete("/api/admin/students/:id", requireAuth, requireFranchiseManager, async (req, res) => {
@@ -2047,7 +2495,7 @@ app.post("/api/admin/students/:id/payments", requireAuth, leadDocumentUpload.sin
     { new: true, runValidators: true },
   );
   if (!student) return sendError(res, 400, "Payment cannot exceed current pending due");
-  res.json({ ok: true, data: studentAdminResponse(student) });
+  res.json({ ok: true, data: await studentAdminWithInternshipResponse(student) });
 });
 
 app.get("/api/admin/students/:id/payments/:index/proof", requireAuth, async (req, res) => {
@@ -2564,6 +3012,19 @@ app.post("/api/admin/class-sessions/:id/attendance", requireAuth, async (req, re
   res.json({ ok: true, data: saved });
 });
 
+app.delete("/api/admin/class-sessions/:id/attendance", requireAuth, async (req, res) => {
+  if (!canUseAttendance(req.user)) return sendError(res, 403, "Attendance is restricted to teacher and admin accounts");
+  if (!mongoose.isValidObjectId(req.params.id)) return sendError(res, 400, "Invalid class session");
+  const session = await ClassSession.findById(req.params.id).lean();
+  if (!session) return sendError(res, 404, "Class session not found");
+  if (!(await canAccessRecord(req, session))) return sendError(res, 403, "You can access only permitted records");
+  const sessionBatch = isTeacherAccount(req.user) ? await Batch.findById(session.batchId).lean() : null;
+  if (isTeacherAccount(req.user) && session.faculty !== req.user.name && !(await teacherCanAccessBatch(req.user, sessionBatch))) return sendError(res, 403, "Teachers can clear only assigned batch classes");
+  await Attendance.deleteMany({ classSessionId: session._id });
+  const updated = await ClassSession.findByIdAndUpdate(session._id, { $set: { attendanceMarked: false, studentCount: 0 } }, { returnDocument: "after" }).lean();
+  res.json({ ok: true, data: updated, message: "Attendance cleared" });
+});
+
 app.get("/api/admin/topic-progress", requireAuth, async (req, res) => {
   if (!canUseAttendance(req.user)) return sendError(res, 403, "Topic tracker is restricted to academic staff");
   const filter = { ...(await scopedDataFilter(req, req.query)) };
@@ -2713,6 +3174,91 @@ app.patch("/api/admin/practicals", requireAuth, async (req, res) => {
   res.json({ ok: true, data: row });
 });
 
+app.get("/api/admin/study-notes", requireAuth, async (req, res) => {
+  if (!canUseAttendance(req.user)) return sendError(res, 403, "Study notes are restricted to academic staff");
+  const filter = { ...(await scopedDataFilter(req, req.query)) };
+  if (req.query.batchId && mongoose.isValidObjectId(String(req.query.batchId))) filter.batchId = new mongoose.Types.ObjectId(String(req.query.batchId));
+  if (isTeacherAccount(req.user)) {
+    const scope = await teacherAcademicBatchScope(req.user);
+    if (!scope.batchIds.length && !scope.batchNames.length) return res.json({ ok: true, data: [] });
+    if (filter.batchId) {
+      const allowedBatch = scope.batchIds.some((id) => String(id) === String(filter.batchId));
+      if (!allowedBatch) return res.json({ ok: true, data: [] });
+    } else {
+      filter.$or = [{ batchId: { $in: scope.batchIds } }, { batchName: { $in: scope.batchNames } }];
+    }
+  }
+  const notes = await StudyNote.find(filter).sort({ createdAt: -1 }).lean();
+  res.json({ ok: true, data: notes });
+});
+
+app.post("/api/admin/study-notes", requireAuth, studyNoteUpload.single("file"), async (req, res) => {
+  if (!canUseAttendance(req.user)) return sendError(res, 403, "Study notes are restricted to academic staff");
+  const batchId = String(req.body?.batchId || "");
+  if (!mongoose.isValidObjectId(batchId)) return sendError(res, 400, "Select a valid batch");
+  const batch = await Batch.findById(batchId).lean();
+  if (!batch || !batch.active) return sendError(res, 404, "Batch not found");
+  if (!(await canAccessRecord(req, batch))) return sendError(res, 403, "You can access only permitted records");
+  if (isTeacherAccount(req.user) && !(await teacherCanAccessBatch(req.user, batch))) return sendError(res, 403, "Teachers can upload notes only for assigned batches");
+  const title = String(req.body?.title || "").trim();
+  const referenceUrl = String(req.body?.referenceUrl || "").trim();
+  if (!title) return sendError(res, 400, "Note title is required");
+  if (!req.file && !referenceUrl) return sendError(res, 400, "Upload a file or add a reference URL");
+  if (referenceUrl && !/^https?:\/\/\S+$/i.test(referenceUrl)) return sendError(res, 400, "Enter a valid reference URL starting with http or https");
+  const resourceType = referenceUrl && /(youtube\.com|youtu\.be|vimeo\.com|video)/i.test(referenceUrl) ? "Video" : req.file ? "File" : "Reference";
+  const note = await StudyNote.create({
+    batchId: batch._id,
+    batchName: batch.name,
+    course: batch.course || "",
+    centre: batch.centre || "",
+    franchiseId: batch.franchiseId,
+    title,
+    module: String(req.body?.module || "").trim(),
+    description: String(req.body?.description || "").trim(),
+    file: req.file ? saveLeadDocument(req.file) : undefined,
+    referenceUrl,
+    resourceType,
+    uploadedBy: req.user.name || req.user.email || "Faculty",
+  });
+  res.status(201).json({ ok: true, data: note, message: "Study resource shared" });
+});
+
+app.get("/api/admin/study-notes/:id/download", requireAuth, async (req, res) => {
+  if (!canUseAttendance(req.user)) return sendError(res, 403, "Study notes are restricted to academic staff");
+  if (!mongoose.isValidObjectId(req.params.id)) return sendError(res, 400, "Invalid note");
+  const note = await StudyNote.findById(req.params.id).lean();
+  if (!note) return sendError(res, 404, "Note not found");
+  if (!(await canAccessRecord(req, note))) return sendError(res, 403, "You can access only permitted records");
+  const batch = isTeacherAccount(req.user) ? await Batch.findById(note.batchId).lean() : null;
+  if (isTeacherAccount(req.user) && !(await teacherCanAccessBatch(req.user, batch))) return sendError(res, 403, "Teachers can download notes only for assigned batches");
+  const filePath = path.join(leadDocumentDir, note.file?.storedName || "");
+  if (!note.file?.storedName || !filePath.startsWith(leadDocumentDir) || !fs.existsSync(filePath)) return sendError(res, 404, "Note file not found");
+  res.download(filePath, note.file.originalName || "study-note");
+});
+
+app.delete("/api/admin/study-notes/:id", requireAuth, async (req, res) => {
+  if (!canUseAttendance(req.user)) return sendError(res, 403, "Study notes are restricted to academic staff");
+  if (!mongoose.isValidObjectId(req.params.id)) return sendError(res, 400, "Invalid note");
+  const note = await StudyNote.findById(req.params.id).lean();
+  if (!note) return sendError(res, 404, "Note not found");
+  if (!(await canAccessRecord(req, note))) return sendError(res, 403, "You can access only permitted records");
+  const batch = isTeacherAccount(req.user) ? await Batch.findById(note.batchId).lean() : null;
+  if (isTeacherAccount(req.user) && !(await teacherCanAccessBatch(req.user, batch))) return sendError(res, 403, "Teachers can delete notes only for assigned batches");
+  await StudyNote.findByIdAndDelete(note._id);
+  res.json({ ok: true, data: note, message: "Note deleted" });
+});
+
+app.get("/api/student/study-notes/:id/download", requireStudentAuth, async (req, res) => {
+  if (!mongoose.isValidObjectId(req.params.id)) return sendError(res, 400, "Invalid note");
+  const note = await StudyNote.findById(req.params.id).lean();
+  if (!note) return sendError(res, 404, "Note not found");
+  const studentBatch = String(req.student.batch || "");
+  if (!studentBatch || note.batchName !== studentBatch) return sendError(res, 403, "You can access only your batch notes");
+  const filePath = path.join(leadDocumentDir, note.file?.storedName || "");
+  if (!note.file?.storedName || !filePath.startsWith(leadDocumentDir) || !fs.existsSync(filePath)) return sendError(res, 404, "Note file not found");
+  res.download(filePath, note.file.originalName || "study-note");
+});
+
 app.post("/api/contact", async (req, res) => {
   const { fullName, phone, email, preferredProgram, message } = req.body || {};
   if (!fullName || !phone || !preferredProgram) return sendError(res, 400, "Full name, phone, and preferred program are required.");
@@ -2754,9 +3300,9 @@ app.post("/api/careers", upload.single("resume"), async (req, res) => {
 
 app.use((error, _req, res, _next) => {
   if (error instanceof multer.MulterError && error.code === "LIMIT_FILE_SIZE") {
-    return res.status(400).json({ ok: false, message: "Document file size must be below 2 MB" });
+    return res.status(400).json({ ok: false, message: error.field === "file" ? "Study note file size must be below 10 MB" : "Document file size must be below 2 MB" });
   }
-  if (error?.message === "Only PDF, JPG, PNG or WEBP documents are allowed") {
+  if (error?.message === "Only PDF, JPG, PNG or WEBP documents are allowed" || error?.message === "Only PDF, Word, PPT, Excel, image, CSV or TXT notes are allowed") {
     return res.status(400).json({ ok: false, message: error.message });
   }
   console.error("API error:", error);
