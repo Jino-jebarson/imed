@@ -1,6 +1,6 @@
 import { useLayoutEffect, useRef, useState, type MouseEvent } from "react";
 import svgPaths from "./svg-rz0k21fs9a";
-import imgImage1712 from "../Ocha/36b610493eb683f0e81e17848fd143c365f117fd.png";
+import imgImage1712 from "../HomePage/imedLogoTMTag.svg";
 import imgImage1722 from "./image1722.webp";
 import imgImage1748 from "./image1748.webp";
 import imgImage1709 from "./image1709.webp";
@@ -13,9 +13,9 @@ import ScopeSalarySection from "../../app/components/ScopeSalarySection";
 function Group12() {
   return (
     <div className="grid-cols-[max-content] grid-rows-[max-content] inline-grid place-items-start relative shrink-0">
-      <div className="col-1 h-[29px] ml-0 mt-0 relative row-1 w-[22.895px]" data-name="image 1712">
+      <div className="col-1 h-[38px] ml-0 mt-0 relative row-1 w-[203px]" data-name="image 1712">
        <div className="absolute inset-0 overflow-hidden pointer-events-none">
-                <img loading="lazy" decoding="async" alt="" className="absolute h-[131.58%] left-[-33.33%] max-w-none top-[-15.79%] w-[166.67%]" src={imgImage1712} />
+                <img loading="lazy" decoding="async" alt="" className="absolute inset-0 h-full w-full max-w-none object-contain" src={imgImage1712} />
               </div>
       </div>
     </div>
@@ -24,7 +24,7 @@ function Group12() {
 
 function Group13() {
   return (
-    <div data-nav-target="home" className="content-stretch flex gap-[10px] items-center leading-[0] relative shrink-0 w-[203px] cursor-pointer transition-transform duration-200 hover:scale-[1.02]">
+    <div data-nav-target="home" className="content-stretch flex gap-[10px] items-center leading-[0] relative shrink-0 w-[203px] cursor-pointer [&>p]:hidden transition-transform duration-200 hover:scale-[1.02]">
       <Group12 />
       <p className="font-['Inter:Bold',sans-serif] font-bold h-[18px] not-italic relative shrink-0 text-[#1f3471] text-[22.992px] text-center w-[170px]">
         <span className="leading-[21px]">{`iMED `}</span>

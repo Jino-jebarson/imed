@@ -70,7 +70,7 @@ function Group259() {
     <div className="grid-cols-[max-content] grid-rows-[max-content] inline-grid leading-[0] place-items-start relative shrink-0">
       <div className="col-1 h-[253.786px] ml-0 mt-0 relative row-1 w-[200.358px]" data-name="image 1712">
         <div className="absolute inset-0 overflow-hidden pointer-events-none">
-          <img alt="" className="absolute h-[131.58%] left-[-33.33%] max-w-none top-[-15.79%] w-[166.67%]" src={imgImage1712} />
+          <img alt="" className="absolute inset-0 h-full w-full max-w-none object-contain" src={imgImage1712} />
         </div>
       </div>
     </div>

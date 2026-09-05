@@ -74,6 +74,12 @@ const leadFeedbackOptions = ["New", "Interested", "Qualified", "Follow-up", "On 
 const leadPriorityOptions = ["P0", "P1", "P2", "P3"];
 const leadStageOptions = ["New Lead", "Contacted", "Counselling", "Demo / Visit", "Admission", "Enrolled", "Alumni", "Lost"];
 const leadCreateStageOptions = ["New Lead", "Contacted", "Counselling", "Demo / Visit", "Admission", "Lost"];
+const npsTouchpoints = ["mid_course", "post_classroom", "post_internship"];
+const npsTouchpointLabels = {
+  mid_course: "Mid-course feedback",
+  post_classroom: "Classroom completion feedback",
+  post_internship: "Internship completion feedback",
+};
 fs.mkdirSync(leadDocumentDir, { recursive: true });
 
 const transporter = nodemailer.createTransport({
@@ -128,6 +134,23 @@ function normalizeStudentStatus(status = "") {
   if (status === "In Training") return "Active Student";
   if (status === "Placed") return "Alumni";
   return status;
+}
+
+function studentStatusRank(status = "") {
+  return ["Enrolled", "Admission Completed", "Fees Decided", "Fees Collected", "Active Student", "Classroom Complete", "Course Completed", "Alumni"].indexOf(normalizeStudentStatus(status));
+}
+
+function isStudentStatusAtLeast(status = "", milestone = "") {
+  const current = studentStatusRank(status);
+  const target = studentStatusRank(milestone);
+  return current >= 0 && target >= 0 && current >= target;
+}
+
+function npsCategory(score = 0) {
+  const value = Number(score);
+  if (value <= 6) return "detractor";
+  if (value <= 8) return "passive";
+  return "promoter";
 }
 
 function netStudentFee(student = {}) {
@@ -326,15 +349,28 @@ const studentSchema = new mongoose.Schema({
   admissionFinalizedAt: { type: Date },
   admissionFinalizedBy: { type: String, default: "" },
   discountAmount: { type: Number, default: 0 },
-  status: { type: String, enum: ["Enrolled", "Admission", "Admission Completed", "Fees Decided", "Fees Collected", "Active Student", "In Training", "Course Completed", "Alumni", "Placed", "Dropped"], default: "Enrolled" },
+  status: { type: String, enum: ["Enrolled", "Admission", "Admission Completed", "Fees Decided", "Fees Collected", "Active Student", "Classroom Complete", "In Training", "Course Completed", "Alumni", "Placed", "Dropped"], default: "Enrolled" },
   totalFee: { type: Number, default: 0 },
   paidAmount: { type: Number, default: 0 },
   emiEnabled: { type: Boolean, default: false },
   emiMonths: { type: Number, default: 0 },
   emiAmount: { type: Number, default: 0 },
   nextEmiDate: { type: Date },
+  placementStatus: { type: String, enum: ["Not Placed", "Interview Scheduled", "Placed", "Self Placed", ""], default: "Not Placed" },
   placementCompany: { type: String, default: "" },
+  placementRole: { type: String, default: "" },
+  placementJoiningDate: { type: Date },
   placementSalary: { type: Number, default: 0 },
+  placementHrContact: { type: String, default: "" },
+  placementOfferLetterUrl: { type: String, default: "" },
+  placementRemarks: { type: String, default: "" },
+  testimonialText: { type: String, default: "" },
+  testimonialVideoUrl: { type: String, default: "" },
+  testimonialRating: { type: Number, default: 0 },
+  testimonialApproved: { type: Boolean, default: false },
+  referralName: { type: String, default: "" },
+  referralPhone: { type: String, default: "" },
+  referralStatus: { type: String, enum: ["New", "Contacted", "Converted", "Lost", ""], default: "New" },
   certificateNumber: { type: String, default: "" },
   certificateIssuedAt: { type: Date },
   certificateStatus: { type: String, enum: ["Not Issued", "Issued"], default: "Not Issued" },
@@ -503,6 +539,34 @@ const logbookEntrySchema = new mongoose.Schema({
 }, { timestamps: true });
 logbookEntrySchema.index({ assignmentId: 1, studentId: 1, date: 1 }, { unique: true });
 
+const npsResponseSchema = new mongoose.Schema({
+  studentId: { type: mongoose.Schema.Types.ObjectId, ref: "Student", required: true },
+  batchId: { type: mongoose.Schema.Types.ObjectId, ref: "Batch" },
+  batchName: { type: String, default: "" },
+  courseCode: { type: String, default: "" },
+  collegeId: { type: String, default: "" },
+  centre: { type: String, default: "" },
+  franchiseId: { type: mongoose.Schema.Types.ObjectId, ref: "Centre" },
+  touchpoint: { type: String, enum: npsTouchpoints, required: true },
+  npsScore: { type: Number, required: true, min: 0, max: 10 },
+  npsCategory: { type: String, enum: ["promoter", "passive", "detractor"], required: true },
+  attrTeachingQuality: { type: Number, required: true, min: 1, max: 5 },
+  attrContentRelevance: { type: Number, required: true, min: 1, max: 5 },
+  attrPracticalTraining: { type: Number, min: 1, max: 5 },
+  attrSupportInfra: { type: Number, required: true, min: 1, max: 5 },
+  attrPlacementAssistance: { type: Number, min: 1, max: 5 },
+  openFeedback: { type: String, default: "", trim: true, maxlength: 500 },
+  followUpStatus: { type: String, enum: ["Pending", "In Progress", "Resolved"], default: "Pending" },
+  followUpNotes: [{
+    note: { type: String, default: "", trim: true },
+    by: { type: String, default: "" },
+    at: { type: Date, default: Date.now },
+  }],
+  active: { type: Boolean, default: true },
+  submittedAt: { type: Date, default: Date.now },
+}, { timestamps: true });
+npsResponseSchema.index({ studentId: 1, touchpoint: 1 }, { unique: true });
+
 const AdminUser = mongoose.model("AdminUser", adminUserSchema);
 const Counter = mongoose.model("Counter", counterSchema);
 const Centre = mongoose.model("Centre", centreSchema);
@@ -519,6 +583,7 @@ const StudyNote = mongoose.model("StudyNote", studyNoteSchema);
 const InternshipAssignment = mongoose.model("InternshipAssignment", internshipAssignmentSchema);
 const InternshipLog = mongoose.model("InternshipLog", internshipLogSchema);
 const LogbookEntry = mongoose.model("LogbookEntry", logbookEntrySchema);
+const NpsResponse = mongoose.model("NpsResponse", npsResponseSchema);
 
 async function seedBaseData() {
   await Promise.all([
@@ -791,6 +856,14 @@ function canManageCertificates(user) {
 }
 
 function canManageInternships(user) {
+  return isHeadAdmin(user) || isFranchiseSuperAdmin(user);
+}
+
+function canManageNps(user) {
+  return isHeadAdmin(user) || isFranchiseSuperAdmin(user);
+}
+
+function canManageAlumni(user) {
   return isHeadAdmin(user) || isFranchiseSuperAdmin(user);
 }
 
@@ -1118,6 +1191,101 @@ async function studentAdminWithInternshipResponse(student = {}) {
   return data;
 }
 
+async function npsResponsesForStudent(studentId) {
+  return NpsResponse.find({ studentId, active: true }).sort({ submittedAt: -1 }).lean();
+}
+
+function npsAttributeList(touchpoint) {
+  const common = ["attrTeachingQuality", "attrContentRelevance", "attrSupportInfra"];
+  if (touchpoint === "post_internship") return [...common, "attrPlacementAssistance"];
+  return [...common, "attrPracticalTraining"];
+}
+
+function publicNpsResponse(row = {}) {
+  return {
+    _id: row._id,
+    touchpoint: row.touchpoint,
+    label: npsTouchpointLabels[row.touchpoint] || row.touchpoint,
+    npsScore: row.npsScore,
+    npsCategory: row.npsCategory,
+    attrTeachingQuality: row.attrTeachingQuality,
+    attrContentRelevance: row.attrContentRelevance,
+    attrPracticalTraining: row.attrPracticalTraining,
+    attrSupportInfra: row.attrSupportInfra,
+    attrPlacementAssistance: row.attrPlacementAssistance,
+    openFeedback: row.openFeedback || "",
+    submittedAt: row.submittedAt,
+  };
+}
+
+function buildNpsEligibility({ student = {}, topics = [], internship = null, responses = [] }) {
+  const responseMap = new Map(responses.map((row) => [row.touchpoint, row]));
+  const coveredTopics = topics.filter((row) => row.status === "Covered").length;
+  const topicPercent = topics.length ? Math.round((coveredTopics / topics.length) * 100) : 0;
+  const internshipComplete = internship?.status === "Completed";
+  const items = npsTouchpoints.map((touchpoint) => {
+    let eligible = false;
+    let reason = "";
+    if (touchpoint === "mid_course") {
+      eligible = topics.length > 0 && topicPercent >= 50;
+      reason = eligible ? "50% syllabus is completed" : "Available after 50% syllabus completion";
+    } else if (touchpoint === "post_classroom") {
+      eligible = isStudentStatusAtLeast(student.status, "Classroom Complete");
+      reason = eligible ? "Classroom is marked complete" : "Available after classroom completion";
+    } else {
+      eligible = internshipComplete;
+      reason = eligible ? "Internship is marked complete" : "Available after internship completion";
+    }
+    const response = responseMap.get(touchpoint);
+    return {
+      touchpoint,
+      label: npsTouchpointLabels[touchpoint],
+      eligible,
+      submitted: Boolean(response),
+      required: eligible && !response,
+      reason,
+      availableSince: eligible ? (touchpoint === "post_internship" ? internship?.actualEndDate || internship?.updatedAt : new Date()) : null,
+      response: response ? publicNpsResponse(response) : null,
+    };
+  });
+  return {
+    items,
+    pending: items.find((item) => item.required) || null,
+  };
+}
+
+async function npsEligibilityForStudent(student = {}, extra = {}) {
+  const batch = extra.batch !== undefined ? extra.batch : (student.batch ? await Batch.findOne({ name: student.batch, active: true }).lean() : null);
+  const batchFilter = batch ? { $or: [{ batchId: batch._id }, { batchName: batch.name }] } : { batchName: student.batch || "" };
+  const [topics, internship, responses] = await Promise.all([
+    extra.topics !== undefined ? Promise.resolve(extra.topics) : (batch ? TopicProgress.find(batchFilter).lean() : Promise.resolve([])),
+    extra.internship !== undefined ? Promise.resolve(extra.internship) : InternshipAssignment.findOne({ studentId: student._id }).lean(),
+    extra.responses !== undefined ? Promise.resolve(extra.responses) : npsResponsesForStudent(student._id),
+  ]);
+  return buildNpsEligibility({ student, topics, internship, responses });
+}
+
+function npsScopedFilter(req, query = {}) {
+  return scopedDataFilter(req, query);
+}
+
+function computeNps(rows = []) {
+  const activeRows = rows.filter((row) => row.active !== false);
+  const total = activeRows.length;
+  const promoters = activeRows.filter((row) => row.npsCategory === "promoter").length;
+  const passives = activeRows.filter((row) => row.npsCategory === "passive").length;
+  const detractors = activeRows.filter((row) => row.npsCategory === "detractor").length;
+  return {
+    total,
+    promoters,
+    passives,
+    detractors,
+    nps: total ? Math.round((promoters / total) * 100 - (detractors / total) * 100) : 0,
+    promoterPercent: total ? Math.round((promoters / total) * 100) : 0,
+    detractorPercent: total ? Math.round((detractors / total) * 100) : 0,
+  };
+}
+
 function internshipExpectedEndDate(startDate, durationValue = 3, durationUnit = "months") {
   const end = new Date(startDate);
   if (durationUnit === "days") end.setUTCDate(end.getUTCDate() + Number(durationValue || 0));
@@ -1240,7 +1408,7 @@ app.get("/api/student/me", requireStudentAuth, async (req, res) => {
     date.setHours(0, 0, 0, 0);
     if (date > classVisibleFrom) classVisibleFrom.setTime(date.getTime());
   });
-  const [sessions, attendance, topics, practicals, studyNotes, internship, logbookEntries] = await Promise.all([
+  const [sessions, attendance, topics, practicals, studyNotes, internship, logbookEntries, npsResponses] = await Promise.all([
     student.batch ? ClassSession.find({ ...(batch ? batchFilter : { batchName: student.batch }), date: { $gte: classVisibleFrom } }).sort({ date: 1, startTime: 1 }).limit(90).lean() : [],
     Attendance.find({ studentId: student._id }).sort({ date: -1 }).limit(180).lean(),
     batch ? TopicProgress.find(batchFilter).sort({ module: 1, topic: 1 }).lean() : [],
@@ -1248,6 +1416,7 @@ app.get("/api/student/me", requireStudentAuth, async (req, res) => {
     batch ? StudyNote.find(batchFilter).sort({ createdAt: -1 }).lean() : [],
     InternshipAssignment.findOne({ studentId: student._id }).lean(),
     LogbookEntry.find({ studentId: student._id }).sort({ date: -1 }).limit(60).lean(),
+    npsResponsesForStudent(student._id),
   ]);
   const internshipLogs = internship ? await InternshipLog.find({ assignmentId: internship._id, studentId: student._id }).sort({ date: -1 }).limit(60).lean() : [];
   const attendanceHeld = attendance.length;
@@ -1282,8 +1451,64 @@ app.get("/api/student/me", requireStudentAuth, async (req, res) => {
       internship,
       internshipLogs,
       logbookEntries,
+      nps: buildNpsEligibility({ student, topics, internship, responses: npsResponses }),
+      npsResponses: npsResponses.map(publicNpsResponse),
     },
   });
+});
+
+app.post("/api/nps/submit", requireStudentAuth, async (req, res) => {
+  const touchpoint = String(req.body?.touchpoint || "").trim();
+  if (!npsTouchpoints.includes(touchpoint)) return sendError(res, 400, "Choose a valid NPS touchpoint");
+  const score = Number(req.body?.npsScore);
+  if (!Number.isInteger(score) || score < 0 || score > 10) return sendError(res, 400, "Choose an NPS score from 0 to 10");
+  const eligibility = await npsEligibilityForStudent(req.student);
+  const item = eligibility.items.find((row) => row.touchpoint === touchpoint);
+  if (!item?.eligible) return sendError(res, 400, item?.reason || "This feedback is not available yet");
+  if (item.submitted) return sendError(res, 409, "This feedback has already been submitted");
+  const attributes = npsAttributeList(touchpoint);
+  const payload = {};
+  for (const field of attributes) {
+    const value = Number(req.body?.[field]);
+    if (!Number.isInteger(value) || value < 1 || value > 5) return sendError(res, 400, "All star ratings are required");
+    payload[field] = value;
+  }
+  const openFeedback = String(req.body?.openFeedback || "").trim();
+  if (openFeedback.length > 500) return sendError(res, 400, "Feedback cannot exceed 500 characters");
+  const batch = req.student.batch ? await Batch.findOne({ name: req.student.batch, active: true }).lean() : null;
+  try {
+    const response = await NpsResponse.create({
+      studentId: req.student._id,
+      batchId: batch?._id,
+      batchName: batch?.name || req.student.batch || "",
+      courseCode: normalizeCourseCode(req.student.course || ""),
+      centre: req.student.centre || "",
+      franchiseId: req.student.franchiseId,
+      touchpoint,
+      npsScore: score,
+      npsCategory: npsCategory(score),
+      ...payload,
+      openFeedback,
+      submittedAt: new Date(),
+    });
+    if (response.npsCategory === "detractor" && toAddress) {
+      transporter.sendMail({
+        from: `iMED Academy LMS <${process.env.SMTP_USER}>`,
+        to: toAddress,
+        subject: `Detractor NPS alert - ${req.student.fullName}`,
+        html: `<p>${escapeHtml(req.student.fullName)} submitted ${score}/10 for ${escapeHtml(npsTouchpointLabels[touchpoint])}.</p><p>${escapeHtml(openFeedback || "No comment added.")}</p>`,
+      }).catch(() => undefined);
+    }
+    res.status(201).json({ ok: true, data: publicNpsResponse(response), message: "Thank you for your feedback" });
+  } catch (error) {
+    if (error?.code === 11000) return sendError(res, 409, "This feedback has already been submitted");
+    throw error;
+  }
+});
+
+app.get("/api/nps/my-responses", requireStudentAuth, async (req, res) => {
+  const rows = await npsResponsesForStudent(req.student._id);
+  res.json({ ok: true, data: rows.map(publicNpsResponse) });
 });
 
 app.post("/api/student/internship/log", requireStudentAuth, leadDocumentUpload.single("photo"), async (req, res) => {
@@ -1921,6 +2146,12 @@ app.post("/api/admin/leads/:id/convert", requireAuth, async (req, res) => {
   if (!batch) return sendError(res, 400, "Selected batch was not found");
   if (lead.centre && batch.centre && batch.centre !== lead.centre) return sendError(res, 400, "Batch centre must match the lead centre");
   if (lead.course && batch.course && String(batch.course).toUpperCase() !== String(lead.course).toUpperCase()) return sendError(res, 400, "Batch course must match the lead course");
+  const assignedTeacher = Array.isArray(batch.assignedFaculty) && batch.assignedFaculty.length ? String(batch.assignedFaculty[0] || "").trim() : "";
+  const assignedCounsellor = String(lead.counsellor || "").trim() && String(lead.counsellor || "").trim() !== "Unassigned"
+    ? String(lead.counsellor || "").trim()
+    : isCounsellorAccount(req.user)
+      ? req.user.name
+      : "";
   const admissionYear = new Date().getFullYear();
   const admissionPrefix = `IMED-${admissionYear}-`;
   const admissionSeq = await nextCounterValue(`admission:${admissionYear}`, await maxStudentNumberSuffix("admissionNumber", admissionPrefix));
@@ -1936,8 +2167,8 @@ app.post("/api/admin/leads/:id/convert", requireAuth, async (req, res) => {
     centre: lead.centre,
     franchiseId: lead.franchiseId,
     course: lead.course,
-    counsellor: lead.counsellor || "Unassigned",
-    teacher: "Unassigned",
+    counsellor: assignedCounsellor || "Unassigned",
+    teacher: assignedTeacher || "Unassigned",
     batch: batch.name,
     batchCommenceDate: batch.commenceDate,
     admissionNumber: `${admissionPrefix}${String(admissionSeq).padStart(4, "0")}`,
@@ -1956,6 +2187,7 @@ app.post("/api/admin/leads/:id/convert", requireAuth, async (req, res) => {
     return res.json({ ok: true, data: student });
   }
   lead.stage = "Enrolled";
+  if (assignedCounsellor) lead.counsellor = assignedCounsellor;
   lead.leadFeedback = normalizeLeadFeedbackStatus(lead.leadFeedback);
   lead.priority = priorityFromLeadFeedback(lead.leadFeedback) || normalizeLeadPriority(lead.priority);
   lead.activities.push({ type: "converted", message: "Converted to student", by: req.user.name });
@@ -2142,6 +2374,143 @@ app.get("/api/admin/attendance/summary", requireAuth, async (req, res) => {
   res.json({ ok: true, data: summaries.map((item) => ({ ...item, studentId: item._id })), meta: paginationMeta(total, page, limit) });
 });
 
+app.get("/api/nps/dashboard", requireAuth, async (req, res) => {
+  if (!(canManageNps(req.user) || isTeacherAccount(req.user))) return sendError(res, 403, "NPS dashboard is restricted");
+  const filter = { active: true, ...(await npsScopedFilter(req, req.query)) };
+  if (req.query.touchpoint) filter.touchpoint = String(req.query.touchpoint);
+  if (req.query.course) filter.courseCode = normalizeCourseCode(req.query.course);
+  if (req.query.batch) filter.batchName = String(req.query.batch);
+  if (req.query.batchId && mongoose.isValidObjectId(String(req.query.batchId))) filter.batchId = new mongoose.Types.ObjectId(String(req.query.batchId));
+  if (req.query.dateFrom || req.query.dateTo) {
+    const from = attendanceDate(req.query.dateFrom || "");
+    const to = attendanceDate(req.query.dateTo || "");
+    filter.submittedAt = {};
+    if (from) filter.submittedAt.$gte = from;
+    if (to) {
+      const end = new Date(to);
+      end.setUTCDate(end.getUTCDate() + 1);
+      filter.submittedAt.$lt = end;
+    }
+  }
+  if (isTeacherAccount(req.user)) {
+    const scope = await teacherAcademicBatchScope(req.user);
+    if (!scope.batchIds.length && !scope.batchNames.length) return res.json({ ok: true, data: { ...computeNps([]), attributes: {}, touchpoints: [], batches: [], detractorAlerts: [] } });
+    filter.$or = [{ batchId: { $in: scope.batchIds } }, { batchName: { $in: scope.batchNames } }];
+  }
+  const rows = await NpsResponse.find(filter).sort({ submittedAt: -1 }).lean();
+  const counts = computeNps(rows);
+  const attributeFields = ["attrTeachingQuality", "attrContentRelevance", "attrPracticalTraining", "attrSupportInfra", "attrPlacementAssistance"];
+  const attributes = Object.fromEntries(attributeFields.map((field) => {
+    const values = rows.map((row) => Number(row[field] || 0)).filter(Boolean);
+    return [field, values.length ? Number((values.reduce((sum, value) => sum + value, 0) / values.length).toFixed(1)) : 0];
+  }));
+  const grouped = (key) => Array.from(rows.reduce((map, row) => {
+    const label = String(row[key] || "Unassigned");
+    const list = map.get(label) || [];
+    list.push(row);
+    map.set(label, list);
+    return map;
+  }, new Map()).entries()).map(([label, items]) => ({ label, ...computeNps(items) }));
+  const totalActiveStudents = await Student.countDocuments({ ...(await scopedDataFilter(req, req.query)), status: { $nin: ["Dropped"] } });
+  const detractors = isTeacherAccount(req.user) ? [] : rows
+    .filter((row) => row.npsCategory === "detractor" && row.followUpStatus !== "Resolved")
+    .slice(0, 8);
+  const responseRate = totalActiveStudents ? Math.round((counts.total / totalActiveStudents) * 100) : 0;
+  const trend = Array.from(rows.reduce((map, row) => {
+    const date = new Date(row.submittedAt || row.createdAt || Date.now()).toISOString().slice(0, 10);
+    const list = map.get(date) || [];
+    list.push(row);
+    map.set(date, list);
+    return map;
+  }, new Map()).entries())
+    .sort(([a], [b]) => a.localeCompare(b))
+    .slice(-14)
+    .map(([date, items]) => ({ date, ...computeNps(items) }));
+  const alerts = [];
+  if (totalActiveStudents && responseRate < 50) alerts.push({ tone: "warn", label: "Low response rate", detail: `${responseRate}% response rate across ${totalActiveStudents} active candidates` });
+  if (!isTeacherAccount(req.user) && detractors.length) alerts.push({ tone: "bad", label: "Detractor follow-up", detail: `${detractors.length} unresolved low-score responses need follow-up` });
+  res.json({
+    ok: true,
+    data: {
+      ...counts,
+      responseRate,
+      attributes,
+      trend,
+      alerts,
+      touchpoints: grouped("touchpoint").map((item) => ({ ...item, label: npsTouchpointLabels[item.label] || item.label })),
+      batches: grouped("batchName"),
+      detractorAlerts: detractors,
+    },
+  });
+});
+
+app.get("/api/nps/responses", requireAuth, async (req, res) => {
+  if (!canManageNps(req.user)) return sendError(res, 403, "NPS responses are restricted to admin accounts");
+  const { page, limit, skip } = paginationFromQuery(req.query);
+  const filter = { active: true, ...(await npsScopedFilter(req, req.query)) };
+  if (req.query.touchpoint) filter.touchpoint = String(req.query.touchpoint);
+  if (req.query.course) filter.courseCode = normalizeCourseCode(req.query.course);
+  if (req.query.batch) filter.batchName = String(req.query.batch);
+  if (req.query.category) filter.npsCategory = String(req.query.category);
+  if (req.query.q) {
+    const regex = new RegExp(escapeRegex(String(req.query.q)), "i");
+    const students = await Student.find({ fullName: regex }).select("_id").lean();
+    filter.$or = [{ openFeedback: regex }, { batchName: regex }, { studentId: { $in: students.map((student) => student._id) } }];
+  }
+  const [total, rows] = await Promise.all([
+    NpsResponse.countDocuments(filter),
+    NpsResponse.find(filter).populate("studentId", "fullName admissionNumber phone").sort({ submittedAt: -1 }).skip(skip).limit(limit).lean(),
+  ]);
+  res.json({ ok: true, data: rows, meta: paginationMeta(total, page, limit) });
+});
+
+app.patch("/api/nps/responses/:id/follow-up", requireAuth, async (req, res) => {
+  if (!canManageNps(req.user)) return sendError(res, 403, "NPS follow-up is restricted to admin accounts");
+  if (!mongoose.isValidObjectId(req.params.id)) return sendError(res, 400, "Invalid NPS response");
+  const status = String(req.body?.status || "Pending").trim();
+  const note = String(req.body?.note || "").trim();
+  if (!["Pending", "In Progress", "Resolved"].includes(status)) return sendError(res, 400, "Choose a valid follow-up status");
+  const row = await NpsResponse.findById(req.params.id).lean();
+  if (!row) return sendError(res, 404, "NPS response not found");
+  if (!(await canAccessRecord(req, row))) return sendError(res, 403, "You can access only permitted records");
+  const update = { $set: { followUpStatus: status } };
+  if (note) update.$push = { followUpNotes: { note, by: req.user.name || req.user.email || "Admin", at: new Date() } };
+  const updated = await NpsResponse.findByIdAndUpdate(req.params.id, update, { returnDocument: "after" }).lean();
+  res.json({ ok: true, data: updated });
+});
+
+app.get("/api/nps/export", requireAuth, async (req, res) => {
+  if (!canManageNps(req.user)) return sendError(res, 403, "NPS export is restricted to admin accounts");
+  const filter = { active: true, ...(await npsScopedFilter(req, req.query)) };
+  if (req.query.touchpoint) filter.touchpoint = String(req.query.touchpoint);
+  const rows = await NpsResponse.find(filter).populate("studentId", "fullName admissionNumber phone").sort({ submittedAt: -1 }).lean();
+  const headers = ["Student", "Admission No", "Course", "Batch", "Centre", "Touchpoint", "Score", "Category", "Teaching", "Content", "Practical", "Support", "Placement", "Feedback", "Follow-up", "Submitted At"];
+  const csv = [
+    headers.join(","),
+    ...rows.map((row) => [
+      row.studentId?.fullName || "",
+      row.studentId?.admissionNumber || "",
+      row.courseCode || "",
+      row.batchName || "",
+      row.centre || "",
+      npsTouchpointLabels[row.touchpoint] || row.touchpoint,
+      row.npsScore,
+      row.npsCategory,
+      row.attrTeachingQuality || "",
+      row.attrContentRelevance || "",
+      row.attrPracticalTraining || "",
+      row.attrSupportInfra || "",
+      row.attrPlacementAssistance || "",
+      row.openFeedback || "",
+      row.followUpStatus || "",
+      row.submittedAt ? new Date(row.submittedAt).toISOString() : "",
+    ].map((value) => `"${String(value).replaceAll('"', '""')}"`).join(",")),
+  ].join("\n");
+  res.setHeader("Content-Type", "text/csv; charset=utf-8");
+  res.setHeader("Content-Disposition", `attachment; filename="imed-nps-${Date.now()}.csv"`);
+  res.send(csv);
+});
+
 app.post("/api/admin/attendance", requireAuth, async (req, res) => {
   if (!canUseAttendance(req.user)) return sendError(res, 403, "Attendance is restricted to teacher and admin accounts");
   const day = attendanceDate(req.body?.date || "");
@@ -2194,17 +2563,24 @@ app.post("/api/admin/attendance", requireAuth, async (req, res) => {
 });
 
 app.patch("/api/admin/students/:id", requireAuth, async (req, res) => {
-  const allowedStudentUpdates = (({ fullName, phone, parentMobile, email, governmentProof, highestQualificationCertificate, studentLocation, centre, course, counsellor, teacher, batch, batchCommenceDate, admissionNumber, admissionPaymentMode, admissionUpfrontAmount, discountAmount, status, totalFee, paidAmount, emiEnabled, emiMonths, emiAmount, nextEmiDate, placementCompany, placementSalary, certificateNumber, certificateIssuedAt, certificateStatus }) => ({ fullName, phone, parentMobile, email, governmentProof, highestQualificationCertificate, studentLocation, centre, course, counsellor, teacher, batch, batchCommenceDate, admissionNumber, admissionPaymentMode, admissionUpfrontAmount, discountAmount, status, totalFee, paidAmount, emiEnabled, emiMonths, emiAmount, nextEmiDate, placementCompany, placementSalary, certificateNumber, certificateIssuedAt, certificateStatus }))(req.body || {});
+  const allowedStudentUpdates = (({ fullName, phone, parentMobile, email, governmentProof, highestQualificationCertificate, studentLocation, centre, course, counsellor, teacher, batch, batchCommenceDate, admissionNumber, admissionPaymentMode, admissionUpfrontAmount, discountAmount, status, totalFee, paidAmount, emiEnabled, emiMonths, emiAmount, nextEmiDate, placementStatus, placementCompany, placementRole, placementJoiningDate, placementSalary, placementHrContact, placementOfferLetterUrl, placementRemarks, testimonialText, testimonialVideoUrl, testimonialRating, testimonialApproved, referralName, referralPhone, referralStatus, certificateNumber, certificateIssuedAt, certificateStatus }) => ({ fullName, phone, parentMobile, email, governmentProof, highestQualificationCertificate, studentLocation, centre, course, counsellor, teacher, batch, batchCommenceDate, admissionNumber, admissionPaymentMode, admissionUpfrontAmount, discountAmount, status, totalFee, paidAmount, emiEnabled, emiMonths, emiAmount, nextEmiDate, placementStatus, placementCompany, placementRole, placementJoiningDate, placementSalary, placementHrContact, placementOfferLetterUrl, placementRemarks, testimonialText, testimonialVideoUrl, testimonialRating, testimonialApproved, referralName, referralPhone, referralStatus, certificateNumber, certificateIssuedAt, certificateStatus }))(req.body || {});
   Object.keys(allowedStudentUpdates).forEach((key) => allowedStudentUpdates[key] === undefined && delete allowedStudentUpdates[key]);
   const feeFields = ["admissionPaymentMode", "admissionUpfrontAmount", "discountAmount", "totalFee", "paidAmount", "emiEnabled", "emiMonths", "emiAmount", "nextEmiDate"];
   if (!canManageFees(req.user) && feeFields.some((field) => Object.prototype.hasOwnProperty.call(allowedStudentUpdates, field))) {
     return sendError(res, 403, "Fee and payment updates are restricted to admin accounts");
   }
+  const alumniFields = ["placementStatus", "placementCompany", "placementRole", "placementJoiningDate", "placementSalary", "placementHrContact", "placementOfferLetterUrl", "placementRemarks", "testimonialText", "testimonialVideoUrl", "testimonialRating", "testimonialApproved", "referralName", "referralPhone", "referralStatus"];
+  if (!canManageAlumni(req.user) && alumniFields.some((field) => Object.prototype.hasOwnProperty.call(allowedStudentUpdates, field))) {
+    return sendError(res, 403, "Alumni placement and referral updates are restricted to admin accounts");
+  }
   if (!canAssignStaff(req.user)) delete allowedStudentUpdates.counsellor;
   if (!(canAssignStaff(req.user) || isCounsellorAccount(req.user))) delete allowedStudentUpdates.teacher;
-  ["admissionUpfrontAmount", "discountAmount", "totalFee", "paidAmount", "emiMonths", "emiAmount", "placementSalary"].forEach((field) => {
+  ["admissionUpfrontAmount", "discountAmount", "totalFee", "paidAmount", "emiMonths", "emiAmount", "placementSalary", "testimonialRating"].forEach((field) => {
     if (Object.prototype.hasOwnProperty.call(allowedStudentUpdates, field)) allowedStudentUpdates[field] = Number(allowedStudentUpdates[field] || 0);
   });
+  if (Object.prototype.hasOwnProperty.call(allowedStudentUpdates, "testimonialApproved")) {
+    allowedStudentUpdates.testimonialApproved = allowedStudentUpdates.testimonialApproved === true || allowedStudentUpdates.testimonialApproved === "true";
+  }
   if (Object.prototype.hasOwnProperty.call(allowedStudentUpdates, "emiEnabled")) {
     allowedStudentUpdates.emiEnabled = allowedStudentUpdates.emiEnabled === true || allowedStudentUpdates.emiEnabled === "true";
   }
@@ -2212,7 +2588,7 @@ app.patch("/api/admin/students/:id", requireAuth, async (req, res) => {
     allowedStudentUpdates.admissionPaymentMode = normalizeAdmissionPaymentMode(String(allowedStudentUpdates.admissionPaymentMode || ""));
     if (!admissionPaymentModes.includes(allowedStudentUpdates.admissionPaymentMode)) return sendError(res, 400, "Choose a valid admission payment plan");
   }
-  ["nextEmiDate", "batchCommenceDate", "certificateIssuedAt"].forEach((field) => {
+  ["nextEmiDate", "batchCommenceDate", "certificateIssuedAt", "placementJoiningDate"].forEach((field) => {
     if (Object.prototype.hasOwnProperty.call(allowedStudentUpdates, field) && !allowedStudentUpdates[field]) allowedStudentUpdates[field] = null;
   });
   const existingStudent = await Student.findById(req.params.id).lean();
@@ -2253,11 +2629,20 @@ app.patch("/api/admin/students/:id", requireAuth, async (req, res) => {
   if (Object.prototype.hasOwnProperty.call(allowedStudentUpdates, "status") && nextNormalizedStatus === "Fees Collected" && nextDue > 0) {
     return sendError(res, 400, "Collect the full pending fee before marking Fees Collected");
   }
-  if (Object.prototype.hasOwnProperty.call(allowedStudentUpdates, "status") && nextNormalizedStatus === "Course Completed" && currentNormalizedStatus !== "Course Completed" && currentNormalizedStatus !== "Active Student") {
-    return sendError(res, 400, "Move the candidate to Active Student before marking Course Completed");
+  if (Object.prototype.hasOwnProperty.call(allowedStudentUpdates, "status") && nextNormalizedStatus === "Classroom Complete" && currentNormalizedStatus !== "Classroom Complete" && !isStudentStatusAtLeast(currentNormalizedStatus, "Active Student")) {
+    return sendError(res, 400, "Move the candidate to Active Student before marking Classroom Complete");
+  }
+  if (Object.prototype.hasOwnProperty.call(allowedStudentUpdates, "status") && nextNormalizedStatus === "Course Completed" && currentNormalizedStatus !== "Course Completed") {
+    if (!isStudentStatusAtLeast(currentNormalizedStatus, "Classroom Complete")) return sendError(res, 400, "Mark Classroom Complete before Course Completed");
+    const nps = await npsEligibilityForStudent(existingStudent);
+    const postClassroom = nps.items.find((item) => item.touchpoint === "post_classroom");
+    const postInternship = nps.items.find((item) => item.touchpoint === "post_internship");
+    if (postClassroom?.eligible && !postClassroom.submitted) return sendError(res, 400, "Student must submit classroom completion NPS before Course Completed");
+    if (postInternship?.eligible && !postInternship.submitted) return sendError(res, 400, "Student must submit internship completion NPS before Course Completed");
   }
   if (Object.prototype.hasOwnProperty.call(allowedStudentUpdates, "status") && nextNormalizedStatus === "Alumni" && currentNormalizedStatus !== "Alumni") {
     if (currentNormalizedStatus !== "Course Completed") return sendError(res, 400, "Mark Course Completed before moving the candidate to Alumni");
+    if (nextDue > 0) return sendError(res, 400, "Clear full fee before moving the candidate to Alumni");
     if (!existingStudent.certificateNumber && existingStudent.certificateStatus !== "Issued") return sendError(res, 400, "Issue the certificate before moving the candidate to Alumni");
   }
   if (nextDiscount > nextTotalFee) return sendError(res, 400, "Discount cannot exceed final fee");
@@ -2352,30 +2737,35 @@ app.put("/api/admin/students/:id/internship", requireAuth, async (req, res) => {
   if (!["days", "weeks", "months"].includes(durationUnit)) return sendError(res, 400, "Choose a valid duration unit");
   if (!["Assigned", "Active", "Completed", "Terminated"].includes(status)) return sendError(res, 400, "Choose a valid internship status");
   if (expectedEndDate < startDate) return sendError(res, 400, "Expected end date cannot be before start date");
+  if (["Assigned", "Active"].includes(status)) {
+    if (!isStudentStatusAtLeast(student.status, "Classroom Complete")) return sendError(res, 400, "Mark Classroom Complete before assigning internship");
+    const nps = await npsEligibilityForStudent(student);
+    const postClassroom = nps.items.find((item) => item.touchpoint === "post_classroom");
+    if (postClassroom?.eligible && !postClassroom.submitted) return sendError(res, 400, "Student must submit classroom completion NPS before internship starts");
+  }
+  const internshipSet = {
+    studentId: student._id,
+    facilityName,
+    facilityLocation,
+    supervisorName,
+    supervisorContact,
+    supervisorEmail,
+    facilityLatitude,
+    facilityLongitude,
+    allowedRadiusMeters,
+    startDate,
+    durationValue,
+    durationUnit,
+    expectedEndDate,
+    status,
+    departmentRotation: String(req.body?.departmentRotation || "").trim(),
+    assignedBy: req.user.name || req.user.email || "Admin",
+  };
+  if (status === "Completed") internshipSet.actualEndDate = attendanceDate(req.body?.actualEndDate || "") || new Date();
   const assignment = await InternshipAssignment.findOneAndUpdate(
     { studentId: student._id },
-    {
-      $set: {
-        studentId: student._id,
-        facilityName,
-        facilityLocation,
-        supervisorName,
-        supervisorContact,
-        supervisorEmail,
-        facilityLatitude,
-        facilityLongitude,
-        allowedRadiusMeters,
-        startDate,
-        durationValue,
-        durationUnit,
-        expectedEndDate,
-        actualEndDate: status === "Completed" ? (attendanceDate(req.body?.actualEndDate || "") || new Date()) : undefined,
-        status,
-        departmentRotation: String(req.body?.departmentRotation || "").trim(),
-        assignedBy: req.user.name || req.user.email || "Admin",
-      },
-    },
-    { new: true, upsert: true, runValidators: true },
+    status === "Completed" ? { $set: internshipSet } : { $set: internshipSet, $unset: { actualEndDate: "" } },
+    { returnDocument: "after", upsert: true, runValidators: true },
   );
   res.json({ ok: true, data: { ...(await studentAdminWithInternshipResponse(student)), internshipAssignment: assignment } });
 });
@@ -2413,6 +2803,9 @@ app.post("/api/admin/students/:id/certificate", requireAuth, async (req, res) =>
   if (!student) return sendError(res, 404, "Student not found");
   if (!(await canAccessRecord(req, student))) return sendError(res, 403, "You can access only permitted records");
   if (!["Course Completed", "Alumni", "Placed"].includes(student.status)) return sendError(res, 400, "Mark course as completed before issuing certificate");
+  const nps = await npsEligibilityForStudent(student);
+  const postInternship = nps.items.find((item) => item.touchpoint === "post_internship");
+  if (postInternship?.eligible && !postInternship.submitted) return sendError(res, 400, "Student must submit internship completion NPS before certificate generation");
 
   if (!student.certificateNumber) {
     const certificateYear = new Date().getFullYear();

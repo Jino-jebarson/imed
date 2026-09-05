@@ -27,6 +27,8 @@ import {
   Search,
   ShieldCheck,
   Stethoscope,
+  Star,
+  TrendingUp,
   Trash2,
   UserPlus,
   UserRound,
@@ -38,8 +40,8 @@ const API_BASE_URL = import.meta.env.PROD
   : ((import.meta.env.VITE_API_BASE_URL as string | undefined) || "");
 
 const stages = ["New Lead", "Contacted", "Counselling", "Demo / Visit", "Admission", "Enrolled", "Alumni"];
-const studentStatuses = ["Enrolled", "Admission Completed", "Fees Decided", "Fees Collected", "Active Student", "Course Completed", "Alumni"];
-const studentJourneyStages = ["Enrolled", "Admission Completed", "Fees Decided", "Fees Collected", "Active Student", "Course Completed", "Alumni"];
+const studentStatuses = ["Enrolled", "Admission Completed", "Fees Decided", "Fees Collected", "Active Student", "Classroom Complete", "Course Completed", "Alumni"];
+const studentJourneyStages = ["Enrolled", "Admission Completed", "Fees Decided", "Fees Collected", "Active Student", "Classroom Complete", "Course Completed", "Alumni"];
 const attendanceStatuses: AttendanceStatus[] = ["Present", "Absent", "Late", "Leave"];
 const sources = ["Meta", "BTL", "College", "Referral"];
 const leadDocumentAccept = ".pdf,.jpg,.jpeg,.png,.webp";
@@ -72,6 +74,8 @@ const topicStatuses = ["Not Started", "In Progress", "Covered"];
 const practicalStatuses = ["Pending", "Completed", "Needs Repeat"];
 const internshipStatuses = ["Assigned", "Active", "Completed", "Terminated"];
 const internshipDurationUnits = ["days", "weeks", "months"];
+const alumniPlacementStatuses = ["Not Placed", "Interview Scheduled", "Placed", "Self Placed"];
+const referralStatuses = ["New", "Contacted", "Converted", "Lost"];
 const fallbackCentres = ["Delhi", "Kochi", "Bangalore"];
 const fallbackCourses = ["HA", "EMT", "GDA", "OCHA", "AHAP"];
 const kochiCourseOptions = ["AHAP", "GCA"];
@@ -107,7 +111,7 @@ type StudentFeedback = { type?: string; status?: string; note?: string; nextFoll
 type InternshipAssignment = { _id?: string; facilityName?: string; facilityLocation?: string; supervisorName?: string; supervisorContact?: string; supervisorEmail?: string; facilityLatitude?: number; facilityLongitude?: number; allowedRadiusMeters?: number; startDate?: string; durationValue?: number; durationUnit?: string; expectedEndDate?: string; actualEndDate?: string; status?: string; departmentRotation?: string; assignedBy?: string; updatedAt?: string };
 type InternshipLog = { _id: string; date?: string; loginAt?: string; logoutAt?: string; loginPhoto?: DocumentFile; logoutPhoto?: DocumentFile; loginGps?: string; logoutGps?: string; hours?: number; flagged?: boolean; flagReason?: string };
 type LogbookEntry = { _id: string; date?: string; departmentArea?: string; activitiesPerformed?: string; keyLearnings?: string; challenges?: string; supervisorRemark?: string; verified?: boolean; verifiedBy?: string; verifiedAt?: string; createdAt?: string };
-type Student = { _id: string; leadId?: string; fullName: string; phone: string; parentMobile?: string; email?: string; studentLocation?: string; centre?: string; franchiseId?: string; course?: string; counsellor?: string; teacher?: string; batch?: string; batchCommenceDate?: string; status: string; totalFee?: number; paidAmount?: number; admissionNumber?: string; lmsAccessEnabled?: boolean; lmsAccessGeneratedAt?: string; lmsAccessGeneratedBy?: string; admissionPaymentMode?: string; admissionUpfrontAmount?: number; admissionFinalizedAt?: string; admissionFinalizedBy?: string; discountAmount?: number; emiEnabled?: boolean; emiMonths?: number; emiAmount?: number; nextEmiDate?: string; certificateNumber?: string; certificateIssuedAt?: string; certificateStatus?: string; payments?: PaymentRecord[]; feedbacks?: StudentFeedback[]; internshipAssignment?: InternshipAssignment | null; internshipLogs?: InternshipLog[]; logbookEntries?: LogbookEntry[]; createdAt?: string; updatedAt?: string };
+type Student = { _id: string; leadId?: string; fullName: string; phone: string; parentMobile?: string; email?: string; studentLocation?: string; centre?: string; franchiseId?: string; course?: string; counsellor?: string; teacher?: string; batch?: string; batchCommenceDate?: string; status: string; totalFee?: number; paidAmount?: number; admissionNumber?: string; lmsAccessEnabled?: boolean; lmsAccessGeneratedAt?: string; lmsAccessGeneratedBy?: string; admissionPaymentMode?: string; admissionUpfrontAmount?: number; admissionFinalizedAt?: string; admissionFinalizedBy?: string; discountAmount?: number; emiEnabled?: boolean; emiMonths?: number; emiAmount?: number; nextEmiDate?: string; certificateNumber?: string; certificateIssuedAt?: string; certificateStatus?: string; placementStatus?: string; placementCompany?: string; placementRole?: string; placementJoiningDate?: string; placementSalary?: number; placementHrContact?: string; placementOfferLetterUrl?: string; placementRemarks?: string; testimonialText?: string; testimonialVideoUrl?: string; testimonialRating?: number; testimonialApproved?: boolean; referralName?: string; referralPhone?: string; referralStatus?: string; payments?: PaymentRecord[]; feedbacks?: StudentFeedback[]; internshipAssignment?: InternshipAssignment | null; internshipLogs?: InternshipLog[]; logbookEntries?: LogbookEntry[]; createdAt?: string; updatedAt?: string };
 type Centre = { _id: string; name: string; type?: "branch" | "franchise"; city?: string; billingLegalName?: string; billingAddress?: string; billingGstin?: string; billingStateName?: string; billingStateCode?: string; billingEmail?: string; billingPhone?: string; bankAccountName?: string; bankName?: string; bankAccountNumber?: string; bankIfsc?: string; bankBranch?: string };
 type Course = { _id: string; name: string; code?: string; fee?: number; duration?: string; franchiseId?: string };
 type Counsellor = { _id?: string; name: string; email: string; role: string; franchiseId?: string };
@@ -118,12 +122,15 @@ type ClassSession = { _id: string; scheduleId?: string; batchId: string; batchNa
 type TopicProgress = { _id?: string; batchId: string; batchName?: string; course?: string; centre?: string; franchiseId?: string; module: string; topic: string; status: "Not Started" | "In Progress" | "Covered"; dateCovered?: string; faculty?: string; updatedBy?: string };
 type PracticalRecord = { _id?: string; batchId: string; batchName?: string; course?: string; centre?: string; franchiseId?: string; practicalName: string; module?: string; studentId: string; studentName?: string; dateConducted?: string; status: "Pending" | "Completed" | "Needs Repeat"; remarks?: string; faculty?: string; updatedBy?: string };
 type StudyNote = { _id: string; batchId: string; batchName?: string; course?: string; centre?: string; franchiseId?: string; title: string; module?: string; description?: string; file?: DocumentFile; referenceUrl?: string; resourceType?: "File" | "Video" | "Reference"; uploadedBy?: string; createdAt?: string };
+type NpsTouchpoint = "mid_course" | "post_classroom" | "post_internship";
+type NpsResponse = { _id: string; studentId?: Student | { _id?: string; fullName?: string; admissionNumber?: string; phone?: string } | string; batchId?: string; batchName?: string; courseCode?: string; centre?: string; touchpoint: NpsTouchpoint; npsScore: number; npsCategory: "promoter" | "passive" | "detractor"; attrTeachingQuality?: number; attrContentRelevance?: number; attrPracticalTraining?: number; attrSupportInfra?: number; attrPlacementAssistance?: number; openFeedback?: string; followUpStatus?: "Pending" | "In Progress" | "Resolved"; followUpNotes?: { note?: string; by?: string; at?: string }[]; submittedAt?: string };
+type NpsDashboard = { total: number; promoters: number; passives: number; detractors: number | NpsResponse[]; nps: number; responseRate?: number; promoterPercent?: number; detractorPercent?: number; attributes?: Record<string, number>; trend?: { date: string; total: number; nps: number; promoters: number; passives: number; detractors: number }[]; alerts?: { tone: "good" | "warn" | "bad"; label: string; detail: string }[]; touchpoints?: { label: string; total: number; nps: number; promoters: number; passives: number; detractors: number }[]; batches?: { label: string; total: number; nps: number; promoters: number; passives: number; detractors: number }[]; detractorAlerts?: NpsResponse[] };
 type AttendanceSummary = { studentId: string; studentName?: string; centre?: string; course?: string; batch?: string; counsellor?: string; teacher?: string; total: number; present: number; absent: number; late: number; leave: number; theoretical?: number; practical?: number; lastDate?: string };
 type AttendanceDetailFilters = { dateFrom: string; dateTo: string; status: string; nature: string };
 type Summary = { leadsThisMonth: number; totalLeads: number; enrolled: number; training: number; placed: number; lost: number; students: number; conversion: number; revenue: number; pending: number };
 type AttendanceStatus = Attendance["status"];
 type DatePreset = "all" | "today" | "yesterday" | "specific";
-type Panel = "dashboard" | "leads" | "addlead" | "admissions" | "batch" | "mystudents" | "attendance" | "logs" | "attdetail" | "allstudents" | "finance" | "emi" | "receipts" | "cert" | "internship" | "settings" | "profile";
+type Panel = "dashboard" | "leads" | "addlead" | "admissions" | "batch" | "mystudents" | "attendance" | "logs" | "attdetail" | "allstudents" | "finance" | "emi" | "receipts" | "cert" | "alumni" | "internship" | "nps" | "settings" | "profile";
 type AcademicTab = "batches" | "overview" | "students" | "timetable" | "attendance" | "markAttendance" | "topics" | "practicals" | "notes" | "logs" | "detail";
 type RoleScope = "all" | string;
 type ProfileTarget = { type: "lead"; data: Lead; mode?: "view" | "edit" } | { type: "student"; data: Student; mode?: "view" | "edit" } | null;
@@ -176,7 +183,9 @@ const navGroups: { group: string; items: { key: Panel; label: string; icon: Reac
     { key: "receipts", label: "Receipts", icon: <ReceiptText /> },
   ] },
   { group: "Certification", items: [{ key: "cert", label: "Certificates", icon: <Award /> }] },
+  { group: "Alumni", items: [{ key: "alumni", label: "Alumni", icon: <Star /> }] },
   { group: "Internship", items: [{ key: "internship", label: "Internship", icon: <Stethoscope /> }] },
+  { group: "Quality", items: [{ key: "nps", label: "NPS", icon: <TrendingUp /> }] },
   { group: "Workspace", items: [
     { key: "settings", label: "Settings", icon: <ShieldCheck /> },
     { key: "profile", label: "Profile", icon: <UserRound /> },
@@ -198,7 +207,9 @@ const panelTitles: Record<Panel, [string, string]> = {
   emi: ["EMI reminders", "Upcoming and overdue instalments"],
   receipts: ["Receipts", "Tax invoices and payment receipts"],
   cert: ["Certificates", "Issue and manage certificates"],
+  alumni: ["Alumni", "Placement, testimonials and referrals"],
   internship: ["Internship", "Hospital posting logs and GPS review"],
+  nps: ["NPS", "Student satisfaction and detractor follow-up"],
   settings: ["Settings", "Staff, branches, fees and security"],
   profile: ["Profile", "Lead and student details"],
 };
@@ -354,7 +365,7 @@ function openLeadPamphlet(lead: Lead, pamphlet: LeadPamphletKey) {
 }
 
 function roleLabel(role = "") {
-  return role === "superadmin" ? "Super Admin" : role === "admin" ? "Admin" : role === "teacher" ? "Teacher" : role === "franchise_superadmin" ? "Franchise Super Admin" : role === "franchise_counsellor" ? "Franchise Counsellor" : role === "franchise_teacher" ? "Franchise Teacher" : "Counsellor";
+  return role === "superadmin" ? "Super Admin" : role === "admin" ? "Center Admin" : role === "teacher" ? "Teacher" : role === "franchise_superadmin" ? "Franchise Super Admin" : role === "franchise_counsellor" ? "Franchise Counsellor" : role === "franchise_teacher" ? "Franchise Teacher" : "Counsellor";
 }
 
 function attendanceStatusLabel(status: AttendanceStatus) {
@@ -425,11 +436,12 @@ function studentStatusBlockReason(student: Student, nextStatus = "") {
   if (normalizedNext === "Fees Collected" && dueAmount(student) > 0) {
     return "Collect the full pending fee before marking Fees Collected";
   }
-  if (normalizedNext === "Course Completed" && currentStatus !== "Course Completed" && currentStatus !== "Active Student") {
-    return "Move the candidate to Active Student before marking Course Completed";
+  if (normalizedNext === "Course Completed" && currentStatus !== "Course Completed" && currentStatus !== "Classroom Complete") {
+    return "Mark Classroom Complete before Course Completed";
   }
   if (normalizedNext === "Alumni" && currentStatus !== "Alumni") {
     if (currentStatus !== "Course Completed") return "Mark Course Completed before moving the candidate to Alumni";
+    if (dueAmount(student) > 0) return "Clear full fee before moving the candidate to Alumni";
     if (!student.certificateNumber && student.certificateStatus !== "Issued") return "Issue the certificate before moving the candidate to Alumni";
   }
   return "";
@@ -489,8 +501,36 @@ function isPartialEmiPaymentMode(mode = "") {
 function normalizeStudentStatus(status = "") {
   if (status === "Admission") return "Admission Completed";
   if (status === "In Training") return "Active Student";
+  if (status === "Course Complete") return "Course Completed";
+  if (status === "Classroom Completed") return "Classroom Complete";
   if (status === "Placed") return "Alumni";
   return status;
+}
+
+function studentStatusLabel(status = "") {
+  const normalized = normalizeStudentStatus(status);
+  if (normalized === "Classroom Complete") return "Classroom Completed";
+  if (normalized === "Course Complete") return "Course Completed";
+  return normalized;
+}
+
+function cleanStaffAssignment(value = "") {
+  const trimmed = String(value || "").trim();
+  return trimmed && trimmed !== "Unassigned" ? trimmed : "";
+}
+
+function batchFacultyForStudent(student: Pick<Student, "batch" | "teacher">, batches: Batch[]) {
+  const directTeacher = cleanStaffAssignment(student.teacher);
+  if (directTeacher) return directTeacher;
+  const batch = batches.find((item) => item.name === student.batch);
+  return cleanStaffAssignment(batch?.assignedFaculty?.[0] || "");
+}
+
+function leadOwnerForDisplay(lead: Lead, students: Student[], batches: Batch[]) {
+  const directCounsellor = cleanStaffAssignment(lead.counsellor);
+  if (directCounsellor) return directCounsellor;
+  const linkedStudent = students.find((student) => String(student.leadId || "") === String(lead._id));
+  return cleanStaffAssignment(linkedStudent?.counsellor) || (linkedStudent ? batchFacultyForStudent(linkedStudent, batches) : "");
 }
 
 function emiReferenceNumber(student: Student) {
@@ -777,6 +817,11 @@ export default function AdminCrm() {
   const [topicProgress, setTopicProgress] = useState<TopicProgress[]>([]);
   const [practicalRecords, setPracticalRecords] = useState<PracticalRecord[]>([]);
   const [studyNotes, setStudyNotes] = useState<StudyNote[]>([]);
+  const [npsDashboard, setNpsDashboard] = useState<NpsDashboard | null>(null);
+  const [npsResponses, setNpsResponses] = useState<NpsResponse[]>([]);
+  const [npsMeta, setNpsMeta] = useState<PaginationMeta | null>(null);
+  const [npsFilters, setNpsFilters] = useState({ q: "", touchpoint: "", course: "", batch: "", category: "" });
+  const [npsPage, setNpsPage] = useState(1);
   const [selectedClassSessionId, setSelectedClassSessionId] = useState("");
   const [classWeek, setClassWeek] = useState(dateInputValue(new Date()));
   const [classAttendanceDraft, setClassAttendanceDraft] = useState<Record<string, { status: AttendanceStatus; note: string }>>({});
@@ -834,8 +879,9 @@ export default function AdminCrm() {
   const canManageFees = isHeadAdmin || isFranchiseSuperAdmin;
   const canManageCertificates = isHeadAdmin || isFranchiseSuperAdmin;
   const canManageInternships = isHeadAdmin || isFranchiseSuperAdmin;
+  const canManageNps = isHeadAdmin || isFranchiseSuperAdmin;
   const canDeleteRecords = isHeadAdmin || isFranchiseSuperAdmin;
-  const canUseScopeFilter = isHeadAdmin;
+  const canUseScopeFilter = isHeadSuperAdmin;
   const selectedFranchise = canUseScopeFilter && roleScope !== "all" ? centres.find((centre) => centre._id === roleScope) : undefined;
   const scopedFranchiseId = isFranchiseUser ? user?.franchiseId || "" : canUseScopeFilter ? selectedFranchise?._id || "" : "";
   const authedHeaders = { Authorization: `Bearer ${token}`, "Content-Type": "application/json" };
@@ -846,9 +892,10 @@ export default function AdminCrm() {
     ? students.filter((student) => !isStudentStaffAccount || (isCounsellorAccount ? student.counsellor === user?.name : teacherAssignedBatchNames.includes(student.batch || "") || student.teacher === user?.name))
     : students;
   const pendingLogbookReviewCount = visibleStudents.reduce((total, student) => total + (student.logbookEntries || []).filter((entry) => !entry.verified).length, 0);
-  const [pageTitle, pageSub] = panelTitles[panel];
-  const scopeFilterPanels: Panel[] = ["dashboard", "leads", "admissions", "allstudents", "mystudents", "finance", "emi", "receipts", "cert", "attendance", "logs", "batch", "internship"];
-  const dateFilterPanels: Panel[] = ["dashboard", "leads", "admissions", "allstudents", "mystudents", "finance", "receipts", "cert"];
+  const [pageTitle, defaultPageSub] = panelTitles[panel];
+  const pageSub = panel === "nps" && isTeacherAccount ? "Batch feedback summary" : defaultPageSub;
+  const scopeFilterPanels: Panel[] = ["dashboard", "leads", "admissions", "allstudents", "mystudents", "finance", "emi", "receipts", "cert", "alumni", "attendance", "logs", "batch", "internship", "nps"];
+  const dateFilterPanels: Panel[] = ["dashboard", "leads", "admissions", "allstudents", "mystudents", "finance", "receipts", "cert", "alumni"];
   const searchPanels: Panel[] = ["dashboard", "leads", "admissions"];
   const showScopeFilter = scopeFilterPanels.includes(panel);
   const showDateFilter = dateFilterPanels.includes(panel);
@@ -1086,6 +1133,58 @@ export default function AdminCrm() {
     setStudyNotes(res.data || []);
   };
 
+  const loadNps = async (page = npsPage) => {
+    if (!(canManageNps || isTeacherAccount)) {
+      setNpsDashboard(null);
+      setNpsResponses([]);
+      setNpsMeta(null);
+      return;
+    }
+    const query = {
+      franchiseId: scopedFranchiseId,
+      q: npsFilters.q,
+      touchpoint: npsFilters.touchpoint,
+      course: npsFilters.course,
+      batch: npsFilters.batch,
+      category: npsFilters.category,
+      page: String(page),
+      limit: String(defaultPageSize),
+    };
+    const dashboardRes = await api<NpsDashboard>(`/api/nps/dashboard${queryString(query)}`, { headers: authedHeaders });
+    const responseRes = canManageNps ? await api<NpsResponse[]>(`/api/nps/responses${queryString(query)}`, { headers: authedHeaders }) : { data: [], meta: null };
+    setNpsDashboard(dashboardRes.data || null);
+    setNpsResponses(responseRes.data || []);
+    setNpsMeta(responseRes.meta || null);
+  };
+
+  const saveNpsFollowUp = async (id: string, status: string, note: string) => {
+    try {
+      await api<NpsResponse>(`/api/nps/responses/${id}/follow-up`, {
+        method: "PATCH",
+        headers: authedHeaders,
+        body: JSON.stringify({ status, note }),
+      });
+      toast.success("NPS follow-up updated");
+      await loadNps();
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : "Unable to update NPS follow-up");
+    }
+  };
+
+  const exportNps = async () => {
+    if (!token) return;
+    const suffix = queryString({ franchiseId: scopedFranchiseId, touchpoint: npsFilters.touchpoint });
+    const response = await fetch(`${API_BASE_URL}/api/nps/export${suffix}`, { headers: { Authorization: `Bearer ${token}` } });
+    if (!response.ok) return toast.error("Unable to export NPS responses");
+    const blob = await response.blob();
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement("a");
+    link.href = url;
+    link.download = `imed-nps-${dateInputValue()}.csv`;
+    link.click();
+    URL.revokeObjectURL(url);
+  };
+
   const loadGoogleCalendarStatus = async () => {
     if (!isTeacherAccount) {
       setGoogleCalendarStatus(null);
@@ -1098,7 +1197,7 @@ export default function AdminCrm() {
   const refreshAll = async () => {
     if (!token) return;
     try {
-      await Promise.all([loadMeta(), loadDashboard(), canUseLeads ? Promise.all([loadLeads(1), loadAdmissionPendingCount()]) : Promise.resolve(), loadStudents(1), loadCounsellors(), loadTeachers(), isTeacherAccount ? loadGoogleCalendarStatus() : Promise.resolve(), canUseAcademics ? Promise.all([loadClassSchedules(), loadTopicProgress(), loadPracticalRecords(), loadStudyNotes()]) : Promise.resolve()]);
+      await Promise.all([loadMeta(), loadDashboard(), canUseLeads ? Promise.all([loadLeads(1), loadAdmissionPendingCount()]) : Promise.resolve(), loadStudents(1), loadCounsellors(), loadTeachers(), isTeacherAccount ? loadGoogleCalendarStatus() : Promise.resolve(), canUseAcademics ? Promise.all([loadClassSchedules(), loadTopicProgress(), loadPracticalRecords(), loadStudyNotes()]) : Promise.resolve(), (canManageNps || isTeacherAccount) ? loadNps(1) : Promise.resolve()]);
     } catch (error) {
       toast.error(error instanceof Error ? error.message : "Unable to load CRM data");
     }
@@ -1122,6 +1221,7 @@ export default function AdminCrm() {
   useEffect(() => { if (token && (canManageSettings || isCounsellorAccount)) void loadTeachers(); }, [token, canManageSettings, isCounsellorAccount]);
   useEffect(() => { if (token && (panel === "attendance" || (isTeacherAccount && panel === "dashboard"))) void loadAttendance(); }, [panel, isTeacherAccount, attendanceDateValue, visibleStudents.length]);
   useEffect(() => { if (token && (panel === "batch" || (isTeacherAccount && panel === "dashboard"))) { void loadClassSchedules(); void loadClassSessions(); void loadAttendanceLogs(); void loadTopicProgress(); void loadPracticalRecords(); void loadStudyNotes(); } }, [token, panel, scopedFranchiseId, classWeek, canUseAcademics, isTeacherAccount]);
+  useEffect(() => { if (token && panel === "nps" && (canManageNps || isTeacherAccount)) void loadNps(npsPage); }, [token, panel, canManageNps, isTeacherAccount, scopedFranchiseId, npsPage, npsFilters.q, npsFilters.touchpoint, npsFilters.course, npsFilters.batch, npsFilters.category]);
   useEffect(() => { if (token && panel === "logs") void loadAttendanceLogs(); }, [panel, scopedFranchiseId]);
   useEffect(() => { if (token && (panel === "attdetail" || panel === "batch") && selectedAttendanceSummary) void loadAttendanceDetail(); }, [panel, selectedAttendanceSummary?.studentId, attendanceDetailFilters.dateFrom, attendanceDetailFilters.dateTo, attendanceDetailFilters.status, attendanceDetailFilters.nature, scopedFranchiseId]);
   useEffect(() => {
@@ -1134,20 +1234,21 @@ export default function AdminCrm() {
   }, [selectedClassSessionId, classSessions.length, students.length, batches.length, isTeacherAccount, user?.name]);
   useEffect(() => {
     const counsellorPanels = ["dashboard", "leads", "addlead", "admissions", "mystudents", "profile"];
-    const teacherPanels = ["dashboard", "batch", "mystudents", "internship", "profile"];
+    const teacherPanels = ["dashboard", "batch", "mystudents", "alumni", "internship", "nps", "profile"];
     if (isCounsellorAccount && !counsellorPanels.includes(panel)) setPanel("dashboard");
     if (isTeacherAccount && !teacherPanels.includes(panel)) setPanel("dashboard");
     if (!isTeacherAccount && panel === "batch") setPanel("dashboard");
     if (!canManageFees && ["finance", "emi", "receipts"].includes(panel)) setPanel("dashboard");
     if (!canManageCertificates && panel === "cert") setPanel("dashboard");
     if (!canUseInternship && panel === "internship") setPanel("dashboard");
-  }, [panel, isCounsellorAccount, isTeacherAccount, canManageFees, canManageCertificates, canUseInternship]);
+    if (!(canManageNps || isTeacherAccount) && panel === "nps") setPanel("dashboard");
+  }, [panel, isCounsellorAccount, isTeacherAccount, canManageFees, canManageCertificates, canUseInternship, canManageNps]);
 
   const visibleNavGroups = useMemo(() => navGroups.map((group) => ({
     ...group,
     items: group.items.filter((item) => {
       if (isCounsellorAccount) return ["dashboard", "leads", "addlead", "admissions", "mystudents", "profile"].includes(item.key);
-      if (isTeacherAccount) return ["dashboard", "batch", "mystudents", "internship", "profile"].includes(item.key);
+      if (isTeacherAccount) return ["dashboard", "batch", "mystudents", "alumni", "internship", "nps", "profile"].includes(item.key);
       if (item.key === "batch") return false;
       if (item.key === "attendance" || item.key === "logs") return false;
       if (item.key === "mystudents") return isStudentStaffAccount;
@@ -1156,10 +1257,11 @@ export default function AdminCrm() {
       if (["finance", "emi", "receipts"].includes(item.key) && !canManageFees) return false;
       if (item.key === "cert" && !canManageCertificates) return false;
       if (item.key === "internship") return canUseInternship;
+      if (item.key === "nps") return canManageNps || isTeacherAccount;
       if (item.key === "settings") return canManageSettings;
       return true;
     }),
-  })).filter((group) => group.items.length), [isCounsellorAccount, isTeacherAccount, isStudentStaffAccount, canUseAcademics, canUseAttendance, canManageSettings, canManageFees, canManageCertificates, canUseInternship]);
+  })).filter((group) => group.items.length), [isCounsellorAccount, isTeacherAccount, isStudentStaffAccount, canUseAcademics, canUseAttendance, canManageSettings, canManageFees, canManageCertificates, canUseInternship, canManageNps]);
 
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);
@@ -2168,7 +2270,6 @@ export default function AdminCrm() {
                 {centres.map((centre) => <option key={centre._id} value={centre._id}>{centreKindLabel(centre)} - {centre.name}</option>)}
               </select>
             )}
-            {showScopeFilter && isFranchiseUser && <select className="scope-select scope-select-locked" value={user?.franchiseId || ""} disabled><option value={user?.franchiseId || ""}>{centres.find((centre) => centre._id === user?.franchiseId)?.name || "Current franchise"}</option></select>}
             {showDateFilter && (
               <>
                 <div className="date-filter">
@@ -2187,16 +2288,18 @@ export default function AdminCrm() {
 
           <section className="content">
             {panel === "dashboard" && (isCounsellorAccount ? <SalesCounsellorDashboardPanel leads={leads} students={visibleStudents} onOpenLead={openLeadDrawer} onGoLeads={() => setPanel("leads")} onGoAddLead={() => setPanel("addlead")} onGoAdmissions={() => setPanel("admissions")} onOpenStudent={(student) => openProfile({ type: "student", data: student }, "dashboard")} /> : isTeacherAccount ? <TeacherDashboardPanel batches={batches} students={visibleStudents} sessions={classSessions} schedules={classSchedulesState} topicProgress={topicProgress} practicalRecords={practicalRecords} user={user} googleCalendarStatus={googleCalendarStatus} calendarSyncing={calendarSyncing} onConnectCalendar={connectGoogleCalendar} onDisconnectCalendar={disconnectGoogleCalendar} onSyncCalendar={syncGoogleCalendar} onOpenStudent={(student) => openProfile({ type: "student", data: student }, "dashboard")} onOpenBatch={(batchId, sessionId) => { setSelectedBatchId(batchId); setSelectedClassSessionId(sessionId || ""); setPanel("batch"); }} /> : <DashboardPanel summary={summary} funnel={funnel} centreStats={centreStats} students={students} leads={leads} onOpenLead={openLeadDrawer} />)}
-            {panel === "leads" && <LeadsPanel leads={leads} meta={leadMeta} filters={filters} setFilters={setFilters} centres={centreOptions} courses={courseOptions} canAssign={canAssignCounsellors} canDelete={canDeleteRecords} counsellors={counsellors} onSearch={() => loadLeads(1)} onPage={setLeadPage} onPatch={patchLead} onDelete={deleteLead} onEdit={(lead) => openProfile({ type: "lead", data: lead, mode: "edit" }, "leads")} onAddLead={() => setPanel("addlead")} onImportExcel={importLeadExcel} onOpen={openLeadDrawer} />}
+            {panel === "leads" && <LeadsPanel leads={leads} students={students} batches={batches} meta={leadMeta} filters={filters} setFilters={setFilters} centres={centreOptions} courses={courseOptions} canAssign={canAssignCounsellors} canDelete={canDeleteRecords} counsellors={counsellors} onSearch={() => loadLeads(1)} onPage={setLeadPage} onPatch={patchLead} onDelete={deleteLead} onEdit={(lead) => openProfile({ type: "lead", data: lead, mode: "edit" }, "leads")} onAddLead={() => setPanel("addlead")} onImportExcel={importLeadExcel} onOpen={openLeadDrawer} />}
             {panel === "addlead" && <AddLeadPanel centres={centreOptions} courses={courseOptions} onSubmit={addLead} />}
             {panel === "admissions" && <AdmissionsPanel leads={leads.filter((lead) => lead.stage === "Admission" && !students.some((student) => String(student.leadId || "") === String(lead._id)))} batches={batches} canAssign={canAssignCounsellors} counsellors={counsellors} centres={centreOptions} onPatch={patchLead} onConvert={convertLead} onOpen={openLeadDrawer} />}
-            {panel === "batch" && <BatchPanel batches={batches} students={students} schedules={classSchedulesState} sessions={classSessions} topicProgress={topicProgress} practicalRecords={practicalRecords} studyNotes={studyNotes} teachers={teachers} user={user} classWeek={classWeek} setClassWeek={setClassWeek} selectedBatchId={selectedBatchId} setSelectedBatchId={setSelectedBatchId} selectedSessionId={selectedClassSessionId} setSelectedSessionId={setSelectedClassSessionId} initialTab={batchResumeTab} classesGenerating={classesGenerating} attendanceDraft={classAttendanceDraft} setAttendanceDraft={setClassAttendanceDraft} attendanceLogs={attendanceSummaries} selectedAttendanceSummary={selectedAttendanceSummary} attendanceDetailLogs={attendanceDetailLogs} attendanceDetailFilters={attendanceDetailFilters} setAttendanceDetailFilters={setAttendanceDetailFilters} onSelectAttendanceSummary={setSelectedAttendanceSummary} onCreateSchedule={createClassSchedule} onGenerateWeek={generateWeeklyRoster} onSaveAttendance={saveClassAttendance} onResetAttendance={resetClassAttendance} onTopicProgress={updateTopicProgress} onDeleteTopic={deleteTopicProgress} onCreateBatchPractical={createBatchPractical} onPracticalRecord={updatePracticalRecord} onUploadStudyNote={uploadStudyNote} onDownloadStudyNote={downloadStudyNote} onDeleteStudyNote={deleteStudyNote} onOpen={(student) => { setBatchResumeTab("students"); openProfile({ type: "student", data: student }, "batch"); }} />}
-            {panel === "mystudents" && <StudentsPanel title="My candidates" students={visibleStudents} meta={studentMeta} canAssign={canAssignTeachers} canDelete={canDeleteRecords} teachers={teachers} onPage={setStudentPage} onPatch={patchStudent} onDelete={deleteStudent} onEdit={(student) => openProfile({ type: "student", data: student, mode: "edit" }, "mystudents")} onOpen={(student) => openProfile({ type: "student", data: student }, "mystudents")} />}
-            {panel === "allstudents" && <StudentsPanel title="All candidates" students={students} meta={studentMeta} canAssign={canAssignTeachers} canDelete={canDeleteRecords} teachers={teachers} onPage={setStudentPage} onPatch={patchStudent} onDelete={deleteStudent} onEdit={(student) => openProfile({ type: "student", data: student, mode: "edit" }, "allstudents")} onOpen={(student) => openProfile({ type: "student", data: student }, "allstudents")} />}
+            {panel === "batch" && <BatchPanel batches={batches} students={students} schedules={classSchedulesState} sessions={classSessions} topicProgress={topicProgress} practicalRecords={practicalRecords} studyNotes={studyNotes} npsDashboard={npsDashboard} teachers={teachers} user={user} classWeek={classWeek} setClassWeek={setClassWeek} selectedBatchId={selectedBatchId} setSelectedBatchId={setSelectedBatchId} selectedSessionId={selectedClassSessionId} setSelectedSessionId={setSelectedClassSessionId} initialTab={batchResumeTab} classesGenerating={classesGenerating} attendanceDraft={classAttendanceDraft} setAttendanceDraft={setClassAttendanceDraft} attendanceLogs={attendanceSummaries} selectedAttendanceSummary={selectedAttendanceSummary} attendanceDetailLogs={attendanceDetailLogs} attendanceDetailFilters={attendanceDetailFilters} setAttendanceDetailFilters={setAttendanceDetailFilters} onSelectAttendanceSummary={setSelectedAttendanceSummary} onCreateSchedule={createClassSchedule} onGenerateWeek={generateWeeklyRoster} onSaveAttendance={saveClassAttendance} onResetAttendance={resetClassAttendance} onTopicProgress={updateTopicProgress} onDeleteTopic={deleteTopicProgress} onCreateBatchPractical={createBatchPractical} onPracticalRecord={updatePracticalRecord} onUploadStudyNote={uploadStudyNote} onDownloadStudyNote={downloadStudyNote} onDeleteStudyNote={deleteStudyNote} onOpen={(student) => { setBatchResumeTab("students"); openProfile({ type: "student", data: student }, "batch"); }} />}
+            {panel === "mystudents" && <StudentsPanel title="My candidates" students={visibleStudents} meta={studentMeta} batches={batches} canAssign={canAssignTeachers} canDelete={canDeleteRecords} teachers={teachers} onPage={setStudentPage} onPatch={patchStudent} onDelete={deleteStudent} onEdit={(student) => openProfile({ type: "student", data: student, mode: "edit" }, "mystudents")} onOpen={(student) => openProfile({ type: "student", data: student }, "mystudents")} />}
+            {panel === "allstudents" && <StudentsPanel title="All candidates" students={students} meta={studentMeta} batches={batches} canAssign={canAssignTeachers} canDelete={canDeleteRecords} teachers={teachers} onPage={setStudentPage} onPatch={patchStudent} onDelete={deleteStudent} onEdit={(student) => openProfile({ type: "student", data: student, mode: "edit" }, "allstudents")} onOpen={(student) => openProfile({ type: "student", data: student }, "allstudents")} />}
             {panel === "attendance" && <AttendancePanel students={visibleStudents} attendance={attendance} draft={attendanceDraft} setDraft={setAttendanceDraft} attendanceDate={attendanceDateValue} setAttendanceDate={setAttendanceDateValue} onRefresh={loadAttendance} onSave={saveAttendance} />}
             {panel === "logs" && <LogsPanel logs={attendanceSummaries} onSelect={(summary) => { setSelectedAttendanceSummary(summary); setPanel("attdetail"); }} />}
             {panel === "attdetail" && <AttendanceDetailPanel summary={selectedAttendanceSummary} logs={attendanceDetailLogs} filters={attendanceDetailFilters} setFilters={setAttendanceDetailFilters} onBack={() => setPanel("logs")} />}
             {panel === "internship" && canUseInternship && <InternshipPanel students={visibleStudents} user={user} onPreviewPhoto={openInternshipPhotoPreview} onReviewLogbook={reviewLogbookEntry} />}
+            {panel === "nps" && (canManageNps || isTeacherAccount) && <NpsPanel dashboard={npsDashboard} responses={npsResponses} meta={npsMeta} filters={npsFilters} setFilters={(next) => { setNpsFilters(next); setNpsPage(1); }} courses={courseOptions} batches={batches} canManage={canManageNps} onPage={setNpsPage} onFollowUp={saveNpsFollowUp} onExport={exportNps} />}
+            {panel === "alumni" && <AlumniPanel students={isTeacherAccount ? visibleStudents : students} meta={studentMeta} canManage={!isTeacherAccount && !isCounsellorAccount} onPage={setStudentPage} onPatch={patchStudent} onOpen={(student) => openProfile({ type: "student", data: student }, "alumni")} />}
             {panel === "finance" && <FinancePanel students={students} meta={studentMeta} user={user} onPage={setStudentPage} onOpen={(student) => openProfile({ type: "student", data: student }, "finance")} onCashDeposit={recordCashDeposit} onDownloadCashDepositProof={downloadCashDepositProof} />}
             {panel === "emi" && <EmiPanel students={students} meta={studentMeta} onPage={setStudentPage} onOpen={(student) => openProfile({ type: "student", data: student }, "emi")} />}
             {panel === "receipts" && canManageFees && <ReceiptsPanel students={visibleStudents} meta={studentMeta} onPage={setStudentPage} onOpen={(student) => { setReceiptStudent(student); setReceiptSelection({ type: "invoice" }); }} />}
@@ -2236,6 +2339,146 @@ export default function AdminCrm() {
         }}
       />
     </main>
+  );
+}
+
+const npsTouchpointLabels: Record<string, string> = {
+  mid_course: "Mid-course",
+  post_classroom: "Classroom complete",
+  post_internship: "Internship complete",
+};
+
+const npsAttributeLabels: Record<string, string> = {
+  attrTeachingQuality: "Teaching quality",
+  attrContentRelevance: "Content relevance",
+  attrPracticalTraining: "Practical training",
+  attrSupportInfra: "Support & infra",
+  attrPlacementAssistance: "Placement / internship",
+};
+
+function npsStudentName(response: NpsResponse) {
+  const student = response.studentId;
+  return typeof student === "object" && student ? student.fullName || "Student" : "Student";
+}
+
+function npsStudentSub(response: NpsResponse) {
+  const student = response.studentId;
+  return typeof student === "object" && student ? student.admissionNumber || student.phone || "" : "";
+}
+
+function npsLatestFollowUpNote(response: NpsResponse) {
+  const notes = response.followUpNotes || [];
+  return notes.length ? notes[notes.length - 1] : null;
+}
+
+function NpsPanel({ dashboard, responses, meta, filters, setFilters, courses, batches, canManage, onPage, onFollowUp, onExport }: { dashboard: NpsDashboard | null; responses: NpsResponse[]; meta: PaginationMeta | null; filters: { q: string; touchpoint: string; course: string; batch: string; category: string }; setFilters: (filters: { q: string; touchpoint: string; course: string; batch: string; category: string }) => void; courses: string[]; batches: Batch[]; canManage: boolean; onPage: (page: number) => void; onFollowUp: (id: string, status: string, note: string) => void; onExport: () => void }) {
+  const [selected, setSelected] = useState<NpsResponse | null>(null);
+  const [followStatus, setFollowStatus] = useState("In Progress");
+  const [followNote, setFollowNote] = useState("");
+  const scoreTone = (dashboard?.nps || 0) >= 50 ? "good" : (dashboard?.nps || 0) >= 0 ? "warn" : "bad";
+  const detractorCount = typeof dashboard?.detractors === "number" ? dashboard.detractors : dashboard?.detractors?.length || 0;
+  const detractorAlerts = dashboard?.detractorAlerts || (Array.isArray(dashboard?.detractors) ? dashboard.detractors : []);
+  const visibleAttributes = Object.entries(npsAttributeLabels).filter(([key]) => Number(dashboard?.attributes?.[key] || 0) > 0);
+  const npsValueColor = scoreTone === "good" ? "#17A673" : scoreTone === "warn" ? "#F5A524" : "#E5484D";
+  const responseRate = Math.min(100, dashboard?.responseRate || 0);
+  const openFollowUp = (response: NpsResponse) => {
+    setSelected(response);
+    setFollowStatus(response.followUpStatus || "In Progress");
+    setFollowNote("");
+  };
+  const save = () => {
+    if (!selected) return;
+    onFollowUp(selected._id, followStatus, followNote);
+    setSelected(null);
+  };
+  return (
+    <>
+      <div className="grid-metrics nps-metrics">
+        <MetricCard label="NPS" value={dashboard ? dashboard.nps : 0} dot={npsValueColor} delta={`${dashboard?.total || 0} responses`} down={scoreTone === "bad"} valueColor={npsValueColor} />
+        <MetricCard label="Promoters" value={dashboard?.promoters || 0} dot="#17A673" delta={`${dashboard?.promoterPercent || 0}%`} />
+        <MetricCard label="Detractors" value={detractorCount} dot="#E5484D" delta={canManage ? `${dashboard?.detractorPercent || 0}% needs follow-up` : `${dashboard?.detractorPercent || 0}% low-score feedback`} down={detractorCount > 0} />
+        <MetricCard label="Response rate" value={`${responseRate}%`} dot="#17A673" delta="active students" />
+      </div>
+      {canManage && <div className="filter-bar nps-filter-bar">
+        {canManage && <div className="search-box"><Search size={14} /><input value={filters.q} onChange={(event) => setFilters({ ...filters, q: event.target.value })} placeholder="Search student, batch, feedback..." /></div>}
+        <select className="fbtn" value={filters.touchpoint} onChange={(event) => setFilters({ ...filters, touchpoint: event.target.value })}><option value="">All touchpoints</option>{Object.entries(npsTouchpointLabels).map(([key, label]) => <option key={key} value={key}>{label}</option>)}</select>
+        <select className="fbtn" value={filters.course} onChange={(event) => setFilters({ ...filters, course: event.target.value })}><option value="">All courses</option>{courses.map((course) => <option key={course}>{course}</option>)}</select>
+        <select className="fbtn" value={filters.batch} onChange={(event) => setFilters({ ...filters, batch: event.target.value })}><option value="">All batches</option>{batches.map((batch) => <option key={batch._id} value={batch.name}>{batch.name}</option>)}</select>
+        {canManage && <select className="fbtn" value={filters.category} onChange={(event) => setFilters({ ...filters, category: event.target.value })}><option value="">All categories</option><option value="promoter">Promoter</option><option value="passive">Passive</option><option value="detractor">Detractor</option></select>}
+        {canManage && <button className="btn btn-ghost" onClick={onExport}><Download size={15} /> Export</button>}
+      </div>}
+      <div className="two-col nps-insight-grid">
+        <section className="card">
+          <div className="card-head"><div><h3>NPS trend</h3><p>Daily submitted feedback score</p></div></div>
+          <div className="card-body nps-trend">
+            {(dashboard?.trend || []).map((item) => {
+              const height = Math.max(10, Math.min(100, item.nps + 100) / 2);
+              return <div className="nps-trend-day" key={item.date}><div className="nps-trend-bar"><i style={{ height: `${height}%` }} /></div><b>{item.nps}</b><span>{new Date(item.date).toLocaleDateString("en-IN", { day: "2-digit", month: "short" })}</span></div>;
+            })}
+            {!(dashboard?.trend || []).length && <div className="empty-state">No trend data yet</div>}
+          </div>
+        </section>
+        <section className="card">
+          <div className="card-head"><div><h3>NPS alerts</h3><p>Response and follow-up checks</p></div></div>
+          <div className="card-body nps-alert-list">
+            {(dashboard?.alerts || []).map((alert) => <div className={`nps-alert ${alert.tone}`} key={`${alert.label}-${alert.detail}`}><span /> <div><b>{alert.label}</b><p>{alert.detail}</p></div></div>)}
+            {!(dashboard?.alerts || []).length && <div className="empty-state">No NPS alerts right now</div>}
+          </div>
+        </section>
+      </div>
+      <div className="two-col">
+        <section className="card">
+          <div className="card-head"><div><h3>Attribute heatmap</h3><p>Average star rating across responses</p></div></div>
+          <div className="card-body nps-heatmap">
+            {visibleAttributes.map(([key, label]) => {
+              const value = dashboard?.attributes?.[key] || 0;
+              return <div className="nps-heat-row" key={key}><span>{label}</span><div><i style={{ width: `${(value / 5) * 100}%` }} /></div><b>{value ? value.toFixed(1) : "-"}</b></div>;
+            })}
+            {!visibleAttributes.length && <div className="empty-state">No attribute ratings yet</div>}
+          </div>
+        </section>
+        {canManage ? <section className="card">
+          <div className="card-head"><div><h3>Detractor alerts</h3><p>0-6 ratings needing closure</p></div></div>
+          <div className="card-body row-list">
+            {detractorAlerts.map((item) => <div className="crow" key={item._id}><div className="who"><span className="mini">{initials(npsStudentName(item))}</span><div><b>{npsStudentName(item)}</b><p className="cell-sub">{npsTouchpointLabels[item.touchpoint]} | Score {item.npsScore}</p></div></div><button className="btn btn-primary btn-sm" onClick={() => openFollowUp(item)}>Follow up</button></div>)}
+            {!detractorAlerts.length && <div className="empty-state">No open detractor alerts</div>}
+          </div>
+        </section> : <section className="card">
+          <div className="card-head"><div><h3>Touchpoint summary</h3><p>NPS split by feedback stage</p></div></div>
+          <div className="card-body nps-summary-grid">
+            {(dashboard?.touchpoints || []).map((item) => <div className="nps-summary-card" key={item.label}><b>{item.label}</b><strong>{item.nps}</strong><span>{item.total} responses</span></div>)}
+            {!(dashboard?.touchpoints || []).length && <div className="empty-state">No touchpoint NPS yet</div>}
+          </div>
+        </section>}
+      </div>
+      {canManage && <section className="card nps-responses-card">
+        <div className="card-head"><div><h3>NPS responses</h3><p>Student feedback responses with follow-up status</p></div></div>
+        <div className="table-wrap">
+          <table>
+            <thead><tr><th>Student</th><th>Touchpoint</th><th>Score</th><th>Attributes</th><th>Feedback</th><th>Follow-up</th><th>Date</th><th></th></tr></thead>
+            <tbody>{responses.map((row) => <tr key={row._id}>
+              <td><div className="cell-name">{npsStudentName(row)}</div><div className="cell-sub">{npsStudentSub(row)} | {row.batchName || "-"}</div></td>
+              <td>{npsTouchpointLabels[row.touchpoint] || row.touchpoint}</td>
+              <td><span className={`badge nps-${row.npsCategory}`}>{row.npsScore}/10</span></td>
+              <td><span className="cell-sub">{[row.attrTeachingQuality, row.attrContentRelevance, row.attrPracticalTraining, row.attrSupportInfra, row.attrPlacementAssistance].filter(Boolean).join(" / ")}</span></td>
+              <td><span className="cell-sub">{row.openFeedback || "-"}</span></td>
+              <td><span className={`badge ${row.followUpStatus === "Resolved" ? "badge-green" : row.followUpStatus === "In Progress" ? "badge-yellow" : "badge-red"}`}>{row.followUpStatus || "Pending"}</span><div className="cell-sub">{npsLatestFollowUpNote(row)?.note || "No note yet"}</div></td>
+              <td>{formatDate(row.submittedAt)}</td>
+              <td>{row.npsCategory === "detractor" && <button className="action-icon-btn action-icon-primary" title="Update follow-up" aria-label="Update follow-up" onClick={() => openFollowUp(row)}><Pencil size={14} /></button>}</td>
+            </tr>)}</tbody>
+          </table>
+        </div>
+        {meta && <Pager meta={meta} label="responses" onPage={onPage} />}
+      </section>}
+      <section className="card nps-summary-section">
+        <div className="card-head"><div><h3>Batch summary</h3><p>Overall NPS score by batch</p></div></div>
+        <div className="card-body nps-summary-grid">
+          {(dashboard?.batches || []).map((batch) => <div className="nps-summary-card" key={batch.label}><b>{batch.label}</b><strong>{batch.nps}</strong><span>{batch.total} responses</span></div>)}
+          {!(dashboard?.batches || []).length && <div className="empty-state">No batch NPS yet</div>}
+        </div>
+      </section>
+      {canManage && selected && <div className="modal-overlay show"><div className="modal logbook-review-modal"><div className="modal-head"><h3>NPS follow-up</h3><button className="icon-btn" onClick={() => setSelected(null)}>x</button></div><div className="modal-body"><div className="review-entry-snapshot"><b>{npsStudentName(selected)} | {selected.npsScore}/10</b><span>{selected.openFeedback || "No written feedback"}</span></div>{Boolean(selected.followUpNotes?.length) && <div className="nps-note-history"><b>Previous notes</b>{selected.followUpNotes?.map((note, index) => <div key={`${note.at || index}-${index}`}><p>{note.note}</p><span>{note.by || "Admin"} - {formatDateTime(note.at)}</span></div>)}</div>}<div className="field"><label>Status</label><select value={followStatus} onChange={(event) => setFollowStatus(event.target.value)}><option>Pending</option><option>In Progress</option><option>Resolved</option></select></div><div className="field"><label>Internal note</label><textarea value={followNote} onChange={(event) => setFollowNote(event.target.value)} placeholder="Add action taken or follow-up note" /></div></div><div className="modal-foot"><button className="btn btn-ghost" onClick={() => setSelected(null)}>Cancel</button><button className="btn btn-primary" onClick={save}>Save follow-up</button></div></div></div>}
+    </>
   );
 }
 
@@ -2338,8 +2581,8 @@ function SalesCounsellorDashboardPanel({ leads, students, onOpenLead, onGoLeads,
   );
 }
 
-function MetricCard({ label, value, dot, delta, down = false }: { label: string; value: string | number; dot: string; delta: string; down?: boolean }) {
-  return <div className="metric-card"><div className="m-label"><span className="m-dot" style={{ background: dot }} />{label}</div><div className="m-value">{value}</div><div className={`m-delta ${down ? "down" : "up"}`}>{delta}</div></div>;
+function MetricCard({ label, value, dot, delta, down = false, valueColor }: { label: string; value: string | number; dot: string; delta: string; down?: boolean; valueColor?: string }) {
+  return <div className="metric-card"><div className="m-label"><span className="m-dot" style={{ background: dot }} />{label}</div><div className="m-value" style={valueColor ? { color: valueColor } : undefined}>{value}</div><div className={`m-delta ${down ? "down" : "up"}`}>{delta}</div></div>;
 }
 
 function TeacherDashboardPanel({ batches, students, sessions, schedules, topicProgress, practicalRecords, user, googleCalendarStatus, calendarSyncing, onConnectCalendar, onDisconnectCalendar, onSyncCalendar, onOpenStudent, onOpenBatch }: { batches: Batch[]; students: Student[]; sessions: ClassSession[]; schedules: ClassSchedule[]; topicProgress: TopicProgress[]; practicalRecords: PracticalRecord[]; user: AdminUser | null; googleCalendarStatus: GoogleCalendarStatus | null; calendarSyncing: boolean; onConnectCalendar: () => void; onDisconnectCalendar: () => void; onSyncCalendar: () => void; onOpenStudent: (student: Student) => void; onOpenBatch: (batchId: string, sessionId?: string) => void }) {
@@ -2521,7 +2764,7 @@ function CounsellorDashboardPanel({ students, attendance, attendanceDate, onOpen
             {studentStatuses.map((status) => {
               const count = students.filter((student) => normalizeStudentStatus(student.status) === status).length;
               const max = Math.max(...studentStatuses.map((item) => students.filter((student) => normalizeStudentStatus(student.status) === item).length), 1);
-              return <div className="funnel-row" key={status}><div className="flabel">{status}</div><div className="funnel-bar-track"><div className="funnel-bar-fill" style={{ width: `${Math.max((count / max) * 100, 6)}%` }}><span>{count}</span></div></div><div className="fval">{count} nos.</div></div>;
+              return <div className="funnel-row" key={status}><div className="flabel">{studentStatusLabel(status)}</div><div className="funnel-bar-track"><div className="funnel-bar-fill" style={{ width: `${Math.max((count / max) * 100, 6)}%` }}><span>{count}</span></div></div><div className="fval">{count} nos.</div></div>;
             })}
           </div>
         </div>
@@ -2684,7 +2927,7 @@ function InternshipPanel({ students, user, onPreviewPhoto, onReviewLogbook }: { 
 
 type LeadFilters = { q: string; stage: string; centre: string; course: string; counsellor: string; leadFeedback: string };
 
-function LeadsPanel(props: { leads: Lead[]; meta: PaginationMeta | null; filters: LeadFilters; setFilters: (filters: LeadFilters) => void; centres: string[]; courses: string[]; canAssign: boolean; canDelete: boolean; counsellors: Counsellor[]; onSearch: () => void; onPage: (page: number) => void; onPatch: (id: string, updates: Partial<Lead>) => void; onDelete: (lead: Lead) => void; onEdit: (lead: Lead) => void; onAddLead: () => void; onImportExcel: (event: ChangeEvent<HTMLInputElement>) => void; onOpen: (lead: Lead) => void }) {
+function LeadsPanel(props: { leads: Lead[]; students: Student[]; batches: Batch[]; meta: PaginationMeta | null; filters: LeadFilters; setFilters: (filters: LeadFilters) => void; centres: string[]; courses: string[]; canAssign: boolean; canDelete: boolean; counsellors: Counsellor[]; onSearch: () => void; onPage: (page: number) => void; onPatch: (id: string, updates: Partial<Lead>) => void; onDelete: (lead: Lead) => void; onEdit: (lead: Lead) => void; onAddLead: () => void; onImportExcel: (event: ChangeEvent<HTMLInputElement>) => void; onOpen: (lead: Lead) => void }) {
   const counsellorNames = props.counsellors.length ? props.counsellors.map((counsellor) => counsellor.name) : Array.from(new Set(props.leads.map((lead) => lead.counsellor).filter(Boolean))) as string[];
   return (
     <div className="leads-prototype">
@@ -2695,7 +2938,7 @@ function LeadsPanel(props: { leads: Lead[]; meta: PaginationMeta | null; filters
         <select className="fbtn" value={props.filters.centre} onChange={(event) => props.setFilters({ ...props.filters, centre: event.target.value })}><option value="">All centres</option>{props.centres.map((centre) => <option key={centre}>{centre}</option>)}</select>
         <select className="fbtn" value={props.filters.counsellor} onChange={(event) => props.setFilters({ ...props.filters, counsellor: event.target.value })}><option value="">All counsellors</option>{counsellorNames.map((name) => <option key={name}>{name}</option>)}</select>
         <div className="filter-spacer" />
-        <button className="btn btn-ghost" onClick={() => downloadExcelFile(["Lead", "Contact", "Course", "Source", "Centre", "Counsellor", "Stage", "Priority", "Next follow-up"], props.leads.map((lead) => [lead.fullName, lead.phone, lead.course, lead.source, lead.centre, lead.counsellor, lead.stage, leadPriorityLabel(lead.priority), formatDate(lead.updatedAt || lead.createdAt)]), "imed-leads")}><Download size={15} /> Download Excel</button>
+        <button className="btn btn-ghost" onClick={() => downloadExcelFile(["Lead", "Contact", "Course", "Source", "Centre", "Counsellor", "Stage", "Priority", "Next follow-up"], props.leads.map((lead) => [lead.fullName, lead.phone, lead.course, lead.source, lead.centre, leadOwnerForDisplay(lead, props.students, props.batches) || "Unassigned", lead.stage, leadPriorityLabel(lead.priority), formatDate(lead.updatedAt || lead.createdAt)]), "imed-leads")}><Download size={15} /> Download Excel</button>
         <label className="btn btn-ghost file-upload-btn">Upload Excel<input type="file" accept=".xlsx,.xls,.csv" onChange={props.onImportExcel} /></label>
         <button className="btn btn-primary" onClick={props.onAddLead}><Plus size={15} /> Add lead</button>
       </div>
@@ -2774,21 +3017,24 @@ function LeadPamphletSelect({ lead, compact = false }: { lead: Lead; compact?: b
   );
 }
 
-function LeadTable({ leads, canAssign, canDelete = false, counsellors, centres, onPatch, onDelete, onEdit, onOpen, showAction }: { leads: Lead[]; canAssign: boolean; canDelete?: boolean; counsellors: Counsellor[]; centres: string[]; onPatch: (id: string, updates: Partial<Lead>) => void; onDelete?: (lead: Lead) => void; onEdit?: (lead: Lead) => void; onOpen: (lead: Lead) => void; showAction: boolean }) {
+function LeadTable({ leads, students, batches, canAssign, canDelete = false, counsellors, centres, onPatch, onDelete, onEdit, onOpen, showAction }: { leads: Lead[]; students: Student[]; batches: Batch[]; canAssign: boolean; canDelete?: boolean; counsellors: Counsellor[]; centres: string[]; onPatch: (id: string, updates: Partial<Lead>) => void; onDelete?: (lead: Lead) => void; onEdit?: (lead: Lead) => void; onOpen: (lead: Lead) => void; showAction: boolean }) {
   const leadStages = stages;
   return (
     <div className="table-wrap leads-table-wrap">
       <table className="leads-table">
         <thead><tr><th>Lead</th><th>Contact</th><th>Course</th><th>Source</th><th>Centre</th><th>Counsellor</th><th>Stage</th><th>Status</th><th>Priority</th><th>Next follow-up</th><th /></tr></thead>
         <tbody>
-          {leads.map((lead) => (
+          {leads.map((lead) => {
+            const displayOwner = leadOwnerForDisplay(lead, students, batches);
+            const hasCounsellorOption = !displayOwner || counsellors.some((counsellor) => counsellor.name === displayOwner);
+            return (
             <tr key={lead._id} className="clickable" onClick={() => onOpen(lead)}>
               <td><div className="lead-name-cell"><span className="avatar lead-avatar">{initials(lead.fullName)}</span><div><div className="cell-name">{lead.fullName}</div><div className="cell-sub">{lead._id.slice(-8).toUpperCase()}</div></div></div></td>
               <td>{lead.phone}<div className="cell-sub">{lead.studentLocation || lead.city || lead.email || "-"}</div></td>
               <td>{courseShortCode(lead.course)}</td>
               <td><span className="badge badge-gray">{lead.source || "-"}</span></td>
               <td>{canAssign ? <select className="mini-select" value={lead.centre || ""} onClick={(e) => e.stopPropagation()} onChange={(event) => onPatch(lead._id, { centre: event.target.value })}><option value="">Assign centre</option>{centres.map((centre) => <option key={centre}>{centre}</option>)}</select> : lead.centre || "-"}</td>
-              <td>{canAssign ? <select className="mini-select" value={lead.counsellor || ""} onClick={(e) => e.stopPropagation()} onChange={(event) => onPatch(lead._id, { counsellor: event.target.value })}><option value="">Unassigned</option>{counsellors.map((counsellor) => <option key={counsellor.email}>{counsellor.name}</option>)}</select> : lead.counsellor || "-"}</td>
+              <td>{canAssign ? <select className="mini-select" value={displayOwner} onClick={(e) => e.stopPropagation()} onChange={(event) => onPatch(lead._id, { counsellor: event.target.value })}><option value="">Unassigned</option>{!hasCounsellorOption && <option value={displayOwner}>{displayOwner}</option>}{counsellors.map((counsellor) => <option key={counsellor.email}>{counsellor.name}</option>)}</select> : displayOwner || "-"}</td>
               <td onClick={(event) => event.stopPropagation()}><select className="fbtn stage-select" value={leadStages.includes(lead.stage) ? lead.stage : "New Lead"} onChange={(event) => onPatch(lead._id, { stage: event.target.value })}>{leadStages.map((stage) => <option key={stage}>{stage}</option>)}</select></td>
               <td onClick={(event) => event.stopPropagation()}><select className={`fbtn stage-select feedback-select ${leadFeedbackBadgeClass(lead.leadFeedback)}`} value={normalizeLeadFeedbackStatus(lead.leadFeedback)} onChange={(event) => onPatch(lead._id, { leadFeedback: event.target.value })}>{leadFeedbackOptions.map((feedback) => <option key={feedback}>{feedback}</option>)}</select></td>
               <td><span className={`badge ${priorityBadgeClass(lead.priority)}`}>{leadPriorityLabel(lead.priority)}</span></td>
@@ -2801,7 +3047,8 @@ function LeadTable({ leads, canAssign, canDelete = false, counsellors, centres, 
                 {canDelete && onDelete && <button className="action-icon-btn action-icon-danger" title="Delete lead" onClick={() => onDelete(lead)}><Trash2 size={14} /></button>}
               </div></td>
             </tr>
-          ))}
+            );
+          })}
           {!leads.length && <tr><td colSpan={11}><div className="empty-state"><h4>No leads found</h4><p>Try clearing filters or add a new lead.</p></div></td></tr>}
         </tbody>
       </table>
@@ -2836,7 +3083,7 @@ function AddLeadPanel({ centres, courses, onSubmit }: { centres: string[]; cours
   );
 }
 
-function StudentsPanel({ title, students, meta, canAssign = false, canDelete = false, teachers = [], onPage, onPatch, onDelete, onEdit, onOpen }: { title: string; students: Student[]; meta: PaginationMeta | null; canAssign?: boolean; canDelete?: boolean; teachers?: Counsellor[]; onPage: (page: number) => void; onPatch: (id: string, updates: Partial<Student>) => void; onDelete: (student: Student) => void; onEdit: (student: Student) => void; onOpen: (student: Student) => void }) {
+function StudentsPanel({ title, students, meta, batches = [], canAssign = false, canDelete = false, teachers = [], onPage, onPatch, onDelete, onEdit, onOpen }: { title: string; students: Student[]; meta: PaginationMeta | null; batches?: Batch[]; canAssign?: boolean; canDelete?: boolean; teachers?: Counsellor[]; onPage: (page: number) => void; onPatch: (id: string, updates: Partial<Student>) => void; onDelete: (student: Student) => void; onEdit: (student: Student) => void; onOpen: (student: Student) => void }) {
   const [search, setSearch] = useState("");
   const [statusFilter, setStatusFilter] = useState("");
   const normalized = search.trim().toLowerCase();
@@ -2850,13 +3097,13 @@ function StudentsPanel({ title, students, meta, canAssign = false, canDelete = f
     <div className="students-prototype">
       <div className="filter-bar students-filter-bar">
         <input className="fbtn" value={search} onChange={(event) => setSearch(event.target.value)} placeholder={title === "My candidates" ? "Search my candidates..." : "Search all candidates..."} />
-        {canAssign && <select className="fbtn" value={statusFilter} onChange={(event) => setStatusFilter(event.target.value)}><option value="">All statuses</option>{studentStatuses.map((status) => <option key={status}>{status}</option>)}</select>}
+        {canAssign && <select className="fbtn" value={statusFilter} onChange={(event) => setStatusFilter(event.target.value)}><option value="">All statuses</option>{studentStatuses.map((status) => <option key={status} value={status}>{studentStatusLabel(status)}</option>)}</select>}
         <div className="filter-spacer" />
-        <button className="btn btn-ghost" onClick={() => downloadExcelFile(["Candidate", "Course", "Centre", "Batch", "Counsellor", "Teacher", "Fee", "Paid", "Status"], filteredStudents.map((student) => [student.fullName, student.course, student.centre, student.batch, student.counsellor, student.teacher, student.totalFee, student.paidAmount, normalizeStudentStatus(student.status)]), "imed-candidates")}><Download size={15} /> Download Excel</button>
+        <button className="btn btn-ghost" onClick={() => downloadExcelFile(["Candidate", "Course", "Centre", "Batch", "Counsellor", "Teacher", "Fee", "Paid", "Status"], filteredStudents.map((student) => [student.fullName, student.course, student.centre, student.batch, student.counsellor, batchFacultyForStudent(student, batches) || "Unassigned", student.totalFee, student.paidAmount, studentStatusLabel(student.status)]), "imed-candidates")}><Download size={15} /> Download Excel</button>
       </div>
       <div className="card students-card">
         <div className="card-body students-table-body">
-          <StudentPrototypeTable students={filteredStudents} canAssign={canAssign} canDelete={canDelete} teachers={teachers} onPatch={onPatch} onDelete={onDelete} onEdit={onEdit} onOpen={onOpen} />
+          <StudentPrototypeTable students={filteredStudents} batches={batches} canAssign={canAssign} canDelete={canDelete} teachers={teachers} onPatch={onPatch} onDelete={onDelete} onEdit={onEdit} onOpen={onOpen} />
         </div>
         <Pager meta={meta} label="students" onPage={onPage} />
       </div>
@@ -2864,7 +3111,7 @@ function StudentsPanel({ title, students, meta, canAssign = false, canDelete = f
   );
 }
 
-function StudentPrototypeTable({ students, canAssign, canDelete, teachers, onPatch, onDelete, onEdit, onOpen }: { students: Student[]; canAssign: boolean; canDelete: boolean; teachers: Counsellor[]; onPatch: (id: string, updates: Partial<Student>) => void; onDelete: (student: Student) => void; onEdit: (student: Student) => void; onOpen: (student: Student) => void }) {
+function StudentPrototypeTable({ students, batches, canAssign, canDelete, teachers, onPatch, onDelete, onEdit, onOpen }: { students: Student[]; batches: Batch[]; canAssign: boolean; canDelete: boolean; teachers: Counsellor[]; onPatch: (id: string, updates: Partial<Student>) => void; onDelete: (student: Student) => void; onEdit: (student: Student) => void; onOpen: (student: Student) => void }) {
   return (
     <div className="table-wrap students-table-wrap">
       <table className="students-table">
@@ -2873,16 +3120,18 @@ function StudentPrototypeTable({ students, canAssign, canDelete, teachers, onPat
           {students.map((student) => {
             const netFee = Math.max(1, (student.totalFee || 0) - (student.discountAmount || 0));
             const paidPct = Math.min(100, Math.round(((student.paidAmount || 0) / netFee) * 100));
+            const displayTeacher = batchFacultyForStudent(student, batches);
+            const hasTeacherOption = !displayTeacher || teachers.some((teacher) => teacher.name === displayTeacher);
             return (
               <tr className="clickable" key={student._id} onClick={() => onOpen(student)}>
                 <td><div className="lead-name-cell"><span className="avatar lead-avatar">{initials(student.fullName)}</span><div><div className="cell-name">{student.fullName}</div><div className="cell-sub">{student.admissionNumber || student.studentLocation || student.phone}</div></div></div></td>
                 <td>{courseShortCode(student.course)}</td>
                 <td>{student.centre || "-"}</td>
                 <td>{student.batch || <span className="cell-sub">Unassigned</span>}</td>
-                <td onClick={(event) => event.stopPropagation()}>{canAssign ? <select className="fbtn student-mini-select" value={student.teacher || ""} onChange={(event) => onPatch(student._id, { teacher: event.target.value })}><option value="">Unassigned</option>{teachers.map((teacher) => <option key={teacher.email}>{teacher.name}</option>)}</select> : student.teacher || "-"}</td>
+                <td onClick={(event) => event.stopPropagation()}>{canAssign ? <select className="fbtn student-mini-select" value={displayTeacher} onChange={(event) => onPatch(student._id, { teacher: event.target.value })}><option value="">Unassigned</option>{!hasTeacherOption && <option value={displayTeacher}>{displayTeacher}</option>}{teachers.map((teacher) => <option key={teacher.email}>{teacher.name}</option>)}</select> : displayTeacher || "-"}</td>
                 <td className="mono">{formatCurrency(student.totalFee || 0)}</td>
                 <td><span className="progress-track"><span className="progress-fill" style={{ width: `${paidPct}%` }} /></span> <span className="cell-sub">{paidPct}%</span></td>
-                <td onClick={(event) => event.stopPropagation()}><select className="fbtn student-mini-select" value={normalizeStudentStatus(student.status)} onChange={(event) => onPatch(student._id, { status: event.target.value })}>{studentStatuses.map((status) => <option key={status}>{status}</option>)}</select></td>
+                <td onClick={(event) => event.stopPropagation()}><select className="fbtn student-mini-select" value={normalizeStudentStatus(student.status)} onChange={(event) => { const reason = studentStatusBlockReason(student, event.target.value); if (reason) { toast.error(reason); return; } onPatch(student._id, { status: event.target.value }); }}>{studentStatuses.map((status) => <option key={status} value={status}>{studentStatusLabel(status)}</option>)}</select></td>
                 <td onClick={(event) => event.stopPropagation()}><div className="action-icons">
                   <button className="action-icon-btn" title="View" onClick={() => onOpen(student)}><Eye size={14} /></button>
                   <button className="action-icon-btn action-icon-primary" title="Update student" onClick={() => onEdit(student)}><Pencil size={14} /></button>
@@ -2898,7 +3147,104 @@ function StudentPrototypeTable({ students, canAssign, canDelete, teachers, onPat
   );
 }
 
-function BatchPanel({ batches, students, schedules, sessions, topicProgress, practicalRecords, studyNotes, teachers, user, classWeek, setClassWeek, selectedBatchId, setSelectedBatchId, selectedSessionId, setSelectedSessionId, initialTab, classesGenerating, attendanceDraft, setAttendanceDraft, attendanceLogs, selectedAttendanceSummary, attendanceDetailLogs, attendanceDetailFilters, setAttendanceDetailFilters, onSelectAttendanceSummary, onCreateSchedule, onGenerateWeek, onSaveAttendance, onResetAttendance, onTopicProgress, onDeleteTopic, onCreateBatchPractical, onPracticalRecord, onUploadStudyNote, onDownloadStudyNote, onDeleteStudyNote, onOpen }: { batches: Batch[]; students: Student[]; schedules: ClassSchedule[]; sessions: ClassSession[]; topicProgress: TopicProgress[]; practicalRecords: PracticalRecord[]; studyNotes: StudyNote[]; teachers: Counsellor[]; user: AdminUser | null; classWeek: string; setClassWeek: (value: string) => void; selectedBatchId: string; setSelectedBatchId: (id: string) => void; selectedSessionId: string; setSelectedSessionId: (id: string) => void; initialTab?: AcademicTab; classesGenerating: boolean; attendanceDraft: Record<string, { status: AttendanceStatus; note: string }>; setAttendanceDraft: (value: Record<string, { status: AttendanceStatus; note: string }>) => void; attendanceLogs: AttendanceSummary[]; selectedAttendanceSummary: AttendanceSummary | null; attendanceDetailLogs: Attendance[]; attendanceDetailFilters: AttendanceDetailFilters; setAttendanceDetailFilters: (filters: AttendanceDetailFilters) => void; onSelectAttendanceSummary: (summary: AttendanceSummary | null) => void; onCreateSchedule: (event: FormEvent<HTMLFormElement>) => void | Promise<void>; onGenerateWeek: (batchId?: string, weekOverride?: string) => void; onSaveAttendance: (session: ClassSession, sessionStudents: Student[]) => void; onResetAttendance: (session: ClassSession) => void; onTopicProgress: (payload: { _id?: string; batchId: string; module: string; topic: string; status: string; faculty?: string }) => void; onDeleteTopic: (topic: TopicProgress) => void; onCreateBatchPractical: (payload: { batchId: string; students: Student[]; practicalName: string; module?: string; faculty?: string }) => void; onPracticalRecord: (payload: { batchId: string; studentId: string; practicalName: string; module?: string; status: string; remarks?: string; faculty?: string }) => void; onUploadStudyNote: (event: FormEvent<HTMLFormElement>, batch: Batch) => void; onDownloadStudyNote: (note: StudyNote) => void; onDeleteStudyNote: (note: StudyNote) => void; onOpen: (student: Student) => void }) {
+function AlumniPanel({ students, meta, canManage, onPage, onPatch, onOpen }: { students: Student[]; meta: PaginationMeta | null; canManage: boolean; onPage: (page: number) => void; onPatch: (id: string, updates: Partial<Student>) => void; onOpen: (student: Student) => void }) {
+  const [search, setSearch] = useState("");
+  const [placementFilter, setPlacementFilter] = useState("");
+  const [editing, setEditing] = useState<Student | null>(null);
+  const alumni = students.filter((student) => normalizeStudentStatus(student.status) === "Alumni");
+  const normalized = search.trim().toLowerCase();
+  const filtered = alumni.filter((student) => {
+    const matchesSearch = !normalized || [student.fullName, student.admissionNumber, student.course, student.batch, student.centre, student.placementCompany, student.placementRole].some((value) => String(value || "").toLowerCase().includes(normalized));
+    const matchesPlacement = !placementFilter || (student.placementStatus || "Not Placed") === placementFilter;
+    return matchesSearch && matchesPlacement;
+  });
+  const placedCount = alumni.filter((student) => ["Placed", "Self Placed"].includes(student.placementStatus || "")).length;
+  const testimonialCount = alumni.filter((student) => student.testimonialText || student.testimonialVideoUrl).length;
+  const referralCount = alumni.filter((student) => student.referralName || student.referralPhone).length;
+  const placementPct = alumni.length ? Math.round((placedCount / alumni.length) * 100) : 0;
+  const saveAlumni = (event: FormEvent<HTMLFormElement>) => {
+    event.preventDefault();
+    if (!editing) return;
+    const form = Object.fromEntries(new FormData(event.currentTarget).entries());
+    onPatch(editing._id, {
+      placementStatus: String(form.placementStatus || "Not Placed"),
+      placementCompany: String(form.placementCompany || ""),
+      placementRole: String(form.placementRole || ""),
+      placementJoiningDate: String(form.placementJoiningDate || ""),
+      placementSalary: Number(form.placementSalary || 0),
+      placementHrContact: String(form.placementHrContact || ""),
+      placementOfferLetterUrl: String(form.placementOfferLetterUrl || ""),
+      placementRemarks: String(form.placementRemarks || ""),
+      testimonialText: String(form.testimonialText || ""),
+      testimonialVideoUrl: String(form.testimonialVideoUrl || ""),
+      testimonialRating: Number(form.testimonialRating || 0),
+      testimonialApproved: form.testimonialApproved === "on",
+      referralName: String(form.referralName || ""),
+      referralPhone: String(form.referralPhone || ""),
+      referralStatus: String(form.referralStatus || "New"),
+    });
+    setEditing(null);
+  };
+
+  return (
+    <div className="alumni-panel">
+      <div className="grid-metrics alumni-metrics">
+        <MetricCard label="Alumni" value={alumni.length} dot="#4F6BFF" delta="completed candidates" />
+        <MetricCard label="Placed" value={placedCount} dot="#17A673" delta={`${placementPct}% placement`} />
+        <MetricCard label="Testimonials" value={testimonialCount} dot="#F5A524" delta="collected feedback" />
+        <MetricCard label="Referrals" value={referralCount} dot="#8B5CF6" delta="alumni referrals" />
+      </div>
+      <div className="filter-bar alumni-filter-bar">
+        <input className="fbtn" value={search} onChange={(event) => setSearch(event.target.value)} placeholder="Search alumni, batch, company..." />
+        <select className="fbtn" value={placementFilter} onChange={(event) => setPlacementFilter(event.target.value)}><option value="">All placement status</option>{alumniPlacementStatuses.map((status) => <option key={status}>{status}</option>)}</select>
+        <div className="filter-spacer" />
+        <button className="btn btn-ghost" onClick={() => downloadExcelFile(["Alumni", "Admission no.", "Course", "Batch", "Centre", "Placement", "Company", "Role", "Salary"], filtered.map((student) => [student.fullName, student.admissionNumber, student.course, student.batch, student.centre, student.placementStatus || "Not Placed", student.placementCompany, student.placementRole, student.placementSalary || 0]), "imed-alumni")}><Download size={15} /> Export</button>
+      </div>
+      <div className="card alumni-card">
+        <div className="table-wrap alumni-table-wrap">
+          <table className="alumni-table">
+            <thead><tr><th>Alumni</th><th>Course</th><th>Batch</th><th>Certificate</th><th>Placement</th><th>Testimonial</th><th>Referral</th><th /></tr></thead>
+            <tbody>
+              {filtered.map((student) => (
+                <tr key={student._id} className="clickable" onClick={() => onOpen(student)}>
+                  <td><div className="lead-name-cell"><span className="avatar lead-avatar">{initials(student.fullName)}</span><div><div className="cell-name">{student.fullName}</div><div className="cell-sub">{student.admissionNumber || student.phone}</div></div></div></td>
+                  <td>{courseShortCode(student.course)}<div className="cell-sub">{student.centre || "-"}</div></td>
+                  <td>{student.batch || "-"}<div className="cell-sub">Completed {formatDate(student.updatedAt)}</div></td>
+                  <td><span className={`badge ${student.certificateStatus === "Issued" ? "badge-green" : "badge-amber"}`}>{student.certificateStatus || "Not Issued"}</span><div className="cell-sub">{student.certificateNumber || "-"}</div></td>
+                  <td><span className={`badge ${["Placed", "Self Placed"].includes(student.placementStatus || "") ? "badge-green" : student.placementStatus === "Interview Scheduled" ? "badge-amber" : "badge-gray"}`}>{student.placementStatus || "Not Placed"}</span><div className="cell-sub">{[student.placementCompany, student.placementRole].filter(Boolean).join(" - ") || "Placement pending"}</div></td>
+                  <td><span className={`badge ${student.testimonialApproved ? "badge-green" : student.testimonialText || student.testimonialVideoUrl ? "badge-amber" : "badge-gray"}`}>{student.testimonialApproved ? "Approved" : student.testimonialText || student.testimonialVideoUrl ? "Collected" : "Pending"}</span></td>
+                  <td><span className={`badge ${student.referralName || student.referralPhone ? "badge-blue" : "badge-gray"}`}>{student.referralStatus || (student.referralName || student.referralPhone ? "New" : "No referral")}</span></td>
+                  <td onClick={(event) => event.stopPropagation()}><div className="action-icons"><button className="action-icon-btn" title="View profile" onClick={() => onOpen(student)}><Eye size={14} /></button>{canManage && <button className="action-icon-btn action-icon-primary" title="Update alumni" onClick={() => setEditing(student)}><Pencil size={14} /></button>}</div></td>
+                </tr>
+              ))}
+              {!filtered.length && <tr><td colSpan={8}><div className="empty-state"><h4>No alumni found</h4><p>Move eligible course-completed candidates to Alumni to start placement and referral tracking.</p></div></td></tr>}
+            </tbody>
+          </table>
+        </div>
+        <Pager meta={meta} label="alumni" onPage={onPage} />
+      </div>
+      {canManage && editing && <div className="modal-overlay show"><div className="modal alumni-modal"><div className="modal-head"><h3>Update alumni</h3><button className="icon-btn" onClick={() => setEditing(null)}>x</button></div><form onSubmit={saveAlumni}><div className="modal-body alumni-form field-grid">
+        <div className="field"><label>Placement status</label><select name="placementStatus" defaultValue={editing.placementStatus || "Not Placed"}>{alumniPlacementStatuses.map((status) => <option key={status}>{status}</option>)}</select></div>
+        <EditField name="placementCompany" label="Hospital / company" defaultValue={editing.placementCompany} />
+        <EditField name="placementRole" label="Job role" defaultValue={editing.placementRole} />
+        <EditField name="placementJoiningDate" label="Joining date" type="date" defaultValue={dateInputValue(editing.placementJoiningDate || "")} />
+        <EditField name="placementSalary" label="Monthly salary" type="number" defaultValue={String(editing.placementSalary || "")} />
+        <EditField name="placementHrContact" label="HR / contact person" defaultValue={editing.placementHrContact} />
+        <EditField name="placementOfferLetterUrl" label="Offer letter link" defaultValue={editing.placementOfferLetterUrl} />
+        <div className="field"><label>Placement remarks</label><textarea name="placementRemarks" defaultValue={editing.placementRemarks || ""} /></div>
+        <div className="field"><label>Testimonial</label><textarea name="testimonialText" defaultValue={editing.testimonialText || ""} /></div>
+        <EditField name="testimonialVideoUrl" label="Video testimonial link" defaultValue={editing.testimonialVideoUrl} />
+        <EditField name="testimonialRating" label="Rating" type="number" defaultValue={String(editing.testimonialRating || "")} />
+        <div className="field alumni-check"><label><input name="testimonialApproved" type="checkbox" defaultChecked={Boolean(editing.testimonialApproved)} /> Approved for website</label></div>
+        <EditField name="referralName" label="Referral name" defaultValue={editing.referralName} />
+        <EditField name="referralPhone" label="Referral phone" defaultValue={editing.referralPhone} />
+        <div className="field"><label>Referral status</label><select name="referralStatus" defaultValue={editing.referralStatus || "New"}>{referralStatuses.map((status) => <option key={status}>{status}</option>)}</select></div>
+      </div><div className="modal-foot"><button type="button" className="btn btn-ghost" onClick={() => setEditing(null)}>Cancel</button><button className="btn btn-primary"><Pencil size={15} /> Save alumni</button></div></form></div></div>}
+    </div>
+  );
+}
+
+function BatchPanel({ batches, students, schedules, sessions, topicProgress, practicalRecords, studyNotes, npsDashboard, teachers, user, classWeek, setClassWeek, selectedBatchId, setSelectedBatchId, selectedSessionId, setSelectedSessionId, initialTab, classesGenerating, attendanceDraft, setAttendanceDraft, attendanceLogs, selectedAttendanceSummary, attendanceDetailLogs, attendanceDetailFilters, setAttendanceDetailFilters, onSelectAttendanceSummary, onCreateSchedule, onGenerateWeek, onSaveAttendance, onResetAttendance, onTopicProgress, onDeleteTopic, onCreateBatchPractical, onPracticalRecord, onUploadStudyNote, onDownloadStudyNote, onDeleteStudyNote, onOpen }: { batches: Batch[]; students: Student[]; schedules: ClassSchedule[]; sessions: ClassSession[]; topicProgress: TopicProgress[]; practicalRecords: PracticalRecord[]; studyNotes: StudyNote[]; npsDashboard: NpsDashboard | null; teachers: Counsellor[]; user: AdminUser | null; classWeek: string; setClassWeek: (value: string) => void; selectedBatchId: string; setSelectedBatchId: (id: string) => void; selectedSessionId: string; setSelectedSessionId: (id: string) => void; initialTab?: AcademicTab; classesGenerating: boolean; attendanceDraft: Record<string, { status: AttendanceStatus; note: string }>; setAttendanceDraft: (value: Record<string, { status: AttendanceStatus; note: string }>) => void; attendanceLogs: AttendanceSummary[]; selectedAttendanceSummary: AttendanceSummary | null; attendanceDetailLogs: Attendance[]; attendanceDetailFilters: AttendanceDetailFilters; setAttendanceDetailFilters: (filters: AttendanceDetailFilters) => void; onSelectAttendanceSummary: (summary: AttendanceSummary | null) => void; onCreateSchedule: (event: FormEvent<HTMLFormElement>) => void | Promise<void>; onGenerateWeek: (batchId?: string, weekOverride?: string) => void; onSaveAttendance: (session: ClassSession, sessionStudents: Student[]) => void; onResetAttendance: (session: ClassSession) => void; onTopicProgress: (payload: { _id?: string; batchId: string; module: string; topic: string; status: string; faculty?: string }) => void; onDeleteTopic: (topic: TopicProgress) => void; onCreateBatchPractical: (payload: { batchId: string; students: Student[]; practicalName: string; module?: string; faculty?: string }) => void; onPracticalRecord: (payload: { batchId: string; studentId: string; practicalName: string; module?: string; status: string; remarks?: string; faculty?: string }) => void; onUploadStudyNote: (event: FormEvent<HTMLFormElement>, batch: Batch) => void; onDownloadStudyNote: (note: StudyNote) => void; onDeleteStudyNote: (note: StudyNote) => void; onOpen: (student: Student) => void }) {
   const [academicTab, setAcademicTab] = useState<AcademicTab>(initialTab || "batches");
   const [classModalOpen, setClassModalOpen] = useState(false);
   const [showTopicForm, setShowTopicForm] = useState(false);
@@ -2915,6 +3261,7 @@ function BatchPanel({ batches, students, schedules, sessions, topicProgress, pra
   const canCreatePracticals = true;
   const activeBatch = batches.find((batch) => batch._id === selectedBatchId);
   const activeBatchId = activeBatch?._id || "";
+  const selectedBatchNps = activeBatch ? npsDashboard?.batches?.find((batch) => batch.label === activeBatch.name) : undefined;
   const teacherOwnsActiveBatch = !isTeacher || activeBatch?.assignedFaculty?.includes(user?.name || "");
   const selectedStudents = activeBatch && teacherOwnsActiveBatch ? students.filter((student) => student.batch === activeBatch.name) : [];
   const selectedSchedules = activeBatch ? schedules.filter((schedule) => schedule.batchName === activeBatch.name || String(schedule.batchId) === activeBatch._id) : [];
@@ -3088,6 +3435,7 @@ function BatchPanel({ batches, students, schedules, sessions, topicProgress, pra
             <div className="metric-card"><span className="dot green" /><div className="m-label">Timetable slots</div><div className="m-value">{selectedSchedules.length}</div><div className="m-delta">regular / one-time classes</div></div>
             <div className="metric-card"><span className="dot amber" /><div className="m-label">Topics covered</div><div className="m-value">{batchTopicProgress.filter((row) => row.status === "Covered").length}</div><div className="m-delta">{batchTopicProgress.length} total topics</div></div>
             <div className="metric-card"><span className="dot teal" /><div className="m-label">Practicals completed</div><div className="m-value">{batchPracticalRecords.filter((row) => row.status === "Completed").length}</div><div className="m-delta">{batchPracticalRecords.length} student records</div></div>
+            <div className="metric-card"><span className="dot blue" /><div className="m-label">Batch NPS</div><div className="m-value">{selectedBatchNps ? selectedBatchNps.nps : "-"}</div><div className="m-delta">{selectedBatchNps ? `${selectedBatchNps.total} aggregate responses` : "No feedback yet"}</div></div>
           </div>
         </div>
       ) : academicTab === "students" ? (
@@ -4462,7 +4810,7 @@ function SettingsPanel({ isHeadSuperAdmin, isHeadBranchAdmin, isFranchiseSuperAd
   const franchiseOptions = centres.filter((centre) => centre.type !== "branch");
   const staffRoleOptions = [
     ...(isHeadSuperAdmin ? [{ value: "superadmin", label: "Head super admin" }] : []),
-    ...(isHeadSuperAdmin || isHeadBranchAdmin ? [{ value: "admin", label: "Head admin" }, { value: "counsellor", label: "Counsellor" }, { value: "teacher", label: "Teacher" }] : []),
+    ...(isHeadSuperAdmin || isHeadBranchAdmin ? [{ value: "admin", label: "Center admin" }, { value: "counsellor", label: "Counsellor" }, { value: "teacher", label: "Teacher" }] : []),
     ...(isHeadSuperAdmin ? [{ value: "franchise_superadmin", label: "Franchise super admin" }] : []),
     ...(isHeadSuperAdmin || isFranchiseSuperAdmin ? [{ value: "franchise_counsellor", label: "Franchise counsellor" }, { value: "franchise_teacher", label: "Franchise teacher" }] : []),
   ];
@@ -4564,7 +4912,20 @@ function SettingsPanel({ isHeadSuperAdmin, isHeadBranchAdmin, isFranchiseSuperAd
         </div>}
       </div>
       <div className={`modal-overlay ${editingCourse ? "show" : ""}`} onClick={() => setEditingCourse(null)}>
-        {editingCourse && <div className="modal" onClick={(event) => event.stopPropagation()}>
+        {/* {editingCourse && <div className="modal" onClick={(event) => event.stopPropagation()}>
+          <div className="modal-head"><h3>Edit course</h3><button className="close-x" onClick={() => setEditingCourse(null)}>x</button></div>
+          <form onSubmit={async (event) => { const saved = await onUpdateCourse(event, editingCourse._id); if (saved) setEditingCourse(null); }}>
+            <div className="modal-body field-grid">
+              <Field name="name" label="Course name" defaultValue={editingCourse.name} required />
+              <Field name="code" label="Code" defaultValue={editingCourse.code || ""} />
+              <Field name="fee" label="Base fee" type="number" defaultValue={editingCourse.fee || 0} />
+              <Field name="duration" label="Duration" defaultValue={editingCourse.duration || ""} />
+            </div>
+            <div className="modal-actions"><button type="button" className="btn btn-ghost" onClick={() => setEditingCourse(null)}>Cancel</button><button className="btn btn-primary">Save course</button></div>
+          </form>
+        </div>} */}
+
+          {editingCourse && <div className="modal" onClick={(event) => event.stopPropagation()}>
           <div className="modal-head"><h3>Edit course</h3><button className="close-x" onClick={() => setEditingCourse(null)}>x</button></div>
           <form onSubmit={async (event) => { const saved = await onUpdateCourse(event, editingCourse._id); if (saved) setEditingCourse(null); }}>
             <div className="modal-body field-grid">
@@ -4936,6 +5297,9 @@ function ProfilePanel({ profile, user, accessCount, canManageFees, canManageSett
         if (emiEnabled && editDue <= 0) return toast.error("Cannot enable EMI when fee is fully paid");
         if (emiAmount > editDue && editDue > 0) return toast.error(`Monthly EMI cannot exceed pending due of ${formatCurrency(editDue)}`);
       }
+      const nextStatus = String(form.status || student.status);
+      const statusReason = studentStatusBlockReason({ ...student, totalFee, discountAmount, paidAmount }, nextStatus);
+      if (statusReason) return toast.error(statusReason);
       const updates: Partial<Student> = {
         fullName: String(form.fullName || ""),
         phone: String(form.phone || ""),
@@ -4946,7 +5310,7 @@ function ProfilePanel({ profile, user, accessCount, canManageFees, canManageSett
         course: String(form.course || ""),
         centre: String(form.centre || ""),
         batch: String(form.batch || ""),
-        status: String(form.status || student.status),
+        status: nextStatus,
         ...(canManageSettings ? { counsellor: String(form.counsellor || "") } : {}),
         ...(canAssignTeachers ? { teacher: String(form.teacher || "") } : {}),
       };
@@ -4981,7 +5345,7 @@ function ProfilePanel({ profile, user, accessCount, canManageFees, canManageSett
           <div className="field"><label>Batch</label><select name="batch" value={editBatchDraft} onChange={(event) => setEditBatchDraft(event.target.value)}><option value="">Unassigned</option>{editBatchDraft && !batchOptions.some((batch) => batch.name === editBatchDraft) && <option value={editBatchDraft}>{editBatchDraft} - current</option>}{batchOptions.map((batch) => <option key={batch._id} value={batch.name}>{batch.name} - {courseShortCode(batch.course)}{batch.centre ? ` - ${batch.centre}` : ""}</option>)}</select>{!batchOptions.length && <span className="field-help">No matching batch. Create one in Settings - Batches.</span>}</div>
           {canManageSettings && <EditField name="counsellor" label="Counsellor" defaultValue={student.counsellor} />}
           {canAssignTeachers && <div className="field"><label>Teacher</label><select name="teacher" defaultValue={student.teacher || ""}><option value="">Unassigned</option>{teachers.map((teacher) => <option key={teacher.email}>{teacher.name}</option>)}</select></div>}
-          <div className="field"><label>Status</label><select name="status" defaultValue={normalizeStudentStatus(student.status)}>{studentStatuses.map((status) => <option key={status}>{status}</option>)}</select></div>
+          <div className="field"><label>Status</label><select name="status" defaultValue={normalizeStudentStatus(student.status)}>{studentStatuses.map((status) => <option key={status} value={status}>{studentStatusLabel(status)}</option>)}</select><span className="field-help">Alumni is available only after fee clearance and certificate issue.</span></div>
           {canManageFees && <>
             <EditField name="totalFee" label="Total fee" type="number" defaultValue={String(student.totalFee || 0)} />
             <EditField name="discountAmount" label="Discount" type="number" defaultValue={String(student.discountAmount || 0)} />
@@ -5001,7 +5365,7 @@ function ProfilePanel({ profile, user, accessCount, canManageFees, canManageSett
     <div className="card profile-shell">
       <div className="profile-head">
         <div className="avatar drawer-avatar">{initials(student.fullName)}</div>
-        <div className="profile-title"><h3>{student.fullName}</h3><div className="cell-sub mono">{student.admissionNumber || student.phone} - <span className={`badge badge-${stageTag(normalizedStatus)}`}>{normalizedStatus}</span></div></div>
+        <div className="profile-title"><h3>{student.fullName}</h3><div className="cell-sub mono">{student.admissionNumber || student.phone} - <span className={`badge badge-${stageTag(normalizedStatus)}`}>{studentStatusLabel(normalizedStatus)}</span></div></div>
         <button className="close-x" onClick={onBack}>x</button>
       </div>
       <div className="dtabs profile-tabs">{tabs.map((tab) => <button type="button" key={tab.key} className={`dtab ${activeStudentTab === tab.key ? "active" : ""}`} onClick={() => setStudentTab(tab.key)}>{tab.label}</button>)}</div>
@@ -5020,12 +5384,12 @@ function ProfilePanel({ profile, user, accessCount, canManageFees, canManageSett
           <div className="kv-row"><span className="k">Counsellor</span><span className="v">{student.counsellor || "-"}</span></div>
           <div className="kv-row"><span className="k">Teacher</span><span className="v">{student.teacher || "Unassigned"}</span></div>
           <div className="kv-row"><span className="k">LMS access</span><span className="v">{student.lmsAccessEnabled ? <span className="badge badge-green">Enabled</span> : <span className="badge badge-gray">Not generated</span>}</span></div>
-          <div className="field drawer-notes"><label>Status</label><select value={normalizedStatus} onChange={(event) => onStudentPatch(student._id, { status: event.target.value })}>{studentStatuses.map((status) => <option key={status}>{status}</option>)}</select></div>
+          <div className="field drawer-notes"><label>Status</label><select value={normalizedStatus} onChange={(event) => { const reason = studentStatusBlockReason(student, event.target.value); if (reason) { toast.error(reason); return; } onStudentPatch(student._id, { status: event.target.value }); }}>{studentStatuses.map((status) => <option key={status} value={status}>{studentStatusLabel(status)}</option>)}</select></div>
         </div>}
         {activeStudentTab === "journey" && <div className="dpane active">{studentJourneyStages.map((stage) => {
           const currentIndex = studentJourneyStages.indexOf(normalizedStatus);
           const done = currentIndex >= 0 && studentJourneyStages.indexOf(stage) <= currentIndex;
-          return <div className="kv-row" key={stage}><span className="k">{stage}</span><span className="v">{done ? <span className="badge badge-green">Done</span> : <span className="badge badge-gray">Awaiting</span>}</span></div>;
+          return <div className="kv-row" key={stage}><span className="k">{studentStatusLabel(stage)}</span><span className="v">{done ? <span className="badge badge-green">Done</span> : <span className="badge badge-gray">Awaiting</span>}</span></div>;
         })}</div>}
         {activeStudentTab === "admission" && <div className="dpane active">
           {normalizedStatus === "Enrolled" && <div className="empty-state paid-empty"><h4>Admission not completed</h4><p>Complete admission details first, then decide fees.</p><button type="button" className="btn btn-primary" onClick={completeAdmission}><CheckCircle2 size={15} /> Mark admission completed</button></div>}
@@ -5255,7 +5619,7 @@ function CrmStyles() {
       .imed-admin-prototype{--navy-950:#0A0E1D;--navy-900:#0F1428;--navy-800:#1B2340;--navy-line:#242C4D;--indigo-500:#4F6BFF;--indigo-600:#3E56E0;--indigo-100:#EAEEFF;--bg:#F3F5FA;--card:#FFFFFF;--border:#E5E9F2;--border-soft:#EEF1F7;--text-900:#161B33;--text-700:#333A56;--text-600:#5B6478;--text-400:#99A1B3;--green-50:#EAFBF3;--green-500:#17A673;--green-700:#0E7A54;--amber-50:#FFF7E8;--amber-500:#F59E0B;--amber-700:#B4750B;--red-50:#FDEEEE;--red-100:#FCE1E1;--red-500:#E5484D;--red-700:#B3282C;--purple-50:#F4F0FE;--purple-500:#8B5CF6;--purple-700:#6B37D6;--teal-50:#E7FAF7;--teal-100:#CFF5EF;--teal-500:#14B8A6;--teal-700:#0F766E;--blue-50:#EEF3FF;font-family:Inter,system-ui,sans-serif;background:var(--bg);color:var(--text-900);font-size:13.5px;min-height:100vh}
       .imed-admin-prototype *{box-sizing:border-box}.imed-admin-prototype button{font-family:inherit;cursor:pointer}.imed-admin-prototype #app{display:flex;height:100vh;width:100vw}.imed-admin-prototype #authScreen{min-height:100vh;display:flex;align-items:center;justify-content:center;background:var(--bg)}
       .auth-card{width:min(420px,92vw);background:#fff;border:1px solid var(--border);border-radius:16px;padding:30px 28px 28px;box-shadow:0 12px 32px rgba(16,20,40,.14);display:grid;gap:0}.auth-logo{display:flex;gap:10px;align-items:center;margin-bottom:24px}.auth-logo div:last-child b{display:block;font-size:13px;line-height:1.15}.auth-logo div:last-child div{font-size:10.5px;color:var(--text-400);letter-spacing:.5px;text-transform:uppercase;margin-top:2px}.auth-card h1{font-size:22px;font-weight:500;line-height:1.25;margin:0 0 8px}.auth-card .sub{color:var(--text-400);margin:0 0 22px;font-size:14px}.auth-card .field{margin-bottom:12px}.auth-card .field label{margin-bottom:7px}.auth-card .field input{height:38px}.auth-field-row{display:flex;align-items:center;justify-content:space-between;gap:10px;margin-bottom:7px}.auth-field-row label{margin:0!important}.auth-link-btn{border:0;background:transparent;color:var(--indigo-600);font-size:11.5px;font-weight:700;padding:0}.auth-link-btn:hover{text-decoration:underline}.password-input-wrap{position:relative}.password-input-wrap input{padding-right:42px!important}.password-eye-btn{position:absolute;right:8px;top:50%;transform:translateY(-50%);width:28px;height:28px;border:0;background:transparent;color:var(--text-400);display:flex;align-items:center;justify-content:center;border-radius:7px}.password-eye-btn:hover{background:var(--blue-50);color:var(--indigo-600)}.auth-card .btn-primary{width:100%;height:38px;justify-content:center;margin-top:2px}
-      .sidebar{width:236px;flex:0 0 236px;background:linear-gradient(180deg,var(--navy-950),var(--navy-900));color:#C9CFE6;display:flex;flex-direction:column;height:100vh;border-right:1px solid var(--navy-line)}.sidebar-brand{display:flex;align-items:center;gap:10px;padding:18px 18px 14px 20px;border-bottom:1px solid var(--navy-line)}.brand-mark{width:32px;height:32px;border-radius:9px;background:#fff;display:flex;align-items:center;justify-content:center;flex:0 0 32px;box-shadow:0 4px 10px rgba(15,23,42,.18);overflow:hidden}.brand-mark img{width:23px;height:29px;display:block;object-fit:contain}.brand-text b{display:block;font-size:14px;color:#fff}.brand-text span{display:block;font-size:10.5px;color:#8189A8;letter-spacing:.6px;text-transform:uppercase;margin-top:2px}
+.sidebar{width:236px;flex:0 0 236px;background:linear-gradient(180deg,var(--navy-950),var(--navy-900));color:#C9CFE6;display:flex;flex-direction:column;height:100vh;border-right:1px solid var(--navy-line)}.sidebar-brand{display:flex;align-items:center;gap:10px;padding:18px 18px 14px 20px;border-bottom:1px solid var(--navy-line)}.brand-mark{width:32px;height:32px;border-radius:9px;background:#fff;display:flex;align-items:center;justify-content:center;flex:0 0 32px;box-shadow:0 4px 10px rgba(15,23,42,.18);overflow:hidden}.brand-mark img{width:23px;height:29px;display:block;object-fit:contain}.brand-text b{display:block;font-size:14px;color:#fff}.brand-text span{display:block;font-size:10.5px;color:#8189A8;letter-spacing:.6px;text-transform:uppercase;margin-top:2px}
       .nav-scroll{flex:1;overflow-y:auto;padding:12px 10px}.nav-group-label{font-size:10px;font-weight:700;letter-spacing:.8px;text-transform:uppercase;color:#5D6588;padding:14px 10px 6px}.nav-item{position:relative;width:100%;border:0;display:flex;align-items:center;gap:10px;padding:9px 10px;border-radius:8px;margin-bottom:2px;background:transparent;color:#AEB4CE;font-size:13px;font-weight:500;text-align:left}.nav-item svg{width:16px;height:16px}.nav-item:hover{background:var(--navy-800);color:#fff}.nav-item.active{background:var(--indigo-500);color:#fff;box-shadow:0 4px 12px rgba(79,107,255,.35)}.nav-badge{margin-left:auto;min-width:19px;height:19px;border-radius:999px;background:var(--amber-500);color:#fff;display:inline-grid;place-items:center;padding:0 6px;font-size:10.5px;font-style:normal;font-weight:800;line-height:1;box-shadow:0 4px 10px rgba(245,158,11,.28)}.nav-badge-admission{min-width:24px;height:20px;background:#EAFBF3;color:#0E7A54;border:1px solid rgba(23,166,115,.28);box-shadow:0 0 0 3px rgba(23,166,115,.08);font-size:10px}.nav-item.active .nav-badge-admission{background:#fff;color:var(--indigo-600);border-color:rgba(255,255,255,.65);box-shadow:none}.mobile-logout{display:none}
       .sidebar-footer{padding:12px;border-top:1px solid var(--navy-line)}.role-pill{display:flex;align-items:center;gap:9px;background:var(--navy-800);border:1px solid var(--navy-line);border-radius:10px;padding:8px 10px}.role-avatar{width:28px;height:28px;border-radius:8px;background:linear-gradient(135deg,#F5A524,#E5484D);display:flex;align-items:center;justify-content:center;font-weight:700;color:#fff;font-size:12px}.role-meta{line-height:1.2;overflow:hidden}.role-meta b{font-size:12px;color:#fff;display:block;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}.role-meta span{font-size:10.5px;color:#8A91B0}.role-pill .icon-btn{margin-left:auto;background:transparent;border:0;color:#8A91B0}
       .main{flex:1;display:flex;flex-direction:column;height:100vh;overflow:hidden}.topbar{height:60px;flex:0 0 60px;background:#fff;border-bottom:1px solid var(--border);display:flex;align-items:center;gap:14px;padding:0 22px}.page-title{font-size:16px;font-weight:700}.page-sub{font-size:11.5px;color:var(--text-400);margin-top:1px}.topbar-spacer{flex:1}.scope-select,.df-select,.fbtn{border:1px solid var(--border);background:#fff;border-radius:8px;padding:7px 10px;font-size:12.5px;color:var(--text-700);font-weight:500;font-family:inherit}.scope-select-locked{background:var(--bg);color:var(--text-400)}.date-filter{display:flex;align-items:center;gap:6px;background:var(--bg);border:1px solid var(--border);border-radius:9px;padding:3px}.df-btn{border:none;background:transparent;padding:6px 10px;border-radius:7px;font-size:12px;font-weight:600;color:var(--text-600)}.df-btn.active{background:#fff;color:var(--indigo-600);box-shadow:0 1px 2px rgba(16,20,40,.05)}.df-date{border:1px solid var(--border);border-radius:7px;padding:5px 8px;font-size:12px;display:none}.df-date.show{display:inline-block}.icon-btn{width:34px;height:34px;border-radius:9px;border:1px solid var(--border);background:#fff;display:flex;align-items:center;justify-content:center;color:var(--text-600)}.search-box{display:flex;align-items:center;gap:7px;background:var(--bg);border:1px solid var(--border);border-radius:9px;padding:7px 12px;width:230px}.search-box input{border:none;background:transparent;outline:none;font-size:12.5px;width:100%;color:var(--text-900)}
@@ -5266,6 +5630,7 @@ function CrmStyles() {
       .batch-metrics{grid-template-columns:repeat(3,1fr);margin-bottom:18px}.batch-card-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:16px}.batch-select-card{border:1px solid var(--border);background:#fff;border-radius:14px;padding:18px;text-align:left;box-shadow:0 1px 2px rgba(16,20,40,.05);cursor:pointer;transition:transform .16s ease,box-shadow .16s ease,border-color .16s ease}.batch-select-card:hover{transform:translateY(-2px);border-color:#b9c5ff;box-shadow:0 14px 30px rgba(79,107,255,.12)}.batch-select-top{display:flex;align-items:center;justify-content:space-between;margin-bottom:18px}.batch-select-card h3{margin:0 0 6px;font-size:16px;color:#061633}.batch-select-stats{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-top:18px}.batch-select-stats span{border:1px solid var(--border-soft);border-radius:9px;padding:9px 8px;color:var(--text-400);font-size:11px}.batch-select-stats b{display:block;color:#061633;font-size:15px}.calendar-connect-card{display:flex;align-items:center;justify-content:space-between;gap:14px;padding:15px 18px;margin-bottom:16px}.calendar-connect-card h3{margin:0 0 4px;font-size:15px;color:#061633}.calendar-connect-card .sub{font-size:12px;color:var(--text-400)}.calendar-connect-actions{display:flex;align-items:center;gap:8px;flex-wrap:wrap;justify-content:flex-end}.teacher-batches-card{margin-bottom:16px}.teacher-batches-card .card-body{padding:16px 18px}.teacher-batch-grid{grid-template-columns:repeat(auto-fit,minmax(280px,340px));align-items:stretch}.teacher-batch-grid .batch-select-card{min-height:176px;display:flex;flex-direction:column}.teacher-batch-grid .batch-select-stats{margin-top:auto;padding-top:18px}.teacher-action-grid{align-items:stretch}.teacher-action-grid>.card{min-height:258px}.teacher-row-list .crow{display:grid;grid-template-columns:minmax(0,1fr) auto;align-items:center;gap:16px;min-height:72px}.teacher-row-list .who{min-width:0}.teacher-row-list .who>div{min-width:0}.teacher-row-list .nm,.teacher-row-list .mt{overflow:hidden;text-overflow:ellipsis;display:block}.teacher-row-list .nm{line-height:1.35}.teacher-row-list .mt{white-space:nowrap}.teacher-update-tag{min-width:78px;max-width:96px;justify-content:center;text-align:center;white-space:normal;line-height:1.2;padding:8px 10px}.selected-batch-head{margin-bottom:16px}.batch-grid{grid-template-columns:1.2fr .9fr;gap:16px}.batch-grid-single{display:grid;grid-template-columns:1fr;gap:16px}.batch-card{border-radius:14px;overflow:hidden}.batch-card .card-head{min-height:64px}.batch-table,.batch-roster-table{min-width:100%}.batch-table thead th,.batch-roster-table thead th{height:38px;padding:10px 12px;background:#fafbfd;color:#99a1b3;font-size:10.5px;letter-spacing:.4px}.batch-table tbody td,.batch-roster-table tbody td{height:56px;padding:11px 12px;color:#333a56}.batch-table tbody tr:hover,.batch-roster-table tbody tr:hover{background:#f8f9fd}.batch-table .selected-row{background:#f8f9fd}.batch-table .cell-name{font-weight:700;color:#161b33}.batch-roster-table .cell-name{font-size:12.5px;font-weight:700;color:#161b33}.batch-roster-table .cell-sub{font-size:11px;color:#99a1b3;margin-top:3px}
       .academic-shell{display:grid;gap:16px}.academic-selected-head{display:flex;align-items:center;justify-content:space-between;gap:14px;background:#fff;border:1px solid var(--border);border-radius:14px;padding:15px 18px;box-shadow:0 1px 2px rgba(16,20,40,.04)}.academic-selected-head h3{margin:0;font-size:17px;color:#061633}.academic-tabs{display:flex;gap:6px;width:max-content;max-width:100%;overflow-x:auto;background:#fff;border:1px solid var(--border);border-radius:10px;padding:4px;box-shadow:0 1px 2px rgba(16,20,40,.04)}.academic-tab{border:0;background:transparent;color:var(--text-600);border-radius:8px;padding:8px 13px;font-size:12.5px;font-weight:700;white-space:nowrap}.academic-tab.active{background:var(--indigo-500);color:#fff;box-shadow:0 4px 12px rgba(79,107,255,.25)}.academic-tab:disabled{opacity:.38;cursor:not-allowed}.batch-switch{display:flex;gap:8px;overflow-x:auto;padding-bottom:2px}.batch-pill{flex:0 0 178px;background:#fff;border:1px solid var(--border);border-radius:10px;padding:11px 14px;text-align:left;cursor:pointer;box-shadow:0 1px 2px rgba(16,20,40,.04)}.batch-pill.selected{border-color:var(--indigo-500);box-shadow:0 0 0 1px var(--indigo-500) inset}.batch-pill span{display:block}.batch-pill .course{font-size:10.5px;color:var(--indigo-600);font-weight:800;text-transform:uppercase;letter-spacing:.04em}.batch-pill .nm{font-weight:800;color:#061633;font-size:13.5px;margin:3px 0}.batch-pill .meta{font-size:11px;color:var(--text-400)}.academic-card{border-radius:14px;overflow:hidden}.academic-overview-grid{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:12px}.class-list{padding:0 18px 4px}.class-list-item{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:13px 0;border-bottom:1px solid var(--border-soft)}.class-list-item:last-child{border-bottom:0}.class-list-item .badge+.badge{margin-left:6px}.class-list-meta{margin-left:8px;color:var(--text-600);font-size:12px}.class-faculty{color:var(--text-400);font-size:12px;font-weight:700;white-space:nowrap}.academic-banner{display:flex;align-items:center;justify-content:space-between;gap:14px;background:var(--indigo-100);border:1px solid #cfd7ff;border-radius:12px;padding:13px 16px;color:var(--indigo-600);font-weight:700}.academic-banner-copy{display:grid;gap:8px}.class-color-legend{display:flex;align-items:center;gap:12px;flex-wrap:wrap}.class-color-legend span{display:inline-flex;align-items:center;gap:6px;color:var(--text-600);font-size:11.5px;font-weight:800}.class-color-legend i{width:12px;height:12px;border-radius:4px;border:1px solid var(--indigo-500);background:var(--indigo-100);box-shadow:0 1px 2px rgba(16,20,40,.05)}.class-color-legend i.practical{border-color:#f2bd62;background:var(--amber-50)}.academic-banner-actions,.academic-head-actions{display:flex;align-items:center;gap:8px;flex-wrap:wrap}.academic-banner .fbtn{height:34px;background:#fff}.academic-log-shell{display:grid;gap:12px}.academic-log-head{display:flex;align-items:center;justify-content:space-between}.academic-log-head h3{margin:0;font-size:15px;color:#061633}.academic-log-head .sub{font-size:12px;color:var(--text-400);margin-top:3px}.academic-roster-table{min-width:920px;width:100%;border-collapse:collapse}.academic-roster-table th{height:38px;padding:10px 8px;background:#fafbfd;color:#99a1b3;font-size:10.5px;letter-spacing:.4px;text-align:left}.academic-roster-table td{vertical-align:top;min-width:112px;padding:8px;border-bottom:1px solid var(--border-soft);color:#333a56}.academic-roster-table td:first-child{min-width:150px}.roster-slot{display:block;width:100%;border:1px solid var(--indigo-500);background:var(--indigo-100);color:var(--text-700);border-radius:9px;padding:7px 8px;text-align:left;margin-bottom:5px;font-size:11px}.roster-slot.practical{border-color:#f2bd62;background:var(--amber-50)}.roster-slot.selected{box-shadow:0 0 0 2px rgba(79,107,255,.22)}.roster-slot.preview{border-style:dashed;opacity:.55;filter:saturate(.6);pointer-events:none}.roster-slot strong,.roster-slot span,.roster-slot em{display:block}.roster-slot strong{font-size:11.5px;color:#061633}.roster-slot.preview strong{color:var(--text-600)}.roster-slot span{color:var(--text-600);margin-top:2px}.roster-slot em{font-style:normal;color:var(--text-400);font-size:10.5px;margin-top:3px}.roster-empty{color:var(--text-400);font-size:12px}.academic-topic-form{display:grid;grid-template-columns:1fr 1.2fr auto;gap:12px;align-items:end;padding:16px 18px;border-top:1px solid var(--border-soft);background:#fbfcff}.academic-topic-form .field{margin:0}.academic-tracker-list{padding:6px 18px 14px}.academic-tracker-row{display:grid;grid-template-columns:minmax(0,1fr) 172px 78px;align-items:center;gap:12px;padding:13px 0;border-bottom:1px solid var(--border-soft)}.academic-tracker-row:last-child{border-bottom:0}.tracker-select{height:36px;border:1px solid var(--border);border-radius:9px;background:#fff;padding:0 10px;color:#061633;font-size:12px;font-weight:800}.tracker-covered,.tracker-completed{background:var(--teal-50);border-color:#b8eee7;color:var(--teal-700)}.tracker-in-progress,.tracker-needs-repeat{background:var(--amber-50);border-color:#f5dfaf;color:var(--amber-700)}.tracker-not-started,.tracker-pending{background:#f8f9fd;color:var(--text-600)}.topic-edit-modal{width:600px;max-width:calc(100vw - 24px);overflow:hidden}.topic-edit-body{grid-template-columns:repeat(2,minmax(0,1fr));padding:20px 22px 10px}.topic-edit-body .field:last-child{grid-column:1 / 2}.topic-edit-actions{display:flex;justify-content:flex-end;gap:10px;padding:12px 22px 22px}.topic-edit-actions .btn{min-width:104px;justify-content:center}.practical-table{min-width:860px;width:100%;border-collapse:collapse}.practical-table th{height:38px;padding:10px 14px;background:#fafbfd;color:#99a1b3;font-size:10.5px;letter-spacing:.4px;text-align:left}.practical-table td{padding:12px 14px;border-bottom:1px solid var(--border-soft);vertical-align:middle}.compact-row-button{border:0;background:transparent;padding:0;text-align:left}.compact-row-button span span{display:block}.practical-note{width:100%;height:34px}.academic-modal{width:650px;max-width:calc(100vw - 24px);overflow:hidden;background:#f8f9fd}.academic-modal .modal-head{position:static;padding:18px 22px;background:#fff}.academic-modal .modal-body{padding:18px 22px 20px;background:#f8f9fd}.academic-modal .modal-foot{padding:16px 22px;background:#fff}.class-context{display:flex;align-items:center;gap:11px;background:#fff;border:1px solid var(--border);border-radius:12px;padding:12px 14px;margin-bottom:14px;box-shadow:0 1px 2px rgba(16,20,40,.04)}.class-context strong,.class-context em{display:block}.class-context strong{font-size:13.5px;color:#061633;font-weight:900}.class-context em{font-style:normal;color:var(--text-400);font-size:11.5px;margin-top:2px}.academic-steps{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px;margin:0 0 20px}.academic-steps button{position:relative;display:flex;align-items:center;gap:8px;border:1px solid var(--border);background:#fff;border-radius:10px;padding:9px 10px;text-align:left;color:var(--text-400);font-weight:800;cursor:default}.academic-steps button.done{cursor:pointer}.academic-steps button span{width:22px;height:22px;border-radius:999px;display:grid;place-items:center;background:#eef1f8;color:#6c7487;font-size:11px}.academic-steps button em{font-style:normal;font-size:12px}.academic-steps button.active{border-color:var(--indigo-500);color:var(--indigo-600);box-shadow:0 0 0 1px rgba(79,107,255,.15) inset}.academic-steps button.active span,.academic-steps button.done span{background:var(--indigo-500);color:#fff}.academic-steps button.done{color:#061633}.academic-modal .field{margin-bottom:18px}.academic-modal .field label{margin-bottom:9px}.academic-choice-section{display:grid;gap:20px}.mini-label{font-size:11px;font-weight:900;color:var(--text-400);text-transform:uppercase;letter-spacing:.04em;margin-bottom:9px}.academic-choice-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px}.academic-choice{position:relative;display:grid;grid-template-columns:auto 1fr;align-items:start;gap:12px;min-height:112px;border:1px solid var(--border);background:#fff;border-radius:14px;padding:15px 42px 36px 15px;text-align:left;color:#061633;box-shadow:0 2px 7px rgba(16,20,40,.04);cursor:pointer;transition:border-color .18s ease,box-shadow .18s ease,transform .18s ease,background .18s ease}.academic-choice:hover{border-color:#bdc8ff;box-shadow:0 12px 28px rgba(79,107,255,.13);transform:translateY(-2px)}.academic-choice.active{border-color:var(--indigo-500);background:linear-gradient(180deg,#fff,#f4f6ff);box-shadow:0 0 0 1px rgba(79,107,255,.22) inset,0 14px 32px rgba(79,107,255,.16)}.academic-choice.active:before{content:"";position:absolute;left:0;top:14px;bottom:14px;width:4px;border-radius:0 999px 999px 0;background:var(--indigo-500)}.choice-icon{width:40px;height:40px;border-radius:12px;display:grid;place-items:center;background:var(--indigo-100);color:var(--indigo-600)}.academic-choice.active .choice-icon{background:var(--indigo-500);color:#fff}.academic-choice strong,.academic-choice em{display:block}.academic-choice strong{font-size:14px;font-weight:900}.academic-choice em{font-style:normal;color:var(--text-400);font-size:11.5px;line-height:1.4;margin-top:5px}.academic-choice small{position:absolute;left:15px;bottom:12px;display:inline-flex;align-items:center;height:22px;border-radius:999px;background:#f2f4fb;color:var(--text-600);font-size:10.5px;font-weight:900;padding:0 9px}.academic-choice.active small{background:#e8fff5;color:var(--teal-700)}.choice-check{position:absolute;right:13px;top:13px;color:#c3c9d8}.academic-choice.active .choice-check{color:var(--teal-600)}.academic-seg{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px}.academic-chip,.academic-day{border:1px solid var(--border);background:#fff;color:var(--text-600);border-radius:999px;padding:10px 12px;font-size:12px;font-weight:800;cursor:pointer;min-height:36px}.academic-chip.on,.academic-day.on{border-color:var(--indigo-500);background:var(--indigo-100);color:var(--indigo-600)}.academic-day{width:42px;padding:8px 0}.academic-review{border:1px dashed var(--border);border-radius:10px;padding:14px;text-align:left;background:#fff}@media (max-width:1100px){.academic-overview-grid{grid-template-columns:repeat(2,minmax(0,1fr))}}@media (max-width:900px){.academic-topic-form{grid-template-columns:1fr 1fr}.academic-topic-form .btn{height:38px}}@media (max-width:640px){.academic-selected-head{align-items:flex-start;flex-direction:column}.academic-banner{align-items:flex-start;flex-direction:column}.academic-choice-grid,.academic-overview-grid{grid-template-columns:1fr}.academic-topic-form,.topic-edit-body{grid-template-columns:1fr}.topic-edit-body .field:last-child{grid-column:auto}.topic-edit-actions{padding:10px 16px 18px}.academic-tracker-row{grid-template-columns:1fr}.academic-modal{width:calc(100vw - 18px)}.academic-steps button{padding:8px 7px}.academic-steps button em{font-size:11px}}
       .students-filter-bar{gap:10px;margin-bottom:14px}.students-filter-bar .fbtn{height:34px;width:220px}.students-filter-bar .filter-spacer{flex:1}.students-card{border-radius:14px;overflow:hidden}.students-table-body{padding:0}.students-table-wrap{overflow-x:auto}.students-table{min-width:1080px}.students-table thead th{height:38px;padding:10px 12px;background:#fafbfd;color:#99a1b3;font-size:10.5px;letter-spacing:.4px}.students-table tbody td{height:58px;padding:10px 12px;color:#333a56}.students-table tbody tr:hover{background:#f8f9fd}.students-table .cell-name{font-size:12.5px;font-weight:700;color:#161b33}.students-table .cell-sub{font-size:11px;color:#99a1b3;margin-top:3px}.student-mini-select{height:29px;max-width:150px;border:1px solid var(--border);border-radius:7px;background:#fff;padding:5px 8px;font-size:11.5px;color:var(--text-700)}.progress-track{width:70px;height:6px;background:var(--border-soft);border-radius:10px;overflow:hidden;display:inline-block;vertical-align:middle}.progress-fill{height:100%;background:var(--green-500);border-radius:10px;display:block}.students-table .btn-soft{background:var(--indigo-100);color:var(--indigo-600);box-shadow:none}.students-table .empty-state h4{margin:0 0 4px;color:var(--text-600);font-size:13px}.students-table .empty-state p{margin:0;font-size:12px;color:var(--text-400)}
+      .alumni-panel{display:grid;gap:16px}.alumni-metrics{grid-template-columns:repeat(4,minmax(0,1fr));gap:14px}.alumni-filter-bar{margin-bottom:0}.alumni-filter-bar .fbtn{height:36px;width:240px}.alumni-filter-bar .filter-spacer{flex:1}.alumni-card{border-radius:14px;overflow:hidden}.alumni-table{min-width:1120px;table-layout:fixed}.alumni-table th:nth-child(1){width:220px}.alumni-table th:nth-child(2){width:140px}.alumni-table th:nth-child(3){width:210px}.alumni-table th:nth-child(4){width:190px}.alumni-table th:nth-child(5){width:230px}.alumni-table th:nth-child(6){width:130px}.alumni-table th:nth-child(7){width:130px}.alumni-table th:nth-child(8){width:86px}.alumni-table tbody td{vertical-align:middle}.alumni-modal{width:760px;max-width:calc(100vw - 24px);overflow:hidden}.alumni-form{padding:20px 22px 12px;max-height:70vh;overflow:auto}.alumni-form textarea{min-height:74px}.alumni-check label{display:flex!important;align-items:center;gap:8px;height:40px;border:1px solid var(--border);border-radius:9px;background:#fff;padding:0 12px}.alumni-check input{width:auto!important}.alumni-modal .modal-foot{padding:14px 22px 20px}@media(max-width:900px){.alumni-metrics{grid-template-columns:repeat(2,minmax(0,1fr))}.alumni-filter-bar .fbtn{width:100%}.alumni-filter-bar .btn{width:100%;justify-content:center}}@media(max-width:620px){.alumni-metrics{grid-template-columns:1fr}.alumni-form{grid-template-columns:1fr;max-height:72vh}.alumni-modal .modal-foot{display:grid;grid-template-columns:1fr 1fr;gap:10px}.alumni-modal .modal-foot .btn{justify-content:center}}
       .badge-teal{background:var(--teal-50);color:var(--teal-700)}.attendance-filter-bar{gap:10px;margin-bottom:14px}.attendance-filter-bar .fbtn{height:34px}.attendance-filter-bar .filter-spacer{flex:1}.attendance-card{border-radius:14px;overflow:hidden}.attendance-card .card-body{padding:16px 18px}.att-grid{display:flex;flex-direction:column;gap:8px}.att-row{display:grid;grid-template-columns:32px minmax(180px,1.6fr) repeat(4,64px) minmax(160px,1fr);align-items:center;gap:10px;padding:9px 12px;border:1px solid var(--border-soft);border-radius:9px}.att-head{border:none;padding:0 12px 6px;color:var(--text-400);font-size:10.5px;font-weight:700;text-transform:uppercase}.att-head>div:nth-child(n+3):nth-child(-n+6){text-align:center}.att-status-btn{height:30px;border:1px solid var(--border);background:#fff;border-radius:8px;color:var(--text-600);font-size:11.5px;font-weight:700}.att-status-btn.sel-present{background:var(--teal-50);border-color:#b8eee7;color:var(--teal-700)}.att-status-btn.sel-absent{background:var(--red-50);border-color:#f6cccc;color:var(--red-700)}.att-status-btn.sel-late{background:var(--amber-50);border-color:#f5dfaf;color:var(--amber-700)}.att-status-btn.sel-leave{background:var(--purple-50);border-color:#ded2fb;color:var(--purple-700)}.att-note{width:100%;height:32px;font-size:11.5px;padding:6px 8px}.attendance-card .cell-name{font-size:12.5px;font-weight:700;color:#161b33}.attendance-card .cell-sub{font-size:11px;color:#99a1b3}
       .logs-filter-bar{gap:10px;margin-bottom:14px}.logs-filter-bar .fbtn{height:34px;width:220px}.logs-filter-bar .filter-spacer{flex:1}.logs-card{border-radius:14px;overflow:hidden}.logs-table-wrap{overflow-x:auto}.logs-table{min-width:820px}.logs-table thead th{height:38px;padding:10px 12px;background:#fafbfd;color:#99a1b3;font-size:10.5px;letter-spacing:.4px}.logs-table tbody td{height:58px;padding:10px 12px;color:#333a56}.logs-table tbody tr:hover{background:#f8f9fd}.logs-table .cell-name{font-size:12.5px;font-weight:700;color:#161b33}.logs-table .cell-sub{font-size:11px;color:#99a1b3;margin-top:3px}.logs-table .btn-soft{background:var(--indigo-100);color:var(--indigo-600);box-shadow:none}.logs-table .empty-state h4{margin:0;color:var(--text-600);font-size:13px}
       .study-note-form{grid-template-columns:1fr 1fr 240px 1fr auto}.study-note-form .field.full{grid-column:1 / -2}.study-note-list{display:grid;gap:10px;padding:14px 18px 18px}.study-note-row{display:grid;grid-template-columns:42px minmax(0,1fr) auto;align-items:center;gap:12px;border:1px solid var(--border-soft);border-radius:12px;background:#fff;padding:12px 14px}.study-note-icon{width:42px;height:42px;border-radius:12px;background:var(--indigo-100);color:var(--indigo-600);display:grid;place-items:center}.study-note-row b{display:block;font-size:13px;color:var(--text-900);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}.study-note-row p{margin:4px 0 0;color:var(--text-400);font-size:11.5px;line-height:1.35}.study-note-row small{display:block;margin-top:5px;color:var(--text-600);font-size:11.5px;line-height:1.35}.study-notes-card .empty-state{border:1px dashed var(--border);border-radius:12px;background:#fbfcff}
@@ -5277,19 +5642,19 @@ function CrmStyles() {
       .cert-filter-bar{gap:10px;margin-bottom:14px}.cert-filter-bar .fbtn{height:34px;width:240px}.cert-filter-bar .filter-spacer{flex:1}.cert-card-table{border-radius:14px;overflow:hidden}.cert-table-wrap{overflow-x:auto}.cert-table{min-width:880px}.cert-table thead th{height:38px;padding:10px 12px;background:#fafbfd;color:#99a1b3;font-size:10.5px;letter-spacing:.4px}.cert-table tbody td{height:58px;padding:10px 12px;color:#333a56}.cert-table tbody tr:hover{background:#f8f9fd}.cert-table .cell-name{font-size:12.5px;font-weight:700;color:#161b33}.cert-table .cell-sub{font-size:11px;color:#99a1b3;margin-top:3px}.modal-overlay{position:fixed;inset:0;background:rgba(10,14,29,.45);display:none;align-items:center;justify-content:center;z-index:220;padding:18px}.modal-overlay.show{display:flex}.modal{background:#fff;border-radius:16px;width:600px;max-width:92vw;max-height:88vh;overflow-y:auto;box-shadow:0 18px 48px rgba(10,14,29,.28)}.cert-modal{width:min(1280px,96vw)}.modal-head{display:flex;align-items:center;justify-content:space-between;padding:18px 22px;border-bottom:1px solid var(--border-soft);position:sticky;top:0;background:#fff;z-index:2}.modal-head h3{margin:0;font-size:15px;font-weight:700}.modal-body{padding:20px 22px}.modal-foot{display:flex;justify-content:flex-end;gap:10px;padding:16px 22px;border-top:1px solid var(--border-soft)}.logbook-review-modal{width:520px;max-width:calc(100vw - 24px);overflow:hidden}.logbook-review-body{display:grid;grid-template-columns:38px minmax(0,1fr);gap:14px;align-items:start;padding:20px 22px 14px}.logbook-review-copy p{margin:0 0 12px;color:var(--text-700);font-size:13px;line-height:1.45}.review-entry-snapshot{display:grid;gap:3px;background:#f8f9fd;border:1px solid var(--border-soft);border-radius:11px;padding:10px 12px;margin-bottom:14px}.review-entry-snapshot b{font-size:13px;color:var(--text-900)}.review-entry-snapshot span{font-size:11.5px;color:var(--text-400);font-weight:700}.logbook-review-copy .field{margin:0}.logbook-review-copy .field span{display:block;margin-bottom:7px;color:var(--text-600);font-size:12px;font-weight:800}.logbook-review-copy textarea{width:100%;resize:vertical;border:1px solid var(--border);border-radius:10px;padding:10px 12px;font:inherit;color:var(--text-900);outline:none}.logbook-review-copy textarea:focus{border-color:var(--indigo-500);box-shadow:0 0 0 3px rgba(79,107,255,.12)}.document-preview-modal{width:min(1040px,96vw);height:min(820px,92vh);max-height:92vh;display:flex;flex-direction:column;overflow:hidden}.document-preview-head{position:relative;top:auto;flex:0 0 auto}.document-preview-actions{display:flex;align-items:center;gap:8px}.document-preview-body{flex:1;min-height:0;background:#eef2f8;display:grid;place-items:center;padding:12px;overflow:auto}.document-preview-frame{width:100%;height:100%;border:0;background:#fff;border-radius:10px}.document-preview-image{display:block;max-width:100%;max-height:100%;object-fit:contain;background:#fff;border-radius:10px;box-shadow:0 12px 34px rgba(15,23,42,.16)}.certificate-card{background:#fff;border:1px solid var(--border);border-radius:13px;padding:22px;display:grid;gap:16px;overflow:auto}.certificate-preview-shell{padding:10px}.imed-certificate-exact-frame{width:1220px;height:862.49px;max-width:none;margin:0 auto;overflow:hidden;background:#fff;box-shadow:0 18px 44px rgba(17,33,61,.08)}.imed-certificate-exact-frame>div{width:3508px;height:2480px;transform:scale(.3477765);transform-origin:top left}.cert-verify-field{margin-top:14px}
       .document-actions{display:flex;align-items:center;justify-content:flex-end;gap:8px;min-width:0}.document-actions .badge{max-width:220px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}.document-actions .btn{height:30px;padding:0 10px;gap:6px;white-space:nowrap}
       @media print{@page certificate-page{size:A4 landscape;margin:0}@page receipt-page{size:A4 portrait;margin:8mm}html,body{background:#fff!important;overflow:visible!important}body.imed-print-certificate{width:297mm;height:210mm;overflow:hidden!important}body.imed-print-certificate *{visibility:hidden!important}body.imed-print-certificate .certificate-export-target,body.imed-print-certificate .certificate-export-target *{visibility:visible!important}body.imed-print-certificate .certificate-export-target{page:certificate-page;position:fixed!important;inset:0!important;width:297mm!important;height:210mm!important;margin:0!important;background:#fff!important;overflow:hidden!important}body.imed-print-certificate .certificate-export-target .certificate-card{border:0!important;border-radius:0!important;padding:0!important;box-shadow:none!important;width:297mm!important;height:210mm!important;overflow:hidden!important}body.imed-print-certificate .certificate-export-target .imed-certificate-exact-frame{width:297mm!important;height:210mm!important;margin:0!important;box-shadow:none!important;border-radius:0!important;overflow:hidden!important}body.imed-print-certificate .certificate-export-target .imed-certificate-exact-frame>div{width:3508px!important;height:2480px!important;transform:scale(.32)!important;transform-origin:top left!important}body.imed-print-receipt *{visibility:hidden!important}body.imed-print-receipt .receipt-print-target,body.imed-print-receipt .receipt-print-target *{visibility:visible!important}body.imed-print-receipt .receipt-print-target{page:receipt-page;position:absolute!important;left:0!important;top:0!important;width:100%!important;max-width:none!important;margin:0!important;padding:0!important;background:#fff!important;overflow:visible!important}body.imed-print-receipt .receipt-print-target .tax-invoice{width:100%!important;min-width:0!important;margin:0!important;box-shadow:none!important}}
-      .crow{display:flex;align-items:center;justify-content:space-between;gap:14px;padding:12px 0;border-bottom:1px solid var(--border-soft)}.crow:last-child{border-bottom:0}.who{display:flex;align-items:center;gap:11px}.mini{width:32px;height:32px;border-radius:999px;background:var(--blue-50);color:var(--indigo-600);display:inline-flex;align-items:center;justify-content:center;font-size:12px;font-weight:800}.row-list{display:grid}.row-button{width:100%;border:0;background:transparent;text-align:left}.collection-box{display:grid;gap:8px}.collection-box strong{font-size:23px;color:#061633}.collection-box span{color:var(--text-400)}.cash-deposit-card{margin-bottom:16px}.cash-deposit-table{min-width:980px}.cash-deposit-form{display:grid;grid-template-columns:90px 132px 150px 150px 130px 120px 150px auto;gap:8px;align-items:center}.cash-deposit-form input{height:34px;border:1px solid var(--border);border-radius:8px;padding:7px 9px;font-size:11.5px;font-family:inherit;color:var(--text-900);background:#fff;min-width:0}.cash-deposit-form input[type=file]{padding:6px;background:#fff}.cash-deposit-history{display:grid;gap:5px}.cash-deposit-history div{display:flex;flex-wrap:wrap;gap:6px 10px;align-items:center}.cash-deposit-history b{font-size:12px}.cash-deposit-history span{font-size:11px;color:var(--text-400)}.field-grid{display:grid;grid-template-columns:1fr 1fr;gap:14px}.field{margin-bottom:0}.field.full{grid-column:1/-1}.field label{display:block;font-size:11.5px;font-weight:700;color:var(--text-600);margin-bottom:6px}.required-star{color:var(--red-500);font-weight:800;margin-left:3px}.field input,.field select,.field textarea{width:100%;border:1px solid var(--border);border-radius:8px;padding:9px 11px;font-size:12.5px;font-family:inherit;color:var(--text-900);background:#fff}.field input[type=file]{padding:7px 9px}.field textarea{min-height:70px}.field-help{display:block;margin-top:5px;font-size:10.5px;color:var(--text-400)}.day-picker{display:flex;flex-wrap:wrap;gap:8px}.day-picker label{display:flex!important;align-items:center;gap:6px;border:1px solid var(--border);border-radius:999px;padding:7px 10px;background:#fff;margin:0!important}.class-card{margin-bottom:16px}.class-att-grid .att-row{min-width:760px}.pager{display:flex;align-items:center;justify-content:space-between;padding:12px 18px;border-top:1px solid var(--border-soft);font-size:12px;color:var(--text-400)}.pager-btns{display:flex;gap:6px}.pager-btns button{min-width:40px;height:28px;border-radius:7px;border:1px solid var(--border);background:#fff;font-size:12px;color:var(--text-600)}.pager-btns button.active{background:var(--indigo-500);color:#fff;border-color:var(--indigo-500)}.empty-state{text-align:center;padding:34px 20px;color:var(--text-400)}.settings-shell{display:grid;grid-template-columns:1fr 1fr;gap:16px}.settings-prototype-shell{grid-template-columns:220px minmax(0,1fr);align-items:start}.settings-nav{background:#fff;border:1px solid var(--border);border-radius:14px;padding:10px;display:grid;gap:4px;box-shadow:0 1px 2px rgba(16,20,40,.05)}.settings-nav button{border:0;background:transparent;color:var(--text-600);border-radius:9px;padding:10px 12px;text-align:left;font-size:12.5px;font-weight:700}.settings-nav button.active{background:var(--indigo-500);color:#fff;box-shadow:0 4px 12px rgba(79,107,255,.28)}.settings-pane-wrap{min-width:0}.settings-card{border-radius:14px;overflow:hidden}.settings-card .card-head button{margin-left:auto}.settings-table-wrap{overflow-x:auto}.settings-table{min-width:760px}.settings-table thead th{height:38px;padding:10px 12px;background:#fafbfd;color:#99a1b3;font-size:10.5px;letter-spacing:.4px}.settings-table tbody td{height:58px;padding:10px 12px;color:#333a56}.settings-table tbody tr:hover{background:#f8f9fd}.settings-table .cell-name{font-size:12.5px;font-weight:700;color:#161b33}.settings-table .cell-sub{font-size:11px;color:#99a1b3;margin-top:3px}.settings-search-body{padding-bottom:0}.settings-search-body .fbtn{width:260px;height:34px}.settings-add-form{border-bottom:1px solid var(--border-soft);background:#fafbfd}.settings-security-card{max-width:420px}.settings-security-card .card-body{display:grid;gap:14px}.staff-role-note>div{border:1px solid var(--border-soft);border-radius:8px;background:#fafbfd;color:var(--text-600);font-size:12px;line-height:1.4;padding:10px 11px}.pill-list{display:flex;flex-wrap:wrap;gap:10px;padding:0 18px 18px}.pill-list span{padding:8px 12px;border-radius:999px;background:var(--blue-50);color:var(--indigo-600);font-weight:700}.profile-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:16px}.profile-grid b{display:block;color:var(--text-400);font-size:11px;text-transform:uppercase;margin-bottom:5px}.profile-grid p{margin:0;font-weight:700}.payment-form{grid-column:1/-1;display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:12px;align-items:start}.payment-form-actions{grid-column:1/-1;display:flex;justify-content:flex-end;padding-top:2px}.payment-form-actions .btn{min-width:150px}.profile-own-card{max-width:520px;border-radius:14px;overflow:hidden}.profile-own-head{gap:14px}.profile-own-avatar{width:46px;height:46px;font-size:15px;background:linear-gradient(135deg,var(--indigo-500),#8A6BFF);color:#fff}.profile-security-btn{margin-top:16px}.profile-shell{max-width:760px;border-radius:14px;overflow:hidden}.profile-head{padding:20px 22px;border-bottom:1px solid var(--border-soft);display:flex;align-items:flex-start;gap:14px}.profile-title{flex:1;min-width:0}.profile-title h3{margin:0;font-size:15px;line-height:1.25}.profile-title .cell-sub{display:flex;align-items:center;gap:6px;flex-wrap:wrap;margin-top:4px}.profile-tabs{padding:0 22px;overflow-x:auto}.profile-drawer-body{padding-bottom:18px}.profile-metrics{grid-template-columns:1fr 1fr;margin-bottom:10px}.profile-metrics .metric-card{padding:14px}.profile-metrics .m-value{font-size:21px}.profile-metrics .m-delta:empty{display:none}.profile-progress{width:100px}.profile-payment-form{margin-top:12px;grid-template-columns:repeat(2,minmax(0,1fr))}.profile-payment-form .btn{height:38px;justify-content:center}.profile-edit-form{padding:18px 22px}.profile-edit-actions{grid-column:1/-1;display:flex;justify-content:flex-end;gap:10px;border-top:1px solid var(--border-soft);padding-top:14px}.feedback-form{padding-bottom:16px;border-bottom:1px solid var(--border-soft)}.feedback-timeline{display:grid;gap:10px;margin-top:16px}.feedback-item{border:1px solid var(--border-soft);border-radius:10px;padding:12px;background:#fff}.feedback-item>div:first-child{display:flex;align-items:center;justify-content:space-between;gap:10px}.feedback-item b{font-size:12.5px}.feedback-item p{margin:8px 0;color:var(--text-700);line-height:1.45}.profile-shell .table-wrap{border:1px solid var(--border-soft);border-radius:10px;overflow:auto}.profile-shell table thead th{background:#fafbfd}.profile-shell .certificate-card{border-radius:10px}
+       .crow{display:flex;align-items:center;justify-content:space-between;gap:14px;padding:12px 0;border-bottom:1px solid var(--border-soft)}.crow:last-child{border-bottom:0}.who{display:flex;align-items:center;gap:11px}.mini{width:32px;height:32px;border-radius:999px;background:var(--blue-50);color:var(--indigo-600);display:inline-flex;align-items:center;justify-content:center;font-size:12px;font-weight:800}.row-list{display:grid}.row-button{width:100%;border:0;background:transparent;text-align:left}.collection-box{display:grid;gap:8px}.collection-box strong{font-size:23px;color:#061633}.collection-box span{color:var(--text-400)}.nps-metrics{grid-template-columns:repeat(4,minmax(0,1fr));gap:14px;margin-bottom:18px}.nps-metrics .metric-card{min-height:118px;padding:18px 20px;border-radius:14px;background:linear-gradient(180deg,#fff 0%,#fbfcff 100%)}.nps-metrics .m-label{font-size:12px;font-weight:800;color:#405070}.nps-metrics .m-value{font-size:28px;line-height:34px;font-weight:900;letter-spacing:0;color:#061633;margin-top:8px}.nps-metrics .m-delta{font-size:11.5px;font-weight:800;margin-top:8px}.nps-filter-bar{display:grid;grid-template-columns:minmax(220px,1.35fr) repeat(4,minmax(130px,.72fr)) auto;gap:10px;align-items:center;margin-bottom:18px}.nps-filter-bar .search-box{width:100%;height:36px}.nps-filter-bar .fbtn,.nps-filter-bar .btn{height:36px;border-radius:9px;font-size:12px}.nps-insight-grid{margin-bottom:18px;align-items:stretch}.nps-insight-grid>.card{min-height:264px;border-radius:14px;overflow:hidden}.nps-insight-grid .card-head h3,.nps-insight-grid .card-head p,.card-head h3,.card-head p{letter-spacing:0}.nps-insight-grid .card-head h3{font-size:14px;font-weight:900;color:#061633}.nps-insight-grid .card-head p{font-size:12px;color:var(--text-400);margin-top:3px}.nps-trend{height:190px;display:flex;align-items:end;gap:16px;overflow-x:auto;padding:24px 18px 18px}.nps-trend-day{min-width:58px;height:142px;display:grid;grid-template-rows:1fr auto auto;gap:6px;align-items:end;text-align:center}.nps-trend-bar{width:48px;height:110px;margin:0 auto;border-radius:999px;background:#edf2fb;display:flex;align-items:end;overflow:hidden;box-shadow:inset 0 0 0 1px rgba(215,223,239,.7)}.nps-trend-bar i{display:block;width:100%;min-height:8px;border-radius:999px;background:linear-gradient(180deg,#4f6bff 0%,#17a673 100%)}.nps-trend-day b{font-size:13px;font-weight:900;color:#061633}.nps-trend-day span{font-size:11px;font-weight:700;color:var(--text-400);white-space:nowrap}.nps-alert-list{display:grid;gap:12px;align-content:start;padding:18px}.nps-alert{display:flex;align-items:flex-start;gap:13px;border:1px solid var(--border-soft);border-radius:14px;background:#fff;padding:14px 16px;box-shadow:0 1px 2px rgba(16,20,40,.04)}.nps-alert>span{width:10px;height:10px;border-radius:999px;margin-top:5px;flex:0 0 auto}.nps-alert.warn>span{background:#f5a524}.nps-alert.bad>span{background:#e5484d}.nps-alert.good>span{background:#17a673}.nps-alert b{font-size:13px;font-weight:900;color:#061633}.nps-alert p{margin:4px 0 0;color:var(--text-400);font-size:12px;line-height:17px}.nps-heatmap{display:grid;gap:14px;padding:18px}.nps-heat-row{display:grid;grid-template-columns:180px minmax(0,1fr) 44px;gap:14px;align-items:center}.nps-heat-row span{font-size:12px;font-weight:900;color:#405070}.nps-heat-row div{height:10px;border-radius:999px;background:#e9edf5;overflow:hidden}.nps-heat-row i{display:block;height:100%;border-radius:inherit;background:linear-gradient(90deg,var(--indigo-500),var(--teal-500))}.nps-heat-row b{text-align:right;color:#061633;font-weight:900}.nps-promoter{background:#ddfbef;color:#008060}.nps-passive{background:#fff4da;color:#b77900}.nps-detractor{background:#ffe8e8;color:#c62828}.nps-note-history{display:grid;gap:8px;border:1px solid var(--border-soft);border-radius:12px;background:#fbfcff;padding:12px}.nps-note-history>b{font-size:12px;color:#061633}.nps-note-history div{border-top:1px solid var(--border-soft);padding-top:8px}.nps-note-history div:first-of-type{border-top:0;padding-top:0}.nps-note-history p{margin:0;color:#2f3954;font-size:12.5px;line-height:18px}.nps-note-history span{display:block;margin-top:4px;color:var(--text-400);font-size:11px}.nps-responses-card{margin-bottom:18px}.nps-summary-section{margin-top:0}.nps-summary-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:14px;padding:16px}.nps-summary-card{border:1px solid var(--border-soft);border-radius:14px;background:linear-gradient(135deg,#fff 0%,#f8fbff 100%);padding:18px;display:grid;grid-template-columns:minmax(0,1fr) auto;gap:6px 14px;align-items:center}.nps-summary-card b{font-size:13px;font-weight:900;color:#061633;text-transform:uppercase}.nps-summary-card strong{font-size:30px;line-height:34px;color:var(--indigo-600);font-weight:900}.nps-summary-card span{grid-column:1/-1;font-size:12px;font-weight:700;color:var(--text-400)}@media(max-width:1100px){.nps-metrics{grid-template-columns:repeat(2,minmax(0,1fr))}.nps-filter-bar{grid-template-columns:repeat(2,minmax(0,1fr))}.nps-filter-bar .search-box{grid-column:1/-1}.nps-filter-bar .btn{justify-content:center}}@media(max-width:680px){.nps-metrics{grid-template-columns:1fr}.nps-filter-bar{grid-template-columns:1fr}.nps-insight-grid{grid-template-columns:1fr}.nps-heat-row{grid-template-columns:1fr 54px}.nps-heat-row div{grid-column:1/-1;grid-row:2}.nps-trend{padding:18px 14px}.nps-summary-card{grid-template-columns:1fr}.nps-summary-card strong{font-size:26px}.nps-responses-card{margin-bottom:14px}}.cash-deposit-card{margin-bottom:16px}.cash-deposit-table{min-width:980px}.cash-deposit-form{display:grid;grid-template-columns:90px 132px 150px 150px 130px 120px 150px auto;gap:8px;align-items:center}.cash-deposit-form input{height:34px;border:1px solid var(--border);border-radius:8px;padding:7px 9px;font-size:11.5px;font-family:inherit;color:var(--text-900);background:#fff;min-width:0}.cash-deposit-form input[type=file]{padding:6px;background:#fff}.cash-deposit-history{display:grid;gap:5px}.cash-deposit-history div{display:flex;flex-wrap:wrap;gap:6px 10px;align-items:center}.cash-deposit-history b{font-size:12px}.cash-deposit-history span{font-size:11px;color:var(--text-400)}.field-grid{display:grid;grid-template-columns:1fr 1fr;gap:14px}.field{margin-bottom:0}.field.full{grid-column:1/-1}.field label{display:block;font-size:11.5px;font-weight:700;color:var(--text-600);margin-bottom:6px}.required-star{color:var(--red-500);font-weight:800;margin-left:3px}.field input,.field select,.field textarea{width:100%;border:1px solid var(--border);border-radius:8px;padding:9px 11px;font-size:12.5px;font-family:inherit;color:var(--text-900);background:#fff}.field input[type=file]{padding:7px 9px}.field textarea{min-height:70px}.field-help{display:block;margin-top:5px;font-size:10.5px;color:var(--text-400)}.day-picker{display:flex;flex-wrap:wrap;gap:8px}.day-picker label{display:flex!important;align-items:center;gap:6px;border:1px solid var(--border);border-radius:999px;padding:7px 10px;background:#fff;margin:0!important}.class-card{margin-bottom:16px}.class-att-grid .att-row{min-width:760px}.pager{display:flex;align-items:center;justify-content:space-between;padding:12px 18px;border-top:1px solid var(--border-soft);font-size:12px;color:var(--text-400)}.pager-btns{display:flex;gap:6px}.pager-btns button{min-width:40px;height:28px;border-radius:7px;border:1px solid var(--border);background:#fff;font-size:12px;color:var(--text-600)}.pager-btns button.active{background:var(--indigo-500);color:#fff;border-color:var(--indigo-500)}.empty-state{text-align:center;padding:34px 20px;color:var(--text-400)}.settings-shell{display:grid;grid-template-columns:1fr 1fr;gap:16px}.settings-prototype-shell{grid-template-columns:220px minmax(0,1fr);align-items:start}.settings-nav{background:#fff;border:1px solid var(--border);border-radius:14px;padding:10px;display:grid;gap:4px;box-shadow:0 1px 2px rgba(16,20,40,.05)}.settings-nav button{border:0;background:transparent;color:var(--text-600);border-radius:9px;padding:10px 12px;text-align:left;font-size:12.5px;font-weight:700}.settings-nav button.active{background:var(--indigo-500);color:#fff;box-shadow:0 4px 12px rgba(79,107,255,.28)}.settings-pane-wrap{min-width:0}.settings-card{border-radius:14px;overflow:hidden}.settings-card .card-head button{margin-left:auto}.settings-table-wrap{overflow-x:auto}.settings-table{min-width:760px}.settings-table thead th{height:38px;padding:10px 12px;background:#fafbfd;color:#99a1b3;font-size:10.5px;letter-spacing:.4px}.settings-table tbody td{height:58px;padding:10px 12px;color:#333a56}.settings-table tbody tr:hover{background:#f8f9fd}.settings-table .cell-name{font-size:12.5px;font-weight:700;color:#161b33}.settings-table .cell-sub{font-size:11px;color:#99a1b3;margin-top:3px}.settings-search-body{padding-bottom:0}.settings-search-body .fbtn{width:260px;height:34px}.settings-add-form{border-bottom:1px solid var(--border-soft);background:#fafbfd}.settings-security-card{max-width:420px}.settings-security-card .card-body{display:grid;gap:14px}.staff-role-note>div{border:1px solid var(--border-soft);border-radius:8px;background:#fafbfd;color:var(--text-600);font-size:12px;line-height:1.4;padding:10px 11px}.pill-list{display:flex;flex-wrap:wrap;gap:10px;padding:0 18px 18px}.pill-list span{padding:8px 12px;border-radius:999px;background:var(--blue-50);color:var(--indigo-600);font-weight:700}.profile-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:16px}.profile-grid b{display:block;color:var(--text-400);font-size:11px;text-transform:uppercase;margin-bottom:5px}.profile-grid p{margin:0;font-weight:700}.payment-form{grid-column:1/-1;display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:12px;align-items:start}.payment-form-actions{grid-column:1/-1;display:flex;justify-content:flex-end;padding-top:2px}.payment-form-actions .btn{min-width:150px}.profile-own-card{max-width:520px;border-radius:14px;overflow:hidden}.profile-own-head{gap:14px}.profile-own-avatar{width:46px;height:46px;font-size:15px;background:linear-gradient(135deg,var(--indigo-500),#8A6BFF);color:#fff}.profile-security-btn{margin-top:16px}.profile-shell{max-width:760px;border-radius:14px;overflow:hidden}.profile-head{padding:20px 22px;border-bottom:1px solid var(--border-soft);display:flex;align-items:flex-start;gap:14px}.profile-title{flex:1;min-width:0}.profile-title h3{margin:0;font-size:15px;line-height:1.25}.profile-title .cell-sub{display:flex;align-items:center;gap:6px;flex-wrap:wrap;margin-top:4px}.profile-tabs{padding:0 22px;overflow-x:auto}.profile-drawer-body{padding-bottom:18px}.profile-metrics{grid-template-columns:1fr 1fr;margin-bottom:10px}.profile-metrics .metric-card{padding:14px}.profile-metrics .m-value{font-size:21px}.profile-metrics .m-delta:empty{display:none}.profile-progress{width:100px}.profile-payment-form{margin-top:12px;grid-template-columns:repeat(2,minmax(0,1fr))}.profile-payment-form .btn{height:38px;justify-content:center}.profile-edit-form{padding:18px 22px}.profile-edit-actions{grid-column:1/-1;display:flex;justify-content:flex-end;gap:10px;border-top:1px solid var(--border-soft);padding-top:14px}.feedback-form{padding-bottom:16px;border-bottom:1px solid var(--border-soft)}.feedback-timeline{display:grid;gap:10px;margin-top:16px}.feedback-item{border:1px solid var(--border-soft);border-radius:10px;padding:12px;background:#fff}.feedback-item>div:first-child{display:flex;align-items:center;justify-content:space-between;gap:10px}.feedback-item b{font-size:12.5px}.feedback-item p{margin:8px 0;color:var(--text-700);line-height:1.45}.profile-shell .table-wrap{border:1px solid var(--border-soft);border-radius:10px;overflow:auto}.profile-shell table thead th{background:#fafbfd}.profile-shell .certificate-card{border-radius:10px}
       .internship-status-card{display:flex;align-items:center;justify-content:space-between;gap:14px;margin-bottom:14px;border:1px solid var(--border-soft);border-radius:12px;background:linear-gradient(135deg,#fff 0%,#fff9ef 100%);padding:14px}.internship-status-card.assigned{background:linear-gradient(135deg,#fff 0%,#effdf7 100%)}.internship-status-card h4{margin:8px 0 4px;font-size:14px;color:var(--text-900)}.internship-status-card p{margin:0;color:var(--text-400);font-size:11.5px;line-height:1.45}.internship-form{margin-top:0}.internship-form .profile-edit-actions{padding-top:14px}.internship-panel{display:grid;gap:16px}.internship-metrics{grid-template-columns:repeat(4,1fr)}.internship-monitor-card{border-radius:14px;overflow:hidden}.internship-monitor-body{padding:14px 18px 18px}.internship-filter-bar{margin-bottom:14px}.internship-filter-bar .fbtn{height:34px}.internship-search-field{width:280px;display:flex;align-items:center;gap:8px;padding:0 11px}.internship-search-field svg{flex:0 0 14px}.internship-filter-bar .internship-search-field input{height:auto;width:100%;min-width:0;border:0;background:transparent;outline:0;padding:0;font-size:12.5px;color:var(--text-900);font-family:inherit}.internship-date-input{width:156px}.internship-monitor-table{min-width:1120px;table-layout:fixed}.internship-monitor-table thead th{height:38px;padding:10px 12px;background:#fafbfd;color:#99a1b3;font-size:10.5px;letter-spacing:.4px}.internship-monitor-table tbody td{height:62px;padding:10px 12px;color:#333a56;vertical-align:middle;overflow:hidden}.internship-monitor-table th:nth-child(1){width:250px}.internship-monitor-table th:nth-child(2){width:160px}.internship-monitor-table th:nth-child(3){width:104px}.internship-monitor-table th:nth-child(4),.internship-monitor-table th:nth-child(5){width:160px}.internship-monitor-table th:nth-child(6){width:72px}.internship-monitor-table th:nth-child(7){width:86px}.internship-monitor-table th:nth-child(8){width:228px}.internship-monitor-table tbody tr:hover{background:#f8f9fd}.internship-monitor-table .cell-name{font-size:12.5px;font-weight:700;color:#161b33}.internship-monitor-table .cell-sub{font-size:11px;color:#99a1b3;margin-top:3px}.internship-student-cell{min-width:0}.internship-student-cell>div{min-width:0}.internship-student-cell .cell-name,.internship-student-cell .cell-sub,.internship-hospital-cell,.internship-hospital-cell .cell-sub{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}.internship-monitor-table td.mono{font-size:11px;white-space:nowrap}.internship-gps-status{overflow:visible!important}.internship-gps-status .badge{max-width:100%;overflow:hidden;text-overflow:ellipsis}.internship-gps-status .cell-sub{white-space:normal;line-height:1.35}
       .internship-metrics{grid-template-columns:repeat(auto-fit,minmax(170px,1fr))}.internship-tabs{width:max-content;max-width:100%;margin:0;overflow-x:auto}.internship-tabs .pill-tab{white-space:nowrap;display:inline-flex;align-items:center;gap:7px}.tab-badge{min-width:18px;height:18px;border-radius:999px;background:var(--amber-500);color:#fff;display:inline-grid;place-items:center;padding:0 6px;font-size:10px;font-style:normal;font-weight:800}.internship-logbook-card{border-radius:14px;overflow:hidden}.internship-logbook-card .segmented.tiny{margin-left:auto}.internship-logbook-card .segmented.tiny button{height:30px;padding:0 10px;font-size:11.5px}.internship-logbook-list{display:grid;gap:10px;background:#fbfcff}.internship-logbook-item{display:grid;grid-template-columns:230px minmax(0,1fr) 142px;gap:14px;align-items:start;background:#fff;border:1px solid var(--border-soft);border-radius:12px;padding:12px}.internship-logbook-content{min-width:0}.internship-logbook-top{display:flex;align-items:center;justify-content:space-between;gap:12px;margin-bottom:10px}.internship-logbook-top b{font-size:13px;color:var(--text-900);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}.internship-logbook-top span{font-size:11px;color:var(--text-400);font-weight:700;white-space:nowrap}.internship-logbook-notes{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px}.internship-logbook-notes>div{border:1px solid var(--border-soft);border-radius:10px;background:#fafbfd;padding:9px 10px}.internship-logbook-notes>div:nth-child(3){grid-column:1/-1}.internship-logbook-notes span{display:block;color:var(--indigo-600);font-size:10.5px;font-weight:800;text-transform:uppercase;letter-spacing:.35px}.internship-logbook-notes p{margin:5px 0 0;color:var(--text-700);font-size:12px;line-height:1.45;white-space:normal}.internship-logbook-actions{display:grid;justify-items:end;align-content:start;gap:10px}.internship-logbook-actions .btn{white-space:nowrap}.internship-logbook-list .empty-state{background:#fff;border:1px dashed var(--border);border-radius:12px}@media(max-width:1100px){.internship-logbook-item{grid-template-columns:1fr}.internship-logbook-actions{justify-items:start;display:flex;align-items:center;justify-content:space-between}.internship-logbook-card .segmented.tiny{margin-left:0}}@media(max-width:900px){.study-note-form{grid-template-columns:1fr 1fr}.study-note-form .field.full{grid-column:1/-1}.study-note-form .btn{justify-content:center}}@media(max-width:700px){.internship-tabs{width:100%}.internship-tabs .pill-tab{flex:1;justify-content:center}.internship-logbook-notes{grid-template-columns:1fr}.internship-logbook-actions{align-items:flex-start;flex-direction:column}.internship-logbook-top{align-items:flex-start;flex-direction:column;gap:4px}.study-note-form{grid-template-columns:1fr}.study-note-row{grid-template-columns:38px minmax(0,1fr);align-items:start}.study-note-row .action-icons{grid-column:1/-1;justify-content:flex-end}.study-note-icon{width:38px;height:38px}}
       .chart-body{display:flex;align-items:center;gap:22px;flex-wrap:wrap}.donut-wrap{position:relative;flex:0 0 auto;display:flex;align-items:center;justify-content:center}.donut-center{position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center;pointer-events:none}.donut-center strong{font-size:19px;font-weight:800;color:#061633;font-family:JetBrains Mono,monospace;line-height:1.1}.donut-center span{font-size:10px;color:var(--text-400);font-weight:600;text-transform:uppercase;letter-spacing:.3px;margin-top:2px}.donut-legend{flex:1;min-width:160px;display:flex;flex-direction:column;gap:9px}.donut-legend-row{display:grid;grid-template-columns:9px 1fr auto auto;align-items:center;gap:9px;font-size:12px}.donut-legend-row .dot{width:9px;height:9px;border-radius:3px}.donut-legend-row .lbl{color:var(--text-700);font-weight:600;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}.donut-legend-row .val{color:var(--text-400);font-family:JetBrains Mono,monospace;font-size:11px}.donut-legend-row .pct{color:var(--text-900);font-weight:700;min-width:34px;text-align:right}
       .main,.content,.card,.metric-card,.table-wrap,.settings-pane-wrap,.profile-title,.drawer-title{min-width:0}.table-wrap{max-width:100%;overflow-x:auto}.filter-bar{display:flex;align-items:center;flex-wrap:wrap;gap:10px}.filter-bar .fbtn,.filter-bar select,.filter-bar input{max-width:100%}.drawer{max-width:96vw}.drawer-body{overflow-x:hidden}.att-grid{overflow-x:auto;padding-bottom:2px}.att-row{min-width:760px}.modal-body,.card-body{min-width:0}.invoice-card,.certificate-card{max-width:100%}.date-filter,.dtabs,.settings-nav,.pager-btns,.nav-scroll,.table-wrap,.att-grid,.invoice-card,.certificate-card,.certificate-preview-shell{scrollbar-width:none;-ms-overflow-style:none}.date-filter::-webkit-scrollbar,.dtabs::-webkit-scrollbar,.settings-nav::-webkit-scrollbar,.pager-btns::-webkit-scrollbar,.nav-scroll::-webkit-scrollbar,.table-wrap::-webkit-scrollbar,.att-grid::-webkit-scrollbar,.invoice-card::-webkit-scrollbar,.certificate-card::-webkit-scrollbar,.certificate-preview-shell::-webkit-scrollbar{display:none}
       .roster-lanes{display:grid;grid-template-rows:minmax(92px,auto) minmax(92px,auto);gap:5px}.roster-lane{min-height:92px}.roster-lane .roster-slot{position:relative;min-height:87px;margin-bottom:0}.roster-slot .roster-date{color:var(--indigo-600);font-size:10.5px;font-weight:700}.roster-slot.practical .roster-date{color:var(--amber-700)}.roster-slot.selected{border-width:2px!important;background:#fff!important;box-shadow:0 0 0 3px rgba(79,107,255,.16),0 10px 24px rgba(79,107,255,.18)!important;transform:translateY(-1px)}.roster-slot.practical.selected{box-shadow:0 0 0 3px rgba(245,158,11,.18),0 10px 24px rgba(245,158,11,.18)!important}
       .class-attendance-shell{display:grid;gap:12px}.class-attendance-tools{display:flex;align-items:center;gap:10px;flex-wrap:wrap;padding-bottom:2px}.class-attendance-search{width:260px;height:34px;background:#fff}.class-attendance-filters{overflow-x:auto}.class-attendance-save{position:sticky;bottom:0;z-index:3;display:flex;align-items:center;justify-content:space-between;gap:12px;margin:4px -18px -16px;padding:12px 18px;background:rgba(255,255,255,.96);border-top:1px solid var(--border-soft);box-shadow:0 -8px 22px rgba(16,20,40,.06)}.class-attendance-save span{color:var(--text-400);font-size:12px;font-weight:700}.class-attendance-save .btn{white-space:nowrap}.class-attendance-actions{display:flex;align-items:center;justify-content:flex-end;gap:8px;flex-wrap:wrap}.btn-danger-soft{background:var(--red-50);border-color:#f7d7d7;color:var(--red-700)}
-      @media(max-width:1200px){.lower-grid{grid-template-columns:1fr 1fr}.finance-metrics{grid-template-columns:repeat(2,minmax(0,1fr))}.finance-grid,.attdetail-grid{grid-template-columns:1fr}.settings-prototype-shell{grid-template-columns:190px minmax(0,1fr)}}
-      @media(max-width:1100px){.sidebar{width:74px;flex-basis:74px}.brand-text,.nav-group-label,.nav-item span,.role-meta{display:none}.sidebar-brand,.nav-item{justify-content:center}.nav-badge{position:absolute;right:12px;top:7px;margin:0;min-width:17px;height:17px;padding:0 5px;font-size:9.5px}.two-col,.settings-shell,.lower-grid,.batch-grid{grid-template-columns:1fr}.batch-card-grid{grid-template-columns:repeat(2,minmax(0,1fr))}.topbar{height:auto;min-height:0;flex:0 0 auto;display:grid;grid-template-columns:1fr;align-items:stretch;padding:14px;gap:10px}.topbar-spacer{display:none}.search-box{width:100%}.date-filter{flex-wrap:wrap}.field-grid,.profile-grid,.payment-form{grid-template-columns:1fr}.card-head{align-items:flex-start;flex-wrap:wrap}.card-head button,.card-head input{margin-left:0}.settings-prototype-shell{grid-template-columns:1fr}.settings-nav{display:flex;overflow-x:auto;white-space:nowrap}.settings-nav button{flex:0 0 auto}.batch-metrics,.emi-metrics{grid-template-columns:repeat(2,minmax(0,1fr))}}
+      // @media(max-width:1200px){.lower-grid{grid-template-columns:1fr 1fr}.finance-metrics{grid-template-columns:repeat(2,minmax(0,1fr))}.finance-grid,.attdetail-grid{grid-template-columns:1fr}.settings-prototype-shell{grid-template-columns:190px minmax(0,1fr)}}
+      // @media(max-width:1100px){.sidebar{width:74px;flex-basis:74px}.brand-text,.nav-group-label,.nav-item span,.role-meta{display:none}.sidebar-brand,.nav-item{justify-content:center}.nav-badge{position:absolute;right:12px;top:7px;margin:0;min-width:17px;height:17px;padding:0 5px;font-size:9.5px}.two-col,.settings-shell,.lower-grid,.batch-grid{grid-template-columns:1fr}.batch-card-grid{grid-template-columns:repeat(2,minmax(0,1fr))}.topbar{height:auto;min-height:0;flex:0 0 auto;display:grid;grid-template-columns:1fr;align-items:stretch;padding:14px;gap:10px}.topbar-spacer{display:none}.search-box{width:100%}.date-filter{flex-wrap:wrap}.field-grid,.profile-grid,.payment-form{grid-template-columns:1fr}.card-head{align-items:flex-start;flex-wrap:wrap}.card-head button,.card-head input{margin-left:0}.settings-prototype-shell{grid-template-columns:1fr}.settings-nav{display:flex;overflow-x:auto;white-space:nowrap}.settings-nav button{flex:0 0 auto}.batch-metrics,.emi-metrics{grid-template-columns:repeat(2,minmax(0,1fr))}}
+            @media(max-width:1100px){.sidebar{width:74px;flex-basis:74px}.brand-text,.nav-group-label,.nav-item span,.role-meta{display:none}.sidebar-brand,.nav-item{justify-content:center}.sidebar-brand .brand-full-logo{width:42px;height:42px;max-width:42px;object-fit:contain;object-position:left center}.nav-badge{position:absolute;right:12px;top:7px;margin:0;min-width:17px;height:17px;padding:0 5px;font-size:9.5px}.two-col,.settings-shell,.lower-grid,.batch-grid{grid-template-columns:1fr}.batch-card-grid{grid-template-columns:repeat(2,minmax(0,1fr))}.topbar{height:auto;min-height:0;flex:0 0 auto;display:grid;grid-template-columns:1fr;align-items:stretch;padding:14px;gap:10px}.topbar-spacer{display:none}.search-box{width:100%}.date-filter{flex-wrap:wrap}.field-grid,.profile-grid,.payment-form{grid-template-columns:1fr}.card-head{align-items:flex-start;flex-wrap:wrap}.card-head button,.card-head input{margin-left:0}.settings-prototype-shell{grid-template-columns:1fr}.settings-nav{display:flex;overflow-x:auto;white-space:nowrap}.settings-nav button{flex:0 0 auto}.batch-metrics,.emi-metrics{grid-template-columns:repeat(2,minmax(0,1fr))}}
       @media(max-width:800px){.topbar{display:flex;flex-direction:column;align-items:stretch;gap:8px}.scope-select{width:100%;height:36px}.date-filter{width:100%;overflow-x:auto;justify-content:flex-start;flex-wrap:nowrap}.df-btn{flex:0 0 auto}.df-date.show{width:100%}.topbar>.icon-btn{align-self:flex-end;flex:0 0 34px}.search-box{width:100%;min-height:38px;flex:0 0 auto}.filter-bar{align-items:stretch}.filter-bar .fbtn,.filter-bar select,.filter-bar input,.logs-filter-bar .fbtn,.receipts-filter-bar .fbtn,.cert-filter-bar .fbtn{width:100%;min-width:0}.filter-spacer{display:none}.drawer{width:100vw!important;max-width:100vw;border-radius:0}.receipt-drawer{width:100vw;max-width:100vw}.drawer-head{padding:16px}.drawer-body{padding:14px}.receipt-drawer-body{padding:14px 0 24px}.invoice-card{padding:0 10px!important}.tax-invoice{min-width:720px}.invoice-actions{padding:0 10px}.profile-shell{max-width:none}.modal{width:100%;max-width:100%;border-radius:14px}.delete-modal{width:390px;max-width:calc(100vw - 20px)}.modal-overlay{padding:10px}.modal-body,.modal-head,.modal-foot{padding-left:16px;padding-right:16px}.modal-foot{flex-wrap:wrap}.modal-foot .btn,.modal-actions .btn{flex:1;justify-content:center}.delete-modal-actions .btn{flex:0 0 auto}.date-range-row{flex-direction:column}.finance-metrics,.batch-metrics,.emi-metrics{grid-template-columns:1fr}.chart-body{flex-direction:column;align-items:stretch}.donut-wrap{align-self:center}.donut-legend{width:100%}.pager{align-items:flex-start;gap:10px;flex-direction:column}.pager-btns{width:100%;overflow-x:auto}.profile-edit-actions{justify-content:stretch;flex-wrap:wrap}.profile-edit-actions .btn{flex:1;justify-content:center}}
       @media(max-width:700px){.imed-admin-prototype #app{display:block;min-height:100vh;height:100vh;overflow:hidden}.sidebar{position:fixed;left:0;right:0;bottom:0;top:auto;width:100%;height:76px;z-index:20;display:flex;flex-direction:row;border-right:0;border-top:1px solid var(--navy-line)}.sidebar-brand,.sidebar-footer{display:none}.nav-scroll{display:flex;overflow-x:auto;overflow-y:hidden;padding:0;scrollbar-width:none}.nav-scroll::-webkit-scrollbar{display:none}.nav-scroll>div{display:contents}.nav-item{min-width:72px;height:76px;border-radius:0;display:grid;place-items:center;gap:5px;font-size:10px;margin:0;padding:8px 6px}.nav-item svg{width:17px;height:17px}.nav-item span{display:block;max-width:64px;text-align:center;line-height:1.15;white-space:normal}.mobile-logout{display:grid;color:#FCA5A5}.mobile-logout:hover{background:var(--navy-800);color:#fff}.main{height:calc(100vh - 76px);width:100%;overflow:hidden}.content{padding:12px 10px 18px}.grid-metrics,.batch-card-grid{grid-template-columns:1fr;gap:10px}.metric-card{padding:14px}.m-value{font-size:21px}.funnel-row{grid-template-columns:88px minmax(0,1fr) 56px}.topbar{position:sticky;top:0;z-index:10;box-shadow:0 1px 0 var(--border)}.page-title{font-size:15px}.page-sub{font-size:11px}.field-grid,.profile-grid,.payment-form{grid-template-columns:1fr}.card-head,.card-body{padding-left:14px;padding-right:14px}.attendance-card .card-body{padding:14px 10px}.att-row{min-width:700px}.cal-grid{gap:4px}.cal-cell{font-size:11px;border-radius:7px}.profile-head{padding:16px 14px}.profile-tabs{padding:0 14px}.dtabs{overflow-x:auto}.dtab{white-space:nowrap}.certificate-preview-shell{padding:0;overflow-x:auto}.imed-certificate-exact-frame{transform:scale(.48);transform-origin:top left;margin:0;width:1220px}.cert-modal .certificate-card{padding:10px;overflow:auto}}
       @media(max-width:420px){.content{padding-left:8px;padding-right:8px}.auth-card{padding:22px 18px}.topbar{padding:12px 10px}.date-filter{padding:3px}.df-btn{padding:6px 8px}.metric-card,.card{border-radius:12px}.card-head,.card-body{padding-left:12px;padding-right:12px}.funnel-row{grid-template-columns:76px minmax(0,1fr) 48px;gap:7px}.flabel,.fval{font-size:11px}.invoice-card{padding:0 6px!important}.tax-invoice{min-width:680px;font-size:10px}.drawer-head{padding:14px 12px}.drawer-body{padding:12px}.modal-overlay{padding:6px}.modal-head,.modal-body,.modal-foot{padding-left:12px;padding-right:12px}.settings-nav{border-radius:12px}.nav-item{min-width:68px}.att-row{min-width:660px}.profile-metrics{grid-template-columns:1fr}.crow{align-items:flex-start}.who{min-width:0}.who>div{min-width:0}.who .cell-name,.who .cell-sub{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}.collection-box strong{font-size:21px}}
     `}</style>
   );
 }
-
