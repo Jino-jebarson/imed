@@ -1248,7 +1248,7 @@ export default function AdminCrm() {
     ...group,
     items: group.items.filter((item) => {
       if (isCounsellorAccount) return ["dashboard", "leads", "addlead", "admissions", "mystudents", "profile"].includes(item.key);
-      if (isTeacherAccount) return ["dashboard", "batch", "mystudents", "alumni", "internship", "nps", "profile"].includes(item.key);
+      if (isTeacherAccount) return ["dashboard", "batch", "alumni", "internship", "nps", "profile"].includes(item.key);
       if (item.key === "batch") return false;
       if (item.key === "attendance" || item.key === "logs") return false;
       if (item.key === "mystudents") return isStudentStaffAccount;
@@ -1874,6 +1874,16 @@ export default function AdminCrm() {
     });
   };
 
+  const patchClassSession = async (session: ClassSession, updates: Partial<Pick<ClassSession, "startTime" | "endTime" | "faculty" | "note">>) => {
+    try {
+      const res = await api<ClassSession>(`/api/admin/class-sessions/${session._id}`, { method: "PATCH", headers: authedHeaders, body: JSON.stringify(updates) });
+      setClassSessions((current) => current.map((item) => item._id === session._id ? { ...item, ...res.data } : item));
+      toast.success("Class updated");
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : "Unable to update class");
+    }
+  };
+
   const updateTopicProgress = async (payload: { _id?: string; batchId: string; module: string; topic: string; status: string; faculty?: string }) => {
     try {
       const res = await api<TopicProgress>("/api/admin/topic-progress", { method: "PATCH", headers: authedHeaders, body: JSON.stringify(payload) });
@@ -2291,7 +2301,7 @@ export default function AdminCrm() {
             {panel === "leads" && <LeadsPanel leads={leads} students={students} batches={batches} meta={leadMeta} filters={filters} setFilters={setFilters} centres={centreOptions} courses={courseOptions} canAssign={canAssignCounsellors} canDelete={canDeleteRecords} counsellors={counsellors} onSearch={() => loadLeads(1)} onPage={setLeadPage} onPatch={patchLead} onDelete={deleteLead} onEdit={(lead) => openProfile({ type: "lead", data: lead, mode: "edit" }, "leads")} onAddLead={() => setPanel("addlead")} onImportExcel={importLeadExcel} onOpen={openLeadDrawer} />}
             {panel === "addlead" && <AddLeadPanel centres={centreOptions} courses={courseOptions} onSubmit={addLead} />}
             {panel === "admissions" && <AdmissionsPanel leads={leads.filter((lead) => lead.stage === "Admission" && !students.some((student) => String(student.leadId || "") === String(lead._id)))} batches={batches} canAssign={canAssignCounsellors} counsellors={counsellors} centres={centreOptions} onPatch={patchLead} onConvert={convertLead} onOpen={openLeadDrawer} />}
-            {panel === "batch" && <BatchPanel batches={batches} students={students} schedules={classSchedulesState} sessions={classSessions} topicProgress={topicProgress} practicalRecords={practicalRecords} studyNotes={studyNotes} npsDashboard={npsDashboard} teachers={teachers} user={user} classWeek={classWeek} setClassWeek={setClassWeek} selectedBatchId={selectedBatchId} setSelectedBatchId={setSelectedBatchId} selectedSessionId={selectedClassSessionId} setSelectedSessionId={setSelectedClassSessionId} initialTab={batchResumeTab} classesGenerating={classesGenerating} attendanceDraft={classAttendanceDraft} setAttendanceDraft={setClassAttendanceDraft} attendanceLogs={attendanceSummaries} selectedAttendanceSummary={selectedAttendanceSummary} attendanceDetailLogs={attendanceDetailLogs} attendanceDetailFilters={attendanceDetailFilters} setAttendanceDetailFilters={setAttendanceDetailFilters} onSelectAttendanceSummary={setSelectedAttendanceSummary} onCreateSchedule={createClassSchedule} onGenerateWeek={generateWeeklyRoster} onSaveAttendance={saveClassAttendance} onResetAttendance={resetClassAttendance} onTopicProgress={updateTopicProgress} onDeleteTopic={deleteTopicProgress} onCreateBatchPractical={createBatchPractical} onPracticalRecord={updatePracticalRecord} onUploadStudyNote={uploadStudyNote} onDownloadStudyNote={downloadStudyNote} onDeleteStudyNote={deleteStudyNote} onOpen={(student) => { setBatchResumeTab("students"); openProfile({ type: "student", data: student }, "batch"); }} />}
+            {panel === "batch" && <BatchPanel batches={batches} students={students} schedules={classSchedulesState} sessions={classSessions} topicProgress={topicProgress} practicalRecords={practicalRecords} studyNotes={studyNotes} npsDashboard={npsDashboard} teachers={teachers} user={user} classWeek={classWeek} setClassWeek={setClassWeek} selectedBatchId={selectedBatchId} setSelectedBatchId={setSelectedBatchId} selectedSessionId={selectedClassSessionId} setSelectedSessionId={setSelectedClassSessionId} initialTab={batchResumeTab} classesGenerating={classesGenerating} attendanceDraft={classAttendanceDraft} setAttendanceDraft={setClassAttendanceDraft} attendanceLogs={attendanceSummaries} selectedAttendanceSummary={selectedAttendanceSummary} attendanceDetailLogs={attendanceDetailLogs} attendanceDetailFilters={attendanceDetailFilters} setAttendanceDetailFilters={setAttendanceDetailFilters} onSelectAttendanceSummary={setSelectedAttendanceSummary} onCreateSchedule={createClassSchedule} onGenerateWeek={generateWeeklyRoster} onSaveAttendance={saveClassAttendance} onResetAttendance={resetClassAttendance} onEditSession={patchClassSession} onTopicProgress={updateTopicProgress} onDeleteTopic={deleteTopicProgress} onCreateBatchPractical={createBatchPractical} onPracticalRecord={updatePracticalRecord} onUploadStudyNote={uploadStudyNote} onDownloadStudyNote={downloadStudyNote} onDeleteStudyNote={deleteStudyNote} onOpen={(student) => { setBatchResumeTab("students"); openProfile({ type: "student", data: student }, "batch"); }} />}
             {panel === "mystudents" && <StudentsPanel title="My candidates" students={visibleStudents} meta={studentMeta} batches={batches} canAssign={canAssignTeachers} canDelete={canDeleteRecords} teachers={teachers} onPage={setStudentPage} onPatch={patchStudent} onDelete={deleteStudent} onEdit={(student) => openProfile({ type: "student", data: student, mode: "edit" }, "mystudents")} onOpen={(student) => openProfile({ type: "student", data: student }, "mystudents")} />}
             {panel === "allstudents" && <StudentsPanel title="All candidates" students={students} meta={studentMeta} batches={batches} canAssign={canAssignTeachers} canDelete={canDeleteRecords} teachers={teachers} onPage={setStudentPage} onPatch={patchStudent} onDelete={deleteStudent} onEdit={(student) => openProfile({ type: "student", data: student, mode: "edit" }, "allstudents")} onOpen={(student) => openProfile({ type: "student", data: student }, "allstudents")} />}
             {panel === "attendance" && <AttendancePanel students={visibleStudents} attendance={attendance} draft={attendanceDraft} setDraft={setAttendanceDraft} attendanceDate={attendanceDateValue} setAttendanceDate={setAttendanceDateValue} onRefresh={loadAttendance} onSave={saveAttendance} />}
@@ -3244,9 +3254,10 @@ function AlumniPanel({ students, meta, canManage, onPage, onPatch, onOpen }: { s
   );
 }
 
-function BatchPanel({ batches, students, schedules, sessions, topicProgress, practicalRecords, studyNotes, npsDashboard, teachers, user, classWeek, setClassWeek, selectedBatchId, setSelectedBatchId, selectedSessionId, setSelectedSessionId, initialTab, classesGenerating, attendanceDraft, setAttendanceDraft, attendanceLogs, selectedAttendanceSummary, attendanceDetailLogs, attendanceDetailFilters, setAttendanceDetailFilters, onSelectAttendanceSummary, onCreateSchedule, onGenerateWeek, onSaveAttendance, onResetAttendance, onTopicProgress, onDeleteTopic, onCreateBatchPractical, onPracticalRecord, onUploadStudyNote, onDownloadStudyNote, onDeleteStudyNote, onOpen }: { batches: Batch[]; students: Student[]; schedules: ClassSchedule[]; sessions: ClassSession[]; topicProgress: TopicProgress[]; practicalRecords: PracticalRecord[]; studyNotes: StudyNote[]; npsDashboard: NpsDashboard | null; teachers: Counsellor[]; user: AdminUser | null; classWeek: string; setClassWeek: (value: string) => void; selectedBatchId: string; setSelectedBatchId: (id: string) => void; selectedSessionId: string; setSelectedSessionId: (id: string) => void; initialTab?: AcademicTab; classesGenerating: boolean; attendanceDraft: Record<string, { status: AttendanceStatus; note: string }>; setAttendanceDraft: (value: Record<string, { status: AttendanceStatus; note: string }>) => void; attendanceLogs: AttendanceSummary[]; selectedAttendanceSummary: AttendanceSummary | null; attendanceDetailLogs: Attendance[]; attendanceDetailFilters: AttendanceDetailFilters; setAttendanceDetailFilters: (filters: AttendanceDetailFilters) => void; onSelectAttendanceSummary: (summary: AttendanceSummary | null) => void; onCreateSchedule: (event: FormEvent<HTMLFormElement>) => void | Promise<void>; onGenerateWeek: (batchId?: string, weekOverride?: string) => void; onSaveAttendance: (session: ClassSession, sessionStudents: Student[]) => void; onResetAttendance: (session: ClassSession) => void; onTopicProgress: (payload: { _id?: string; batchId: string; module: string; topic: string; status: string; faculty?: string }) => void; onDeleteTopic: (topic: TopicProgress) => void; onCreateBatchPractical: (payload: { batchId: string; students: Student[]; practicalName: string; module?: string; faculty?: string }) => void; onPracticalRecord: (payload: { batchId: string; studentId: string; practicalName: string; module?: string; status: string; remarks?: string; faculty?: string }) => void; onUploadStudyNote: (event: FormEvent<HTMLFormElement>, batch: Batch) => void; onDownloadStudyNote: (note: StudyNote) => void; onDeleteStudyNote: (note: StudyNote) => void; onOpen: (student: Student) => void }) {
+function BatchPanel({ batches, students, schedules, sessions, topicProgress, practicalRecords, studyNotes, npsDashboard, teachers, user, classWeek, setClassWeek, selectedBatchId, setSelectedBatchId, selectedSessionId, setSelectedSessionId, initialTab, classesGenerating, attendanceDraft, setAttendanceDraft, attendanceLogs, selectedAttendanceSummary, attendanceDetailLogs, attendanceDetailFilters, setAttendanceDetailFilters, onSelectAttendanceSummary, onCreateSchedule, onGenerateWeek, onSaveAttendance, onResetAttendance, onEditSession, onTopicProgress, onDeleteTopic, onCreateBatchPractical, onPracticalRecord, onUploadStudyNote, onDownloadStudyNote, onDeleteStudyNote, onOpen }: { batches: Batch[]; students: Student[]; schedules: ClassSchedule[]; sessions: ClassSession[]; topicProgress: TopicProgress[]; practicalRecords: PracticalRecord[]; studyNotes: StudyNote[]; npsDashboard: NpsDashboard | null; teachers: Counsellor[]; user: AdminUser | null; classWeek: string; setClassWeek: (value: string) => void; selectedBatchId: string; setSelectedBatchId: (id: string) => void; selectedSessionId: string; setSelectedSessionId: (id: string) => void; initialTab?: AcademicTab; classesGenerating: boolean; attendanceDraft: Record<string, { status: AttendanceStatus; note: string }>; setAttendanceDraft: (value: Record<string, { status: AttendanceStatus; note: string }>) => void; attendanceLogs: AttendanceSummary[]; selectedAttendanceSummary: AttendanceSummary | null; attendanceDetailLogs: Attendance[]; attendanceDetailFilters: AttendanceDetailFilters; setAttendanceDetailFilters: (filters: AttendanceDetailFilters) => void; onSelectAttendanceSummary: (summary: AttendanceSummary | null) => void; onCreateSchedule: (event: FormEvent<HTMLFormElement>) => void | Promise<void>; onGenerateWeek: (batchId?: string, weekOverride?: string) => void; onSaveAttendance: (session: ClassSession, sessionStudents: Student[]) => void; onResetAttendance: (session: ClassSession) => void; onEditSession: (session: ClassSession, updates: Partial<Pick<ClassSession, "startTime" | "endTime" | "faculty" | "note">>) => void; onTopicProgress: (payload: { _id?: string; batchId: string; module: string; topic: string; status: string; faculty?: string }) => void; onDeleteTopic: (topic: TopicProgress) => void; onCreateBatchPractical: (payload: { batchId: string; students: Student[]; practicalName: string; module?: string; faculty?: string }) => void; onPracticalRecord: (payload: { batchId: string; studentId: string; practicalName: string; module?: string; status: string; remarks?: string; faculty?: string }) => void; onUploadStudyNote: (event: FormEvent<HTMLFormElement>, batch: Batch) => void; onDownloadStudyNote: (note: StudyNote) => void; onDeleteStudyNote: (note: StudyNote) => void; onOpen: (student: Student) => void }) {
   const [academicTab, setAcademicTab] = useState<AcademicTab>(initialTab || "batches");
   const [classModalOpen, setClassModalOpen] = useState(false);
+  const [editingSession, setEditingSession] = useState<ClassSession | null>(null);
   const [showTopicForm, setShowTopicForm] = useState(false);
   const [showPracticalForm, setShowPracticalForm] = useState(false);
   const [editingTopic, setEditingTopic] = useState<TopicProgress | null>(null);
@@ -3517,12 +3528,15 @@ function BatchPanel({ batches, students, schedules, sessions, topicProgress, pra
                               <div className="roster-lanes">
                                 <div className="roster-lane">
                                   {theorySessions.map((session) => (
-                                    <button type="button" key={session._id} className={`roster-slot ${selectedSessionId === session._id ? "selected" : ""}`} onClick={() => openClassAttendance(session._id)}>
-                                      <strong>{session.startTime} - {session.endTime}</strong>
-                                      <span>{session.faculty}</span>
-                                      <span className="roster-date">{formatDate(session.date)}</span>
-                                      <em>{session.googleCalendarEventId ? "Calendar synced" : session.attendanceMarked ? "Marked" : "Attendance pending"}</em>
-                                    </button>
+                                    <div key={session._id} className={`roster-slot-wrap ${selectedSessionId === session._id ? "selected" : ""}`}>
+                                      <button type="button" className={`roster-slot ${selectedSessionId === session._id ? "selected" : ""}`} onClick={() => openClassAttendance(session._id)}>
+                                        <strong>{session.startTime} - {session.endTime}</strong>
+                                        <span>{session.faculty}</span>
+                                        <span className="roster-date">{formatDate(session.date)}</span>
+                                        <em>{session.googleCalendarEventId ? "Calendar synced" : session.attendanceMarked ? "Marked" : "Attendance pending"}</em>
+                                      </button>
+                                      <button type="button" className="roster-edit-btn" title="Edit class" onClick={(e) => { e.stopPropagation(); setEditingSession(session); }}><Pencil size={12} /></button>
+                                    </div>
                                   ))}
                                   {theoryPreviews.map((schedule) => (
                                     <div key={schedule._id} className="roster-slot preview">
@@ -3535,12 +3549,15 @@ function BatchPanel({ batches, students, schedules, sessions, topicProgress, pra
                                 </div>
                                 <div className="roster-lane">
                                   {practicalSessions.map((session) => (
-                                    <button type="button" key={session._id} className={`roster-slot practical ${selectedSessionId === session._id ? "selected" : ""}`} onClick={() => openClassAttendance(session._id)}>
-                                      <strong>{session.startTime} - {session.endTime}</strong>
-                                      <span>{session.faculty}</span>
-                                      <span className="roster-date">{formatDate(session.date)}</span>
-                                      <em>{session.googleCalendarEventId ? "Calendar synced" : session.attendanceMarked ? "Marked" : "Attendance pending"}</em>
-                                    </button>
+                                    <div key={session._id} className={`roster-slot-wrap ${selectedSessionId === session._id ? "selected" : ""}`}>
+                                      <button type="button" className={`roster-slot practical ${selectedSessionId === session._id ? "selected" : ""}`} onClick={() => openClassAttendance(session._id)}>
+                                        <strong>{session.startTime} - {session.endTime}</strong>
+                                        <span>{session.faculty}</span>
+                                        <span className="roster-date">{formatDate(session.date)}</span>
+                                        <em>{session.googleCalendarEventId ? "Calendar synced" : session.attendanceMarked ? "Marked" : "Attendance pending"}</em>
+                                      </button>
+                                      <button type="button" className="roster-edit-btn" title="Edit class" onClick={(e) => { e.stopPropagation(); setEditingSession(session); }}><Pencil size={12} /></button>
+                                    </div>
                                   ))}
                                   {practicalPreviews.map((schedule) => (
                                     <div key={schedule._id} className="roster-slot preview practical">
@@ -3868,6 +3885,53 @@ function BatchPanel({ batches, students, schedules, sessions, topicProgress, pra
           </div>
         )}
       </div>
+      {editingSession && (
+        <div className="modal-overlay show" onClick={() => setEditingSession(null)}>
+          <div className="modal class-edit-modal" onClick={(e) => e.stopPropagation()}>
+            <div className="modal-head">
+              <div>
+                <h3>Edit class</h3>
+                <div className="sub">{editingSession.batchName} &mdash; {formatDate(editingSession.date)} &mdash; {editingSession.nature}</div>
+              </div>
+              <button className="close-x" onClick={() => setEditingSession(null)}>x</button>
+            </div>
+            <form onSubmit={(event) => {
+              event.preventDefault();
+              const formData = new FormData(event.currentTarget);
+              onEditSession(editingSession, {
+                startTime: String(formData.get("startTime") || editingSession.startTime),
+                endTime: String(formData.get("endTime") || editingSession.endTime),
+                faculty: String(formData.get("faculty") || editingSession.faculty),
+                note: String(formData.get("note") || ""),
+              });
+              setEditingSession(null);
+            }}>
+              <div className="modal-body field-grid class-edit-body">
+                <div className="field">
+                  <label>Start time</label>
+                  <input name="startTime" type="time" defaultValue={editingSession.startTime} required />
+                </div>
+                <div className="field">
+                  <label>End time</label>
+                  <input name="endTime" type="time" defaultValue={editingSession.endTime} required />
+                </div>
+                <div className="field full">
+                  <label>Faculty</label>
+                  <input name="faculty" defaultValue={editingSession.faculty} placeholder="Faculty name" />
+                </div>
+                <div className="field full">
+                  <label>Note <span className="field-help">(optional)</span></label>
+                  <input name="note" defaultValue={editingSession.note || ""} placeholder="e.g. Rescheduled, special class, etc." />
+                </div>
+              </div>
+              <div className="modal-foot">
+                <button type="button" className="btn btn-ghost" onClick={() => setEditingSession(null)}>Cancel</button>
+                <button className="btn btn-primary"><Pencil size={14} /> Save changes</button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
@@ -5647,7 +5711,7 @@ function CrmStyles() {
       .internship-metrics{grid-template-columns:repeat(auto-fit,minmax(170px,1fr))}.internship-tabs{width:max-content;max-width:100%;margin:0;overflow-x:auto}.internship-tabs .pill-tab{white-space:nowrap;display:inline-flex;align-items:center;gap:7px}.tab-badge{min-width:18px;height:18px;border-radius:999px;background:var(--amber-500);color:#fff;display:inline-grid;place-items:center;padding:0 6px;font-size:10px;font-style:normal;font-weight:800}.internship-logbook-card{border-radius:14px;overflow:hidden}.internship-logbook-card .segmented.tiny{margin-left:auto}.internship-logbook-card .segmented.tiny button{height:30px;padding:0 10px;font-size:11.5px}.internship-logbook-list{display:grid;gap:10px;background:#fbfcff}.internship-logbook-item{display:grid;grid-template-columns:230px minmax(0,1fr) 142px;gap:14px;align-items:start;background:#fff;border:1px solid var(--border-soft);border-radius:12px;padding:12px}.internship-logbook-content{min-width:0}.internship-logbook-top{display:flex;align-items:center;justify-content:space-between;gap:12px;margin-bottom:10px}.internship-logbook-top b{font-size:13px;color:var(--text-900);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}.internship-logbook-top span{font-size:11px;color:var(--text-400);font-weight:700;white-space:nowrap}.internship-logbook-notes{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px}.internship-logbook-notes>div{border:1px solid var(--border-soft);border-radius:10px;background:#fafbfd;padding:9px 10px}.internship-logbook-notes>div:nth-child(3){grid-column:1/-1}.internship-logbook-notes span{display:block;color:var(--indigo-600);font-size:10.5px;font-weight:800;text-transform:uppercase;letter-spacing:.35px}.internship-logbook-notes p{margin:5px 0 0;color:var(--text-700);font-size:12px;line-height:1.45;white-space:normal}.internship-logbook-actions{display:grid;justify-items:end;align-content:start;gap:10px}.internship-logbook-actions .btn{white-space:nowrap}.internship-logbook-list .empty-state{background:#fff;border:1px dashed var(--border);border-radius:12px}@media(max-width:1100px){.internship-logbook-item{grid-template-columns:1fr}.internship-logbook-actions{justify-items:start;display:flex;align-items:center;justify-content:space-between}.internship-logbook-card .segmented.tiny{margin-left:0}}@media(max-width:900px){.study-note-form{grid-template-columns:1fr 1fr}.study-note-form .field.full{grid-column:1/-1}.study-note-form .btn{justify-content:center}}@media(max-width:700px){.internship-tabs{width:100%}.internship-tabs .pill-tab{flex:1;justify-content:center}.internship-logbook-notes{grid-template-columns:1fr}.internship-logbook-actions{align-items:flex-start;flex-direction:column}.internship-logbook-top{align-items:flex-start;flex-direction:column;gap:4px}.study-note-form{grid-template-columns:1fr}.study-note-row{grid-template-columns:38px minmax(0,1fr);align-items:start}.study-note-row .action-icons{grid-column:1/-1;justify-content:flex-end}.study-note-icon{width:38px;height:38px}}
       .chart-body{display:flex;align-items:center;gap:22px;flex-wrap:wrap}.donut-wrap{position:relative;flex:0 0 auto;display:flex;align-items:center;justify-content:center}.donut-center{position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center;pointer-events:none}.donut-center strong{font-size:19px;font-weight:800;color:#061633;font-family:JetBrains Mono,monospace;line-height:1.1}.donut-center span{font-size:10px;color:var(--text-400);font-weight:600;text-transform:uppercase;letter-spacing:.3px;margin-top:2px}.donut-legend{flex:1;min-width:160px;display:flex;flex-direction:column;gap:9px}.donut-legend-row{display:grid;grid-template-columns:9px 1fr auto auto;align-items:center;gap:9px;font-size:12px}.donut-legend-row .dot{width:9px;height:9px;border-radius:3px}.donut-legend-row .lbl{color:var(--text-700);font-weight:600;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}.donut-legend-row .val{color:var(--text-400);font-family:JetBrains Mono,monospace;font-size:11px}.donut-legend-row .pct{color:var(--text-900);font-weight:700;min-width:34px;text-align:right}
       .main,.content,.card,.metric-card,.table-wrap,.settings-pane-wrap,.profile-title,.drawer-title{min-width:0}.table-wrap{max-width:100%;overflow-x:auto}.filter-bar{display:flex;align-items:center;flex-wrap:wrap;gap:10px}.filter-bar .fbtn,.filter-bar select,.filter-bar input{max-width:100%}.drawer{max-width:96vw}.drawer-body{overflow-x:hidden}.att-grid{overflow-x:auto;padding-bottom:2px}.att-row{min-width:760px}.modal-body,.card-body{min-width:0}.invoice-card,.certificate-card{max-width:100%}.date-filter,.dtabs,.settings-nav,.pager-btns,.nav-scroll,.table-wrap,.att-grid,.invoice-card,.certificate-card,.certificate-preview-shell{scrollbar-width:none;-ms-overflow-style:none}.date-filter::-webkit-scrollbar,.dtabs::-webkit-scrollbar,.settings-nav::-webkit-scrollbar,.pager-btns::-webkit-scrollbar,.nav-scroll::-webkit-scrollbar,.table-wrap::-webkit-scrollbar,.att-grid::-webkit-scrollbar,.invoice-card::-webkit-scrollbar,.certificate-card::-webkit-scrollbar,.certificate-preview-shell::-webkit-scrollbar{display:none}
-      .roster-lanes{display:grid;grid-template-rows:minmax(92px,auto) minmax(92px,auto);gap:5px}.roster-lane{min-height:92px}.roster-lane .roster-slot{position:relative;min-height:87px;margin-bottom:0}.roster-slot .roster-date{color:var(--indigo-600);font-size:10.5px;font-weight:700}.roster-slot.practical .roster-date{color:var(--amber-700)}.roster-slot.selected{border-width:2px!important;background:#fff!important;box-shadow:0 0 0 3px rgba(79,107,255,.16),0 10px 24px rgba(79,107,255,.18)!important;transform:translateY(-1px)}.roster-slot.practical.selected{box-shadow:0 0 0 3px rgba(245,158,11,.18),0 10px 24px rgba(245,158,11,.18)!important}
+      .roster-lanes{display:grid;grid-template-rows:minmax(92px,auto) minmax(92px,auto);gap:5px}.roster-lane{min-height:92px}.roster-lane .roster-slot{position:relative;min-height:87px;margin-bottom:0}.roster-slot .roster-date{color:var(--indigo-600);font-size:10.5px;font-weight:700}.roster-slot.practical .roster-date{color:var(--amber-700)}.roster-slot.selected{border-width:2px!important;background:#fff!important;box-shadow:0 0 0 3px rgba(79,107,255,.16),0 10px 24px rgba(79,107,255,.18)!important;transform:translateY(-1px)}.roster-slot.practical.selected{box-shadow:0 0 0 3px rgba(245,158,11,.18),0 10px 24px rgba(245,158,11,.18)!important}.roster-slot-wrap{position:relative;margin-bottom:5px}.roster-slot-wrap .roster-slot{margin-bottom:0}.roster-edit-btn{position:absolute;top:5px;right:5px;width:22px;height:22px;border-radius:6px;border:1px solid var(--indigo-500);background:#fff;color:var(--indigo-600);display:grid;place-items:center;opacity:0;transform:scale(.8);transition:opacity .15s,transform .15s;pointer-events:none;z-index:2}.roster-slot-wrap:hover .roster-edit-btn{opacity:1;transform:scale(1);pointer-events:auto}.roster-slot-wrap:hover .roster-edit-btn:hover{background:var(--indigo-500);color:#fff}.roster-slot-wrap .roster-slot.practical~.roster-edit-btn{border-color:#f2bd62;color:var(--amber-700)}.roster-slot-wrap .roster-slot.practical~.roster-edit-btn:hover{background:var(--amber-500);color:#fff}.class-edit-modal{width:500px;max-width:calc(100vw - 24px)}.class-edit-body{grid-template-columns:1fr 1fr;padding:20px 22px 10px}
       .class-attendance-shell{display:grid;gap:12px}.class-attendance-tools{display:flex;align-items:center;gap:10px;flex-wrap:wrap;padding-bottom:2px}.class-attendance-search{width:260px;height:34px;background:#fff}.class-attendance-filters{overflow-x:auto}.class-attendance-save{position:sticky;bottom:0;z-index:3;display:flex;align-items:center;justify-content:space-between;gap:12px;margin:4px -18px -16px;padding:12px 18px;background:rgba(255,255,255,.96);border-top:1px solid var(--border-soft);box-shadow:0 -8px 22px rgba(16,20,40,.06)}.class-attendance-save span{color:var(--text-400);font-size:12px;font-weight:700}.class-attendance-save .btn{white-space:nowrap}.class-attendance-actions{display:flex;align-items:center;justify-content:flex-end;gap:8px;flex-wrap:wrap}.btn-danger-soft{background:var(--red-50);border-color:#f7d7d7;color:var(--red-700)}
       // @media(max-width:1200px){.lower-grid{grid-template-columns:1fr 1fr}.finance-metrics{grid-template-columns:repeat(2,minmax(0,1fr))}.finance-grid,.attdetail-grid{grid-template-columns:1fr}.settings-prototype-shell{grid-template-columns:190px minmax(0,1fr)}}
       // @media(max-width:1100px){.sidebar{width:74px;flex-basis:74px}.brand-text,.nav-group-label,.nav-item span,.role-meta{display:none}.sidebar-brand,.nav-item{justify-content:center}.nav-badge{position:absolute;right:12px;top:7px;margin:0;min-width:17px;height:17px;padding:0 5px;font-size:9.5px}.two-col,.settings-shell,.lower-grid,.batch-grid{grid-template-columns:1fr}.batch-card-grid{grid-template-columns:repeat(2,minmax(0,1fr))}.topbar{height:auto;min-height:0;flex:0 0 auto;display:grid;grid-template-columns:1fr;align-items:stretch;padding:14px;gap:10px}.topbar-spacer{display:none}.search-box{width:100%}.date-filter{flex-wrap:wrap}.field-grid,.profile-grid,.payment-form{grid-template-columns:1fr}.card-head{align-items:flex-start;flex-wrap:wrap}.card-head button,.card-head input{margin-left:0}.settings-prototype-shell{grid-template-columns:1fr}.settings-nav{display:flex;overflow-x:auto;white-space:nowrap}.settings-nav button{flex:0 0 auto}.batch-metrics,.emi-metrics{grid-template-columns:repeat(2,minmax(0,1fr))}}

@@ -3354,6 +3354,20 @@ app.post("/api/admin/class-sessions/generate-week", requireAuth, async (req, res
   res.json({ ok: true, data: syncedSessions, message: `${created} classes created for the week${calendarMessage}` });
 });
 
+app.patch("/api/admin/class-sessions/:id", requireAuth, async (req, res) => {
+  if (!mongoose.isValidObjectId(req.params.id)) return sendError(res, 400, "Invalid class session ID");
+  const session = await ClassSession.findById(req.params.id).lean();
+  if (!session) return sendError(res, 404, "Class session not found");
+  const allowed = ["startTime", "endTime", "faculty", "note"];
+  const updates = {};
+  for (const key of allowed) {
+    if (req.body[key] !== undefined) updates[key] = String(req.body[key] || "");
+  }
+  if (!Object.keys(updates).length) return sendError(res, 400, "No valid fields to update");
+  const updated = await ClassSession.findByIdAndUpdate(req.params.id, { $set: updates }, { new: true }).lean();
+  res.json({ ok: true, data: updated, message: "Class updated" });
+});
+
 app.post("/api/admin/class-sessions/:id/attendance", requireAuth, async (req, res) => {
   if (!canUseAttendance(req.user)) return sendError(res, 403, "Attendance is restricted to teacher and admin accounts");
   if (!mongoose.isValidObjectId(req.params.id)) return sendError(res, 400, "Invalid class session");
