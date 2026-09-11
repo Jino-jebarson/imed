@@ -51,6 +51,7 @@ export default defineConfig({
           if (id.includes('EmergencyMedicalTechnician')) return 'emt';
           if (id.includes('HospitalAdministration')) return 'ha';
           if (id.includes('GeneralDutyAssistance')) return 'gda';
+          if (id.includes('ApplyNow')) return 'applynow';
         },
       },
     },

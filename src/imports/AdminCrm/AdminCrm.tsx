@@ -4,35 +4,51 @@ import { jsPDF } from "jspdf";
 import { Toaster, toast } from "sonner";
 import IMedCertificate from "./IMedCertificate";
 import {
+  AlertTriangle,
+  ArrowRight,
   Award,
   BadgeIndianRupee,
   BarChart3,
+  Bell,
   BookOpen,
+  Boxes,
+  Calendar,
   CalendarDays,
   CheckCircle2,
+  CheckSquare,
+  ChevronDown,
+  ChevronUp,
   ClipboardList,
+  CreditCard,
   Download,
   Eye,
   EyeOff,
   ExternalLink,
   FileText,
   GraduationCap,
+  History,
   LayoutDashboard,
   LogOut,
   MessageCircle,
+  Package,
   Pencil,
   Plus,
   ReceiptText,
   RefreshCw,
   Search,
   ShieldCheck,
+  Shirt,
+  ShoppingBag,
   Stethoscope,
   Star,
+  Tablet,
   TrendingUp,
   Trash2,
   UserPlus,
   UserRound,
   Users,
+  Check,
+  X,
 } from "lucide-react";
 
 const API_BASE_URL = import.meta.env.PROD
@@ -55,7 +71,7 @@ const legacyPartialEmiPaymentMode = "Upfront + EMI";
 const admissionPaymentModes = ["Full Payment", "EMI", partialEmiPaymentMode, "Loan Provider"];
 const paymentNoteMaxLength = 250;
 const paymentReferenceMaxLength = 80;
-const leadFeedbackOptions = ["New", "Interested", "Qualified", "Follow-up", "On Hold", "Converted", "Lost", "Not Connected", "Busy Call later", "Invalid"];
+const leadFeedbackOptions = ["New", "Interested", "Qualified", "Follow-up", "On Hold", "Converted", "Lost", "Not Connected", "Busy Call later", "Invalid", "Junk"];
 const leadPamphlets = [
   { key: "first-contact", label: "Course enquiry" },
   { key: "contacted-followup", label: "Called earlier" },
@@ -111,7 +127,25 @@ type StudentFeedback = { type?: string; status?: string; note?: string; nextFoll
 type InternshipAssignment = { _id?: string; facilityName?: string; facilityLocation?: string; supervisorName?: string; supervisorContact?: string; supervisorEmail?: string; facilityLatitude?: number; facilityLongitude?: number; allowedRadiusMeters?: number; startDate?: string; durationValue?: number; durationUnit?: string; expectedEndDate?: string; actualEndDate?: string; status?: string; departmentRotation?: string; assignedBy?: string; updatedAt?: string };
 type InternshipLog = { _id: string; date?: string; loginAt?: string; logoutAt?: string; loginPhoto?: DocumentFile; logoutPhoto?: DocumentFile; loginGps?: string; logoutGps?: string; hours?: number; flagged?: boolean; flagReason?: string };
 type LogbookEntry = { _id: string; date?: string; departmentArea?: string; activitiesPerformed?: string; keyLearnings?: string; challenges?: string; supervisorRemark?: string; verified?: boolean; verifiedBy?: string; verifiedAt?: string; createdAt?: string };
-type Student = { _id: string; leadId?: string; fullName: string; phone: string; parentMobile?: string; email?: string; studentLocation?: string; centre?: string; franchiseId?: string; course?: string; counsellor?: string; teacher?: string; batch?: string; batchCommenceDate?: string; status: string; totalFee?: number; paidAmount?: number; admissionNumber?: string; lmsAccessEnabled?: boolean; lmsAccessGeneratedAt?: string; lmsAccessGeneratedBy?: string; admissionPaymentMode?: string; admissionUpfrontAmount?: number; admissionFinalizedAt?: string; admissionFinalizedBy?: string; discountAmount?: number; emiEnabled?: boolean; emiMonths?: number; emiAmount?: number; nextEmiDate?: string; certificateNumber?: string; certificateIssuedAt?: string; certificateStatus?: string; placementStatus?: string; placementCompany?: string; placementRole?: string; placementJoiningDate?: string; placementSalary?: number; placementHrContact?: string; placementOfferLetterUrl?: string; placementRemarks?: string; testimonialText?: string; testimonialVideoUrl?: string; testimonialRating?: number; testimonialApproved?: boolean; referralName?: string; referralPhone?: string; referralStatus?: string; payments?: PaymentRecord[]; feedbacks?: StudentFeedback[]; internshipAssignment?: InternshipAssignment | null; internshipLogs?: InternshipLog[]; logbookEntries?: LogbookEntry[]; createdAt?: string; updatedAt?: string };
+type KitDistribution = {
+  idCardIssued?: boolean;
+  idCardNumber?: string;
+  idCardIssuedAt?: string;
+  tshirtIssued?: boolean;
+  tshirtSize?: string;
+  tshirtQuantity?: number;
+  tshirts?: { size: string; quantity: number }[];
+  tshirtIssuedAt?: string;
+  bagIssued?: boolean;
+  bagIssuedAt?: string;
+  tabletIssued?: boolean;
+  tabletAssetId?: string;
+  tabletSerialNumber?: string;
+  tabletIssuedAt?: string;
+  issuedBy?: string;
+  notes?: string;
+};
+type Student = { _id: string; leadId?: string; fullName: string; phone: string; parentMobile?: string; email?: string; studentLocation?: string; centre?: string; franchiseId?: string; course?: string; counsellor?: string; teacher?: string; batch?: string; batchCommenceDate?: string; status: string; totalFee?: number; paidAmount?: number; admissionNumber?: string; lmsAccessEnabled?: boolean; lmsAccessGeneratedAt?: string; lmsAccessGeneratedBy?: string; admissionPaymentMode?: string; admissionUpfrontAmount?: number; admissionFinalizedAt?: string; admissionFinalizedBy?: string; discountAmount?: number; emiEnabled?: boolean; emiMonths?: number; emiAmount?: number; nextEmiDate?: string; certificateNumber?: string; certificateIssuedAt?: string; certificateStatus?: string; placementStatus?: string; placementCompany?: string; placementRole?: string; placementJoiningDate?: string; placementSalary?: number; placementHrContact?: string; placementOfferLetterUrl?: string; placementRemarks?: string; testimonialText?: string; testimonialVideoUrl?: string; testimonialRating?: number; testimonialApproved?: boolean; referralName?: string; referralPhone?: string; referralStatus?: string; payments?: PaymentRecord[]; feedbacks?: StudentFeedback[]; internshipAssignment?: InternshipAssignment | null; internshipLogs?: InternshipLog[]; logbookEntries?: LogbookEntry[]; kitDistribution?: KitDistribution; createdAt?: string; updatedAt?: string };
 type Centre = { _id: string; name: string; type?: "branch" | "franchise"; city?: string; billingLegalName?: string; billingAddress?: string; billingGstin?: string; billingStateName?: string; billingStateCode?: string; billingEmail?: string; billingPhone?: string; bankAccountName?: string; bankName?: string; bankAccountNumber?: string; bankIfsc?: string; bankBranch?: string };
 type Course = { _id: string; name: string; code?: string; fee?: number; duration?: string; franchiseId?: string };
 type Counsellor = { _id?: string; name: string; email: string; role: string; franchiseId?: string };
@@ -130,7 +164,61 @@ type AttendanceDetailFilters = { dateFrom: string; dateTo: string; status: strin
 type Summary = { leadsThisMonth: number; totalLeads: number; enrolled: number; training: number; placed: number; lost: number; students: number; conversion: number; revenue: number; pending: number };
 type AttendanceStatus = Attendance["status"];
 type DatePreset = "all" | "today" | "yesterday" | "specific";
-type Panel = "dashboard" | "leads" | "addlead" | "admissions" | "batch" | "mystudents" | "attendance" | "logs" | "attdetail" | "allstudents" | "finance" | "emi" | "receipts" | "cert" | "alumni" | "internship" | "nps" | "settings" | "profile";
+type InventorySummary = {
+  idCards: number;
+  bags: number;
+  tshirts: {
+    total: number;
+    bySize: { S: number; M: number; L: number; XL: number; XXL: number };
+  };
+  tablets: {
+    total: number;
+    inStock: number;
+    assigned: number;
+    underRepair: number;
+  };
+  lowStockAlerts: { item: string; current: number; threshold: number }[];
+  recentTransactions: InventoryTransaction[];
+};
+type InventoryItem = {
+  _id: string;
+  itemType: "id_card" | "tshirt" | "bag";
+  size?: string;
+  quantity: number;
+  minThreshold: number;
+  centre?: string;
+  franchiseId?: string;
+  updatedAt?: string;
+};
+type TabletAsset = {
+  _id: string;
+  assetId: string;
+  serialNumber: string;
+  brandModel: string;
+  status: "In Stock" | "Assigned" | "Under Repair" | "Returned" | "Decommissioned";
+  assignedStudentId?: string;
+  assignedStudentName?: string;
+  assignedStudentAdmissionNo?: string;
+  assignedDate?: string;
+  returnedDate?: string;
+  centre?: string;
+  remarks?: string;
+};
+type InventoryTransaction = {
+  _id: string;
+  type: "Stock In" | "Stock Out" | "Return" | "Adjustment";
+  itemType: "id_card" | "tshirt" | "bag" | "tablet";
+  size?: string;
+  quantity: number;
+  assetId?: string;
+  serialNumber?: string;
+  studentName?: string;
+  vendorChallan?: string;
+  handledBy?: string;
+  date?: string;
+  notes?: string;
+};
+type Panel = "dashboard" | "leads" | "addlead" | "admissions" | "batch" | "mystudents" | "attendance" | "logs" | "attdetail" | "allstudents" | "finance" | "emi" | "receipts" | "cert" | "alumni" | "internship" | "nps" | "inventory" | "settings" | "profile";
 type AcademicTab = "batches" | "overview" | "students" | "timetable" | "attendance" | "markAttendance" | "topics" | "practicals" | "notes" | "logs" | "detail";
 type RoleScope = "all" | string;
 type ProfileTarget = { type: "lead"; data: Lead; mode?: "view" | "edit" } | { type: "student"; data: Student; mode?: "view" | "edit" } | null;
@@ -185,7 +273,7 @@ const navGroups: { group: string; items: { key: Panel; label: string; icon: Reac
   { group: "Certification", items: [{ key: "cert", label: "Certificates", icon: <Award /> }] },
   { group: "Alumni", items: [{ key: "alumni", label: "Alumni", icon: <Star /> }] },
   { group: "Internship", items: [{ key: "internship", label: "Internship", icon: <Stethoscope /> }] },
-  { group: "Quality", items: [{ key: "nps", label: "NPS", icon: <TrendingUp /> }] },
+  { group: "Operations", items: [{ key: "inventory", label: "Inventory & Kits", icon: <Package /> }] },
   { group: "Workspace", items: [
     { key: "settings", label: "Settings", icon: <ShieldCheck /> },
     { key: "profile", label: "Profile", icon: <UserRound /> },
@@ -210,6 +298,7 @@ const panelTitles: Record<Panel, [string, string]> = {
   alumni: ["Alumni", "Placement, testimonials and referrals"],
   internship: ["Internship", "Hospital posting logs and GPS review"],
   nps: ["NPS", "Student satisfaction and detractor follow-up"],
+  inventory: ["Inventory & Kits", "Stock in, stock out, student kits, and tablet asset tracking"],
   settings: ["Settings", "Staff, branches, fees and security"],
   profile: ["Profile", "Lead and student details"],
 };
@@ -238,6 +327,23 @@ function dateInputValueFromDuration(startValue: string, durationValue: string | 
   else if (durationUnit === "weeks") endDate.setDate(endDate.getDate() + duration * 7);
   else endDate.setMonth(endDate.getMonth() + duration);
   return dateInputValue(endDate);
+}
+
+function getCourseDurationMonths(courseName: string | undefined, courses?: (Course | string)[]): number {
+  if (!courseName) return 6;
+  const match = (courses || []).find((c) => {
+    if (!c) return false;
+    if (typeof c === "string") return c.toLowerCase() === String(courseName).toLowerCase();
+    return [c.name, c.code].some((v) => String(v || "").toLowerCase() === String(courseName || "").toLowerCase());
+  });
+  const duration = (typeof match === "object" && match?.duration) || courseDuration(courseName);
+  // Parse strings like "6 months", "3 months", "4 months"
+  const m = String(duration).match(/(\d+)\s*month/i);
+  if (m) return Math.max(1, parseInt(m[1], 10));
+  // Parse "X weeks" → convert to months roughly
+  const w = String(duration).match(/(\d+)\s*week/i);
+  if (w) return Math.max(1, Math.round(parseInt(w[1], 10) / 4));
+  return 6; // default fallback
 }
 
 function formatCurrency(value = 0) {
@@ -365,7 +471,7 @@ function openLeadPamphlet(lead: Lead, pamphlet: LeadPamphletKey) {
 }
 
 function roleLabel(role = "") {
-  return role === "superadmin" ? "Super Admin" : role === "admin" ? "Center Admin" : role === "teacher" ? "Teacher" : role === "franchise_superadmin" ? "Franchise Super Admin" : role === "franchise_counsellor" ? "Franchise Counsellor" : role === "franchise_teacher" ? "Franchise Teacher" : "Counsellor";
+  return role === "superadmin" ? "Super Admin" : role === "admin" ? "Center Admin" : role === "operations_executive" ? "Operations Executive" : role === "franchise_operations_executive" ? "Franchise Operations Executive" : role === "teacher" ? "Teacher" : role === "franchise_superadmin" ? "Franchise Super Admin" : role === "franchise_counsellor" ? "Franchise Counsellor" : role === "franchise_teacher" ? "Franchise Teacher" : "Counsellor";
 }
 
 function attendanceStatusLabel(status: AttendanceStatus) {
@@ -539,6 +645,75 @@ function emiReferenceNumber(student: Student) {
   return `EMI-${base}-${String(nextInstallment).padStart(3, "0")}`;
 }
 
+function studentEmiBreakdown(student: Student) {
+  const totalFee = Number(student.totalFee || 0);
+  const discount = Number(student.discountAmount || 0);
+  const netFee = Math.max(0, totalFee - discount);
+  const totalPaid = Number(student.paidAmount || 0);
+  const totalDue = Math.max(0, netFee - totalPaid);
+  const baseEmi = Number(student.emiAmount || 0);
+  const isEmi = Boolean(student.emiEnabled && baseEmi > 0);
+
+  if (!isEmi || totalDue <= 0) {
+    return {
+      isEmi: false,
+      baseEmi: 0,
+      shortfall: 0,
+      advanceCredit: 0,
+      currentDue: totalDue,
+      totalDue,
+      installmentsPaidCount: 0,
+      totalInstallmentsPaid: 0,
+    };
+  }
+
+  const payments = student.payments || [];
+  const installmentPayments = payments.filter(
+    (p) => normalizePaymentPurpose(p.paymentPurpose, p.mode) === "Fees Installment"
+  );
+  const installmentPaid = installmentPayments.reduce((sum, p) => sum + Number(p.amount || 0), 0);
+  const k = installmentPayments.length;
+
+  const expectedSoFar = k * baseEmi;
+  const shortfall = Math.max(0, expectedSoFar - installmentPaid);
+  const advanceCredit = Math.max(0, installmentPaid - expectedSoFar);
+
+  const rawNextDue = baseEmi + shortfall - advanceCredit;
+  const currentDue = Math.min(totalDue, Math.max(0, rawNextDue));
+
+  return {
+    isEmi: true,
+    baseEmi,
+    shortfall,
+    advanceCredit,
+    currentDue,
+    totalDue,
+    installmentsPaidCount: k,
+    totalInstallmentsPaid: installmentPaid,
+  };
+}
+
+function emiReminderWhatsAppUrl(student: Student) {
+  const phone = studentWhatsAppNumber(student.phone);
+  const breakdown = studentEmiBreakdown(student);
+  const message = [
+    `Hi ${student.fullName}, this is an EMI reminder from iMED Healthcare Academy.`,
+    "",
+    `Course: ${certificateCourseName(student.course)}`,
+    `Scheduled Monthly EMI: ${formatCurrency(breakdown.baseEmi)}`,
+    breakdown.shortfall > 0 ? `Previous Shortfall (Arrears): ${formatCurrency(breakdown.shortfall)}` : "",
+    `Total Amount Due This Cycle: ${formatCurrency(breakdown.currentDue)}`,
+    student.nextEmiDate ? `Due Date: ${formatDate(student.nextEmiDate)}` : "",
+    `Total Pending Course Due: ${formatCurrency(breakdown.totalDue)}`,
+    "",
+    "Kindly clear your installment on time to keep your training access active.",
+    "Regards,",
+    "iMED Academy",
+  ].filter(Boolean).join("\n");
+  const encoded = encodeURIComponent(message);
+  return phone ? `https://wa.me/${phone}?text=${encoded}` : `https://wa.me/?text=${encoded}`;
+}
+
 function paymentReferenceLabel(mode = "Cash") {
   if (mode === "UPI") return "UPI transaction ID";
   if (mode === "Card") return "Card transaction / auth ID";
@@ -694,6 +869,10 @@ function normalizeLeadFeedbackStatus(value = "") {
     "Call back": "Busy Call later",
     "Not interested": "Lost",
     "Invalid number": "Invalid",
+    Spam: "Junk",
+    Fake: "Junk",
+    "Junk lead": "Junk",
+    junk: "Junk",
   };
   const status = legacyMap[value] || value || "New";
   return leadFeedbackOptions.includes(status) ? status : "New";
@@ -701,6 +880,7 @@ function normalizeLeadFeedbackStatus(value = "") {
 
 function leadFeedbackBadgeClass(feedback = "") {
   const normalized = normalizeLeadFeedbackStatus(feedback).toLowerCase();
+  if (normalized.includes("junk")) return "badge-junk";
   if (normalized.includes("converted") || normalized.includes("qualified")) return "badge-green";
   if (normalized.includes("interested")) return "badge-red";
   if (normalized.includes("lost") || normalized.includes("invalid") || normalized.includes("not connected")) return "badge-gray";
@@ -822,6 +1002,15 @@ export default function AdminCrm() {
   const [npsMeta, setNpsMeta] = useState<PaginationMeta | null>(null);
   const [npsFilters, setNpsFilters] = useState({ q: "", touchpoint: "", course: "", batch: "", category: "" });
   const [npsPage, setNpsPage] = useState(1);
+  const [inventorySummary, setInventorySummary] = useState<InventorySummary | null>(null);
+  const [inventoryItems, setInventoryItems] = useState<InventoryItem[]>([]);
+  const [tablets, setTablets] = useState<TabletAsset[]>([]);
+  const [inventoryTransactions, setInventoryTransactions] = useState<InventoryTransaction[]>([]);
+  const [inventoryTab, setInventoryTab] = useState<"overview" | "tablets" | "students" | "logs">("overview");
+  const [stockInModalOpen, setStockInModalOpen] = useState(false);
+  const [issueKitModalOpen, setIssueKitModalOpen] = useState(false);
+  const [issueKitTargetStudent, setIssueKitTargetStudent] = useState<Student | null>(null);
+  const [tabletSearchQuery, setTabletSearchQuery] = useState("");
   const [selectedClassSessionId, setSelectedClassSessionId] = useState("");
   const [classWeek, setClassWeek] = useState(dateInputValue(new Date()));
   const [classAttendanceDraft, setClassAttendanceDraft] = useState<Record<string, { status: AttendanceStatus; note: string }>>({});
@@ -847,6 +1036,7 @@ export default function AdminCrm() {
   const [profileReturnPanel, setProfileReturnPanel] = useState<Panel | "">("");
   const [leadDrawer, setLeadDrawer] = useState<Lead | null>(null);
   const [leadDrawerTab, setLeadDrawerTab] = useState<"info" | "follow" | "docs" | "act">("info");
+  const [dedicatedFollowUps, setDedicatedFollowUps] = useState<Lead[]>([]);
   const [receiptStudent, setReceiptStudent] = useState<Student | null>(null);
   const [receiptSelection, setReceiptSelection] = useState<ReceiptSelection>({ type: "invoice" });
   const [deletePrompt, setDeletePrompt] = useState<DeletePrompt | null>(null);
@@ -860,26 +1050,30 @@ export default function AdminCrm() {
   const [selectedBatchId, setSelectedBatchId] = useState("");
   const [batchResumeTab, setBatchResumeTab] = useState<AcademicTab>("batches");
   const [loading, setLoading] = useState(false);
+  const [notifOpen, setNotifOpen] = useState(false);
+  const notifRef = useRef<HTMLDivElement>(null);
 
   const isHeadSuperAdmin = user?.role === "superadmin";
   const isHeadAdmin = user?.role === "superadmin" || user?.role === "admin";
   const isHeadBranchAdmin = user?.role === "admin";
+  const isOperationsAccount = user?.role === "operations_executive" || user?.role === "franchise_operations_executive";
   const isFranchiseSuperAdmin = user?.role === "franchise_superadmin";
-  const isFranchiseUser = user?.role === "franchise_superadmin" || user?.role === "franchise_counsellor" || user?.role === "franchise_teacher";
+  const isFranchiseUser = user?.role === "franchise_superadmin" || user?.role === "franchise_counsellor" || user?.role === "franchise_teacher" || user?.role === "franchise_operations_executive";
   const isCounsellorAccount = user?.role === "counsellor" || user?.role === "franchise_counsellor";
   const isTeacherAccount = user?.role === "teacher" || user?.role === "franchise_teacher";
   const isStudentStaffAccount = isCounsellorAccount || isTeacherAccount;
   const canUseLeads = isHeadAdmin || isFranchiseSuperAdmin || isCounsellorAccount;
-  const canUseAttendance = isHeadAdmin || isFranchiseSuperAdmin || isTeacherAccount;
+  const canUseAttendance = isHeadAdmin || isFranchiseSuperAdmin || isTeacherAccount || isOperationsAccount;
   const canUseAcademics = canUseAttendance;
-  const canUseInternship = isHeadAdmin || isFranchiseSuperAdmin || isTeacherAccount;
+  const canUseInternship = isHeadAdmin || isFranchiseSuperAdmin || isTeacherAccount || isOperationsAccount;
   const canManageSettings = isHeadAdmin || isFranchiseSuperAdmin;
   const canAssignCounsellors = isHeadAdmin || isFranchiseSuperAdmin;
-  const canAssignTeachers = isHeadAdmin || isFranchiseSuperAdmin || isCounsellorAccount;
-  const canManageFees = isHeadAdmin || isFranchiseSuperAdmin;
-  const canManageCertificates = isHeadAdmin || isFranchiseSuperAdmin;
-  const canManageInternships = isHeadAdmin || isFranchiseSuperAdmin;
-  const canManageNps = isHeadAdmin || isFranchiseSuperAdmin;
+  const canAssignTeachers = isHeadAdmin || isFranchiseSuperAdmin || isCounsellorAccount || isOperationsAccount;
+  const canManageFees = isHeadAdmin || isFranchiseSuperAdmin || isOperationsAccount;
+  const canManageCertificates = isHeadAdmin || isFranchiseSuperAdmin || isOperationsAccount;
+  const canManageInternships = isHeadAdmin || isFranchiseSuperAdmin || isOperationsAccount;
+  const canManageNps = isHeadAdmin || isFranchiseSuperAdmin || isOperationsAccount;
+  const canManageInventory = isHeadAdmin || isFranchiseSuperAdmin || isOperationsAccount;
   const canDeleteRecords = isHeadAdmin || isFranchiseSuperAdmin;
   const canUseScopeFilter = isHeadSuperAdmin;
   const selectedFranchise = canUseScopeFilter && roleScope !== "all" ? centres.find((centre) => centre._id === roleScope) : undefined;
@@ -888,19 +1082,51 @@ export default function AdminCrm() {
   const centreOptions = centres.length ? centres.map((centre) => centre.name) : fallbackCentres;
   const courseOptions = courses.length ? courses.map((course) => course.code || course.name) : fallbackCourses;
   const teacherAssignedBatchNames = batches.filter((batch) => batch.assignedFaculty?.includes(user?.name || "")).map((batch) => batch.name);
-  const visibleStudents = panel === "mystudents" || (isStudentStaffAccount && ["attendance", "dashboard", "internship"].includes(panel))
-    ? students.filter((student) => !isStudentStaffAccount || (isCounsellorAccount ? student.counsellor === user?.name : teacherAssignedBatchNames.includes(student.batch || "") || student.teacher === user?.name))
-    : students;
+  const visibleStudents = isOperationsAccount
+    ? students
+    : (panel === "mystudents" || (isStudentStaffAccount && ["attendance", "dashboard", "internship"].includes(panel)))
+      ? students.filter((student) => !isStudentStaffAccount || (isCounsellorAccount ? student.counsellor === user?.name : teacherAssignedBatchNames.includes(student.batch || "") || student.teacher === user?.name))
+      : students;
   const pendingLogbookReviewCount = visibleStudents.reduce((total, student) => total + (student.logbookEntries || []).filter((entry) => !entry.verified).length, 0);
   const [pageTitle, defaultPageSub] = panelTitles[panel];
   const pageSub = panel === "nps" && isTeacherAccount ? "Batch feedback summary" : defaultPageSub;
-  const scopeFilterPanels: Panel[] = ["dashboard", "leads", "admissions", "allstudents", "mystudents", "finance", "emi", "receipts", "cert", "alumni", "attendance", "logs", "batch", "internship", "nps"];
+  const scopeFilterPanels: Panel[] = ["dashboard", "leads", "admissions", "allstudents", "mystudents", "finance", "emi", "receipts", "cert", "alumni", "attendance", "logs", "batch", "internship", "nps", "inventory"];
   const dateFilterPanels: Panel[] = ["dashboard", "leads", "admissions", "allstudents", "mystudents", "finance", "receipts", "cert", "alumni"];
   const searchPanels: Panel[] = ["dashboard", "leads", "admissions"];
   const showScopeFilter = scopeFilterPanels.includes(panel);
   const showDateFilter = dateFilterPanels.includes(panel);
-  const showTopbarSearch = searchPanels.includes(panel);
+  const showTopbarSearch = canUseLeads && searchPanels.includes(panel);
   const activeTopbarDate = showDateFilter ? selectedDate : "";
+
+  const followUpLeads = useMemo(() => {
+    const map = new Map<string, Lead>();
+    leads.forEach((lead) => {
+      if (lead.nextFollowUp) map.set(lead._id, lead);
+    });
+    dedicatedFollowUps.forEach((lead) => {
+      if (lead.nextFollowUp) map.set(lead._id, lead);
+    });
+    return Array.from(map.values()).sort(
+      (a, b) => new Date(a.nextFollowUp || "").getTime() - new Date(b.nextFollowUp || "").getTime()
+    );
+  }, [leads, dedicatedFollowUps]);
+
+  const dueFollowUpCount = useMemo(() => {
+    const today = new Date();
+    const endToday = new Date(today.getFullYear(), today.getMonth(), today.getDate(), 23, 59, 59, 999).getTime();
+    return followUpLeads.filter((lead) => new Date(lead.nextFollowUp || "").getTime() <= endToday).length;
+  }, [followUpLeads]);
+
+  useEffect(() => {
+    if (!notifOpen) return;
+    const handleClickOutside = (event: MouseEvent) => {
+      if (notifRef.current && !notifRef.current.contains(event.target as Node)) {
+        setNotifOpen(false);
+      }
+    };
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => document.removeEventListener("mousedown", handleClickOutside);
+  }, [notifOpen]);
 
   const closeDocumentPreview = () => {
     if (documentPreview && "url" in documentPreview) URL.revokeObjectURL(documentPreview.url);
@@ -1024,6 +1250,17 @@ export default function AdminCrm() {
     const suffix = queryString({ franchiseId: scopedFranchiseId });
     const res = await api<{ total: number }>(`/api/admin/admissions/pending-count${suffix}`, { headers: authedHeaders });
     setAdmissionPendingCount(res.data?.total || 0);
+  };
+
+  const loadFollowUps = async () => {
+    if (!token || !canUseLeads) return;
+    try {
+      const suffix = queryString({ franchiseId: scopedFranchiseId });
+      const res = await api<Lead[]>(`/api/admin/leads/followups${suffix}`, { headers: authedHeaders });
+      if (res.data) setDedicatedFollowUps(res.data);
+    } catch {
+      // fallback silently
+    }
   };
 
   const loadStudents = async (page = studentPage) => {
@@ -1194,10 +1431,130 @@ export default function AdminCrm() {
     setGoogleCalendarStatus(res.data || null);
   };
 
+  const loadInventorySummary = async () => {
+    if (!canManageInventory) return;
+    try {
+      const suffix = queryString({ franchiseId: scopedFranchiseId });
+      const res = await api<InventorySummary>(`/api/admin/inventory/summary${suffix}`, { headers: authedHeaders });
+      if (res.data) setInventorySummary(res.data);
+    } catch (error) {
+      console.error("Unable to load inventory summary", error);
+    }
+  };
+
+  const loadInventoryItems = async () => {
+    if (!canManageInventory) return;
+    try {
+      const suffix = queryString({ franchiseId: scopedFranchiseId });
+      const res = await api<InventoryItem[]>(`/api/admin/inventory/items${suffix}`, { headers: authedHeaders });
+      if (res.data) setInventoryItems(res.data);
+    } catch (error) {
+      console.error("Unable to load inventory items", error);
+    }
+  };
+
+  const loadTablets = async () => {
+    if (!canManageInventory) return;
+    try {
+      const suffix = queryString({ franchiseId: scopedFranchiseId, q: tabletSearchQuery });
+      const res = await api<TabletAsset[]>(`/api/admin/inventory/tablets${suffix}`, { headers: authedHeaders });
+      if (res.data) setTablets(res.data);
+    } catch (error) {
+      console.error("Unable to load tablets", error);
+    }
+  };
+
+  const loadInventoryTransactions = async () => {
+    if (!canManageInventory) return;
+    try {
+      const suffix = queryString({ franchiseId: scopedFranchiseId });
+      const res = await api<InventoryTransaction[]>(`/api/admin/inventory/transactions${suffix}`, { headers: authedHeaders });
+      if (res.data) setInventoryTransactions(res.data);
+    } catch (error) {
+      console.error("Unable to load inventory transactions", error);
+    }
+  };
+
+  const refreshInventory = async () => {
+    await Promise.all([loadInventorySummary(), loadInventoryItems(), loadTablets(), loadInventoryTransactions()]);
+  };
+
+  const handleStockIn = async (payload: { itemType: string; size?: string; quantity?: number; vendorChallan?: string; notes?: string; tablets?: { assetId: string; serialNumber: string; brandModel: string; remarks?: string }[] }) => {
+    try {
+      const res = await api<{ message?: string }>("/api/admin/inventory/stock-in", {
+        method: "POST",
+        headers: authedHeaders,
+        body: JSON.stringify({ ...payload, franchiseId: scopedFranchiseId }),
+      });
+      toast.success(res.message || "Stock added");
+      setStockInModalOpen(false);
+      await refreshInventory();
+      return true;
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : "Unable to add stock");
+      return false;
+    }
+  };
+
+  const handleIssueKit = async (payload: {
+    studentId: string;
+    issueIdCard?: boolean;
+    idCardNumber?: string;
+    issueTshirt?: boolean;
+    tshirtSize?: string;
+    tshirtQuantity?: number;
+    tshirts?: { size: string; quantity: number }[];
+    issueBag?: boolean;
+    issueTablet?: boolean;
+    tabletId?: string;
+    notes?: string;
+  }) => {
+    try {
+      const res = await api<Student>("/api/admin/inventory/issue-kit", {
+        method: "POST",
+        headers: authedHeaders,
+        body: JSON.stringify(payload),
+      });
+      toast.success(res.message || "Kit issued to candidate");
+      setIssueKitModalOpen(false);
+      setIssueKitTargetStudent(null);
+      await Promise.all([refreshInventory(), loadStudents(studentPage)]);
+      if (profile?.type === "student" && res.data && profile.data._id === res.data._id) {
+        setProfile({ type: "student", data: res.data });
+      }
+      return true;
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : "Unable to issue kit");
+      return false;
+    }
+  };
+
+  const handleReturnTablet = (tablet: TabletAsset) => {
+    setDeletePrompt({
+      title: "Return tablet to stock",
+      message: `Confirm return of Tablet ${tablet.assetId} (S/N: ${tablet.serialNumber}) assigned to ${tablet.assignedStudentName || "student"}?`,
+      confirmLabel: "Return to stock",
+      tone: "logout",
+      onConfirm: async () => {
+        try {
+          const res = await api<TabletAsset>(`/api/admin/inventory/tablets/${tablet._id}/return`, {
+            method: "POST",
+            headers: authedHeaders,
+            body: JSON.stringify({ notes: "Tablet returned to stock" }),
+          });
+          toast.success(res.message || "Tablet returned to stock");
+          await Promise.all([refreshInventory(), loadStudents(studentPage)]);
+        } catch (error) {
+          toast.error(error instanceof Error ? error.message : "Unable to return tablet");
+        }
+      },
+    });
+  };
+
   const refreshAll = async () => {
     if (!token) return;
     try {
-      await Promise.all([loadMeta(), loadDashboard(), canUseLeads ? Promise.all([loadLeads(1), loadAdmissionPendingCount()]) : Promise.resolve(), loadStudents(1), loadCounsellors(), loadTeachers(), isTeacherAccount ? loadGoogleCalendarStatus() : Promise.resolve(), canUseAcademics ? Promise.all([loadClassSchedules(), loadTopicProgress(), loadPracticalRecords(), loadStudyNotes()]) : Promise.resolve(), (canManageNps || isTeacherAccount) ? loadNps(1) : Promise.resolve()]);
+      await Promise.all([loadMeta(), loadDashboard(), canUseLeads ? Promise.all([loadLeads(1), loadAdmissionPendingCount(), loadFollowUps()]) : Promise.resolve(), loadStudents(1), loadCounsellors(), loadTeachers(), isTeacherAccount ? loadGoogleCalendarStatus() : Promise.resolve(), canUseAcademics ? Promise.all([loadClassSchedules(), loadTopicProgress(), loadPracticalRecords(), loadStudyNotes()]) : Promise.resolve(), (canManageNps || isTeacherAccount) ? loadNps(1) : Promise.resolve(), canManageInventory ? refreshInventory() : Promise.resolve()]);
     } catch (error) {
       toast.error(error instanceof Error ? error.message : "Unable to load CRM data");
     }
@@ -1216,6 +1573,7 @@ export default function AdminCrm() {
   useEffect(() => { void refreshAll(); }, [token, scopedFranchiseId, selectedDate, canUseLeads, isTeacherAccount]);
   useEffect(() => { if (token && canUseLeads) void loadLeads(leadPage); }, [leadPage, filters.stage, filters.centre, filters.course, filters.counsellor, filters.leadFeedback, canUseLeads]);
   useEffect(() => { if (token && canUseLeads) void loadAdmissionPendingCount(); }, [token, canUseLeads, scopedFranchiseId]);
+  useEffect(() => { if (token && canUseLeads) void loadFollowUps(); }, [token, canUseLeads, scopedFranchiseId]);
   useEffect(() => { if (token) void loadStudents(studentPage); }, [studentPage, panel]);
   useEffect(() => { if (token && canManageSettings) void loadCounsellors(); }, [token, canManageSettings]);
   useEffect(() => { if (token && (canManageSettings || isCounsellorAccount)) void loadTeachers(); }, [token, canManageSettings, isCounsellorAccount]);
@@ -1224,6 +1582,7 @@ export default function AdminCrm() {
   useEffect(() => { if (token && panel === "nps" && (canManageNps || isTeacherAccount)) void loadNps(npsPage); }, [token, panel, canManageNps, isTeacherAccount, scopedFranchiseId, npsPage, npsFilters.q, npsFilters.touchpoint, npsFilters.course, npsFilters.batch, npsFilters.category]);
   useEffect(() => { if (token && panel === "logs") void loadAttendanceLogs(); }, [panel, scopedFranchiseId]);
   useEffect(() => { if (token && (panel === "attdetail" || panel === "batch") && selectedAttendanceSummary) void loadAttendanceDetail(); }, [panel, selectedAttendanceSummary?.studentId, attendanceDetailFilters.dateFrom, attendanceDetailFilters.dateTo, attendanceDetailFilters.status, attendanceDetailFilters.nature, scopedFranchiseId]);
+  useEffect(() => { if (token && (panel === "inventory" || panel === "dashboard") && canManageInventory) void refreshInventory(); }, [token, panel, canManageInventory, scopedFranchiseId, tabletSearchQuery]);
   useEffect(() => {
     const session = classSessions.find((item) => item._id === selectedClassSessionId);
     if (!session) return;
@@ -1235,20 +1594,24 @@ export default function AdminCrm() {
   useEffect(() => {
     const counsellorPanels = ["dashboard", "leads", "addlead", "admissions", "mystudents", "profile"];
     const teacherPanels = ["dashboard", "batch", "mystudents", "alumni", "internship", "nps", "profile"];
+    const operationsPanels = ["dashboard", "allstudents", "mystudents", "finance", "emi", "receipts", "cert", "alumni", "internship", "nps", "inventory", "profile"];
     if (isCounsellorAccount && !counsellorPanels.includes(panel)) setPanel("dashboard");
     if (isTeacherAccount && !teacherPanels.includes(panel)) setPanel("dashboard");
-    if (!isTeacherAccount && panel === "batch") setPanel("dashboard");
+    if (isOperationsAccount && !operationsPanels.includes(panel)) setPanel("dashboard");
+    if (!isTeacherAccount && !isOperationsAccount && panel === "batch") setPanel("dashboard");
     if (!canManageFees && ["finance", "emi", "receipts"].includes(panel)) setPanel("dashboard");
     if (!canManageCertificates && panel === "cert") setPanel("dashboard");
     if (!canUseInternship && panel === "internship") setPanel("dashboard");
-    if (!(canManageNps || isTeacherAccount) && panel === "nps") setPanel("dashboard");
-  }, [panel, isCounsellorAccount, isTeacherAccount, canManageFees, canManageCertificates, canUseInternship, canManageNps]);
+    if (!(canManageNps || isTeacherAccount || isOperationsAccount) && panel === "nps") setPanel("dashboard");
+    if (!canManageInventory && panel === "inventory") setPanel("dashboard");
+  }, [panel, isCounsellorAccount, isTeacherAccount, isOperationsAccount, canManageFees, canManageCertificates, canUseInternship, canManageNps, canManageInventory]);
 
   const visibleNavGroups = useMemo(() => navGroups.map((group) => ({
     ...group,
     items: group.items.filter((item) => {
       if (isCounsellorAccount) return ["dashboard", "leads", "addlead", "admissions", "mystudents", "profile"].includes(item.key);
       if (isTeacherAccount) return ["dashboard", "batch", "alumni", "internship", "nps", "profile"].includes(item.key);
+      if (isOperationsAccount) return ["dashboard", "allstudents", "finance", "emi", "receipts", "cert", "alumni", "internship", "nps", "inventory", "profile"].includes(item.key);
       if (item.key === "batch") return false;
       if (item.key === "attendance" || item.key === "logs") return false;
       if (item.key === "mystudents") return isStudentStaffAccount;
@@ -1258,10 +1621,11 @@ export default function AdminCrm() {
       if (item.key === "cert" && !canManageCertificates) return false;
       if (item.key === "internship") return canUseInternship;
       if (item.key === "nps") return canManageNps || isTeacherAccount;
+      if (item.key === "inventory") return canManageInventory;
       if (item.key === "settings") return canManageSettings;
       return true;
     }),
-  })).filter((group) => group.items.length), [isCounsellorAccount, isTeacherAccount, isStudentStaffAccount, canUseAcademics, canUseAttendance, canManageSettings, canManageFees, canManageCertificates, canUseInternship, canManageNps]);
+  })).filter((group) => group.items.length), [isCounsellorAccount, isTeacherAccount, isOperationsAccount, isStudentStaffAccount, canUseAcademics, canUseAttendance, canManageSettings, canManageFees, canManageCertificates, canUseInternship, canManageNps, canManageInventory]);
 
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);
@@ -1445,9 +1809,19 @@ export default function AdminCrm() {
 
   const patchLead = async (id: string, updates: Partial<Lead>) => {
     try {
+      if (updates.leadFeedback === "Junk") {
+        updates.nextFollowUp = null as any;
+      }
       const res = await api<Lead>(`/api/admin/leads/${id}`, { method: "PATCH", headers: authedHeaders, body: JSON.stringify(updates) });
       if (profile?.type === "lead" && profile.data._id === id && res.data) setProfile({ type: "lead", data: res.data });
       if (leadDrawer?._id === id && res.data) setLeadDrawer(res.data);
+      if (res.data) {
+        setLeads((current) => current.map((l) => (l._id === res.data._id ? res.data : l)));
+        setDedicatedFollowUps((current) => {
+          const filtered = current.filter((l) => l._id !== res.data._id);
+          return res.data.nextFollowUp ? [...filtered, res.data].sort((a, b) => new Date(a.nextFollowUp || "").getTime() - new Date(b.nextFollowUp || "").getTime()) : filtered;
+        });
+      }
       toast.success("Lead updated");
       await refreshAll();
     } catch (error) {
@@ -1464,12 +1838,66 @@ export default function AdminCrm() {
       if (res.data) {
         setLeadDrawer(res.data);
         if (profile?.type === "lead" && profile.data._id === lead._id) setProfile({ type: "lead", data: res.data });
+        setLeads((current) => {
+          const exists = current.some((l) => l._id === res.data._id);
+          return exists ? current.map((l) => (l._id === res.data._id ? res.data : l)) : [res.data, ...current];
+        });
+        setDedicatedFollowUps((current) => {
+          const filtered = current.filter((l) => l._id !== res.data._id);
+          return res.data.nextFollowUp ? [...filtered, res.data].sort((a, b) => new Date(a.nextFollowUp || "").getTime() - new Date(b.nextFollowUp || "").getTime()) : filtered;
+        });
       }
       form.reset();
       toast.success("Follow-up added");
       await refreshAll();
     } catch (error) {
       toast.error(error instanceof Error ? error.message : "Unable to add follow-up");
+    }
+  };
+
+  const markLeadFollowUpDone = async (lead: Lead, note = "Follow-up completed") => {
+    try {
+      const res = await api<Lead>(`/api/admin/leads/${lead._id}/followups`, {
+        method: "POST",
+        headers: authedHeaders,
+        body: JSON.stringify({
+          type: "Call",
+          status: "Completed",
+          scheduledAt: new Date().toISOString(),
+          note,
+          clearReminder: true,
+        }),
+      });
+      if (res.data) {
+        if (leadDrawer?._id === lead._id) setLeadDrawer(res.data);
+        if (profile?.type === "lead" && profile.data._id === lead._id) setProfile({ type: "lead", data: res.data });
+        setLeads((current) => current.map((l) => (l._id === res.data._id ? res.data : l)));
+        setDedicatedFollowUps((current) => current.filter((l) => l._id !== res.data._id));
+      }
+      toast.success("Follow-up marked as completed & reminder cleared");
+      await refreshAll();
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : "Unable to complete follow-up");
+    }
+  };
+
+  const clearLeadReminder = async (lead: Lead) => {
+    try {
+      const res = await api<Lead>(`/api/admin/leads/${lead._id}`, {
+        method: "PATCH",
+        headers: authedHeaders,
+        body: JSON.stringify({ nextFollowUp: null }),
+      });
+      if (res.data) {
+        if (leadDrawer?._id === lead._id) setLeadDrawer(res.data);
+        if (profile?.type === "lead" && profile.data._id === lead._id) setProfile({ type: "lead", data: res.data });
+        setLeads((current) => current.map((l) => (l._id === res.data._id ? res.data : l)));
+        setDedicatedFollowUps((current) => current.filter((l) => l._id !== res.data._id));
+      }
+      toast.success("Follow-up reminder removed");
+      await refreshAll();
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : "Unable to clear reminder");
     }
   };
 
@@ -2113,9 +2541,17 @@ export default function AdminCrm() {
     try {
       const formData = new FormData(form);
       const payload = { ...Object.fromEntries(formData.entries()), assignedFaculty: formData.getAll("assignedFaculty").map(String).filter(Boolean) };
-      await api<Batch>(`/api/admin/batches/${batchId}`, { method: "PATCH", headers: authedHeaders, body: JSON.stringify(payload) });
+      const res = await api<Batch>(`/api/admin/batches/${batchId}`, { method: "PATCH", headers: authedHeaders, body: JSON.stringify(payload) });
       toast.success("Batch updated");
       await loadMeta();
+      await loadStudents(studentPage);
+      if (profile?.type === "student" && res.data) {
+        const updatedBatch = res.data;
+        const currentBatch = String(profile.data.batch || "").trim().toLowerCase();
+        if (currentBatch === String(updatedBatch.name || "").trim().toLowerCase()) {
+          setProfile((curr) => curr?.type === "student" ? { ...curr, data: { ...curr.data, batch: updatedBatch.name, batchCommenceDate: String(updatedBatch.commenceDate) } } : curr);
+        }
+      }
       return true;
     } catch (error) {
       toast.error(error instanceof Error ? error.message : "Unable to update batch");
@@ -2294,10 +2730,121 @@ export default function AdminCrm() {
               </>
             )}
             {showTopbarSearch && <div className="search-box"><Search size={14} /><input value={filters.q} onChange={(event) => setFilters({ ...filters, q: event.target.value })} onKeyDown={(event) => { if (event.key === "Enter") void loadLeads(1); }} placeholder="Search leads..." /></div>}
+            {canUseLeads && (
+              <div className="notif-wrap" ref={notifRef}>
+                <button
+                  type="button"
+                  className={`icon-btn notif-btn ${notifOpen ? "active" : ""}`}
+                  onClick={() => setNotifOpen((prev) => !prev)}
+                  title="Lead follow-up reminders"
+                  aria-label="Lead follow-up reminders"
+                >
+                  <Bell size={15} />
+                  {followUpLeads.length > 0 && (
+                    <span className={`notif-badge ${dueFollowUpCount > 0 ? "urgent" : ""}`}>
+                      {followUpLeads.length > 99 ? "99+" : followUpLeads.length}
+                    </span>
+                  )}
+                </button>
+                {notifOpen && (
+                  <div className="notif-dropdown">
+                    <div className="notif-header">
+                      <div className="notif-title-row">
+                        <div className="notif-title">
+                          <Bell size={15} />
+                          <span>Lead Follow-ups</span>
+                        </div>
+                        <span className="notif-count-pill">{followUpLeads.length} total</span>
+                      </div>
+                      {dueFollowUpCount > 0 && (
+                        <div className="notif-alert-banner">
+                          <AlertTriangle size={14} />
+                          <span><strong>{dueFollowUpCount}</strong> follow-up{dueFollowUpCount > 1 ? "s" : ""} due today or overdue!</span>
+                        </div>
+                      )}
+                    </div>
+                    <div className="notif-body">
+                      {followUpLeads.length === 0 ? (
+                        <div className="notif-empty">
+                          <div className="notif-empty-icon"><Bell size={24} /></div>
+                          <div className="notif-empty-text">No upcoming lead follow-ups</div>
+                          <div className="notif-empty-sub">Scheduled follow-up reminders for leads will appear here.</div>
+                        </div>
+                      ) : (
+                        <div className="notif-list">
+                          {followUpLeads.slice(0, 15).map((lead) => (
+                            <div key={lead._id} className="notif-item-wrap">
+                              <button
+                                type="button"
+                                className="notif-item"
+                                onClick={() => {
+                                  openLeadDrawer(lead);
+                                  setNotifOpen(false);
+                                }}
+                              >
+                                <div className="notif-avatar">{initials(lead.fullName)}</div>
+                                <div className="notif-item-info">
+                                  <div className="notif-item-top">
+                                    <span className="notif-item-name">{lead.fullName}</span>
+                                    <span className={`tag ${followUpTagClass(lead.nextFollowUp)}`}>
+                                      {followUpDueLabel(lead.nextFollowUp)}
+                                    </span>
+                                  </div>
+                                  <div className="notif-item-meta">
+                                    <span>{courseShortCode(lead.course)}</span>
+                                    {lead.centre && <span> • {lead.centre}</span>}
+                                    {lead.phone && <span> • {lead.phone}</span>}
+                                  </div>
+                                  <div className="notif-item-time">
+                                    <Calendar size={12} />
+                                    <span>{formatDateTime(lead.nextFollowUp)}</span>
+                                  </div>
+                                </div>
+                              </button>
+                              <button
+                                type="button"
+                                className="notif-quick-done-btn"
+                                title="Mark follow-up done & remove reminder"
+                                onClick={(event) => {
+                                  event.stopPropagation();
+                                  markLeadFollowUpDone(lead);
+                                }}
+                              >
+                                <Check size={14} />
+                              </button>
+                            </div>
+                          ))}
+                        </div>
+                      )}
+                    </div>
+                    {followUpLeads.length > 0 && (
+                      <div className="notif-footer">
+                        {followUpLeads.length > 15 && (
+                          <span className="notif-more-hint">
+                            Showing top 15 urgent • {followUpLeads.length - 15} more in Leads
+                          </span>
+                        )}
+                        <button
+                          type="button"
+                          className="notif-view-all-btn"
+                          onClick={() => {
+                            setPanel("leads");
+                            setNotifOpen(false);
+                          }}
+                        >
+                          <span>View all {followUpLeads.length > 1 ? `${followUpLeads.length} ` : ""}leads</span>
+                          <ArrowRight size={13} />
+                        </button>
+                      </div>
+                    )}
+                  </div>
+                )}
+              </div>
+            )}
           </header>
 
           <section className="content">
-            {panel === "dashboard" && (isCounsellorAccount ? <SalesCounsellorDashboardPanel leads={leads} students={visibleStudents} onOpenLead={openLeadDrawer} onGoLeads={() => setPanel("leads")} onGoAddLead={() => setPanel("addlead")} onGoAdmissions={() => setPanel("admissions")} onOpenStudent={(student) => openProfile({ type: "student", data: student }, "dashboard")} /> : isTeacherAccount ? <TeacherDashboardPanel batches={batches} students={visibleStudents} sessions={classSessions} schedules={classSchedulesState} topicProgress={topicProgress} practicalRecords={practicalRecords} user={user} googleCalendarStatus={googleCalendarStatus} calendarSyncing={calendarSyncing} onConnectCalendar={connectGoogleCalendar} onDisconnectCalendar={disconnectGoogleCalendar} onSyncCalendar={syncGoogleCalendar} onOpenStudent={(student) => openProfile({ type: "student", data: student }, "dashboard")} onOpenBatch={(batchId, sessionId) => { setSelectedBatchId(batchId); setSelectedClassSessionId(sessionId || ""); setPanel("batch"); }} /> : <DashboardPanel summary={summary} funnel={funnel} centreStats={centreStats} students={students} leads={leads} onOpenLead={openLeadDrawer} />)}
+            {panel === "dashboard" && (isCounsellorAccount ? <SalesCounsellorDashboardPanel leads={leads} students={visibleStudents} onOpenLead={openLeadDrawer} onGoLeads={() => setPanel("leads")} onGoAddLead={() => setPanel("addlead")} onGoAdmissions={() => setPanel("admissions")} onOpenStudent={(student) => openProfile({ type: "student", data: student }, "dashboard")} /> : isTeacherAccount ? <TeacherDashboardPanel batches={batches} students={visibleStudents} sessions={classSessions} schedules={classSchedulesState} topicProgress={topicProgress} practicalRecords={practicalRecords} user={user} googleCalendarStatus={googleCalendarStatus} calendarSyncing={calendarSyncing} onConnectCalendar={connectGoogleCalendar} onDisconnectCalendar={disconnectGoogleCalendar} onSyncCalendar={syncGoogleCalendar} onOpenStudent={(student) => openProfile({ type: "student", data: student }, "dashboard")} onOpenBatch={(batchId, sessionId) => { setSelectedBatchId(batchId); setSelectedClassSessionId(sessionId || ""); setPanel("batch"); }} /> : isOperationsAccount ? <OperationsDashboardPanel students={students} batches={batches} onOpenStudent={(student) => openProfile({ type: "student", data: student }, "dashboard")} onGoStudents={() => setPanel("allstudents")} onGoFinance={() => setPanel("finance")} onGoEmi={() => setPanel("emi")} onGoCert={() => setPanel("cert")} onGoInternship={() => setPanel("internship")} onGoInventory={() => setPanel("inventory")} inventorySummary={inventorySummary} /> : <DashboardPanel summary={summary} funnel={funnel} centreStats={centreStats} students={students} leads={leads} onOpenLead={openLeadDrawer} />)}
             {panel === "leads" && <LeadsPanel leads={leads} students={students} batches={batches} meta={leadMeta} filters={filters} setFilters={setFilters} centres={centreOptions} courses={courseOptions} canAssign={canAssignCounsellors} canDelete={canDeleteRecords} counsellors={counsellors} onSearch={() => loadLeads(1)} onPage={setLeadPage} onPatch={patchLead} onDelete={deleteLead} onEdit={(lead) => openProfile({ type: "lead", data: lead, mode: "edit" }, "leads")} onAddLead={() => setPanel("addlead")} onImportExcel={importLeadExcel} onOpen={openLeadDrawer} />}
             {panel === "addlead" && <AddLeadPanel centres={centreOptions} courses={courseOptions} onSubmit={addLead} />}
             {panel === "admissions" && <AdmissionsPanel leads={leads.filter((lead) => lead.stage === "Admission" && !students.some((student) => String(student.leadId || "") === String(lead._id)))} batches={batches} canAssign={canAssignCounsellors} counsellors={counsellors} centres={centreOptions} onPatch={patchLead} onConvert={convertLead} onOpen={openLeadDrawer} />}
@@ -2315,7 +2862,27 @@ export default function AdminCrm() {
             {panel === "receipts" && canManageFees && <ReceiptsPanel students={visibleStudents} meta={studentMeta} onPage={setStudentPage} onOpen={(student) => { setReceiptStudent(student); setReceiptSelection({ type: "invoice" }); }} />}
             {panel === "cert" && canManageCertificates && <CertificatePanel students={students} meta={studentMeta} onPage={setStudentPage} onIssue={issueCertificate} onOpen={(student) => openProfile({ type: "student", data: student }, "cert")} />}
             {panel === "settings" && canManageSettings && <SettingsPanel isHeadSuperAdmin={isHeadSuperAdmin} isHeadBranchAdmin={isHeadBranchAdmin} isFranchiseSuperAdmin={isFranchiseSuperAdmin} centres={centres} courses={courses} batches={batches} counsellors={counsellors} teachers={teachers} user={user} centreOptions={centreOptions} courseOptions={courseOptions} onAddStaff={addCounsellor} onAddCentre={(event) => addCentreOrCourse(event, "centres")} onUpdateCentreBilling={updateCentreBilling} onAddCourse={(event) => addCentreOrCourse(event, "courses")} onUpdateCourse={updateCourse} onDeleteCourse={deleteCourse} onAddBatch={addBatch} onUpdateBatch={updateBatch} onDeleteBatch={deleteBatch} onUpdatePassword={updatePassword} />}
-            {panel === "profile" && <ProfilePanel profile={profile} user={user} accessCount={visibleNavGroups.reduce((sum, group) => sum + group.items.length, 0)} canManageFees={canManageFees} canManageSettings={canManageSettings} canAssignTeachers={canAssignTeachers} canManageCertificates={canManageCertificates} canManageInternships={canManageInternships} centres={centreOptions} courses={courseOptions} batches={batches} teachers={teachers} onBack={closeProfile} onGoSettings={() => setPanel("settings")} onLeadPatch={patchLead} onStudentPatch={patchStudent} onGenerateStudentLmsAccess={generateStudentLmsAccess} onInternshipSave={saveStudentInternship} onInternshipDelete={deleteStudentInternship} onPayment={addPayment} onDownloadPaymentProof={downloadPaymentProof} onFeedback={addStudentFeedback} onIssue={issueCertificate} onPreviewDocument={openDocumentPreview} onPreviewInternshipPhoto={openInternshipPhotoPreview} />}
+            {panel === "inventory" && canManageInventory && (
+              <InventoryPanel
+                summary={inventorySummary}
+                items={inventoryItems}
+                tablets={tablets}
+                transactions={inventoryTransactions}
+                students={students}
+                activeTab={inventoryTab}
+                setActiveTab={setInventoryTab}
+                tabletSearch={tabletSearchQuery}
+                setTabletSearch={setTabletSearchQuery}
+                onStockInClick={() => setStockInModalOpen(true)}
+                onIssueKitClick={(student) => {
+                  setIssueKitTargetStudent(student || null);
+                  setIssueKitModalOpen(true);
+                }}
+                onReturnTablet={handleReturnTablet}
+                onOpenStudent={(student) => openProfile({ type: "student", data: student }, "inventory")}
+              />
+            )}
+            {panel === "profile" && <ProfilePanel profile={profile} user={user} accessCount={visibleNavGroups.reduce((sum, group) => sum + group.items.length, 0)} canManageFees={canManageFees} canManageSettings={canManageSettings} canAssignTeachers={canAssignTeachers} canManageCertificates={canManageCertificates} canManageInternships={canManageInternships} canManageInventory={canManageInventory} onIssueKit={(st) => { setIssueKitTargetStudent(st); setIssueKitModalOpen(true); }} centres={centreOptions} courses={courseOptions} batches={batches} teachers={teachers} onBack={closeProfile} onGoSettings={() => setPanel("settings")} onLeadPatch={patchLead} onStudentPatch={patchStudent} onGenerateStudentLmsAccess={generateStudentLmsAccess} onInternshipSave={saveStudentInternship} onInternshipDelete={deleteStudentInternship} onPayment={addPayment} onDownloadPaymentProof={downloadPaymentProof} onFeedback={addStudentFeedback} onIssue={issueCertificate} onPreviewDocument={openDocumentPreview} onPreviewInternshipPhoto={openInternshipPhotoPreview} />}
           </section>
         </div>
       </div>
@@ -2326,6 +2893,8 @@ export default function AdminCrm() {
         onClose={closeLeadDrawer}
         onPatch={patchLead}
         onFollowUp={addLeadFollowUp}
+        onMarkDone={markLeadFollowUpDone}
+        onClearReminder={clearLeadReminder}
         onPreviewDocument={openDocumentPreview}
       />
       <ReceiptDrawer
@@ -2347,6 +2916,23 @@ export default function AdminCrm() {
           setLogbookReviewPrompt(null);
           await reviewLogbookEntry(activePrompt.student, activePrompt.entry, activePrompt.verified, activePrompt.remark);
         }}
+      />
+      <StockInModal
+        open={stockInModalOpen}
+        onClose={() => setStockInModalOpen(false)}
+        onSubmit={handleStockIn}
+      />
+      <IssueKitModal
+        open={issueKitModalOpen}
+        students={students}
+        targetStudent={issueKitTargetStudent}
+        tablets={tablets}
+        summary={inventorySummary}
+        onClose={() => {
+          setIssueKitModalOpen(false);
+          setIssueKitTargetStudent(null);
+        }}
+        onSubmit={handleIssueKit}
       />
     </main>
   );
@@ -2488,6 +3074,175 @@ function NpsPanel({ dashboard, responses, meta, filters, setFilters, courses, ba
         </div>
       </section>
       {canManage && selected && <div className="modal-overlay show"><div className="modal logbook-review-modal"><div className="modal-head"><h3>NPS follow-up</h3><button className="icon-btn" onClick={() => setSelected(null)}>x</button></div><div className="modal-body"><div className="review-entry-snapshot"><b>{npsStudentName(selected)} | {selected.npsScore}/10</b><span>{selected.openFeedback || "No written feedback"}</span></div>{Boolean(selected.followUpNotes?.length) && <div className="nps-note-history"><b>Previous notes</b>{selected.followUpNotes?.map((note, index) => <div key={`${note.at || index}-${index}`}><p>{note.note}</p><span>{note.by || "Admin"} - {formatDateTime(note.at)}</span></div>)}</div>}<div className="field"><label>Status</label><select value={followStatus} onChange={(event) => setFollowStatus(event.target.value)}><option>Pending</option><option>In Progress</option><option>Resolved</option></select></div><div className="field"><label>Internal note</label><textarea value={followNote} onChange={(event) => setFollowNote(event.target.value)} placeholder="Add action taken or follow-up note" /></div></div><div className="modal-foot"><button className="btn btn-ghost" onClick={() => setSelected(null)}>Cancel</button><button className="btn btn-primary" onClick={save}>Save follow-up</button></div></div></div>}
+    </>
+  );
+}
+
+function OperationsDashboardPanel({ students, batches, onOpenStudent, onGoStudents, onGoFinance, onGoEmi, onGoCert, onGoInternship, onGoInventory, inventorySummary }: { students: Student[]; batches: Batch[]; onOpenStudent: (student: Student) => void; onGoStudents: () => void; onGoFinance: () => void; onGoEmi: () => void; onGoCert: () => void; onGoInternship: () => void; onGoInventory?: () => void; inventorySummary?: InventorySummary | null }) {
+  const todayKey = dateInputValue();
+  const enrolledCount = students.length;
+  const activeStudents = students.filter((s) => ["Admission Completed", "Fees Decided", "Fees Collected", "Active Student"].includes(normalizeStudentStatus(s.status)));
+  const totalCollected = students.reduce((sum, s) => sum + (s.paidAmount || 0), 0);
+  const totalPendingDue = students.reduce((sum, s) => sum + dueAmount(s), 0);
+  const lmsPending = students.filter((s) => !s.lmsAccessEnabled && ["Fees Decided", "Fees Collected", "Active Student"].includes(normalizeStudentStatus(s.status)));
+  const emiDueStudents = students.filter((s) => s.emiEnabled && s.nextEmiDate && dateInputValue(s.nextEmiDate) <= dateInputValueFromOffset(7));
+  const certPending = students.filter((s) => ["Course Completed", "Classroom Complete"].includes(normalizeStudentStatus(s.status)) && !s.certificateNumber);
+  const internshipActive = students.filter((s) => s.internshipAssignment?.facilityName);
+  const recentAdmissions = students.filter((s) => ["Enrolled", "Admission Completed"].includes(normalizeStudentStatus(s.status))).slice(0, 6);
+
+  // Chart 1: Fee collection vs Pending Dues
+  const collectionTotal = totalCollected + totalPendingDue;
+  const collectionSlices: DonutSlice[] = [
+    { label: "Collected", value: totalCollected, color: "#17A673" },
+    { label: "Pending Due", value: totalPendingDue, color: "#E5484D" },
+  ];
+  const collectionPct = collectionTotal > 0 ? Math.round((totalCollected / collectionTotal) * 100) : 0;
+
+  // Chart 2: Candidate Progression / Training Stages
+  const stageCategories = [
+    { key: "New Admission", label: "New Admission", color: "#4F6BFF", test: (st: string) => ["Enrolled", "Admission Completed"].includes(st) },
+    { key: "Fees Finalized", label: "Fees Finalized", color: "#14B8A6", test: (st: string) => ["Fees Decided", "Fees Collected"].includes(st) },
+    { key: "In Training", label: "In Training", color: "#8B5CF6", test: (st: string) => st === "Active Student" },
+    { key: "Course Complete", label: "Course Complete", color: "#17A673", test: (st: string) => ["Classroom Complete", "Course Completed"].includes(st) },
+    { key: "Alumni / Placed", label: "Alumni / Placed", color: "#F5A524", test: (st: string) => st === "Alumni" },
+  ];
+  const lifecycleSlices: DonutSlice[] = stageCategories.map((cat) => ({
+    label: cat.label,
+    value: students.filter((s) => cat.test(normalizeStudentStatus(s.status))).length,
+    color: cat.color,
+  })).filter((slice) => slice.value > 0);
+
+  // If no students yet, default empty slice so chart renders cleanly
+  const displayLifecycleSlices: DonutSlice[] = lifecycleSlices.length
+    ? lifecycleSlices
+    : [{ label: "No candidates", value: 1, color: "var(--border-soft)" }];
+
+  return (
+    <>
+      <div className="grid-metrics">
+        <MetricCard label="Total candidates" value={enrolledCount} dot="#4F6BFF" delta="all candidates" />
+        <MetricCard label="Active in training" value={activeStudents.length} dot="#17A673" delta="active students" />
+        <MetricCard label="Total collected" value={formatCurrency(totalCollected)} dot="#14B8A6" delta="fees received" />
+        <MetricCard label="Pending dues" value={formatCurrency(totalPendingDue)} dot="#E5484D" delta="to collect" down={totalPendingDue > 0} />
+        <MetricCard label="LMS to generate" value={lmsPending.length} dot="#8B5CF6" delta="ready for login" down={lmsPending.length > 0} />
+      </div>
+
+      <div className="two-col">
+        <div className="card">
+          <div className="card-head">
+            <div>
+              <h3>Fee collection status</h3>
+              <div className="sub">Collected vs pending dues across candidates</div>
+            </div>
+            <button className="btn btn-ghost btn-sm" onClick={onGoFinance}>Open finance</button>
+          </div>
+          <div className="card-body chart-body">
+            <DonutChart data={collectionSlices} centerValue={`${collectionPct}%`} centerLabel="Collected" />
+            <DonutLegend data={collectionSlices} formatValue={formatCurrency} />
+          </div>
+        </div>
+
+        <div className="card">
+          <div className="card-head">
+            <div>
+              <h3>Candidate training progression</h3>
+              <div className="sub">Share of candidates across learning stages</div>
+            </div>
+            <button className="btn btn-ghost btn-sm" onClick={onGoStudents}>Candidates</button>
+          </div>
+          <div className="card-body chart-body">
+            <DonutChart data={displayLifecycleSlices} centerValue={String(enrolledCount)} centerLabel="Candidates" />
+            <DonutLegend data={displayLifecycleSlices} formatValue={(val) => `${val} student${val === 1 ? "" : "s"}`} />
+          </div>
+        </div>
+      </div>
+
+      <div className="two-col">
+        <div className="card">
+          <div className="card-head"><div><h3>LMS access needed</h3><div className="sub">Candidates with fees planned waiting for LMS login</div></div><button className="btn btn-ghost btn-sm" onClick={onGoStudents}>Candidates</button></div>
+          <div className="card-body row-list">
+            {lmsPending.slice(0, 6).map((student) => <button className="crow row-button" key={student._id} onClick={() => onOpenStudent(student)}><div className="who"><span className="mini">{initials(student.fullName)}</span><div><div className="nm">{student.fullName}</div><div className="mt">{courseShortCode(student.course)} | {student.batch || "No batch"} | {formatCurrency(student.paidAmount || 0)} paid</div></div></div><span className="tag purple">Generate LMS</span></button>)}
+            {!lmsPending.length && <div className="empty-state">All active candidates have LMS login generated</div>}
+          </div>
+        </div>
+        <div className="card">
+          <div className="card-head"><div><h3>Upcoming & overdue EMIs</h3><div className="sub">Instalments due in next 7 days</div></div><button className="btn btn-ghost btn-sm" onClick={onGoEmi}>EMI tracker</button></div>
+          <div className="card-body row-list">
+            {emiDueStudents.slice(0, 6).map((student) => <button className="crow row-button" key={student._id} onClick={() => onOpenStudent(student)}><div className="who"><span className="mini">{initials(student.fullName)}</span><div><div className="nm">{student.fullName}</div><div className="mt">{courseShortCode(student.course)} | EMI {formatCurrency(student.emiAmount || 0)} | Due: {student.nextEmiDate ? formatDate(student.nextEmiDate) : "-"}</div></div></div><span className={`tag ${dateInputValue(student.nextEmiDate) <= todayKey ? "red" : "amber"}`}>{dateInputValue(student.nextEmiDate) <= todayKey ? "Overdue" : "Due soon"}</span></button>)}
+            {!emiDueStudents.length && <div className="empty-state">No upcoming EMI dues in the next 7 days</div>}
+          </div>
+        </div>
+      </div>
+
+      <div className="two-col">
+        <div className="card">
+          <div className="card-head"><div><h3>New admissions to onboard</h3><div className="sub">Recent candidates for batch allocation and fee planning</div></div><button className="btn btn-ghost btn-sm" onClick={onGoStudents}>All candidates</button></div>
+          <div className="card-body row-list">
+            {recentAdmissions.map((student) => <button className="crow row-button" key={student._id} onClick={() => onOpenStudent(student)}><div className="who"><span className="mini">{initials(student.fullName)}</span><div><div className="nm">{student.fullName}</div><div className="mt">{courseShortCode(student.course)} | {student.centre || "-"} | Batch: {student.batch || "Unassigned"}</div></div></div><span className={`tag ${stageTag(student.status)}`}>{student.status}</span></button>)}
+            {!recentAdmissions.length && <div className="empty-state">No new admissions needing onboarding</div>}
+          </div>
+        </div>
+        <div className="card">
+          <div className="card-head"><div><h3>Certifications & internships</h3><div className="sub">Course completion and hospital postings</div></div><button className="btn btn-ghost btn-sm" onClick={onGoCert}>Certificates</button></div>
+          <div className="card-body row-list">
+            {certPending.slice(0, 3).map((student) => <button className="crow row-button" key={student._id} onClick={() => onOpenStudent(student)}><div className="who"><span className="mini">CR</span><div><div className="nm">{student.fullName}</div><div className="mt">{courseShortCode(student.course)} - Ready for certificate issue</div></div></div><span className="tag green">Issue cert</span></button>)}
+            {internshipActive.slice(0, 3).map((student) => <button className="crow row-button" key={student._id} onClick={() => onOpenStudent(student)}><div className="who"><span className="mini">IN</span><div><div className="nm">{student.fullName}</div><div className="mt">{student.internshipAssignment?.facilityName} | {courseShortCode(student.course)}</div></div></div><span className="tag blue">Internship</span></button>)}
+            {!certPending.length && !internshipActive.length && <div className="empty-state">No pending certificates or active internships</div>}
+          </div>
+        </div>
+      </div>
+
+      <div className="card" style={{ marginTop: 16 }}>
+        <div className="card-head">
+          <div>
+            <h3>Inventory & Student Kits</h3>
+            <div className="sub">Stock balance for ID cards, T-shirts, bags, and tablets</div>
+          </div>
+          {onGoInventory && <button className="btn btn-ghost btn-sm" onClick={onGoInventory}>Manage Inventory →</button>}
+        </div>
+        <div className="card-body">
+          <div className="inventory-dashboard-grid" style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(160px, 1fr))", gap: 12 }}>
+            <div style={{ background: "var(--bg-subtle)", padding: 12, borderRadius: 10, border: "1px solid var(--border)" }}>
+              <div style={{ fontSize: 12, color: "var(--text-muted)", marginBottom: 4, display: "flex", alignItems: "center", gap: 6 }}>
+                <CreditCard size={14} color="#4F6BFF" /> ID Cards Available
+              </div>
+              <div style={{ fontSize: 22, fontWeight: 700, color: "#4F6BFF" }}>{inventorySummary?.idCards ?? 0}</div>
+              <div style={{ fontSize: 11, color: (inventorySummary?.idCards ?? 0) <= 5 ? "#EF4444" : "var(--text-muted)", marginTop: 2 }}>
+                {(inventorySummary?.idCards ?? 0) <= 5 ? "Low stock" : "Ready for issuance"}
+              </div>
+            </div>
+            <div style={{ background: "var(--bg-subtle)", padding: 12, borderRadius: 10, border: "1px solid var(--border)" }}>
+              <div style={{ fontSize: 12, color: "var(--text-muted)", marginBottom: 4, display: "flex", alignItems: "center", gap: 6 }}>
+                <Shirt size={14} color="#14B8A6" /> T-Shirts in Stock
+              </div>
+              <div style={{ fontSize: 22, fontWeight: 700, color: "#14B8A6" }}>{inventorySummary?.tshirts?.total ?? 0}</div>
+              <div style={{ fontSize: 11, color: "var(--text-muted)", marginTop: 2 }}>
+                S:{inventorySummary?.tshirts?.bySize?.S ?? 0} M:{inventorySummary?.tshirts?.bySize?.M ?? 0} L:{inventorySummary?.tshirts?.bySize?.L ?? 0} XL:{inventorySummary?.tshirts?.bySize?.XL ?? 0}
+              </div>
+            </div>
+            <div style={{ background: "var(--bg-subtle)", padding: 12, borderRadius: 10, border: "1px solid var(--border)" }}>
+              <div style={{ fontSize: 12, color: "var(--text-muted)", marginBottom: 4, display: "flex", alignItems: "center", gap: 6 }}>
+                <ShoppingBag size={14} color="#8B5CF6" /> Bags in Stock
+              </div>
+              <div style={{ fontSize: 22, fontWeight: 700, color: "#8B5CF6" }}>{inventorySummary?.bags ?? 0}</div>
+              <div style={{ fontSize: 11, color: (inventorySummary?.bags ?? 0) <= 5 ? "#EF4444" : "var(--text-muted)", marginTop: 2 }}>
+                {(inventorySummary?.bags ?? 0) <= 5 ? "Low stock" : "Ready for student kits"}
+              </div>
+            </div>
+            <div style={{ background: "var(--bg-subtle)", padding: 12, borderRadius: 10, border: "1px solid var(--border)" }}>
+              <div style={{ fontSize: 12, color: "var(--text-muted)", marginBottom: 4, display: "flex", alignItems: "center", gap: 6 }}>
+                <Tablet size={14} color="#F5A524" /> Tablets (In Stock / Total)
+              </div>
+              <div style={{ fontSize: 22, fontWeight: 700, color: "#F5A524" }}>
+                {inventorySummary?.tablets?.inStock ?? 0} / {inventorySummary?.tablets?.total ?? 0}
+              </div>
+              <div style={{ fontSize: 11, color: "var(--text-muted)", marginTop: 2 }}>
+                {inventorySummary?.tablets?.assigned ?? 0} assigned to candidates
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
     </>
   );
 }
@@ -3029,12 +3784,27 @@ function LeadPamphletSelect({ lead, compact = false }: { lead: Lead; compact?: b
 
 function LeadTable({ leads, students, batches, canAssign, canDelete = false, counsellors, centres, onPatch, onDelete, onEdit, onOpen, showAction }: { leads: Lead[]; students: Student[]; batches: Batch[]; canAssign: boolean; canDelete?: boolean; counsellors: Counsellor[]; centres: string[]; onPatch: (id: string, updates: Partial<Lead>) => void; onDelete?: (lead: Lead) => void; onEdit?: (lead: Lead) => void; onOpen: (lead: Lead) => void; showAction: boolean }) {
   const leadStages = stages;
+  const isJunkOrLost = (lead: Lead) => {
+    const fb = String(lead.leadFeedback || "").trim().toLowerCase();
+    const stg = String(lead.stage || "").trim().toLowerCase();
+    return fb === "junk" || fb === "lost" || fb === "invalid" || stg === "lost";
+  };
+  const sortedLeads = useMemo(() => {
+    return [...leads].sort((a, b) => {
+      const aJunk = isJunkOrLost(a) ? 1 : 0;
+      const bJunk = isJunkOrLost(b) ? 1 : 0;
+      if (aJunk !== bJunk) return aJunk - bJunk;
+      const bTime = new Date(b.createdAt || b.updatedAt || 0).getTime();
+      const aTime = new Date(a.createdAt || a.updatedAt || 0).getTime();
+      return bTime - aTime;
+    });
+  }, [leads]);
   return (
     <div className="table-wrap leads-table-wrap">
       <table className="leads-table">
         <thead><tr><th>Lead</th><th>Contact</th><th>Course</th><th>Source</th><th>Centre</th><th>Counsellor</th><th>Stage</th><th>Status</th><th>Priority</th><th>Next follow-up</th><th /></tr></thead>
         <tbody>
-          {leads.map((lead) => {
+          {sortedLeads.map((lead) => {
             const displayOwner = leadOwnerForDisplay(lead, students, batches);
             const hasCounsellorOption = !displayOwner || counsellors.some((counsellor) => counsellor.name === displayOwner);
             return (
@@ -4341,10 +5111,20 @@ function EmiPanel({ students, meta, onPage, onOpen }: { students: Student[]; met
   const month = today.slice(0, 7);
   const emiStudents = students
     .filter((student) => student.emiEnabled || student.nextEmiDate || dueAmount(student) > 0)
-    .map((student) => ({ student, overdue: Boolean(student.nextEmiDate && student.nextEmiDate < today), amount: student.emiAmount || dueAmount(student) }))
-    .sort((a, b) => Number(b.overdue) - Number(a.overdue));
-  const overdueCount = emiStudents.filter((item) => item.overdue).length;
-  const upcomingThisMonth = emiStudents.filter((item) => !item.overdue && (item.student.nextEmiDate || "").startsWith(month)).length;
+    .map((student) => {
+      const breakdown = studentEmiBreakdown(student);
+      const overdue = Boolean(student.nextEmiDate && student.nextEmiDate < today);
+      const amount = breakdown.isEmi ? breakdown.currentDue : dueAmount(student);
+      return {
+        student,
+        overdue,
+        breakdown,
+        amount,
+      };
+    })
+    .sort((a, b) => Number(b.overdue || b.breakdown.shortfall > 0) - Number(a.overdue || a.breakdown.shortfall > 0));
+  const overdueCount = emiStudents.filter((item) => item.overdue || item.breakdown.shortfall > 0).length;
+  const upcomingThisMonth = emiStudents.filter((item) => !item.overdue && item.breakdown.shortfall <= 0 && (item.student.nextEmiDate || "").startsWith(month)).length;
   const totalDue = emiStudents.reduce((sum, item) => sum + item.amount, 0);
   return (
     <>
@@ -4355,21 +5135,32 @@ function EmiPanel({ students, meta, onPage, onOpen }: { students: Student[]; met
       </div>
       <div className="filter-bar emi-filter-bar">
         <div className="filter-spacer" />
-        <button className="btn btn-ghost" onClick={() => downloadExcelFile(["Student", "Course", "Next EMI date", "Amount due", "Status"], emiStudents.map(({ student, overdue, amount }) => [student.fullName, student.course, formatDate(student.nextEmiDate), amount, overdue ? "Overdue" : "Due"]), "imed-emi-reminders")}><Download size={15} /> Download Excel</button>
+        <button className="btn btn-ghost" onClick={() => downloadExcelFile(["Student", "Course", "Next EMI date", "Amount due", "Shortfall", "Status"], emiStudents.map(({ student, overdue, breakdown, amount }) => [student.fullName, student.course, formatDate(student.nextEmiDate), amount, breakdown.shortfall || 0, overdue ? "Overdue" : breakdown.shortfall > 0 ? "Shortfall" : "Due"]), "imed-emi-reminders")}><Download size={15} /> Download Excel</button>
       </div>
       <div className="card emi-card">
         <div className="table-wrap emi-table-wrap">
           <table className="emi-table">
             <thead><tr><th>Student</th><th>Course</th><th>Next EMI date</th><th>Amount due</th><th>Status</th><th /></tr></thead>
             <tbody>
-              {emiStudents.map(({ student, overdue, amount }) => (
+              {emiStudents.map(({ student, overdue, breakdown, amount }) => (
                 <tr className="clickable" key={student._id} onClick={() => onOpen(student)}>
                   <td><div className="lead-name-cell"><span className="avatar lead-avatar">{initials(student.fullName)}</span><div><div className="cell-name">{student.fullName}</div><div className="cell-sub">{student.admissionNumber || student.phone}</div></div></div></td>
                   <td>{courseShortCode(student.course)}</td>
                   <td className="mono">{formatDate(student.nextEmiDate)}</td>
-                  <td className="mono">{formatCurrency(amount)}</td>
-                  <td><span className={`tag ${overdue ? "red" : "amber"}`}>{overdue ? "Overdue" : "Due"}</span></td>
-                  <td onClick={(event) => event.stopPropagation()}><button className="btn btn-sm btn-green" onClick={() => toast.success(`WhatsApp reminder sent to ${student.fullName.split(" ")[0] || "student"}`)}><MessageCircle size={14} /> WhatsApp reminder</button></td>
+                  <td className="mono">
+                    <b>{formatCurrency(amount)}</b>
+                    {breakdown.shortfall > 0 && <div className="cell-sub" style={{ color: "#EF4444" }}>Includes {formatCurrency(breakdown.shortfall)} shortfall</div>}
+                  </td>
+                  <td>
+                    {overdue ? <span className="tag red">Overdue</span> : breakdown.shortfall > 0 ? <span className="tag amber">Shortfall carried</span> : <span className="tag blue">Upcoming</span>}
+                  </td>
+                  <td onClick={(event) => event.stopPropagation()}>
+                    <button className="btn btn-sm btn-green" onClick={() => {
+                      const url = emiReminderWhatsAppUrl(student);
+                      if (url) window.open(url, "_blank", "noopener,noreferrer");
+                      else toast.error("Student phone number missing");
+                    }}><MessageCircle size={14} /> WhatsApp reminder</button>
+                  </td>
                 </tr>
               ))}
               {!emiStudents.length && <tr><td colSpan={6}><div className="empty-state"><h4>No pending EMIs</h4></div></td></tr>}
@@ -4419,6 +5210,1349 @@ function ReceiptsPanel({ students, meta, onPage, onOpen }: { students: Student[]
         <Pager meta={meta} label="students" onPage={onPage} />
       </div>
     </>
+  );
+}
+
+function InventoryPanel({
+  summary,
+  items,
+  tablets,
+  transactions,
+  students,
+  activeTab,
+  setActiveTab,
+  tabletSearch,
+  setTabletSearch,
+  onStockInClick,
+  onIssueKitClick,
+  onReturnTablet,
+  onOpenStudent,
+}: {
+  summary: InventorySummary | null;
+  items: InventoryItem[];
+  tablets: TabletAsset[];
+  transactions: InventoryTransaction[];
+  students: Student[];
+  activeTab: "overview" | "tablets" | "students" | "logs";
+  setActiveTab: (tab: "overview" | "tablets" | "students" | "logs") => void;
+  tabletSearch: string;
+  setTabletSearch: (q: string) => void;
+  onStockInClick: () => void;
+  onIssueKitClick: (student?: Student | null) => void;
+  onReturnTablet: (tablet: TabletAsset) => void;
+  onOpenStudent: (student: Student) => void;
+}) {
+  const idCardsCount = summary?.idCards ?? 0;
+  const tshirtsTotal = summary?.tshirts?.total ?? 0;
+  const tshirtsBySize = summary?.tshirts?.bySize || { S: 0, M: 0, L: 0, XL: 0, XXL: 0 };
+  const bagsCount = summary?.bags ?? 0;
+  const tabletsTotal = summary?.tablets?.total ?? 0;
+  const tabletsInStock = summary?.tablets?.inStock ?? 0;
+  const tabletsAssigned = summary?.tablets?.assigned ?? 0;
+  const [tshirtsExpanded, setTshirtsExpanded] = useState(false);
+  const tshirtSizesList = ["S", "M", "L", "XL", "XXL"] as const;
+  const emptySizesCount = tshirtSizesList.filter((s) => (tshirtsBySize[s] || 0) === 0).length;
+  const lowSizesCount = tshirtSizesList.filter((s) => {
+    const q = tshirtsBySize[s] || 0;
+    return q > 0 && q <= 5;
+  }).length;
+
+  const lowStockAlerts = summary?.lowStockAlerts || [];
+
+  const filteredTablets = tablets.filter((t) => {
+    if (!tabletSearch.trim()) return true;
+    const q = tabletSearch.toLowerCase();
+    return (
+      t.assetId.toLowerCase().includes(q) ||
+      t.serialNumber.toLowerCase().includes(q) ||
+      (t.assignedStudentName || "").toLowerCase().includes(q) ||
+      (t.brandModel || "").toLowerCase().includes(q)
+    );
+  });
+
+  return (
+    <div className="inventory-prototype">
+      <div className="grid-metrics inventory-metrics-grid">
+        <MetricCard
+          label="ID cards available"
+          value={idCardsCount}
+          dot="#4F6BFF"
+          delta={idCardsCount === 0 ? "out of stock (threshold: 10)" : idCardsCount <= 10 ? "low stock (≤ 10)" : "ready for issue"}
+          down={idCardsCount <= 10}
+        />
+        <MetricCard
+          label="T-shirts in stock"
+          value={tshirtsTotal}
+          dot="#14B8A6"
+          delta={`S:${tshirtsBySize.S} M:${tshirtsBySize.M} L:${tshirtsBySize.L} XL:${tshirtsBySize.XL} XXL:${tshirtsBySize.XXL}`}
+          down={tshirtsTotal <= 10}
+        />
+        <MetricCard
+          label="Bags in stock"
+          value={bagsCount}
+          dot="#8B5CF6"
+          delta={bagsCount === 0 ? "out of stock (threshold: 5)" : bagsCount <= 5 ? "low stock (≤ 5)" : "student backpacks"}
+          down={bagsCount <= 5}
+        />
+        <MetricCard
+          label="Tablets"
+          value={`${tabletsInStock} / ${tabletsTotal}`}
+          dot="#F5A524"
+          delta={tabletsInStock === 0 && tabletsTotal > 0 ? "all assigned (0 available)" : `${tabletsAssigned} assigned to students`}
+          down={tabletsInStock === 0}
+        />
+      </div>
+
+      {lowStockAlerts.length > 0 && (
+        <div className="academic-banner inventory-alert-banner" style={{ marginBottom: 16, background: "#FFF8EB", borderColor: "#F5DFB5", color: "#92400E" }}>
+          <div className="academic-banner-copy">
+            <div>
+              <strong>Low Stock Warning</strong>
+              <div style={{ fontSize: 12, marginTop: 4 }}>
+                The following items are running low:{" "}
+                {lowStockAlerts.map((a) => `${a.item} (${a.current} left)`).join(", ")}. Please order replenishment soon.
+              </div>
+            </div>
+          </div>
+          <button className="btn btn-sm btn-primary" onClick={onStockInClick}>
+            <Plus size={14} /> Stock In
+          </button>
+        </div>
+      )}
+
+      <div className="inventory-filter-bar">
+        <div className="inventory-pill-tabs pill-tabs">
+          <button
+            type="button"
+            className={`pill-tab ${activeTab === "overview" ? "active" : ""}`}
+            onClick={() => setActiveTab("overview")}
+            style={{ display: "inline-flex", alignItems: "center", gap: 6 }}
+          >
+            <Boxes size={15} /> Current Stock
+          </button>
+          <button
+            type="button"
+            className={`pill-tab ${activeTab === "tablets" ? "active" : ""}`}
+            onClick={() => setActiveTab("tablets")}
+            style={{ display: "inline-flex", alignItems: "center", gap: 6 }}
+          >
+            <Tablet size={15} /> Tablets ({tabletsTotal})
+          </button>
+          <button
+            type="button"
+            className={`pill-tab ${activeTab === "students" ? "active" : ""}`}
+            onClick={() => setActiveTab("students")}
+            style={{ display: "inline-flex", alignItems: "center", gap: 6 }}
+          >
+            <GraduationCap size={15} /> Candidate Kit Checklist
+          </button>
+          <button
+            type="button"
+            className={`pill-tab ${activeTab === "logs" ? "active" : ""}`}
+            onClick={() => setActiveTab("logs")}
+            style={{ display: "inline-flex", alignItems: "center", gap: 6 }}
+          >
+            <History size={15} /> Movement Log
+          </button>
+        </div>
+
+        <div className="inventory-action-group">
+          <button type="button" className="btn btn-ghost" onClick={onStockInClick}>
+            <Plus size={15} /> Stock In
+          </button>
+          <button type="button" className="btn btn-primary" onClick={() => onIssueKitClick(null)}>
+            <Package size={15} /> Issue Kit to Student
+          </button>
+        </div>
+      </div>
+
+      {activeTab === "overview" && (
+        <div className="card">
+          <div className="card-head">
+            <div>
+              <h3>Current Inventory Stock</h3>
+              <div className="sub">Real-time stock balance across candidate kits & assets</div>
+            </div>
+          </div>
+          <div className="table-wrap inventory-table-wrap">
+            <table className="inventory-overview-table">
+              <thead>
+                <tr>
+                  <th>Item Name</th>
+                  <th>Variant / Size</th>
+                  <th>Current Stock</th>
+                  <th>Min Threshold</th>
+                  <th>Status</th>
+                  <th style={{ textAlign: "right" }}>Action</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr>
+                  <td>
+                    <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+                      <div className="avatar" style={{ background: "#EEF2FF", color: "#4F6BFF", display: "flex", alignItems: "center", justifyContent: "center" }}>
+                        <CreditCard size={18} />
+                      </div>
+                      <div>
+                        <div className="nm">Student ID Cards</div>
+                        <div className="mt">iMED branded student cards</div>
+                      </div>
+                    </div>
+                  </td>
+                  <td><span className="badge badge-gray">Standard</span></td>
+                  <td><b style={{ fontSize: 15 }}>{idCardsCount}</b> nos</td>
+                  <td>10</td>
+                  <td>
+                    {idCardsCount === 0 ? (
+                      <span className="tag red">Out of Stock</span>
+                    ) : idCardsCount <= 10 ? (
+                      <span className="tag amber">Low Stock</span>
+                    ) : (
+                      <span className="tag green">In Stock</span>
+                    )}
+                  </td>
+                  <td style={{ textAlign: "right" }}>
+                    <button className="btn btn-sm btn-ghost" onClick={onStockInClick}>
+                      + Stock In
+                    </button>
+                  </td>
+                </tr>
+
+                <tr style={{ background: tshirtsExpanded ? "#F8FAFC" : undefined, transition: "background 0.2s" }}>
+                  <td>
+                    <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+                      <div className="avatar" style={{ background: "#E6F4EA", color: "#137333", display: "flex", alignItems: "center", justifyContent: "center" }}>
+                        <Shirt size={18} />
+                      </div>
+                      <div>
+                        <div className="nm">iMED Academy T-Shirt</div>
+                        <div className="mt">Student Uniform Polo / Tee (5 Sizes)</div>
+                      </div>
+                    </div>
+                  </td>
+                  <td>
+                    <button
+                      type="button"
+                      className="btn btn-xs"
+                      onClick={() => setTshirtsExpanded((v) => !v)}
+                      style={{
+                        display: "inline-flex",
+                        alignItems: "center",
+                        gap: 5,
+                        fontSize: 12,
+                        fontWeight: 600,
+                        background: tshirtsExpanded ? "#E0F2FE" : "#F1F5F9",
+                        color: tshirtsExpanded ? "#0369A1" : "#334155",
+                        border: "1px solid",
+                        borderColor: tshirtsExpanded ? "#BAE6FD" : "#CBD5E1",
+                        borderRadius: 6,
+                        padding: "3px 8px",
+                        cursor: "pointer",
+                      }}
+                      title="Click to view/hide individual size breakdown"
+                    >
+                      <span>5 Sizes</span>
+                      {tshirtsExpanded ? <ChevronUp size={13} /> : <ChevronDown size={13} />}
+                    </button>
+                  </td>
+                  <td><b style={{ fontSize: 15 }}>{tshirtsTotal}</b> nos</td>
+                  <td>5 / size</td>
+                  <td>
+                    {tshirtsTotal === 0 ? (
+                      <span className="tag red">Out of Stock</span>
+                    ) : emptySizesCount > 0 ? (
+                      <span className="tag amber">{emptySizesCount} Sizes Empty</span>
+                    ) : lowSizesCount > 0 ? (
+                      <span className="tag amber">Low Stock</span>
+                    ) : (
+                      <span className="tag green">In Stock</span>
+                    )}
+                  </td>
+                  <td style={{ textAlign: "right" }}>
+                    <button className="btn btn-sm btn-ghost" onClick={onStockInClick}>
+                      + Stock In
+                    </button>
+                  </td>
+                </tr>
+
+                {tshirtsExpanded && (
+                  <tr style={{ background: "#F8FAFC" }}>
+                    <td colSpan={6} style={{ padding: "6px 16px 14px 44px", borderTop: "none" }}>
+                      <div
+                        style={{
+                          background: "#FFFFFF",
+                          border: "1px solid var(--border-soft)",
+                          borderRadius: 10,
+                          padding: "12px 16px",
+                          boxShadow: "0 1px 4px rgba(0,0,0,0.04)",
+                        }}
+                      >
+                        <div style={{ fontSize: 12, fontWeight: 700, color: "var(--text-600)", marginBottom: 10, display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+                          <span>Size Breakdown ({tshirtsTotal} nos total in inventory)</span>
+                          <span style={{ fontSize: 11, fontWeight: 500, color: "var(--text-400)" }}>Min threshold: 5 nos per size</span>
+                        </div>
+                        <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(130px, 1fr))", gap: 10 }}>
+                          {(["S", "M", "L", "XL", "XXL"] as const).map((size) => {
+                            const qty = tshirtsBySize[size] || 0;
+                            const isOut = qty === 0;
+                            const isLow = qty > 0 && qty <= 5;
+                            return (
+                              <div
+                                key={`breakdown-${size}`}
+                                style={{
+                                  border: "1px solid",
+                                  borderColor: isOut ? "#FECACA" : isLow ? "#FDE68A" : "#E2E8F0",
+                                  background: isOut ? "#FFF5F5" : isLow ? "#FFFBEB" : "#F8FAFC",
+                                  borderRadius: 8,
+                                  padding: "8px 12px",
+                                  display: "flex",
+                                  flexDirection: "column",
+                                  gap: 4,
+                                }}
+                              >
+                                <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+                                  <span className="badge badge-teal" style={{ fontWeight: 700, fontSize: 11 }}>Size {size}</span>
+                                  {isOut ? (
+                                    <span className="tag red" style={{ fontSize: 10, padding: "2px 5px", height: "auto", lineHeight: "1.2" }}>Out</span>
+                                  ) : isLow ? (
+                                    <span className="tag amber" style={{ fontSize: 10, padding: "2px 5px", height: "auto", lineHeight: "1.2" }}>Low</span>
+                                  ) : (
+                                    <span className="tag green" style={{ fontSize: 10, padding: "2px 5px", height: "auto", lineHeight: "1.2" }}>In Stock</span>
+                                  )}
+                                </div>
+                                <div style={{ fontSize: 15, fontWeight: 800, color: isOut ? "#DC2626" : "#1E293B", marginTop: 2 }}>
+                                  {qty} <span style={{ fontSize: 11, fontWeight: 500, color: "#64748B" }}>nos</span>
+                                </div>
+                              </div>
+                            );
+                          })}
+                        </div>
+                      </div>
+                    </td>
+                  </tr>
+                )}
+
+                <tr>
+                  <td>
+                    <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+                      <div className="avatar" style={{ background: "#F3E8FF", color: "#8B5CF6", display: "flex", alignItems: "center", justifyContent: "center" }}>
+                        <ShoppingBag size={18} />
+                      </div>
+                      <div>
+                        <div className="nm">iMED Student Bags</div>
+                        <div className="mt">Academy backpacks</div>
+                      </div>
+                    </div>
+                  </td>
+                  <td><span className="badge badge-gray">Standard</span></td>
+                  <td><b style={{ fontSize: 15 }}>{bagsCount}</b> nos</td>
+                  <td>5</td>
+                  <td>
+                    {bagsCount === 0 ? (
+                      <span className="tag red">Out of Stock</span>
+                    ) : bagsCount <= 5 ? (
+                      <span className="tag amber">Low Stock</span>
+                    ) : (
+                      <span className="tag green">In Stock</span>
+                    )}
+                  </td>
+                  <td style={{ textAlign: "right" }}>
+                    <button className="btn btn-sm btn-ghost" onClick={onStockInClick}>
+                      + Stock In
+                    </button>
+                  </td>
+                </tr>
+
+                <tr>
+                  <td>
+                    <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+                      <div className="avatar" style={{ background: "#FEF3C7", color: "#D97706", display: "flex", alignItems: "center", justifyContent: "center" }}>
+                        <Tablet size={18} />
+                      </div>
+                      <div>
+                        <div className="nm">Tablets (Asset Registry)</div>
+                        <div className="mt">Serialized digital learning devices</div>
+                      </div>
+                    </div>
+                  </td>
+                  <td><span className="badge badge-purple">{tabletsTotal} Total Assets</span></td>
+                  <td>
+                    <b style={{ fontSize: 15, color: "#137333" }}>{tabletsInStock} available</b>
+                    <div className="mt">{tabletsAssigned} assigned to students</div>
+                  </td>
+                  <td>-</td>
+                  <td>
+                    {tabletsTotal === 0 ? (
+                      <span className="tag gray">No Assets</span>
+                    ) : tabletsInStock === 0 ? (
+                      <span className="tag red">0 In Stock</span>
+                    ) : (
+                      <span className="tag blue">{tabletsInStock} In Stock</span>
+                    )}
+                  </td>
+                  <td style={{ textAlign: "right" }}>
+                    <button className="btn btn-sm btn-ghost" onClick={() => setActiveTab("tablets")}>
+                      View Registry
+                    </button>
+                  </td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+      )}
+
+      {activeTab === "tablets" && (
+        <div className="card">
+          <div className="card-head inventory-search-head">
+            <div>
+              <h3>Tablets Asset Registry</h3>
+              <div className="sub">Serialized hardware devices with asset tracking</div>
+            </div>
+            <div className="inventory-search-controls">
+              <input
+                className="fbtn"
+                placeholder="Search Asset ID, S/N, Student..."
+                value={tabletSearch}
+                onChange={(e) => setTabletSearch(e.target.value)}
+                style={{ width: 240, maxWidth: "100%" }}
+              />
+              <button className="btn btn-sm btn-primary" onClick={onStockInClick}>
+                <Plus size={14} /> Add Tablet
+              </button>
+            </div>
+          </div>
+          <div className="table-wrap inventory-table-wrap">
+            <table className="inventory-tablets-table">
+              <thead>
+                <tr>
+                  <th>Asset ID</th>
+                  <th>Serial Number</th>
+                  <th>Brand / Model</th>
+                  <th>Status</th>
+                  <th>Assigned Student</th>
+                  <th>Handover Date</th>
+                  <th>Remarks</th>
+                  <th style={{ textAlign: "right" }}>Action</th>
+                </tr>
+              </thead>
+              <tbody>
+                {filteredTablets.map((t) => (
+                  <tr key={t._id}>
+                    <td>
+                      <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+                        <Tablet size={16} color="#4F6BFF" />
+                        <b className="mono">{t.assetId}</b>
+                      </div>
+                    </td>
+                    <td className="mono" style={{ color: "#475569" }}>
+                      {t.serialNumber}
+                    </td>
+                    <td>{t.brandModel || "Android Tablet"}</td>
+                    <td>
+                      {t.status === "In Stock" && <span className="tag green">In Stock</span>}
+                      {t.status === "Assigned" && <span className="tag purple">Assigned</span>}
+                      {t.status === "Under Repair" && <span className="tag amber">Under Repair</span>}
+                      {t.status === "Returned" && <span className="tag blue">Returned</span>}
+                      {t.status === "Decommissioned" && <span className="tag red">Decommissioned</span>}
+                    </td>
+                    <td>
+                      {t.assignedStudentName ? (
+                        <div>
+                          <div className="nm">{t.assignedStudentName}</div>
+                          <div className="mt mono">{t.assignedStudentAdmissionNo || "-"}</div>
+                        </div>
+                      ) : (
+                        <span style={{ color: "#94A3B8" }}>Unassigned</span>
+                      )}
+                    </td>
+                    <td>{t.assignedDate ? formatDate(t.assignedDate) : "-"}</td>
+                    <td><span className="cell-sub">{t.remarks || "-"}</span></td>
+                    <td style={{ textAlign: "right" }}>
+                      {t.status === "Assigned" ? (
+                        <button
+                          className="btn btn-sm btn-ghost"
+                          onClick={() => onReturnTablet(t)}
+                        >
+                          Return to stock
+                        </button>
+                      ) : t.status === "In Stock" ? (
+                        <button
+                          className="btn btn-sm btn-soft"
+                          onClick={() => onIssueKitClick(null)}
+                        >
+                          Assign
+                        </button>
+                      ) : null}
+                    </td>
+                  </tr>
+                ))}
+                {!filteredTablets.length && (
+                  <tr>
+                    <td colSpan={8}>
+                      <div className="empty-state">
+                        <h4>No tablets found</h4>
+                        <p>Click "Add Tablet" or "Stock In" to register new devices.</p>
+                      </div>
+                    </td>
+                  </tr>
+                )}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      )}
+
+      {activeTab === "students" && (
+        <div className="card">
+          <div className="card-head">
+            <div>
+              <h3>Candidate Kit Distribution Checklist</h3>
+              <div className="sub">Track items delivered to each candidate</div>
+            </div>
+          </div>
+          <div className="table-wrap inventory-table-wrap">
+            <table className="inventory-checklist-table">
+              <thead>
+                <tr>
+                  <th>Candidate</th>
+                  <th>Admission No.</th>
+                  <th>Course & Batch</th>
+                  <th><span style={{ display: "inline-flex", alignItems: "center", gap: 5 }}><CreditCard size={14} color="#4F6BFF" /> ID Card</span></th>
+                  <th><span style={{ display: "inline-flex", alignItems: "center", gap: 5 }}><Shirt size={14} color="#14B8A6" /> T-Shirt</span></th>
+                  <th><span style={{ display: "inline-flex", alignItems: "center", gap: 5 }}><ShoppingBag size={14} color="#8B5CF6" /> Bag</span></th>
+                  <th><span style={{ display: "inline-flex", alignItems: "center", gap: 5 }}><Tablet size={14} color="#F5A524" /> Tablet</span></th>
+                  <th style={{ textAlign: "right" }}>Action</th>
+                </tr>
+              </thead>
+              <tbody>
+                {students.map((student) => {
+                  const kd = student.kitDistribution || {};
+                  return (
+                    <tr key={student._id}>
+                      <td>
+                        <div
+                          className="lead-name-cell clickable"
+                          onClick={() => onOpenStudent(student)}
+                        >
+                          <span className="avatar lead-avatar">{initials(student.fullName)}</span>
+                          <div>
+                            <div className="cell-name">{student.fullName}</div>
+                            <div className="cell-sub">{student.phone || "-"}</div>
+                          </div>
+                        </div>
+                      </td>
+                      <td className="mono">{student.admissionNumber || "-"}</td>
+                      <td>
+                        <div>
+                          <div>{courseShortCode(student.course)}</div>
+                          <div className="mt">{student.batch || "Unassigned"}</div>
+                        </div>
+                      </td>
+                      <td>
+                        {kd.idCardIssued ? (
+                          <span className="tag green">Issued {kd.idCardNumber ? `(${kd.idCardNumber})` : ""}</span>
+                        ) : (
+                          <span className="tag amber">Pending</span>
+                        )}
+                      </td>
+                      <td>
+                        {kd.tshirtIssued ? (
+                          <span className="tag green">Size {kd.tshirtSize || "-"}</span>
+                        ) : (
+                          <span className="tag amber">Pending</span>
+                        )}
+                      </td>
+                      <td>
+                        {kd.bagIssued ? (
+                          <span className="tag green">Issued</span>
+                        ) : (
+                          <span className="tag amber">Pending</span>
+                        )}
+                      </td>
+                      <td>
+                        {kd.tabletIssued ? (
+                          <span className="tag purple mono">
+                            {kd.tabletAssetId || "Assigned"}
+                          </span>
+                        ) : (
+                          <span className="tag gray">Not Assigned</span>
+                        )}
+                      </td>
+                      <td style={{ textAlign: "right" }}>
+                        <button
+                          className="btn btn-sm btn-primary"
+                          onClick={() => onIssueKitClick(student)}
+                        >
+                          Issue / Edit Kit
+                        </button>
+                      </td>
+                    </tr>
+                  );
+                })}
+                {!students.length && (
+                  <tr>
+                    <td colSpan={8}>
+                      <div className="empty-state">
+                        <h4>No candidates found</h4>
+                      </div>
+                    </td>
+                  </tr>
+                )}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      )}
+
+      {activeTab === "logs" && (
+        <div className="card">
+          <div className="card-head">
+            <div>
+              <h3>Stock Movement History</h3>
+              <div className="sub">Complete audit log of Inward (Stock In) and Outward (Stock Out / Returns)</div>
+            </div>
+          </div>
+          <div className="table-wrap inventory-table-wrap">
+            <table className="inventory-logs-table">
+              <thead>
+                <tr>
+                  <th>Date</th>
+                  <th>Type</th>
+                  <th>Item Details</th>
+                  <th>Quantity</th>
+                  <th>Candidate / Vendor</th>
+                  <th>Handled By</th>
+                  <th>Notes</th>
+                </tr>
+              </thead>
+              <tbody>
+                {transactions.map((tr) => (
+                  <tr key={tr._id}>
+                    <td className="cell-sub">{tr.date ? formatDateTime(tr.date) : "-"}</td>
+                    <td>
+                      {tr.type === "Stock In" && <span className="tag green">Stock In</span>}
+                      {tr.type === "Stock Out" && <span className="tag blue">Stock Out</span>}
+                      {tr.type === "Return" && <span className="tag amber">Return</span>}
+                      {tr.type === "Adjustment" && <span className="tag gray">Adjustment</span>}
+                    </td>
+                    <td>
+                      <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+                        {tr.itemType === "id_card" && <CreditCard size={15} color="#4F6BFF" />}
+                        {tr.itemType === "tshirt" && <Shirt size={15} color="#14B8A6" />}
+                        {tr.itemType === "bag" && <ShoppingBag size={15} color="#8B5CF6" />}
+                        {tr.itemType === "tablet" && <Tablet size={15} color="#F5A524" />}
+                        <div>
+                          <b>
+                            {tr.itemType === "id_card" && "ID Card"}
+                            {tr.itemType === "tshirt" && `T-Shirt (${tr.size || "Standard"})`}
+                            {tr.itemType === "bag" && "Student Bag"}
+                            {tr.itemType === "tablet" && `Tablet ${tr.assetId ? `(${tr.assetId})` : ""}`}
+                          </b>
+                          {tr.serialNumber && <div className="mt mono">S/N: {tr.serialNumber}</div>}
+                        </div>
+                      </div>
+                    </td>
+                    <td><b>{tr.quantity}</b> nos</td>
+                    <td>
+                      {tr.studentName ? (
+                        <div>
+                          <div className="nm">{tr.studentName}</div>
+                          <div className="mt">Candidate Issue</div>
+                        </div>
+                      ) : tr.vendorChallan ? (
+                        <div>
+                          <div className="nm">Challan: {tr.vendorChallan}</div>
+                          <div className="mt">Vendor Shipment</div>
+                        </div>
+                      ) : (
+                        "-"
+                      )}
+                    </td>
+                    <td>{tr.handledBy || "Operations"}</td>
+                    <td><span className="cell-sub">{tr.notes || "-"}</span></td>
+                  </tr>
+                ))}
+                {!transactions.length && (
+                  <tr>
+                    <td colSpan={7}>
+                      <div className="empty-state">
+                        <h4>No inventory transactions yet</h4>
+                      </div>
+                    </td>
+                  </tr>
+                )}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
+function StockInModal({
+  open,
+  onClose,
+  onSubmit,
+}: {
+  open: boolean;
+  onClose: () => void;
+  onSubmit: (payload: any) => Promise<boolean>;
+}) {
+  const [itemType, setItemType] = useState<"id_card" | "tshirt" | "bag" | "tablet">("tshirt");
+  const [tshirtSize, setTshirtSize] = useState<"S" | "M" | "L" | "XL" | "XXL">("L");
+  const [quantity, setQuantity] = useState("10");
+  const [vendorChallan, setVendorChallan] = useState("");
+  const [notes, setNotes] = useState("");
+  const [assetId, setAssetId] = useState("");
+  const [serialNumber, setSerialNumber] = useState("");
+  const [brandModel, setBrandModel] = useState("Samsung Galaxy Tab A9");
+  const [challanError, setChallanError] = useState("");
+  const [submitting, setSubmitting] = useState(false);
+
+  if (!open) return null;
+
+  const handleSubmit = async (e: FormEvent) => {
+    e.preventDefault();
+    const cleanChallan = vendorChallan.trim().toUpperCase();
+    if (cleanChallan.length > 0 && cleanChallan.length < 3) {
+      setChallanError("Reference must be at least 3 characters (or leave empty)");
+      return;
+    }
+    setChallanError("");
+    setSubmitting(true);
+    let ok = false;
+    if (itemType === "tablet") {
+      ok = await onSubmit({
+        itemType: "tablet",
+        tablets: [{ assetId: assetId.trim(), serialNumber: serialNumber.trim(), brandModel: brandModel.trim(), remarks: notes.trim() }],
+        vendorChallan: cleanChallan,
+        notes: notes.trim(),
+      });
+    } else {
+      ok = await onSubmit({
+        itemType,
+        size: itemType === "tshirt" ? tshirtSize : "NA",
+        quantity: Number(quantity) || 1,
+        vendorChallan: cleanChallan,
+        notes: notes.trim(),
+      });
+    }
+    setSubmitting(false);
+    if (ok) onClose();
+  };
+
+  return (
+    <div className="modal-overlay show">
+      <div
+        className="modal inventory-modal"
+        style={{
+          maxWidth: 520,
+          display: "flex",
+          flexDirection: "column",
+          maxHeight: "88vh",
+          overflow: "hidden",
+        }}
+      >
+        <div className="modal-head" style={{ flex: "0 0 auto", padding: "12px 18px", borderBottom: "1px solid var(--border-soft)" }}>
+          <h3 style={{ fontSize: 15 }}>Stock In (Inward Stock)</h3>
+          <button className="icon-btn" onClick={onClose}>x</button>
+        </div>
+        <form
+          onSubmit={handleSubmit}
+          style={{ display: "flex", flexDirection: "column", flex: "1 1 auto", minHeight: 0, overflow: "hidden" }}
+        >
+          <div
+            className="modal-body"
+            style={{
+              display: "grid",
+              gap: 12,
+              padding: "14px 20px",
+              overflowY: "auto",
+              flex: "1 1 auto",
+            }}
+          >
+            <div className="field" style={{ margin: 0 }}>
+              <label style={{ marginBottom: 4, fontSize: 12, fontWeight: 700 }}>Select Item to Receive</label>
+              <div className="inventory-type-grid">
+                {[
+                  { key: "tshirt", label: "T-Shirt", icon: <Shirt size={16} /> },
+                  { key: "bag", label: "Bag", icon: <ShoppingBag size={16} /> },
+                  { key: "id_card", label: "ID Card", icon: <CreditCard size={16} /> },
+                  { key: "tablet", label: "Tablet", icon: <Tablet size={16} /> },
+                ].map((item) => (
+                  <button
+                    key={item.key}
+                    type="button"
+                    className={`df-btn ${itemType === item.key ? "active" : ""}`}
+                    style={{ border: "1px solid var(--border)", textAlign: "center", padding: "10px 4px", display: "flex", flexDirection: "column", alignItems: "center", gap: 5 }}
+                    onClick={() => setItemType(item.key as any)}
+                  >
+                    {item.icon}
+                    <span>{item.label}</span>
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            {itemType === "tshirt" && (
+              <div className="field" style={{ margin: 0 }}>
+                <label style={{ marginBottom: 4, fontSize: 12, fontWeight: 700 }}>T-Shirt Size</label>
+                <div className="inventory-size-tabs">
+                  {(["S", "M", "L", "XL", "XXL"] as const).map((s) => (
+                    <button
+                      key={s}
+                      type="button"
+                      className={`pill-tab ${tshirtSize === s ? "active" : ""}`}
+                      style={{ border: "1px solid var(--border)", minWidth: 44, textAlign: "center" }}
+                      onClick={() => setTshirtSize(s)}
+                    >
+                      {s}
+                    </button>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {itemType !== "tablet" ? (
+              <div className="field" style={{ margin: 0 }}>
+                <label style={{ marginBottom: 4, fontSize: 12, fontWeight: 700 }}>Quantity Received</label>
+                <input
+                  type="number"
+                  min="1"
+                  className="fbtn"
+                  style={{ height: 34 }}
+                  value={quantity}
+                  onChange={(e) => setQuantity(e.target.value)}
+                  required
+                />
+              </div>
+            ) : (
+              <div style={{ display: "grid", gap: 8, background: "#F8FAFC", padding: 12, borderRadius: 10, border: "1px solid var(--border-soft)" }}>
+                <div className="field" style={{ margin: 0 }}>
+                  <label style={{ marginBottom: 4, fontSize: 12, fontWeight: 700 }}>Unique Tablet Asset ID (e.g., TAB-001)</label>
+                  <input
+                    type="text"
+                    className="fbtn mono"
+                    style={{ height: 34 }}
+                    placeholder="TAB-001"
+                    value={assetId}
+                    onChange={(e) => setAssetId(e.target.value)}
+                    required
+                  />
+                </div>
+                <div className="field" style={{ margin: 0 }}>
+                  <label style={{ marginBottom: 4, fontSize: 12, fontWeight: 700 }}>Hardware Serial Number (S/N or IMEI)</label>
+                  <input
+                    type="text"
+                    className="fbtn mono"
+                    style={{ height: 34 }}
+                    placeholder="SN-R52N..."
+                    value={serialNumber}
+                    onChange={(e) => setSerialNumber(e.target.value)}
+                    required
+                  />
+                </div>
+                <div className="field" style={{ margin: 0 }}>
+                  <label style={{ marginBottom: 4, fontSize: 12, fontWeight: 700 }}>Make / Model</label>
+                  <input
+                    type="text"
+                    className="fbtn"
+                    style={{ height: 34 }}
+                    value={brandModel}
+                    onChange={(e) => setBrandModel(e.target.value)}
+                  />
+                </div>
+              </div>
+            )}
+
+            <div className="field" style={{ margin: 0 }}>
+              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 4 }}>
+                <label style={{ margin: 0, fontSize: 12, fontWeight: 700 }}>Delivery Challan / Invoice Reference</label>
+                <span style={{ fontSize: 11, color: "#64748B", fontWeight: 500 }}>(Optional)</span>
+              </div>
+              <input
+                type="text"
+                className="fbtn mono"
+                style={{
+                  height: 34,
+                  textTransform: "uppercase",
+                  letterSpacing: "0.5px",
+                  borderColor: challanError ? "#EF4444" : undefined,
+                  background: challanError ? "#FEF2F2" : undefined,
+                }}
+                placeholder="e.g., DC-2026-091 or HO-SHIP-04"
+                value={vendorChallan}
+                onChange={(e) => {
+                  const val = e.target.value.toUpperCase();
+                  setVendorChallan(val);
+                  if (val.trim().length > 0 && val.trim().length < 3) {
+                    setChallanError("Reference must be at least 3 characters if provided (or leave empty)");
+                  } else {
+                    setChallanError("");
+                  }
+                }}
+              />
+              {challanError && (
+                <div style={{ fontSize: 11, color: "#DC2626", marginTop: 4, fontWeight: 500 }}>
+                  {challanError}
+                </div>
+              )}
+            </div>
+
+            <div className="field" style={{ margin: 0 }}>
+              <label style={{ marginBottom: 4, fontSize: 12, fontWeight: 700 }}>Notes / Condition</label>
+              <input
+                type="text"
+                className="fbtn"
+                style={{ height: 34 }}
+                placeholder="Remarks about shipment or packing condition"
+                value={notes}
+                onChange={(e) => setNotes(e.target.value)}
+              />
+            </div>
+          </div>
+          <div className="modal-foot" style={{ flex: "0 0 auto", padding: "12px 20px", borderTop: "1px solid var(--border-soft)", background: "#fff" }}>
+            <button type="button" className="btn btn-ghost" onClick={onClose}>
+              Cancel
+            </button>
+            <button type="submit" className="btn btn-primary" disabled={submitting}>
+              {submitting ? "Adding..." : "Confirm Stock In"}
+            </button>
+          </div>
+        </form>
+      </div>
+    </div>
+  );
+}
+
+function IssueKitModal({
+  open,
+  students,
+  targetStudent,
+  tablets,
+  summary,
+  onClose,
+  onSubmit,
+}: {
+  open: boolean;
+  students: Student[];
+  targetStudent: Student | null;
+  tablets: TabletAsset[];
+  summary: InventorySummary | null;
+  onClose: () => void;
+  onSubmit: (payload: any) => Promise<boolean>;
+}) {
+  const [selectedStudentId, setSelectedStudentId] = useState(targetStudent?._id || students[0]?._id || "");
+  const [issueIdCard, setIssueIdCard] = useState(false);
+  const [idCardNumber, setIdCardNumber] = useState("");
+  type TshirtSize = "S" | "M" | "L" | "XL" | "XXL";
+  interface TshirtSelection {
+    size: TshirtSize;
+    quantity: number;
+  }
+
+  const [issueTshirt, setIssueTshirt] = useState(false);
+  const [tshirtSelections, setTshirtSelections] = useState<TshirtSelection[]>([
+    { size: "L", quantity: 1 },
+  ]);
+  const [issueBag, setIssueBag] = useState(false);
+  const [issueTablet, setIssueTablet] = useState(false);
+  const [selectedTabletId, setSelectedTabletId] = useState("");
+  const [notes, setNotes] = useState("");
+  const [submitting, setSubmitting] = useState(false);
+
+  const availableTablets = tablets.filter((t) => t.status === "In Stock");
+
+  useEffect(() => {
+    if (targetStudent) {
+      setSelectedStudentId(targetStudent._id);
+      setIdCardNumber(targetStudent.admissionNumber || "");
+      const kd = targetStudent.kitDistribution || {};
+      setIssueIdCard(!kd.idCardIssued);
+      setIssueTshirt(!kd.tshirtIssued);
+      if (Array.isArray(kd.tshirts) && kd.tshirts.length > 0) {
+        setTshirtSelections(kd.tshirts.map((t) => ({ size: (t.size as TshirtSize) || "L", quantity: t.quantity || 1 })));
+      } else if (kd.tshirtSize && ["S", "M", "L", "XL", "XXL"].includes(kd.tshirtSize as any)) {
+        setTshirtSelections([{ size: kd.tshirtSize as TshirtSize, quantity: kd.tshirtQuantity || 1 }]);
+      } else {
+        setTshirtSelections([{ size: "L", quantity: 1 }]);
+      }
+      setIssueBag(!kd.bagIssued);
+      setIssueTablet(!kd.tabletIssued);
+    } else if (students.length) {
+      setSelectedStudentId(students[0]._id);
+      setIdCardNumber(students[0].admissionNumber || "");
+    }
+    if (availableTablets.length && !selectedTabletId) {
+      setSelectedTabletId(availableTablets[0]._id);
+    }
+  }, [targetStudent, students.length]);
+
+  if (!open) return null;
+
+  const tshirtsBySize = summary?.tshirts?.bySize || { S: 0, M: 0, L: 0, XL: 0, XXL: 0 };
+  const tshirtsTotal = summary?.tshirts?.total ?? 0;
+
+  const handleTshirtSizeChange = (index: number, newSize: TshirtSize) => {
+    setTshirtSelections((prev) => {
+      const next = [...prev];
+      next[index] = { ...next[index], size: newSize };
+      return next;
+    });
+  };
+
+  const handleTshirtQtyChange = (index: number, newQty: number) => {
+    setTshirtSelections((prev) => {
+      const next = [...prev];
+      const maxAvailable = tshirtsBySize[next[index].size] || 1;
+      const validQty = Math.max(1, Math.min(newQty, Math.max(1, maxAvailable)));
+      next[index] = { ...next[index], quantity: validQty };
+      return next;
+    });
+  };
+
+  const addTshirtSelection = () => {
+    const usedSizes = new Set(tshirtSelections.map((s) => s.size));
+    const allSizes: TshirtSize[] = ["S", "M", "L", "XL", "XXL"];
+    const nextSize = allSizes.find((s) => !usedSizes.has(s) && (tshirtsBySize[s] || 0) > 0)
+      || allSizes.find((s) => !usedSizes.has(s))
+      || "L";
+    setTshirtSelections((prev) => [...prev, { size: nextSize, quantity: 1 }]);
+  };
+
+  const removeTshirtSelection = (index: number) => {
+    if (tshirtSelections.length <= 1) return;
+    setTshirtSelections((prev) => prev.filter((_, i) => i !== index));
+  };
+
+  const handleSubmit = async (e: FormEvent) => {
+    e.preventDefault();
+    if (!selectedStudentId) return toast.error("Select a candidate");
+    if (!issueIdCard && !issueTshirt && !issueBag && !issueTablet) {
+      return toast.error("Select at least one item to issue");
+    }
+    if (issueTablet && !selectedTabletId) {
+      return toast.error("Select an available tablet to assign");
+    }
+    if (issueTshirt) {
+      const totalTshirts = tshirtSelections.reduce((sum, t) => sum + (t.quantity || 0), 0);
+      if (totalTshirts < 1) {
+        return toast.error("Please enter at least 1 T-Shirt to issue");
+      }
+      for (const t of tshirtSelections) {
+        const available = tshirtsBySize[t.size] || 0;
+        if (available < t.quantity) {
+          return toast.error(`Not enough stock for Size ${t.size} (${available} in stock, requested ${t.quantity})`);
+        }
+      }
+    }
+    setSubmitting(true);
+    const totalTshirts = tshirtSelections.reduce((sum, t) => sum + (t.quantity || 0), 0);
+    const sizeSummary = tshirtSelections
+      .map((t) => (t.quantity > 1 ? `${t.size} (×${t.quantity})` : t.size))
+      .join(", ");
+    const ok = await onSubmit({
+      studentId: selectedStudentId,
+      issueIdCard,
+      idCardNumber,
+      issueTshirt,
+      tshirtSize: sizeSummary,
+      tshirtQuantity: totalTshirts,
+      tshirts: tshirtSelections,
+      issueBag,
+      issueTablet,
+      tabletId: selectedTabletId,
+      notes,
+    });
+    setSubmitting(false);
+    if (ok) onClose();
+  };
+
+  return (
+    <div className="modal-overlay show">
+      <div
+        className="modal inventory-modal"
+        style={{
+          maxWidth: 560,
+          display: "flex",
+          flexDirection: "column",
+          maxHeight: "88vh",
+          overflow: "hidden",
+        }}
+      >
+        <div className="modal-head" style={{ flex: "0 0 auto", padding: "12px 18px", borderBottom: "1px solid var(--border-soft)" }}>
+          <h3 style={{ fontSize: 15 }}>Issue Kit & Assets to Candidate</h3>
+          <button className="icon-btn" onClick={onClose}>x</button>
+        </div>
+        <form
+          onSubmit={handleSubmit}
+          style={{ display: "flex", flexDirection: "column", flex: "1 1 auto", minHeight: 0, overflow: "hidden", margin: 0 }}
+        >
+          <div
+            className="modal-body"
+            style={{
+              display: "grid",
+              gap: 8,
+              padding: "12px 18px",
+              overflowY: "auto",
+              overflowX: "hidden",
+              flex: "1 1 auto",
+              minHeight: 0,
+            }}
+          >
+            <div className="field" style={{ margin: 0, width: "100%", maxWidth: "100%" }}>
+              <label style={{ marginBottom: 3, fontSize: 11.5, fontWeight: 700 }}>Select Candidate</label>
+              <select
+                className="fbtn"
+                style={{ height: 34, fontSize: 12, width: "100%", maxWidth: "100%", minWidth: 0 }}
+                value={selectedStudentId}
+                onChange={(e) => {
+                  const id = e.target.value;
+                  setSelectedStudentId(id);
+                  const st = students.find((s) => s._id === id);
+                  if (st) setIdCardNumber(st.admissionNumber || "");
+                }}
+                required
+              >
+                {students.map((st) => (
+                  <option key={st._id} value={st._id}>
+                    {st.fullName} ({courseShortCode(st.course)} - {st.batch || "No batch"} - {st.admissionNumber || st.phone})
+                  </option>
+                ))}
+              </select>
+            </div>
+
+            <div style={{ display: "grid", gap: 6, border: "1px solid var(--border)", borderRadius: 10, padding: "10px 14px", background: "#FBFBFE", width: "100%", boxSizing: "border-box" }}>
+              <div style={{ fontWeight: 700, fontSize: 11.5, color: "#1E293B", marginBottom: 2 }}>
+                Select Items to Hand Over:
+              </div>
+
+              {/* ID Card */}
+              <div className="inventory-issue-row">
+                <label className="inventory-issue-label">
+                  <div className="inventory-issue-title">
+                    <input
+                      type="checkbox"
+                      checked={issueIdCard}
+                      onChange={(e) => setIssueIdCard(e.target.checked)}
+                    />
+                    <CreditCard size={15} color="#4F6BFF" />
+                    <span>Student ID Card</span>
+                  </div>
+                  <div className="inventory-issue-stock">
+                    <span className="badge badge-gray" style={{ fontSize: 10, padding: "2px 7px", whiteSpace: "nowrap" }}>
+                      {summary?.idCards || 0} in stock
+                    </span>
+                  </div>
+                </label>
+                <div className={`inventory-issue-controls ${!issueIdCard ? "unselected" : ""}`}>
+                  {issueIdCard ? (
+                    <input
+                      className="fbtn inventory-item-input"
+                      style={{ width: "100%", height: 32, fontSize: 12 }}
+                      placeholder="Card / Roll No"
+                      value={idCardNumber}
+                      onChange={(e) => setIdCardNumber(e.target.value)}
+                    />
+                  ) : (
+                    <span className="inventory-unselected-text">Not selected</span>
+                  )}
+                </div>
+              </div>
+
+              {/* T-Shirt */}
+              <div className="inventory-issue-row" style={{ alignItems: "flex-start" }}>
+                <label className="inventory-issue-label" style={{ margin: "4px 0 0 0" }}>
+                  <div className="inventory-issue-title">
+                    <input
+                      type="checkbox"
+                      checked={issueTshirt}
+                      onChange={(e) => setIssueTshirt(e.target.checked)}
+                    />
+                    <Shirt size={15} color="#14B8A6" />
+                    <span>iMED T-Shirt</span>
+                  </div>
+                  <div className="inventory-issue-stock" style={{ display: "flex", flexDirection: "column", gap: 2 }}>
+                    <span className="badge badge-gray" style={{ fontSize: 10, padding: "2px 7px", whiteSpace: "nowrap" }}>
+                      {tshirtsTotal} in stock
+                    </span>
+                    {issueTshirt && tshirtSelections.reduce((sum, t) => sum + (t.quantity || 0), 0) > 1 && (
+                      <span style={{ fontSize: 10, color: "var(--indigo-600)", fontWeight: 700 }}>
+                        {tshirtSelections.reduce((sum, t) => sum + (t.quantity || 0), 0)} pcs total
+                      </span>
+                    )}
+                  </div>
+                </label>
+                <div className={`inventory-issue-controls ${!issueTshirt ? "unselected" : ""}`} style={{ display: "flex", flexDirection: "column", gap: 6, alignItems: "stretch" }}>
+                  {issueTshirt ? (
+                    <div style={{ display: "flex", flexDirection: "column", gap: 6, width: "100%" }}>
+                      {tshirtSelections.map((sel, idx) => {
+                        const available = tshirtsBySize[sel.size] || 0;
+                        return (
+                          <div key={`tshirt-sel-${idx}`} style={{ display: "flex", alignItems: "center", gap: 6, width: "100%" }}>
+                            <select
+                              className="fbtn inventory-item-input"
+                              style={{ flex: "1 1 auto", height: 32, fontSize: 12, minWidth: 0, padding: "4px 8px" }}
+                              value={sel.size}
+                              onChange={(e) => handleTshirtSizeChange(idx, e.target.value as TshirtSize)}
+                            >
+                              {(["S", "M", "L", "XL", "XXL"] as const).map((s) => (
+                                <option key={s} value={s}>
+                                  Size {s} ({tshirtsBySize[s] || 0})
+                                </option>
+                              ))}
+                            </select>
+                            <input
+                              type="number"
+                              min={1}
+                              max={Math.max(1, available)}
+                              className="fbtn"
+                              style={{ width: 50, height: 32, fontSize: 12, textAlign: "center", padding: "2px 4px", flexShrink: 0 }}
+                              value={sel.quantity}
+                              onChange={(e) => handleTshirtQtyChange(idx, parseInt(e.target.value, 10) || 1)}
+                              title="Quantity to issue"
+                            />
+                            {tshirtSelections.length > 1 && (
+                              <button
+                                type="button"
+                                className="icon-btn"
+                                onClick={() => removeTshirtSelection(idx)}
+                                style={{ width: 24, height: 24, color: "#EF4444", fontSize: 12, display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}
+                                title="Remove size"
+                              >
+                                ✕
+                              </button>
+                            )}
+                          </div>
+                        );
+                      })}
+                      {tshirtSelections.length < 5 && (
+                        <div style={{ display: "flex", justifyContent: "flex-end", width: "100%" }}>
+                          <button
+                            type="button"
+                            onClick={addTshirtSelection}
+                            style={{
+                              background: "transparent",
+                              border: "none",
+                              color: "var(--indigo-600)",
+                              fontSize: 11.5,
+                              fontWeight: 600,
+                              cursor: "pointer",
+                              padding: "2px 0",
+                              display: "inline-flex",
+                              alignItems: "center",
+                              gap: 2,
+                            }}
+                          >
+                            + Add another size
+                          </button>
+                        </div>
+                      )}
+                    </div>
+                  ) : (
+                    <span className="inventory-unselected-text">Not selected</span>
+                  )}
+                </div>
+              </div>
+
+              {/* Bag */}
+              <div className="inventory-issue-row">
+                <label className="inventory-issue-label">
+                  <div className="inventory-issue-title">
+                    <input
+                      type="checkbox"
+                      checked={issueBag}
+                      onChange={(e) => setIssueBag(e.target.checked)}
+                    />
+                    <ShoppingBag size={15} color="#8B5CF6" />
+                    <span>Student Backpack</span>
+                  </div>
+                  <div className="inventory-issue-stock">
+                    <span className="badge badge-gray" style={{ fontSize: 10, padding: "2px 7px", whiteSpace: "nowrap" }}>
+                      {summary?.bags || 0} in stock
+                    </span>
+                  </div>
+                </label>
+                <div className={`inventory-issue-controls ${!issueBag ? "unselected" : ""}`}>
+                  {issueBag ? (
+                    <span className="badge badge-teal" style={{ fontSize: 11, padding: "3px 8px", fontWeight: 600 }}>
+                      Standard Pack
+                    </span>
+                  ) : (
+                    <span className="inventory-unselected-text">Not selected</span>
+                  )}
+                </div>
+              </div>
+
+              {/* Tablet */}
+              <div className="inventory-issue-row" style={{ borderBottom: 0 }}>
+                <label className="inventory-issue-label">
+                  <div className="inventory-issue-title">
+                    <input
+                      type="checkbox"
+                      checked={issueTablet}
+                      onChange={(e) => setIssueTablet(e.target.checked)}
+                    />
+                    <Tablet size={15} color="#F5A524" />
+                    <span>Learning Tablet</span>
+                  </div>
+                  <div className="inventory-issue-stock">
+                    <span className="badge badge-purple" style={{ fontSize: 10, padding: "2px 7px", whiteSpace: "nowrap" }}>
+                      {availableTablets.length} available
+                    </span>
+                  </div>
+                </label>
+                <div className={`inventory-issue-controls ${!issueTablet ? "unselected" : ""}`}>
+                  {issueTablet ? (
+                    availableTablets.length ? (
+                      <select
+                        className="fbtn inventory-item-input"
+                        style={{ width: "100%", height: 32, fontSize: 11.5 }}
+                        value={selectedTabletId}
+                        onChange={(e) => setSelectedTabletId(e.target.value)}
+                        required
+                      >
+                        {availableTablets.map((tb) => (
+                          <option key={tb._id} value={tb._id}>
+                            Asset: {tb.assetId} - {tb.brandModel}
+                          </option>
+                        ))}
+                      </select>
+                    ) : (
+                      <span className="tag red" style={{ fontSize: 10.5, padding: "2px 6px" }}>0 In Stock</span>
+                    )
+                  ) : (
+                    <span className="inventory-unselected-text">Not selected</span>
+                  )}
+                </div>
+              </div>
+            </div>
+
+            <div className="field" style={{ margin: 0, width: "100%", maxWidth: "100%" }}>
+              <label style={{ marginBottom: 3, fontSize: 11.5, fontWeight: 700 }}>Delivery Remarks / Signature Note</label>
+              <input
+                type="text"
+                className="fbtn"
+                style={{ height: 32, fontSize: 12, width: "100%", maxWidth: "100%", boxSizing: "border-box" }}
+                placeholder="e.g. Received in person by student"
+                value={notes}
+                onChange={(e) => setNotes(e.target.value)}
+              />
+            </div>
+          </div>
+          <div className="modal-foot" style={{ flex: "0 0 auto", padding: "10px 18px", borderTop: "1px solid var(--border-soft)", background: "#fff" }}>
+            <button type="button" className="btn btn-ghost" onClick={onClose}>
+              Cancel
+            </button>
+            <button type="submit" className="btn btn-primary" disabled={submitting}>
+              {submitting ? "Issuing..." : "Confirm & Issue Kit"}
+            </button>
+          </div>
+        </form>
+      </div>
+    </div>
   );
 }
 
@@ -4778,8 +6912,29 @@ function CertificatePreview({ student, verifyUrl = "" }: { student: Student; ver
   );
 }
 
-function LeadDrawer({ lead, tab, setTab, onClose, onPatch, onFollowUp, onPreviewDocument }: { lead: Lead | null; tab: "info" | "follow" | "docs" | "act"; setTab: (tab: "info" | "follow" | "docs" | "act") => void; onClose: () => void; onPatch: (id: string, updates: Partial<Lead>) => void; onFollowUp: (event: FormEvent<HTMLFormElement>, lead: Lead) => void; onPreviewDocument: (request: DocumentPreviewRequest) => void }) {
+function LeadDrawer({
+  lead,
+  tab,
+  setTab,
+  onClose,
+  onPatch,
+  onFollowUp,
+  onMarkDone,
+  onClearReminder,
+  onPreviewDocument,
+}: {
+  lead: Lead | null;
+  tab: "info" | "follow" | "docs" | "act";
+  setTab: (tab: "info" | "follow" | "docs" | "act") => void;
+  onClose: () => void;
+  onPatch: (id: string, updates: Partial<Lead>) => void;
+  onFollowUp: (event: FormEvent<HTMLFormElement>, lead: Lead) => void;
+  onMarkDone: (lead: Lead, note?: string) => Promise<void>;
+  onClearReminder: (lead: Lead) => Promise<void>;
+  onPreviewDocument: (request: DocumentPreviewRequest) => void;
+}) {
   const followUps = lead?.followUps || [];
+  const [formStatus, setFormStatus] = useState("Scheduled");
   const saveNotes = (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
     if (!lead) return;
@@ -4821,22 +6976,129 @@ function LeadDrawer({ lead, tab, setTab, onClose, onPatch, onFollowUp, onPreview
                 <div className="kv-row"><span className="k">Student location</span><span className="v">{lead.studentLocation || "-"}</span></div>
                 <div className="kv-row"><span className="k">City</span><span className="v">{lead.city || "-"}</span></div>
                 <div className="kv-row"><span className="k">Expected fee</span><span className="v">{formatCurrency(lead.expectedFee || 0)}</span></div>
-                <div className="kv-row"><span className="k">Next follow-up</span><span className="v">{formatDateTime(lead.nextFollowUp)}</span></div>
+                <div className="kv-row">
+                  <span className="k">Next follow-up</span>
+                  <span className="v">
+                    {lead.nextFollowUp ? (
+                      <span style={{ display: "inline-flex", alignItems: "center", gap: "8px" }}>
+                        <span>{formatDateTime(lead.nextFollowUp)}</span>
+                        <button
+                          type="button"
+                          className="btn-followup-clear"
+                          style={{ padding: "2px 7px", fontSize: "11px" }}
+                          onClick={() => onClearReminder(lead)}
+                          title="Clear this reminder"
+                        >
+                          Clear
+                        </button>
+                      </span>
+                    ) : (
+                      <span style={{ color: "var(--text-400)" }}>None / Completed</span>
+                    )}
+                  </span>
+                </div>
                 <form onSubmit={saveNotes}>
                   <div className="field drawer-notes"><label>Notes</label><textarea name="notes" rows={3} defaultValue={lead.notes || ""} /></div>
                   <button className="btn btn-primary drawer-full-btn">Save changes</button>
                 </form>
               </div>
               <div className={`dpane ${tab === "follow" ? "active" : ""}`}>
-                <form className="field-grid feedback-form" onSubmit={(event) => onFollowUp(event, lead)}>
+                {lead.nextFollowUp && (
+                  <div className="active-followup-banner">
+                    <div className="active-followup-main">
+                      <div className="active-followup-icon">
+                        <Bell size={16} />
+                      </div>
+                      <div>
+                        <div className="active-followup-title">Active Follow-up Reminder</div>
+                        <div className="active-followup-meta">
+                          <Calendar size={12} />
+                          <span>{formatDateTime(lead.nextFollowUp)}</span>
+                          <span className={`tag ${followUpTagClass(lead.nextFollowUp)}`}>
+                            {followUpDueLabel(lead.nextFollowUp)}
+                          </span>
+                        </div>
+                      </div>
+                    </div>
+                    <div className="active-followup-btns">
+                      <button
+                        type="button"
+                        className="btn-followup-done"
+                        onClick={() => onMarkDone(lead)}
+                        title="Mark this follow-up as completed and clear reminder"
+                      >
+                        <CheckCircle2 size={13} /> Mark Done
+                      </button>
+                      <button
+                        type="button"
+                        className="btn-followup-clear"
+                        onClick={() => onClearReminder(lead)}
+                        title="Remove this reminder without logging note"
+                      >
+                        <X size={13} /> Clear
+                      </button>
+                    </div>
+                  </div>
+                )}
+
+                <form
+                  className="field-grid feedback-form"
+                  onSubmit={(event) => {
+                    onFollowUp(event, lead);
+                    setFormStatus("Scheduled");
+                  }}
+                >
                   <SelectField name="type" label="Follow-up type" options={leadFollowUpTypes} />
-                  <SelectField name="status" label="Status" options={leadFollowUpStatuses} />
-                  <Field name="scheduledAt" label="Follow-up date" type="datetime-local" required />
+                  <div className="field">
+                    <label>Status</label>
+                    <select
+                      name="status"
+                      value={formStatus}
+                      onChange={(e) => setFormStatus(e.target.value)}
+                    >
+                      {leadFollowUpStatuses.map((st) => (
+                        <option key={st} value={st}>{st}</option>
+                      ))}
+                    </select>
+                  </div>
+                  {formStatus === "Completed" ? (
+                    <div className="field">
+                      <label>Next follow-up date (optional)</label>
+                      <input name="nextScheduledAt" type="datetime-local" placeholder="Leave empty if none" />
+                      <span className="field-help" style={{ color: "#059669", fontWeight: 600 }}>
+                        ✓ Marking completed clears the reminder unless a new date is set.
+                      </span>
+                    </div>
+                  ) : (
+                    <Field name="scheduledAt" label="Follow-up date" type="datetime-local" required />
+                  )}
                   <div className="field full"><label>Follow-up note</label><textarea name="note" rows={3} placeholder="Call discussion, next step, commitment..." /></div>
                   <div className="profile-edit-actions"><button className="btn btn-primary"><Plus size={15} /> Add follow-up</button></div>
                 </form>
+
                 <div className="feedback-timeline">
-                  {followUps.map((item, index) => <div className="feedback-item" key={`${item.createdAt || index}-${item.scheduledAt || ""}`}><div><span className={`badge ${leadFollowUpBadgeClass(item.status)}`}>{item.status || "Scheduled"}</span><b>{item.type || "Follow-up"}</b></div><p>{item.note || "No note added"}</p><div className="cell-sub">{formatDateTime(item.scheduledAt)} by {item.by || "Admin"}</div></div>)}
+                  {followUps.map((item, index) => (
+                    <div className="feedback-item" key={`${item.createdAt || index}-${item.scheduledAt || ""}`}>
+                      <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: "8px" }}>
+                        <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
+                          <span className={`badge ${leadFollowUpBadgeClass(item.status)}`}>{item.status || "Scheduled"}</span>
+                          <b>{item.type || "Follow-up"}</b>
+                        </div>
+                        {item.status === "Scheduled" && (
+                          <button
+                            type="button"
+                            className="btn-timeline-done"
+                            onClick={() => onMarkDone(lead, `Completed scheduled ${item.type || "call"}`)}
+                            title="Mark this scheduled follow-up as done"
+                          >
+                            <CheckCircle2 size={12} /> Mark Done
+                          </button>
+                        )}
+                      </div>
+                      <p>{item.note || "No note added"}</p>
+                      <div className="cell-sub">{formatDateTime(item.scheduledAt)} by {item.by || "Admin"}</div>
+                    </div>
+                  ))}
                   {!followUps.length && <div className="empty-state"><h4>No follow-ups yet</h4><p>Schedule the first lead follow-up.</p></div>}
                 </div>
               </div>
@@ -4874,17 +7136,26 @@ function SettingsPanel({ isHeadSuperAdmin, isHeadBranchAdmin, isFranchiseSuperAd
   const franchiseOptions = centres.filter((centre) => centre.type !== "branch");
   const staffRoleOptions = [
     ...(isHeadSuperAdmin ? [{ value: "superadmin", label: "Head super admin" }] : []),
-    ...(isHeadSuperAdmin || isHeadBranchAdmin ? [{ value: "admin", label: "Center admin" }, { value: "counsellor", label: "Counsellor" }, { value: "teacher", label: "Teacher" }] : []),
+    ...(isHeadSuperAdmin || isHeadBranchAdmin ? [
+      { value: "admin", label: "Center admin" },
+      { value: "operations_executive", label: "Operations Executive" },
+      { value: "counsellor", label: "Counsellor" },
+      { value: "teacher", label: "Teacher" },
+    ] : []),
     ...(isHeadSuperAdmin ? [{ value: "franchise_superadmin", label: "Franchise super admin" }] : []),
-    ...(isHeadSuperAdmin || isFranchiseSuperAdmin ? [{ value: "franchise_counsellor", label: "Franchise counsellor" }, { value: "franchise_teacher", label: "Franchise teacher" }] : []),
+    ...(isHeadSuperAdmin || isFranchiseSuperAdmin ? [
+      { value: "franchise_operations_executive", label: "Franchise Operations Executive" },
+      { value: "franchise_counsellor", label: "Franchise counsellor" },
+      { value: "franchise_teacher", label: "Franchise teacher" },
+    ] : []),
   ];
   const [staffRole, setStaffRole] = useState(isFranchiseSuperAdmin ? "franchise_counsellor" : isHeadSuperAdmin ? "franchise_superadmin" : staffRoleOptions[0]?.value || "counsellor");
   useEffect(() => {
     if (!staffRoleOptions.some((role) => role.value === staffRole)) setStaffRole(staffRoleOptions[0]?.value || "counsellor");
   }, [staffRole, staffRoleOptions]);
-  const staffNeedsLocation = ["admin", "counsellor", "teacher", "franchise_superadmin", "franchise_counsellor", "franchise_teacher"].includes(staffRole);
-  const staffLocationOptions = ["admin", "counsellor", "teacher"].includes(staffRole) ? branchOptions : franchiseOptions;
-  const staffLocationLabel = ["admin", "counsellor", "teacher"].includes(staffRole) ? "Branch" : "Franchise";
+  const staffNeedsLocation = ["admin", "counsellor", "teacher", "operations_executive", "franchise_superadmin", "franchise_counsellor", "franchise_teacher", "franchise_operations_executive"].includes(staffRole);
+  const staffLocationOptions = ["admin", "counsellor", "teacher", "operations_executive"].includes(staffRole) ? branchOptions : franchiseOptions;
+  const staffLocationLabel = ["admin", "counsellor", "teacher", "operations_executive"].includes(staffRole) ? "Branch" : "Franchise";
   useEffect(() => {
     setEditingBatchCentreDraft(editingBatch?.centre || "");
     setEditingBatchCourseDraft(editingBatch?.course || "");
@@ -5021,7 +7292,7 @@ function SettingsPanel({ isHeadSuperAdmin, isHeadBranchAdmin, isFranchiseSuperAd
   );
 }
 
-function ProfilePanel({ profile, user, accessCount, canManageFees, canManageSettings, canAssignTeachers, canManageCertificates, canManageInternships, centres, courses, batches, teachers, onBack, onGoSettings, onLeadPatch, onStudentPatch, onGenerateStudentLmsAccess, onInternshipSave, onInternshipDelete, onPayment, onDownloadPaymentProof, onFeedback, onIssue, onPreviewDocument, onPreviewInternshipPhoto }: { profile: ProfileTarget; user: AdminUser | null; accessCount: number; canManageFees: boolean; canManageSettings: boolean; canAssignTeachers: boolean; canManageCertificates: boolean; canManageInternships: boolean; centres: string[]; courses: string[]; batches: Batch[]; teachers: Counsellor[]; onBack: () => void; onGoSettings: () => void; onLeadPatch: (id: string, updates: Partial<Lead>) => void; onStudentPatch: (id: string, updates: Partial<Student>) => void; onGenerateStudentLmsAccess: (student: Student) => void; onInternshipSave: (event: FormEvent<HTMLFormElement>, student: Student) => void; onInternshipDelete: (student: Student) => void; onPayment: (event: FormEvent<HTMLFormElement>, student: Student) => void; onDownloadPaymentProof: (student: Student, payment: PaymentRecord, index: number) => void; onFeedback: (event: FormEvent<HTMLFormElement>, student: Student) => void; onIssue: (student: Student) => void; onPreviewDocument: (request: DocumentPreviewRequest) => void; onPreviewInternshipPhoto: (student: Student, log: InternshipLog, photoType: "login" | "logout") => void }) {
+function ProfilePanel({ profile, user, accessCount, canManageFees, canManageSettings, canAssignTeachers, canManageCertificates, canManageInternships, canManageInventory, onIssueKit, centres, courses, batches, teachers, onBack, onGoSettings, onLeadPatch, onStudentPatch, onGenerateStudentLmsAccess, onInternshipSave, onInternshipDelete, onPayment, onDownloadPaymentProof, onFeedback, onIssue, onPreviewDocument, onPreviewInternshipPhoto }: { profile: ProfileTarget; user: AdminUser | null; accessCount: number; canManageFees: boolean; canManageSettings: boolean; canAssignTeachers: boolean; canManageCertificates: boolean; canManageInternships: boolean; canManageInventory?: boolean; onIssueKit?: (student: Student) => void; centres: string[]; courses: string[]; batches: Batch[]; teachers: Counsellor[]; onBack: () => void; onGoSettings: () => void; onLeadPatch: (id: string, updates: Partial<Lead>) => void; onStudentPatch: (id: string, updates: Partial<Student>) => void; onGenerateStudentLmsAccess: (student: Student) => void; onInternshipSave: (event: FormEvent<HTMLFormElement>, student: Student) => void; onInternshipDelete: (student: Student) => void; onPayment: (event: FormEvent<HTMLFormElement>, student: Student) => void; onDownloadPaymentProof: (student: Student, payment: PaymentRecord, index: number) => void; onFeedback: (event: FormEvent<HTMLFormElement>, student: Student) => void; onIssue: (student: Student) => void; onPreviewDocument: (request: DocumentPreviewRequest) => void; onPreviewInternshipPhoto: (student: Student, log: InternshipLog, photoType: "login" | "logout") => void }) {
   const [studentTab, setStudentTab] = useState<"sum" | "journey" | "admission" | "pay" | "emi" | "internship" | "feedback" | "cert">("sum");
   const [leadTab, setLeadTab] = useState<"info" | "docs" | "act">("info");
   const [editMode, setEditMode] = useState(profile?.mode === "edit");
@@ -5059,26 +7330,32 @@ function ProfilePanel({ profile, user, accessCount, canManageFees, canManageSett
   }, [profileId, profile?.mode]);
   useEffect(() => {
     if (!profileStudent) return;
-    const months = Math.max(1, profileStudent.emiMonths || 6);
+    const courseDurationMonths = getCourseDurationMonths(profileStudent.course, courses);
+    const months = Math.max(1, profileStudent.emiMonths || courseDurationMonths);
     const baseAmount = profileDue || profileNetFee || 0;
     setEmiMonthsDraft(String(months));
-    setEmiAmountDraft(String(profileStudent.emiAmount || Math.ceil(baseAmount / months)));
+    setEmiAmountDraft(String(profileStudent.emiAmount || Math.floor(baseAmount / months)));
     setPaymentPurposeDraft(Number(profileStudent.paidAmount || 0) <= 0 ? "Seat Booking Amount" : "Fees Installment");
-  }, [profileId, profileStudent?.admissionPaymentMode, profileStudent?.admissionUpfrontAmount, profileStudent?.paidAmount, profileStudent?.emiEnabled, profileStudent?.emiMonths, profileStudent?.emiAmount, profileDue, profileNetFee]);
+  }, [profileId, profileStudent?.admissionPaymentMode, profileStudent?.admissionUpfrontAmount, profileStudent?.paidAmount, profileStudent?.emiEnabled, profileStudent?.emiMonths, profileStudent?.emiAmount, profileDue, profileNetFee, profileStudent?.course, courses]);
   useEffect(() => {
     if (!profileStudent) return;
     const savedMode = normalizeAdmissionPaymentMode(profileStudent.admissionPaymentMode || "");
     const mode = admissionPaymentModes.includes(savedMode) ? savedMode || "Full Payment" : profileStudent.emiEnabled ? "EMI" : "Full Payment";
-    const months = Math.max(2, profileStudent.emiMonths || 6);
-    const baseAmount = profileDue || profileNetFee || 0;
+    // Auto-calculate months from course duration (locked — not editable by user)
+    const courseDurationMonths = getCourseDurationMonths(profileStudent.course, courses);
+    const months = Math.max(1, profileStudent.emiMonths || courseDurationMonths);
+    const upfront = isPartialEmiPaymentMode(mode) ? Math.max(0, profileStudent.admissionUpfrontAmount || 0) : 0;
+    const net = Math.max(0, (profileStudent.totalFee || 0) - (profileStudent.discountAmount || 0));
+    const emiBalance = isPartialEmiPaymentMode(mode) ? Math.max(0, net - Math.max(profileStudent.paidAmount || 0, upfront)) : (profileDue || profileNetFee || 0);
+    const calculatedEmi = months > 0 ? Math.floor(emiBalance / months) : 0;
     setAdmissionPaymentModeDraft(mode);
     setAdmissionTotalFeeDraft(String(profileStudent.totalFee || 0));
     setAdmissionDiscountDraft(String(profileStudent.discountAmount || 0));
     setAdmissionUpfrontDraft(String(profileStudent.admissionUpfrontAmount || 0));
     setAdmissionEmiMonthsDraft(String(months));
-    setAdmissionEmiAmountDraft(String(profileStudent.emiAmount || Math.ceil(baseAmount / months)));
+    setAdmissionEmiAmountDraft(String(profileStudent.emiAmount || calculatedEmi));
     setAdmissionNextEmiDateDraft(profileStudent.nextEmiDate ? dateInputValue(profileStudent.nextEmiDate) : dateInputValueFromOffset(12));
-  }, [profileId, profileStudent?.admissionPaymentMode, profileStudent?.admissionUpfrontAmount, profileStudent?.totalFee, profileStudent?.discountAmount, profileStudent?.emiEnabled, profileStudent?.emiMonths, profileStudent?.emiAmount, profileStudent?.nextEmiDate, profileDue, profileNetFee]);
+  }, [profileId, profileStudent?.admissionPaymentMode, profileStudent?.admissionUpfrontAmount, profileStudent?.totalFee, profileStudent?.discountAmount, profileStudent?.emiEnabled, profileStudent?.emiMonths, profileStudent?.emiAmount, profileStudent?.nextEmiDate, profileDue, profileNetFee, profileStudent?.course, courses]);
   useEffect(() => {
     if (!profileStudent) return;
     const assignment = profileStudent.internshipAssignment;
@@ -5211,6 +7488,11 @@ function ProfilePanel({ profile, user, accessCount, canManageFees, canManageSett
   const eligible = ["Course Completed", "Alumni", "Placed"].includes(student.status) || student.certificateStatus === "Issued";
   const payments = student.payments || [];
   const hasEmi = student.emiEnabled || student.emiMonths || student.nextEmiDate;
+  const emiBreakdown = studentEmiBreakdown(student);
+  const assignedBatch = batches.find((b) => String(b.name || "").trim().toLowerCase() === String(student.batch || "").trim().toLowerCase());
+  const batchStartDate = assignedBatch?.commenceDate || student.batchCommenceDate || "";
+  const courseDurationMonths = getCourseDurationMonths(student.course, courses);
+  const batchEndDate = batchStartDate ? (dateInputValueFromDuration(dateInputValue(batchStartDate), courseDurationMonths, "months") || "") : "";
   const feedbacks = student.feedbacks || [];
   const normalizedStatus = normalizeStudentStatus(student.status);
   const canDecideFees = normalizedStatus !== "Enrolled";
@@ -5246,7 +7528,7 @@ function ProfilePanel({ profile, user, accessCount, canManageFees, canManageSett
   const activeStudentTab = tabs.some((tab) => tab.key === studentTab) ? studentTab : "sum";
   const recalculateEmiAmount = (monthsValue: string) => {
     const months = Math.max(1, Number(monthsValue || 0));
-    return String(Math.ceil((due || netFee || 0) / months));
+    return String(Math.floor((due || netFee || 0) / months));
   };
   const changeEmiMonths = (event: ChangeEvent<HTMLInputElement>) => {
     const monthsValue = event.target.value;
@@ -5254,11 +7536,35 @@ function ProfilePanel({ profile, user, accessCount, canManageFees, canManageSett
     setEmiAmountDraft(monthsValue ? recalculateEmiAmount(monthsValue) : "0");
   };
   const changeAdmissionEmiMonths = (event: ChangeEvent<HTMLInputElement>) => {
+    // EMI months is locked to course duration — this handler kept for potential future use
     const monthsValue = event.target.value;
     const months = Math.max(1, Number(monthsValue || 0));
     setAdmissionEmiMonthsDraft(monthsValue);
     const baseAmount = isPartialEmiPaymentMode(admissionPaymentModeDraft) ? admissionEmiBalance : admissionDue || admissionNetFee || 0;
-    setAdmissionEmiAmountDraft(monthsValue ? String(Math.ceil(baseAmount / months)) : "0");
+    setAdmissionEmiAmountDraft(monthsValue ? String(Math.floor(baseAmount / months)) : "0");
+  };
+  // Recalculate EMI amount dynamically (months are locked to course duration)
+  const updateAdmissionEmi = (
+    newTotal = admissionTotalFeeDraft,
+    newDiscount = admissionDiscountDraft,
+    newUpfront = admissionUpfrontDraft,
+    newMode = admissionPaymentModeDraft
+  ) => {
+    const isPartial = isPartialEmiPaymentMode(newMode);
+    const isEmi = newMode === "EMI" || isPartial;
+    if (!isEmi) return;
+    const months = Math.max(1, Number(admissionEmiMonthsDraft || 0));
+    const total = Math.max(0, Number(newTotal || 0));
+    const disc = Math.max(0, Number(newDiscount || 0));
+    const net = Math.max(0, total - disc);
+    const upfront = isPartial ? Math.max(0, Number(newUpfront || 0)) : 0;
+    const balance = Math.max(0, net - Math.max(student.paidAmount || 0, upfront));
+    const emiAmt = months > 0 ? Math.floor(balance / months) : 0;
+    setAdmissionEmiAmountDraft(String(emiAmt));
+  };
+  const recalcEmiOnModeChange = (newMode: string) => {
+    setAdmissionPaymentModeDraft(newMode);
+    updateAdmissionEmi(admissionTotalFeeDraft, admissionDiscountDraft, admissionUpfrontDraft, newMode);
   };
   const updateInternshipDuration = (start: string, duration: string, unit: string) => {
     const nextEndDate = dateInputValueFromDuration(start, duration, unit);
@@ -5300,7 +7606,7 @@ function ProfilePanel({ profile, user, accessCount, canManageFees, canManageSett
     if (isAdmissionEmiPlan) {
       const emiBalance = isPartialEmiPaymentMode(paymentMode) ? Math.max(0, (totalFee - discountAmount) - Math.max(student.paidAmount || 0, upfrontAmount)) : admissionDue;
       if (emiBalance <= 0) return toast.error("Cannot enable EMI when there is no pending EMI balance");
-      if (months < 2 || months > 12) return toast.error("EMI months must be between 2 and 12");
+      if (months < 1 || months > 60) return toast.error("EMI months must be between 1 and 60");
       if (amount <= 0) return toast.error("Monthly EMI amount is required");
       if (amount > emiBalance) return toast.error(`Monthly EMI cannot exceed EMI balance of ${formatCurrency(emiBalance)}`);
       if (!admissionNextEmiDateDraft) return toast.error("Next EMI date is required");
@@ -5374,6 +7680,7 @@ function ProfilePanel({ profile, user, accessCount, canManageFees, canManageSett
         course: String(form.course || ""),
         centre: String(form.centre || ""),
         batch: String(form.batch || ""),
+        batchCommenceDate: String(form.batchCommenceDate || ""),
         status: nextStatus,
         ...(canManageSettings ? { counsellor: String(form.counsellor || "") } : {}),
         ...(canAssignTeachers ? { teacher: String(form.teacher || "") } : {}),
@@ -5407,6 +7714,7 @@ function ProfilePanel({ profile, user, accessCount, canManageFees, canManageSett
           <div className="field"><label>Course</label><select name="course" value={editCourseDraft} onChange={(event) => setEditCourseDraft(event.target.value)}><option value="">Unassigned</option>{studentCourseOptions.map((course) => <option key={course}>{course}</option>)}</select></div>
           <div className="field"><label>Centre</label><select name="centre" value={editCentreDraft} onChange={(event) => { const centre = event.target.value; setEditCentreDraft(centre); if (isKochiCentre(centre) && !kochiCourseOptions.includes(editCourseDraft)) setEditCourseDraft(kochiCourseOptions[0]); }}><option value="">Unassigned</option>{centres.map((centre) => <option key={centre}>{centre}</option>)}</select></div>
           <div className="field"><label>Batch</label><select name="batch" value={editBatchDraft} onChange={(event) => setEditBatchDraft(event.target.value)}><option value="">Unassigned</option>{editBatchDraft && !batchOptions.some((batch) => batch.name === editBatchDraft) && <option value={editBatchDraft}>{editBatchDraft} - current</option>}{batchOptions.map((batch) => <option key={batch._id} value={batch.name}>{batch.name} - {courseShortCode(batch.course)}{batch.centre ? ` - ${batch.centre}` : ""}</option>)}</select>{!batchOptions.length && <span className="field-help">No matching batch. Create one in Settings - Batches.</span>}</div>
+          <EditField name="batchCommenceDate" label="Batch start date" type="date" defaultValue={dateInputValue(batchOptions.find((b) => b.name === (editBatchDraft || student.batch))?.commenceDate || student.batchCommenceDate || "")} />
           {canManageSettings && <EditField name="counsellor" label="Counsellor" defaultValue={student.counsellor} />}
           {canAssignTeachers && <div className="field"><label>Teacher</label><select name="teacher" defaultValue={student.teacher || ""}><option value="">Unassigned</option>{teachers.map((teacher) => <option key={teacher.email}>{teacher.name}</option>)}</select></div>}
           <div className="field"><label>Status</label><select name="status" defaultValue={normalizeStudentStatus(student.status)}>{studentStatuses.map((status) => <option key={status} value={status}>{studentStatusLabel(status)}</option>)}</select><span className="field-help">Alumni is available only after fee clearance and certificate issue.</span></div>
@@ -5445,10 +7753,58 @@ function ProfilePanel({ profile, user, accessCount, canManageFees, canManageSett
           <div className="kv-row"><span className="k">Email</span><span className="v">{student.email || "-"}</span></div>
           <div className="kv-row"><span className="k">Student location</span><span className="v">{student.studentLocation || "-"}</span></div>
           <div className="kv-row"><span className="k">Batch</span><span className="v">{student.batch || "Unassigned"}</span></div>
+          <div className="kv-row"><span className="k">Batch start date</span><span className="v mono">{batchStartDate ? formatDate(batchStartDate) : "Not set"}</span></div>
+          <div className="kv-row"><span className="k">Batch end date</span><span className="v mono">{batchEndDate ? <>{formatDate(batchEndDate)} <span className="cell-sub">({courseDurationMonths} months duration)</span></> : "Not set"}</span></div>
           <div className="kv-row"><span className="k">Counsellor</span><span className="v">{student.counsellor || "-"}</span></div>
           <div className="kv-row"><span className="k">Teacher</span><span className="v">{student.teacher || "Unassigned"}</span></div>
           <div className="kv-row"><span className="k">LMS access</span><span className="v">{student.lmsAccessEnabled ? <span className="badge badge-green">Enabled</span> : <span className="badge badge-gray">Not generated</span>}</span></div>
           <div className="field drawer-notes"><label>Status</label><select value={normalizedStatus} onChange={(event) => { const reason = studentStatusBlockReason(student, event.target.value); if (reason) { toast.error(reason); return; } onStudentPatch(student._id, { status: event.target.value }); }}>{studentStatuses.map((status) => <option key={status} value={status}>{studentStatusLabel(status)}</option>)}</select></div>
+
+          <div style={{ marginTop: 18, borderTop: "1px solid var(--border)", paddingTop: 14 }}>
+            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 10 }}>
+              <div style={{ fontWeight: 600, fontSize: 13, color: "var(--text-strong)", display: "flex", alignItems: "center", gap: 6 }}>
+                <Package size={15} color="#4F6BFF" /> Student Kit & Tablet Distribution
+              </div>
+              {canManageInventory && onIssueKit && (
+                <button type="button" className="btn btn-sm btn-soft" onClick={() => onIssueKit(student)}>
+                  <Package size={13} /> {student.kitDistribution?.issuedAt ? "Update Kit" : "Issue Kit"}
+                </button>
+              )}
+            </div>
+            <div className="kv-row">
+              <span className="k" style={{ display: "inline-flex", alignItems: "center", gap: 6 }}><CreditCard size={14} color="#4F6BFF" /> ID Card</span>
+              <span className="v">{student.kitDistribution?.idCardIssued ? <span className="badge badge-green">Issued {student.kitDistribution.idCardNumber ? `(${student.kitDistribution.idCardNumber})` : ""}</span> : <span className="badge badge-gray">Pending</span>}</span>
+            </div>
+            <div className="kv-row">
+              <span className="k" style={{ display: "inline-flex", alignItems: "center", gap: 6 }}><Shirt size={14} color="#14B8A6" /> T-Shirt</span>
+              <span className="v">{student.kitDistribution?.tshirtIssued ? <span className="badge badge-green">Issued {student.kitDistribution.tshirtSize ? `(Size ${student.kitDistribution.tshirtSize})` : ""}</span> : <span className="badge badge-gray">Pending</span>}</span>
+            </div>
+            <div className="kv-row">
+              <span className="k" style={{ display: "inline-flex", alignItems: "center", gap: 6 }}><ShoppingBag size={14} color="#8B5CF6" /> Bag</span>
+              <span className="v">{student.kitDistribution?.bagIssued ? <span className="badge badge-green">Issued</span> : <span className="badge badge-gray">Pending</span>}</span>
+            </div>
+            <div className="kv-row">
+              <span className="k" style={{ display: "inline-flex", alignItems: "center", gap: 6 }}><Tablet size={14} color="#F5A524" /> Tablet</span>
+              <span className="v">
+                {student.kitDistribution?.tabletIssued ? (
+                  <div>
+                    <span className="badge badge-green">Assigned ({student.kitDistribution.tabletAssetId || "Tablet"})</span>
+                    {student.kitDistribution.tabletSerialNumber && (
+                      <div className="cell-sub mono">S/N: {student.kitDistribution.tabletSerialNumber}</div>
+                    )}
+                  </div>
+                ) : (
+                  <span className="badge badge-gray">Not Assigned</span>
+                )}
+              </span>
+            </div>
+            {student.kitDistribution?.issuedAt && (
+              <div className="kv-row">
+                <span className="k">Issued Details</span>
+                <span className="v cell-sub">{formatDate(student.kitDistribution.issuedAt)} {student.kitDistribution.issuedBy ? `by ${student.kitDistribution.issuedBy}` : ""}</span>
+              </div>
+            )}
+          </div>
         </div>}
         {activeStudentTab === "journey" && <div className="dpane active">{studentJourneyStages.map((stage) => {
           const currentIndex = studentJourneyStages.indexOf(normalizedStatus);
@@ -5462,13 +7818,13 @@ function ProfilePanel({ profile, user, accessCount, canManageFees, canManageSett
             <MetricCard label={isAdmissionPartialEmiPlan ? "EMI balance" : "Pending due"} value={formatCurrency(isAdmissionPartialEmiPlan ? admissionEmiBalance : admissionDue)} dot="#EF4444" delta={isAdmissionPartialEmiPlan ? `partial ${formatCurrency(admissionUpfrontAmount)}` : `paid ${formatCurrency(student.paidAmount || 0)}`} />
           </div>
           <form className="field-grid feedback-form emi-plan-form" onSubmit={saveAdmissionPlan}>
-            <div className="field"><RequiredLabel required>Final fee</RequiredLabel><input name="totalFee" type="number" min="1" step="1" required disabled={!canDecideFees} value={admissionTotalFeeDraft} onChange={(event) => setAdmissionTotalFeeDraft(event.target.value)} /></div>
-            <div className="field"><RequiredLabel>Discount</RequiredLabel><input name="discountAmount" type="number" min="0" max={admissionTotalFee || undefined} step="1" disabled={!canDecideFees} value={admissionDiscountDraft} onChange={(event) => setAdmissionDiscountDraft(event.target.value)} /></div>
-            <div className="field"><RequiredLabel required>Fee payment plan</RequiredLabel><select name="admissionPaymentMode" required disabled={!canDecideFees} value={admissionPaymentModeDraft} onChange={(event) => setAdmissionPaymentModeDraft(event.target.value)}>{admissionPaymentModes.map((mode) => <option key={mode}>{mode}</option>)}</select></div>
-            {isAdmissionPartialEmiPlan && <div className="field"><RequiredLabel required>Partial amount</RequiredLabel><input name="admissionUpfrontAmount" type="number" min="1" max={admissionNetFee ? admissionNetFee - 1 : undefined} required disabled={!canDecideFees} value={admissionUpfrontDraft} onChange={(event) => { const value = event.target.value; const months = Math.max(1, Number(admissionEmiMonthsDraft || 0)); const upfront = Math.max(0, Number(value || 0)); setAdmissionUpfrontDraft(value); setAdmissionEmiAmountDraft(String(Math.ceil(Math.max(0, admissionNetFee - Math.max(student.paidAmount || 0, upfront)) / months))); }} /><span className="field-help">Record this actual payment from the Payments tab after saving admission.</span></div>}
+            <div className="field"><RequiredLabel required>Final fee</RequiredLabel><input name="totalFee" type="number" min="1" step="1" required disabled={!canDecideFees} value={admissionTotalFeeDraft} onChange={(event) => { const val = event.target.value; setAdmissionTotalFeeDraft(val); updateAdmissionEmi(val, admissionDiscountDraft, admissionUpfrontDraft, admissionPaymentModeDraft); }} /></div>
+            <div className="field"><RequiredLabel>Discount</RequiredLabel><input name="discountAmount" type="number" min="0" max={admissionTotalFee || undefined} step="1" disabled={!canDecideFees} value={admissionDiscountDraft} onChange={(event) => { const val = event.target.value; setAdmissionDiscountDraft(val); updateAdmissionEmi(admissionTotalFeeDraft, val, admissionUpfrontDraft, admissionPaymentModeDraft); }} /></div>
+            <div className="field"><RequiredLabel required>Fee payment plan</RequiredLabel><select name="admissionPaymentMode" required disabled={!canDecideFees} value={admissionPaymentModeDraft} onChange={(event) => recalcEmiOnModeChange(event.target.value)}>{admissionPaymentModes.map((mode) => <option key={mode}>{mode}</option>)}</select></div>
+            {isAdmissionPartialEmiPlan && <div className="field"><RequiredLabel required>Upfront / partial amount</RequiredLabel><input name="admissionUpfrontAmount" type="number" min="1" max={admissionNetFee ? admissionNetFee - 1 : undefined} required disabled={!canDecideFees} value={admissionUpfrontDraft} onChange={(event) => { const value = event.target.value; setAdmissionUpfrontDraft(value); updateAdmissionEmi(admissionTotalFeeDraft, admissionDiscountDraft, value, admissionPaymentModeDraft); }} /><span className="field-help">Record this actual payment from the Payments tab after saving admission.</span></div>}
             {isAdmissionEmiPlan && <>
-              <div className="field"><RequiredLabel required>EMI months (2-12)</RequiredLabel><input name="emiMonths" type="number" min="2" max="12" required disabled={!canDecideFees} value={admissionEmiMonthsDraft} onChange={changeAdmissionEmiMonths} /></div>
-              <div className="field"><RequiredLabel required>Monthly EMI</RequiredLabel><input name="emiAmount" type="number" min="1" max={(isAdmissionPartialEmiPlan ? admissionEmiBalance : admissionDue) || undefined} required disabled={!canDecideFees} value={admissionEmiAmountDraft} onChange={(event) => setAdmissionEmiAmountDraft(event.target.value)} /><span className="field-help">Calculated from {isAdmissionPartialEmiPlan ? "EMI balance" : "pending due"}: {formatCurrency(isAdmissionPartialEmiPlan ? admissionEmiBalance : admissionDue)}</span></div>
+              <div className="field"><RequiredLabel required>EMI months</RequiredLabel><input name="emiMonths" type="number" required readOnly disabled value={admissionEmiMonthsDraft} style={{ background: "var(--surface-2, #f3f4f6)", cursor: "not-allowed" }} /><span className="field-help">Auto-set from course duration ({admissionEmiMonthsDraft} months) — not editable</span></div>
+              <div className="field"><RequiredLabel required>Monthly EMI (auto-calculated)</RequiredLabel><input name="emiAmount" type="number" required readOnly disabled value={admissionEmiAmountDraft} style={{ background: "var(--surface-2, #f3f4f6)", cursor: "not-allowed" }} /><span className="field-help">{isAdmissionPartialEmiPlan ? "EMI balance" : "Pending due"}: {formatCurrency(isAdmissionPartialEmiPlan ? admissionEmiBalance : admissionDue)} / {admissionEmiMonthsDraft} months — auto-calculated (not editable){(isAdmissionPartialEmiPlan ? admissionEmiBalance : admissionDue) - (Number(admissionEmiAmountDraft || 0) * Number(admissionEmiMonthsDraft || 1)) > 0 ? ` (₹${(isAdmissionPartialEmiPlan ? admissionEmiBalance : admissionDue) - (Number(admissionEmiAmountDraft || 0) * Number(admissionEmiMonthsDraft || 1))} adjusted in final month)` : ""}</span></div>
               <div className="field"><RequiredLabel required>Next EMI date</RequiredLabel><input name="nextEmiDate" type="date" required disabled={!canDecideFees} value={admissionNextEmiDateDraft} onChange={(event) => setAdmissionNextEmiDateDraft(event.target.value)} /></div>
             </>}
             <div className="profile-edit-actions"><button className="btn btn-primary" disabled={!canDecideFees}><CheckCircle2 size={15} /> Save fees decided</button></div>
@@ -5494,9 +7850,9 @@ function ProfilePanel({ profile, user, accessCount, canManageFees, canManageSett
         {activeStudentTab === "pay" && <div className="dpane active">
           <div className="table-wrap"><table><thead><tr><th>#</th><th>Date</th><th>Payment for</th><th>Mode</th><th>Reference</th><th>Amount</th><th>Recorded by</th><th>Receipt</th><th>Proof</th></tr></thead><tbody>{payments.map((payment, index) => <tr key={`${payment.paidAt || index}-${payment.amount || 0}`}><td>{index + 1}</td><td className="mono">{formatDate(payment.paidAt)}</td><td>{normalizePaymentPurpose(payment.paymentPurpose, payment.mode)}{payment.emiReference && <div className="cell-sub mono">{payment.emiReference}</div>}</td><td>{payment.mode || "-"}</td><td className="mono">{payment.transactionId || "-"}{payment.loanProviderName && <div className="cell-sub">{payment.loanProviderName}</div>}</td><td className="mono">{formatCurrency(payment.amount || 0)}</td><td>{payment.by || "-"}</td><td className="mono">{paymentReceiptNumber(student, index)}</td><td>{payment.proof?.storedName ? <button type="button" className="action-icon-btn action-icon-primary" title={payment.proof.originalName || "Download proof"} onClick={() => onDownloadPaymentProof(student, payment, index)}><Download size={14} /></button> : <span className="cell-sub">Missing</span>}</td></tr>)}{!payments.length && <tr><td colSpan={9}><div className="empty-state"><h4>No payments yet</h4></div></td></tr>}</tbody></table></div>
           {canManageFees && (!admissionPlanReady ? <div className="empty-state"><h4>Complete admission first</h4><p>Finalize the fee and payment plan in the Admission tab before recording payments.</p><button type="button" className="btn btn-primary" onClick={() => setStudentTab("admission")}>Open admission</button></div> : due <= 0 ? <div className="empty-state paid-empty"><h4>Fully paid</h4><p>No pending due for this student.</p></div> : <form className="payment-form profile-payment-form" onSubmit={(event) => onPayment(event, student)}>
-            <div className="field"><RequiredLabel required>Payment amount</RequiredLabel><input name="amount" type="number" min="1" max={due} step="1" required /><span className="field-help">Pending due: {formatCurrency(due)}</span></div>
+            <div className="field"><RequiredLabel required>Payment amount</RequiredLabel><input name="amount" type="number" min="1" max={due} step="1" required defaultValue={paymentPurposeDraft === "Fees Installment" && emiBreakdown.isEmi ? emiBreakdown.currentDue : ""} key={`${student._id}-${paymentPurposeDraft}`} /><span className="field-help">{paymentPurposeDraft === "Fees Installment" && emiBreakdown.isEmi ? `Expected this cycle: ${formatCurrency(emiBreakdown.currentDue)} ${emiBreakdown.shortfall > 0 ? `(${formatCurrency(emiBreakdown.baseEmi)} EMI + ${formatCurrency(emiBreakdown.shortfall)} shortfall)` : ""} | ` : ""}Pending due: {formatCurrency(due)}</span></div>
             <div className="field"><RequiredLabel required>Payment for</RequiredLabel><select name="paymentPurpose" value={paymentPurposeDraft} required onChange={(event) => setPaymentPurposeDraft(event.target.value)}>{paymentPurposes.map((purpose) => <option key={purpose}>{purpose}</option>)}</select>{paymentPurposeDraft === "Seat Booking Amount" && <span className="field-help">Use this for the first booking/token amount.</span>}</div>
-            <div className="field"><RequiredLabel required>Mode</RequiredLabel><select name="mode" value={paymentModeDraft} required onChange={(event) => setPaymentModeDraft(event.target.value)}>{paymentModes.map((mode) => <option key={mode} value={mode}>{mode}</option>)}</select></div>
+            <div className="field"><RequiredLabel required>Mode</RequiredLabel><select name="mode" value={paymentModeDraft} required onChange={(event) => setPaymentModeDraft(event.target.value)}>{paymentModes.map((mode) => <option key={mode}>{mode}</option>)}</select></div>
             {paymentModeDraft === "Loan Provider" && <div className="field"><RequiredLabel required>Loan provider name</RequiredLabel><input name="loanProviderName" required maxLength={100} /></div>}
             {paymentPurposeDraft === "Fees Installment" && student.emiEnabled && <div className="field"><RequiredLabel>EMI reference no.</RequiredLabel><input name="emiReference" value={emiReferenceNumber(student)} readOnly maxLength={paymentReferenceMaxLength} /><span className="field-help">Auto generated for this EMI installment.</span></div>}
             {paymentModeDraft !== "Cash" && <div className="field"><RequiredLabel required>{paymentReferenceLabel(paymentModeDraft)}</RequiredLabel><input name="transactionId" required maxLength={paymentReferenceMaxLength} pattern="[A-Za-z0-9][A-Za-z0-9 ._/@:-]*" /><span className="field-help">Required for {paymentModeDraft} payments.</span></div>}
@@ -5507,13 +7863,15 @@ function ProfilePanel({ profile, user, accessCount, canManageFees, canManageSett
         </div>}
         {activeStudentTab === "emi" && <div className="dpane active">
           {hasEmi && <>
-            <div className="kv-row"><span className="k">Plan</span><span className="v">{student.emiMonths || "-"} months</span></div>
-            <div className="kv-row"><span className="k">Monthly EMI</span><span className="v">{formatCurrency(student.emiAmount || 0)}</span></div>
+            <div className="kv-row"><span className="k">Plan tenure</span><span className="v">{student.emiMonths || "-"} months</span></div>
+            <div className="kv-row"><span className="k">Scheduled monthly EMI</span><span className="v">{formatCurrency(student.emiAmount || 0)}</span></div>
+            {emiBreakdown.shortfall > 0 && <div className="kv-row"><span className="k">Previous shortfall (arrears)</span><span className="v"><span className="badge badge-red">{formatCurrency(emiBreakdown.shortfall)}</span></span></div>}
+            <div className="kv-row"><span className="k">Total due this cycle</span><span className="v"><strong>{formatCurrency(emiBreakdown.currentDue)}</strong></span></div>
             <div className="kv-row"><span className="k">Next EMI date</span><span className="v">{formatDate(student.nextEmiDate)}</span></div>
           </>}
           {canManageFees ? (!admissionPlanReady ? <div className="empty-state"><h4>Complete admission first</h4><p>EMI terms must be decided in the Admission tab before updating EMI reminders.</p><button type="button" className="btn btn-primary" onClick={() => setStudentTab("admission")}>Open admission</button></div> : due <= 0 ? <div className="empty-state paid-empty"><h4>Fully paid</h4><p>EMI plan is not needed because there is no pending due.</p>{hasEmi && <button type="button" className="btn btn-ghost" onClick={closeEmiPlan}>Close EMI plan</button>}</div> : <form className="field-grid feedback-form emi-plan-form" onSubmit={saveEmiPlan}>
-            <div className="field"><RequiredLabel required>Months (2-12)</RequiredLabel><input name="emiMonths" type="number" min="2" max="12" required value={emiMonthsDraft} onChange={changeEmiMonths} /></div>
-            <div className="field"><RequiredLabel required>Monthly EMI</RequiredLabel><input name="emiAmount" type="number" min="1" max={due} required value={emiAmountDraft} onChange={(event) => setEmiAmountDraft(event.target.value)} /><span className="field-help">Pending due: {formatCurrency(due)}</span></div>
+            <div className="field"><RequiredLabel required>EMI months</RequiredLabel><input name="emiMonths" type="number" required readOnly disabled value={emiMonthsDraft} style={{ background: "var(--surface-2, #f3f4f6)", cursor: "not-allowed" }} /><span className="field-help">Auto-set from course duration ({emiMonthsDraft} months) — not editable</span></div>
+            <div className="field"><RequiredLabel required>Monthly EMI (auto-calculated)</RequiredLabel><input name="emiAmount" type="number" required readOnly disabled value={emiAmountDraft} style={{ background: "var(--surface-2, #f3f4f6)", cursor: "not-allowed" }} /><span className="field-help">Pending due: {formatCurrency(due)} / {emiMonthsDraft} months — auto-calculated (not editable){due - (Number(emiAmountDraft || 0) * Number(emiMonthsDraft || 1)) > 0 ? ` (₹${due - (Number(emiAmountDraft || 0) * Number(emiMonthsDraft || 1))} adjusted in final month)` : ""}</span></div>
             <Field name="nextEmiDate" label="Next EMI date" type="date" defaultValue={student.nextEmiDate ? dateInputValue(student.nextEmiDate) : dateInputValueFromOffset(12)} required />
             <div className="profile-edit-actions"><button className="btn btn-primary"><CalendarDays size={15} /> {hasEmi ? "Update EMI plan" : "Save EMI plan"}</button>{hasEmi && <button type="button" className="btn btn-ghost" onClick={closeEmiPlan}>Close EMI plan</button>}</div>
           </form>) : <div className="empty-state"><h4>EMI updates restricted</h4><p>Admin access is required to manage EMI plans.</p></div>}
@@ -5680,16 +8038,17 @@ function CrmStyles() {
   return (
     <style>{`
       @keyframes imed-spin{to{transform:rotate(360deg)}}.spin-icon{animation:imed-spin .8s linear infinite}
-      .imed-admin-prototype{--navy-950:#0A0E1D;--navy-900:#0F1428;--navy-800:#1B2340;--navy-line:#242C4D;--indigo-500:#4F6BFF;--indigo-600:#3E56E0;--indigo-100:#EAEEFF;--bg:#F3F5FA;--card:#FFFFFF;--border:#E5E9F2;--border-soft:#EEF1F7;--text-900:#161B33;--text-700:#333A56;--text-600:#5B6478;--text-400:#99A1B3;--green-50:#EAFBF3;--green-500:#17A673;--green-700:#0E7A54;--amber-50:#FFF7E8;--amber-500:#F59E0B;--amber-700:#B4750B;--red-50:#FDEEEE;--red-100:#FCE1E1;--red-500:#E5484D;--red-700:#B3282C;--purple-50:#F4F0FE;--purple-500:#8B5CF6;--purple-700:#6B37D6;--teal-50:#E7FAF7;--teal-100:#CFF5EF;--teal-500:#14B8A6;--teal-700:#0F766E;--blue-50:#EEF3FF;font-family:Inter,system-ui,sans-serif;background:var(--bg);color:var(--text-900);font-size:13.5px;min-height:100vh}
-      .imed-admin-prototype *{box-sizing:border-box}.imed-admin-prototype button{font-family:inherit;cursor:pointer}.imed-admin-prototype #app{display:flex;height:100vh;width:100vw}.imed-admin-prototype #authScreen{min-height:100vh;display:flex;align-items:center;justify-content:center;background:var(--bg)}
+      html, body, #root, .imed-admin-prototype{max-width:100vw;overflow-x:hidden}
+      .imed-admin-prototype{--navy-950:#0A0E1D;--navy-900:#0F1428;--navy-800:#1B2340;--navy-line:#242C4D;--indigo-500:#4F6BFF;--indigo-600:#3E56E0;--indigo-100:#EAEEFF;--bg:#F3F5FA;--card:#FFFFFF;--border:#E5E9F2;--border-soft:#EEF1F7;--text-900:#161B33;--text-700:#333A56;--text-600:#5B6478;--text-400:#99A1B3;--green-50:#EAFBF3;--green-500:#17A673;--green-700:#0E7A54;--amber-50:#FFF7E8;--amber-500:#F59E0B;--amber-700:#B4750B;--red-50:#FDEEEE;--red-100:#FCE1E1;--red-500:#E5484D;--red-700:#B3282C;--purple-50:#F4F0FE;--purple-500:#8B5CF6;--purple-700:#6B37D6;--teal-50:#E7FAF7;--teal-100:#CFF5EF;--teal-500:#14B8A6;--teal-700:#0F766E;--blue-50:#EEF3FF;font-family:Inter,system-ui,sans-serif;background:var(--bg);color:var(--text-900);font-size:13.5px;min-height:100vh;width:100%;max-width:100vw;overflow-x:hidden}
+      .imed-admin-prototype *{box-sizing:border-box}.imed-admin-prototype button{font-family:inherit;cursor:pointer}.imed-admin-prototype #app{display:flex;height:100vh;width:100%;max-width:100vw;overflow-x:hidden}.imed-admin-prototype #authScreen{min-height:100vh;display:flex;align-items:center;justify-content:center;background:var(--bg)}
       .auth-card{width:min(420px,92vw);background:#fff;border:1px solid var(--border);border-radius:16px;padding:30px 28px 28px;box-shadow:0 12px 32px rgba(16,20,40,.14);display:grid;gap:0}.auth-logo{display:flex;gap:10px;align-items:center;margin-bottom:24px}.auth-logo div:last-child b{display:block;font-size:13px;line-height:1.15}.auth-logo div:last-child div{font-size:10.5px;color:var(--text-400);letter-spacing:.5px;text-transform:uppercase;margin-top:2px}.auth-card h1{font-size:22px;font-weight:500;line-height:1.25;margin:0 0 8px}.auth-card .sub{color:var(--text-400);margin:0 0 22px;font-size:14px}.auth-card .field{margin-bottom:12px}.auth-card .field label{margin-bottom:7px}.auth-card .field input{height:38px}.auth-field-row{display:flex;align-items:center;justify-content:space-between;gap:10px;margin-bottom:7px}.auth-field-row label{margin:0!important}.auth-link-btn{border:0;background:transparent;color:var(--indigo-600);font-size:11.5px;font-weight:700;padding:0}.auth-link-btn:hover{text-decoration:underline}.password-input-wrap{position:relative}.password-input-wrap input{padding-right:42px!important}.password-eye-btn{position:absolute;right:8px;top:50%;transform:translateY(-50%);width:28px;height:28px;border:0;background:transparent;color:var(--text-400);display:flex;align-items:center;justify-content:center;border-radius:7px}.password-eye-btn:hover{background:var(--blue-50);color:var(--indigo-600)}.auth-card .btn-primary{width:100%;height:38px;justify-content:center;margin-top:2px}
 .sidebar{width:236px;flex:0 0 236px;background:linear-gradient(180deg,var(--navy-950),var(--navy-900));color:#C9CFE6;display:flex;flex-direction:column;height:100vh;border-right:1px solid var(--navy-line)}.sidebar-brand{display:flex;align-items:center;gap:10px;padding:18px 18px 14px 20px;border-bottom:1px solid var(--navy-line)}.brand-mark{width:32px;height:32px;border-radius:9px;background:#fff;display:flex;align-items:center;justify-content:center;flex:0 0 32px;box-shadow:0 4px 10px rgba(15,23,42,.18);overflow:hidden}.brand-mark img{width:23px;height:29px;display:block;object-fit:contain}.brand-text b{display:block;font-size:14px;color:#fff}.brand-text span{display:block;font-size:10.5px;color:#8189A8;letter-spacing:.6px;text-transform:uppercase;margin-top:2px}
       .nav-scroll{flex:1;overflow-y:auto;padding:12px 10px}.nav-group-label{font-size:10px;font-weight:700;letter-spacing:.8px;text-transform:uppercase;color:#5D6588;padding:14px 10px 6px}.nav-item{position:relative;width:100%;border:0;display:flex;align-items:center;gap:10px;padding:9px 10px;border-radius:8px;margin-bottom:2px;background:transparent;color:#AEB4CE;font-size:13px;font-weight:500;text-align:left}.nav-item svg{width:16px;height:16px}.nav-item:hover{background:var(--navy-800);color:#fff}.nav-item.active{background:var(--indigo-500);color:#fff;box-shadow:0 4px 12px rgba(79,107,255,.35)}.nav-badge{margin-left:auto;min-width:19px;height:19px;border-radius:999px;background:var(--amber-500);color:#fff;display:inline-grid;place-items:center;padding:0 6px;font-size:10.5px;font-style:normal;font-weight:800;line-height:1;box-shadow:0 4px 10px rgba(245,158,11,.28)}.nav-badge-admission{min-width:24px;height:20px;background:#EAFBF3;color:#0E7A54;border:1px solid rgba(23,166,115,.28);box-shadow:0 0 0 3px rgba(23,166,115,.08);font-size:10px}.nav-item.active .nav-badge-admission{background:#fff;color:var(--indigo-600);border-color:rgba(255,255,255,.65);box-shadow:none}.mobile-logout{display:none}
       .sidebar-footer{padding:12px;border-top:1px solid var(--navy-line)}.role-pill{display:flex;align-items:center;gap:9px;background:var(--navy-800);border:1px solid var(--navy-line);border-radius:10px;padding:8px 10px}.role-avatar{width:28px;height:28px;border-radius:8px;background:linear-gradient(135deg,#F5A524,#E5484D);display:flex;align-items:center;justify-content:center;font-weight:700;color:#fff;font-size:12px}.role-meta{line-height:1.2;overflow:hidden}.role-meta b{font-size:12px;color:#fff;display:block;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}.role-meta span{font-size:10.5px;color:#8A91B0}.role-pill .icon-btn{margin-left:auto;background:transparent;border:0;color:#8A91B0}
-      .main{flex:1;display:flex;flex-direction:column;height:100vh;overflow:hidden}.topbar{height:60px;flex:0 0 60px;background:#fff;border-bottom:1px solid var(--border);display:flex;align-items:center;gap:14px;padding:0 22px}.page-title{font-size:16px;font-weight:700}.page-sub{font-size:11.5px;color:var(--text-400);margin-top:1px}.topbar-spacer{flex:1}.scope-select,.df-select,.fbtn{border:1px solid var(--border);background:#fff;border-radius:8px;padding:7px 10px;font-size:12.5px;color:var(--text-700);font-weight:500;font-family:inherit}.scope-select-locked{background:var(--bg);color:var(--text-400)}.date-filter{display:flex;align-items:center;gap:6px;background:var(--bg);border:1px solid var(--border);border-radius:9px;padding:3px}.df-btn{border:none;background:transparent;padding:6px 10px;border-radius:7px;font-size:12px;font-weight:600;color:var(--text-600)}.df-btn.active{background:#fff;color:var(--indigo-600);box-shadow:0 1px 2px rgba(16,20,40,.05)}.df-date{border:1px solid var(--border);border-radius:7px;padding:5px 8px;font-size:12px;display:none}.df-date.show{display:inline-block}.icon-btn{width:34px;height:34px;border-radius:9px;border:1px solid var(--border);background:#fff;display:flex;align-items:center;justify-content:center;color:var(--text-600)}.search-box{display:flex;align-items:center;gap:7px;background:var(--bg);border:1px solid var(--border);border-radius:9px;padding:7px 12px;width:230px}.search-box input{border:none;background:transparent;outline:none;font-size:12.5px;width:100%;color:var(--text-900)}
-      .content{flex:1;overflow-y:auto;padding:22px}.grid-metrics{display:grid;grid-template-columns:repeat(auto-fit,minmax(170px,1fr));gap:14px;margin-bottom:18px}.metric-card,.card{background:#fff;border:1px solid var(--border);border-radius:14px;box-shadow:0 1px 2px rgba(16,20,40,.05)}.metric-card{padding:16px 18px;position:relative;overflow:hidden}.m-label{font-size:11.5px;color:var(--text-600);font-weight:600;display:flex;align-items:center;gap:6px}.m-value{font-size:24px;font-weight:800;margin-top:8px;color:#061633;font-family:JetBrains Mono,monospace}.m-delta{font-size:11px;font-weight:600;margin-top:6px}.m-delta.up{color:var(--green-700)}.m-delta.down{color:var(--red-700)}.m-dot{width:9px;height:9px;border-radius:3px;display:inline-block}.two-col{display:grid;grid-template-columns:1.3fr 1fr;gap:16px;margin-bottom:16px}.lower-grid{grid-template-columns:1fr 1fr .75fr}.card-head{display:flex;align-items:center;gap:12px;padding:16px 18px;border-bottom:1px solid var(--border-soft)}.card-head h3{font-size:13.5px;font-weight:700;margin:0}.card-head .sub{font-size:11px;color:var(--text-400);margin-top:2px}.card-head button,.card-head input{margin-left:auto}.card-body{padding:16px 18px}.funnel-wrap{display:flex;flex-direction:column;gap:6px}.funnel-row{display:grid;grid-template-columns:120px 1fr 90px;align-items:center;gap:10px}.flabel{font-size:12px;font-weight:600;color:var(--text-600)}.funnel-bar-track{background:var(--border-soft);border-radius:6px;height:22px;overflow:hidden}.funnel-bar-fill{height:100%;border-radius:6px;background:linear-gradient(90deg,var(--indigo-500),#8A6BFF);display:flex;align-items:center;justify-content:flex-end;padding-right:8px}.funnel-bar-fill span{color:#fff;font-size:10.5px;font-weight:700}.fval{font-size:12px;color:var(--text-400);text-align:right;font-family:JetBrains Mono,monospace}
+      .main{flex:1;display:flex;flex-direction:column;height:100vh;overflow:hidden;width:100%;max-width:100%;min-width:0;box-sizing:border-box}.topbar{height:60px;flex:0 0 60px;background:#fff;border-bottom:1px solid var(--border);display:flex;align-items:center;gap:12px;padding:0 22px;width:100%;max-width:100%;min-width:0;box-sizing:border-box;position:relative;z-index:40;overflow:visible}.page-title{font-size:16px;font-weight:700}.page-sub{font-size:11.5px;color:var(--text-400);margin-top:1px}.topbar-spacer{flex:1}.scope-select,.df-select,.fbtn{border:1px solid var(--border);background:#fff;border-radius:8px;padding:7px 10px;font-size:12.5px;color:var(--text-700);font-weight:500;font-family:inherit}.scope-select{height:36px;box-sizing:border-box;display:inline-flex;align-items:center;padding:0 12px;flex-shrink:0}.scope-select-locked{background:var(--bg);color:var(--text-400)}.date-filter{display:inline-flex;align-items:center;gap:4px;background:var(--bg);border:1px solid var(--border);border-radius:9px;padding:3px;height:36px;box-sizing:border-box;flex-shrink:0}.df-btn{border:none;background:transparent;padding:0 11px;height:28px;border-radius:7px;font-size:12px;font-weight:600;color:var(--text-600);white-space:nowrap;display:inline-flex;align-items:center;justify-content:center;line-height:1;flex-shrink:0}.df-btn.active{background:#fff;color:var(--indigo-600);box-shadow:0 1px 2px rgba(16,20,40,.05)}.df-date{border:1px solid var(--border);border-radius:7px;padding:5px 8px;font-size:12px;display:none;height:28px;box-sizing:border-box}.df-date.show{display:inline-block}.icon-btn{width:36px;height:36px;border-radius:9px;border:1px solid var(--border);background:#fff;display:inline-flex;align-items:center;justify-content:center;color:var(--text-600);box-sizing:border-box;flex-shrink:0}.search-box{display:flex;align-items:center;gap:7px;background:var(--bg);border:1px solid var(--border);border-radius:9px;padding:0 12px;width:230px;height:36px;box-sizing:border-box;flex-shrink:0}.search-box input{border:none;background:transparent;outline:none;font-size:12.5px;width:100%;color:var(--text-900);padding:0}
+      .content{flex:1;overflow-y:auto;overflow-x:hidden;padding:22px;width:100%;max-width:100%;min-width:0;box-sizing:border-box}.grid-metrics{display:grid;grid-template-columns:repeat(auto-fit,minmax(170px,1fr));gap:14px;margin-bottom:18px}.metric-card,.card{background:#fff;border:1px solid var(--border);border-radius:14px;box-shadow:0 1px 2px rgba(16,20,40,.05)}.metric-card{padding:16px 18px;position:relative;overflow:hidden}.m-label{font-size:11.5px;color:var(--text-600);font-weight:600;display:flex;align-items:center;gap:6px}.m-value{font-size:24px;font-weight:800;margin-top:8px;color:#061633;font-family:JetBrains Mono,monospace}.m-delta{font-size:11px;font-weight:600;margin-top:6px}.m-delta.up{color:var(--green-700)}.m-delta.down{color:var(--red-700)}.m-dot{width:9px;height:9px;border-radius:3px;display:inline-block}.two-col{display:grid;grid-template-columns:1.3fr 1fr;gap:16px;margin-bottom:16px}.lower-grid{grid-template-columns:1fr 1fr .75fr}.card-head{display:flex;align-items:center;gap:12px;padding:16px 18px;border-bottom:1px solid var(--border-soft)}.card-head h3{font-size:13.5px;font-weight:700;margin:0}.card-head .sub{font-size:11px;color:var(--text-400);margin-top:2px}.card-head button,.card-head input{margin-left:auto}.card-body{padding:16px 18px}.funnel-wrap{display:flex;flex-direction:column;gap:6px}.funnel-row{display:grid;grid-template-columns:120px 1fr 90px;align-items:center;gap:10px}.flabel{font-size:12px;font-weight:600;color:var(--text-600)}.funnel-bar-track{background:var(--border-soft);border-radius:6px;height:22px;overflow:hidden}.funnel-bar-fill{height:100%;border-radius:6px;background:linear-gradient(90deg,var(--indigo-500),#8A6BFF);display:flex;align-items:center;justify-content:flex-end;padding-right:8px}.funnel-bar-fill span{color:#fff;font-size:10.5px;font-weight:700}.fval{font-size:12px;color:var(--text-400);text-align:right;font-family:JetBrains Mono,monospace}
       .filter-bar{display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin-bottom:14px}.btn{border:none;border-radius:8px;padding:8px 14px;font-size:12.5px;font-weight:600;display:inline-flex;align-items:center;gap:6px;text-decoration:none}.btn-primary{background:var(--indigo-500);color:#fff;box-shadow:0 4px 10px rgba(79,107,255,.28)}.btn-ghost{background:#fff;border:1px solid var(--border);color:var(--text-700)}.btn-soft{background:var(--indigo-100);color:var(--indigo-600)}.btn-whatsapp{background:#e8f8ef;color:#047a43}.btn-danger{background:var(--red-700);color:#fff;box-shadow:0 4px 10px rgba(229,72,77,.22)}.btn-sm{padding:5px 10px;font-size:11.5px;border-radius:7px}.btn:disabled{opacity:.55;cursor:not-allowed}.file-upload-btn{position:relative;overflow:hidden;cursor:pointer}.file-upload-btn input{position:absolute;inset:0;opacity:0;cursor:pointer}.action-icons{display:flex;align-items:center;gap:6px}.action-icon-btn{width:30px;height:30px;border:1px solid var(--border);border-radius:8px;background:#fff;color:var(--text-600);display:inline-flex;align-items:center;justify-content:center}.action-icon-btn:hover{background:var(--bg);color:var(--text-900)}.action-icon-primary{background:var(--indigo-100);border-color:#dbe2ff;color:var(--indigo-600)}.action-icon-danger{background:var(--red-50);border-color:#f7d7d7;color:var(--red-700)}.action-icon-whatsapp{background:#e8f8ef;border-color:#c8eed9;color:#047a43}.delete-modal,.forgot-modal{width:390px;max-width:92vw;overflow:hidden}.delete-modal .modal-head,.forgot-modal .modal-head{padding:18px 18px 16px}.delete-modal-body,.forgot-modal-body{display:flex;gap:14px;align-items:center;padding:20px 18px}.delete-modal-body p,.forgot-modal-body p{margin:0;color:var(--text-700);line-height:1.45;min-width:0}.forgot-email-field{margin-top:12px}.forgot-email-field input{height:38px}.delete-icon{width:38px;height:38px;border-radius:10px;background:var(--red-50);color:var(--red-700);display:flex;align-items:center;justify-content:center;flex:0 0 38px}.logout-icon{background:var(--indigo-100);color:var(--indigo-600)}.delete-modal-actions{display:flex;justify-content:flex-end;gap:10px;padding:0 18px 18px}.delete-modal-actions .btn{min-width:66px;justify-content:center}.pamphlet-select{height:32px;border:1px solid #dbe2ff;border-radius:8px;background:var(--indigo-100);color:var(--indigo-600);font-size:11.5px;font-weight:700;padding:0 8px;max-width:150px}.pamphlet-select.compact{width:92px;height:30px;padding:0 6px}.table-wrap{overflow-x:auto}table{width:100%;border-collapse:collapse;font-size:12.5px}thead th{text-align:left;font-size:10.5px;text-transform:uppercase;letter-spacing:.4px;color:var(--text-400);font-weight:700;padding:10px 12px;border-bottom:1px solid var(--border);white-space:nowrap;background:#FAFBFD}tbody td{padding:11px 12px;border-bottom:1px solid var(--border-soft);color:var(--text-700);white-space:nowrap}tbody tr:hover{background:#F8F9FD}.clickable{cursor:pointer}.cell-name,.nm{font-weight:700;color:var(--text-900)}.cell-sub,.mt{font-size:11px;color:var(--text-400)}.mini-select,.mini-input{max-width:160px;border:1px solid var(--border);border-radius:7px;padding:5px 7px;background:#fff}.tag{font-size:12px;border-radius:999px;padding:6px 10px;font-weight:700}.tag.green{background:var(--green-50);color:var(--green-700)}.tag.purple{background:var(--purple-50);color:var(--purple-700)}.tag.amber{background:var(--amber-50);color:var(--amber-700)}.tag.blue{background:var(--blue-50);color:var(--indigo-600)}.tag.red{background:var(--red-50);color:var(--red-700)}
-      .badge{display:inline-flex;align-items:center;gap:5px;padding:3px 9px;border-radius:20px;font-size:11px;font-weight:700;white-space:nowrap}.badge-gray{background:#f1f2f6;color:var(--text-600)}.badge-amber{background:var(--amber-50);color:var(--amber-700)}.badge-red{background:var(--red-50);color:var(--red-700)}.badge-green{background:var(--green-50);color:var(--green-700)}.badge-blue{background:var(--blue-50);color:var(--indigo-600)}.badge-purple{background:var(--purple-50);color:var(--purple-700)}.btn-green{background:var(--green-50);color:var(--green-700)}.leads-filter-bar{gap:10px;margin-bottom:14px}.leads-filter-bar .fbtn{height:34px}.leads-filter-bar .lead-search-input{width:200px}.leads-filter-bar .filter-spacer{flex:1}.leads-card{border-radius:14px;overflow:hidden}.leads-table-wrap{overflow-x:auto}.leads-table{min-width:1220px}.leads-table thead th{height:38px;padding:10px 12px;background:#fafbfd;color:#99a1b3;font-size:10.5px;letter-spacing:.4px}.leads-table tbody td{height:58px;padding:10px 12px;color:#333a56}.leads-table tbody tr:hover{background:#f8f9fd}.lead-name-cell{display:flex;align-items:center;gap:9px}.avatar{width:30px;height:30px;border-radius:8px;display:flex;align-items:center;justify-content:center;color:#fff;font-weight:700;font-size:11.5px;flex:0 0 30px}.lead-avatar{background:#eef3ff;color:#4f6bff;border-radius:8px}.leads-table .cell-name{font-size:12.5px;font-weight:700;color:#161b33}.leads-table .cell-sub{font-size:11px;color:#99a1b3;margin-top:3px}.leads-table .mini-select,.leads-table .stage-select{height:29px;max-width:150px;border:1px solid var(--border);border-radius:7px;background:#fff;padding:5px 8px;font-size:11.5px;color:var(--text-700)}.leads-table .stage-select{max-width:118px}.leads-table .feedback-select{max-width:132px;font-weight:700;border-radius:999px}.feedback-select.badge-red{background:var(--red-50);color:var(--red-700);border-color:#f7d7d7}.feedback-select.badge-gray{background:#f1f2f6;color:var(--text-600)}.feedback-select.badge-amber{background:var(--amber-50);color:var(--amber-700);border-color:#f5dfaf}.feedback-select.badge-blue{background:var(--blue-50);color:var(--indigo-600);border-color:#dbe2ff}.feedback-select.badge-green{background:var(--green-50);color:var(--green-700);border-color:#caefdf}.leads-table .btn-soft{background:var(--indigo-100);color:var(--indigo-600);box-shadow:none}.leads-table .empty-state h4{margin:0 0 4px;color:var(--text-600);font-size:13px}.leads-table .empty-state p{margin:0;font-size:12px;color:var(--text-400)}.pill-tabs{display:flex;gap:4px;background:var(--bg);border:1px solid var(--border);border-radius:9px;padding:3px}.pill-tab{padding:7px 13px;border-radius:7px;font-size:12px;font-weight:600;color:var(--text-600);background:transparent;border:none}.pill-tab.active{background:#fff;color:var(--indigo-600);box-shadow:0 1px 2px rgba(16,20,40,.05)}.admissions-tabs{width:max-content;margin-bottom:14px}.admissions-card{border-radius:14px;overflow:hidden}.admissions-table{min-width:980px;table-layout:fixed}.admissions-table th:nth-child(1){width:180px}.admissions-table th:nth-child(2){width:82px}.admissions-table th:nth-child(3){width:92px}.admissions-table th:nth-child(4){width:120px}.admissions-table th:nth-child(5){width:116px}.admissions-table th:nth-child(6){width:120px}.admissions-table th:nth-child(7){width:230px}.admissions-table th:nth-child(8){width:104px}.admissions-table thead th{height:38px;padding:10px 12px;background:#fafbfd;color:#99a1b3;font-size:10.5px;letter-spacing:.4px}.admissions-table tbody td{height:70px;padding:10px 12px;color:#333a56;vertical-align:middle}.admissions-table tbody tr:hover{background:#f8f9fd}.admissions-table .cell-name{font-size:12.5px;font-weight:700;color:#161b33}.admissions-table .cell-sub{font-size:11px;color:#99a1b3;margin-top:3px}.admission-batch-cell{display:grid;align-content:center;gap:5px;max-width:214px}.admissions-table .student-mini-select{width:142px;max-width:100%;height:32px}.admission-batch-hint{display:grid;gap:1px;max-width:214px;color:var(--text-400);margin-top:0}.admission-batch-hint b{color:var(--amber-700);font-size:10.5px;line-height:1.2;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}.admission-batch-hint span{font-size:10px;line-height:1.2;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}.admission-action-cell{text-align:right}.admission-action-cell .btn{height:32px;min-width:82px;justify-content:center}.mono{font-family:JetBrains Mono,monospace}.admissions-table .btn-primary{box-shadow:0 4px 10px rgba(79,107,255,.22)}
+      .badge{display:inline-flex;align-items:center;gap:5px;padding:3px 9px;border-radius:20px;font-size:11px;font-weight:700;white-space:nowrap}.badge-gray{background:#f1f2f6;color:var(--text-600)}.badge-amber{background:var(--amber-50);color:var(--amber-700)}.badge-red{background:var(--red-50);color:var(--red-700)}.badge-green{background:var(--green-50);color:var(--green-700)}.badge-blue{background:var(--blue-50);color:var(--indigo-600)}.badge-purple{background:var(--purple-50);color:var(--purple-700)}.badge-junk{background:#fee2e2;color:#991b1b;border:1px solid #fecaca}.btn-green{background:var(--green-50);color:var(--green-700)}.leads-filter-bar{gap:10px;margin-bottom:14px}.leads-filter-bar .fbtn{height:34px}.leads-filter-bar .lead-search-input{width:200px}.leads-filter-bar .filter-spacer{flex:1}.leads-card{border-radius:14px;overflow:hidden}.leads-table-wrap{overflow-x:auto}.leads-table{min-width:1220px}.leads-table thead th{height:38px;padding:10px 12px;background:#fafbfd;color:#99a1b3;font-size:10.5px;letter-spacing:.4px}.leads-table tbody td{height:58px;padding:10px 12px;color:#333a56}.leads-table tbody tr:hover{background:#f8f9fd}.lead-name-cell{display:flex;align-items:center;gap:9px}.avatar{width:30px;height:30px;border-radius:8px;display:flex;align-items:center;justify-content:center;color:#fff;font-weight:700;font-size:11.5px;flex:0 0 30px}.lead-avatar{background:#eef3ff;color:#4f6bff;border-radius:8px}.leads-table .cell-name{font-size:12.5px;font-weight:700;color:#161b33}.leads-table .cell-sub{font-size:11px;color:#99a1b3;margin-top:3px}.leads-table .mini-select,.leads-table .stage-select{height:29px;max-width:150px;border:1px solid var(--border);border-radius:7px;background:#fff;padding:5px 8px;font-size:11.5px;color:var(--text-700)}.leads-table .stage-select{max-width:118px}.leads-table .feedback-select{max-width:132px;font-weight:700;border-radius:999px}.feedback-select.badge-red{background:var(--red-50);color:var(--red-700);border-color:#f7d7d7}.feedback-select.badge-gray{background:#f1f2f6;color:var(--text-600)}.feedback-select.badge-amber{background:var(--amber-50);color:var(--amber-700);border-color:#f5dfaf}.feedback-select.badge-blue{background:var(--blue-50);color:var(--indigo-600);border-color:#dbe2ff}.feedback-select.badge-green{background:var(--green-50);color:var(--green-700);border-color:#caefdf}.feedback-select.badge-junk{background:#fee2e2;color:#991b1b;border-color:#fecaca}.leads-table .btn-soft{background:var(--indigo-100);color:var(--indigo-600);box-shadow:none}.leads-table .empty-state h4{margin:0 0 4px;color:var(--text-600);font-size:13px}.leads-table .empty-state p{margin:0;font-size:12px;color:var(--text-400)}.pill-tabs{display:flex;gap:4px;background:var(--bg);border:1px solid var(--border);border-radius:999px;padding:3px}.pill-tab{padding:7px 14px;border-radius:999px;font-size:12px;font-weight:600;color:var(--text-600);background:transparent;border:none}.pill-tab.active{background:#fff;color:var(--indigo-600);box-shadow:0 1px 3px rgba(16,20,40,.08)}.admissions-tabs{width:max-content;margin-bottom:16px}.admissions-card{border-radius:14px;overflow:hidden}.admissions-table{width:100%;min-width:980px;border-collapse:collapse}.admissions-table thead th{height:42px;padding:11px 16px;background:#fafbfd;color:#99a1b3;font-size:10.5px;letter-spacing:.4px;font-weight:700;white-space:nowrap;border-bottom:1px solid var(--border)}.admissions-table thead th:last-child{text-align:right}.admissions-table tbody td{height:70px;padding:12px 16px;color:#333a56;vertical-align:middle;border-bottom:1px solid var(--border-soft)}.admissions-table tbody tr:hover{background:#f8f9fd}.admissions-table th:nth-child(1),.admissions-table td:nth-child(1){width:24%;min-width:200px}.admissions-table th:nth-child(2),.admissions-table td:nth-child(2){width:10%;min-width:85px}.admissions-table th:nth-child(3),.admissions-table td:nth-child(3){width:12%;min-width:100px}.admissions-table th:nth-child(4),.admissions-table td:nth-child(4){width:13%;min-width:110px}.admissions-table th:nth-child(5),.admissions-table td:nth-child(5){width:11%;min-width:100px}.admissions-table th:nth-child(6),.admissions-table td:nth-child(6){width:12%;min-width:110px}.admissions-table th:nth-child(7),.admissions-table td:nth-child(7){width:18%;min-width:180px}.admissions-table th:nth-child(8),.admissions-table td:nth-child(8){width:8%;min-width:85px;text-align:right}.admissions-table .cell-name{font-size:12.5px;font-weight:700;color:#161b33}.admissions-table .cell-sub{font-size:11px;color:#99a1b3;margin-top:3px}.admission-batch-cell{display:grid;align-content:center;gap:5px;max-width:220px}.admissions-table .student-mini-select{width:100%;max-width:180px;height:32px}.admission-batch-hint{display:grid;gap:1px;max-width:220px;color:var(--text-400);margin-top:0}.admission-batch-hint b{color:var(--amber-700);font-size:10.5px;line-height:1.2;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}.admission-batch-hint span{font-size:10px;line-height:1.2;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}.admission-action-cell{text-align:right}.admission-action-cell .btn{height:32px;min-width:82px;justify-content:center}.mono{font-family:JetBrains Mono,monospace}.admissions-table .btn-primary{box-shadow:0 4px 10px rgba(79,107,255,.22)}.admissions-table .empty-state{padding:54px 20px;text-align:center}.admissions-table .empty-state h4{margin:0 0 6px;color:var(--text-600);font-size:14px;font-weight:700}.admissions-table .empty-state p{margin:0;font-size:12.5px;color:var(--text-400)}
       .drawer-overlay{position:fixed;inset:0;background:rgba(10,14,29,.45);display:none;z-index:200}.drawer-overlay.show{display:block}.drawer{position:fixed;top:0;right:0;height:100vh;width:520px;max-width:94vw;background:#fff;box-shadow:-14px 0 40px rgba(10,14,29,.25);transform:translateX(100%);transition:transform .22s ease;z-index:201;display:flex;flex-direction:column}.drawer.show{transform:translateX(0)}.drawer-head{padding:20px 22px;border-bottom:1px solid var(--border-soft);display:flex;align-items:flex-start;gap:14px}.drawer-avatar{width:44px;height:44px;font-size:14px;background:linear-gradient(135deg,var(--indigo-500),#8A6BFF)}.drawer-title{flex:1;min-width:0}.drawer-title h3{margin:0;font-size:15px;line-height:1.25;color:var(--text-900)}.drawer-title .cell-sub{display:flex;align-items:center;gap:6px;flex-wrap:wrap;margin-top:4px}.close-x{width:30px;height:30px;border-radius:8px;border:none;background:var(--bg);color:var(--text-600);font-size:15px}.drawer-body{flex:1;overflow-y:auto;padding:0 0 30px}.dtabs{display:flex;gap:2px;padding:0 22px;border-bottom:1px solid var(--border-soft)}.dtab{padding:12px 12px;font-size:12px;font-weight:700;color:var(--text-400);border:0;background:transparent;border-bottom:2px solid transparent}.dtab.active{color:var(--indigo-600);border-color:var(--indigo-500)}.dpane{display:none;padding:18px 22px}.dpane.active{display:block}.kv-row{display:flex;justify-content:space-between;gap:18px;padding:9px 0;border-bottom:1px solid var(--border-soft);font-size:12.5px}.kv-row .k{color:var(--text-400)}.kv-row .v{font-weight:600;color:var(--text-900);text-align:right;overflow-wrap:anywhere}.drawer-notes{margin-top:14px}.drawer-full-btn{width:100%;justify-content:center;margin-top:12px}.drawer-admit-btn{margin-top:8px}
       .batch-metrics{grid-template-columns:repeat(3,1fr);margin-bottom:18px}.batch-card-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:16px}.batch-select-card{border:1px solid var(--border);background:#fff;border-radius:14px;padding:18px;text-align:left;box-shadow:0 1px 2px rgba(16,20,40,.05);cursor:pointer;transition:transform .16s ease,box-shadow .16s ease,border-color .16s ease}.batch-select-card:hover{transform:translateY(-2px);border-color:#b9c5ff;box-shadow:0 14px 30px rgba(79,107,255,.12)}.batch-select-top{display:flex;align-items:center;justify-content:space-between;margin-bottom:18px}.batch-select-card h3{margin:0 0 6px;font-size:16px;color:#061633}.batch-select-stats{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-top:18px}.batch-select-stats span{border:1px solid var(--border-soft);border-radius:9px;padding:9px 8px;color:var(--text-400);font-size:11px}.batch-select-stats b{display:block;color:#061633;font-size:15px}.calendar-connect-card{display:flex;align-items:center;justify-content:space-between;gap:14px;padding:15px 18px;margin-bottom:16px}.calendar-connect-card h3{margin:0 0 4px;font-size:15px;color:#061633}.calendar-connect-card .sub{font-size:12px;color:var(--text-400)}.calendar-connect-actions{display:flex;align-items:center;gap:8px;flex-wrap:wrap;justify-content:flex-end}.teacher-batches-card{margin-bottom:16px}.teacher-batches-card .card-body{padding:16px 18px}.teacher-batch-grid{grid-template-columns:repeat(auto-fit,minmax(280px,340px));align-items:stretch}.teacher-batch-grid .batch-select-card{min-height:176px;display:flex;flex-direction:column}.teacher-batch-grid .batch-select-stats{margin-top:auto;padding-top:18px}.teacher-action-grid{align-items:stretch}.teacher-action-grid>.card{min-height:258px}.teacher-row-list .crow{display:grid;grid-template-columns:minmax(0,1fr) auto;align-items:center;gap:16px;min-height:72px}.teacher-row-list .who{min-width:0}.teacher-row-list .who>div{min-width:0}.teacher-row-list .nm,.teacher-row-list .mt{overflow:hidden;text-overflow:ellipsis;display:block}.teacher-row-list .nm{line-height:1.35}.teacher-row-list .mt{white-space:nowrap}.teacher-update-tag{min-width:78px;max-width:96px;justify-content:center;text-align:center;white-space:normal;line-height:1.2;padding:8px 10px}.selected-batch-head{margin-bottom:16px}.batch-grid{grid-template-columns:1.2fr .9fr;gap:16px}.batch-grid-single{display:grid;grid-template-columns:1fr;gap:16px}.batch-card{border-radius:14px;overflow:hidden}.batch-card .card-head{min-height:64px}.batch-table,.batch-roster-table{min-width:100%}.batch-table thead th,.batch-roster-table thead th{height:38px;padding:10px 12px;background:#fafbfd;color:#99a1b3;font-size:10.5px;letter-spacing:.4px}.batch-table tbody td,.batch-roster-table tbody td{height:56px;padding:11px 12px;color:#333a56}.batch-table tbody tr:hover,.batch-roster-table tbody tr:hover{background:#f8f9fd}.batch-table .selected-row{background:#f8f9fd}.batch-table .cell-name{font-weight:700;color:#161b33}.batch-roster-table .cell-name{font-size:12.5px;font-weight:700;color:#161b33}.batch-roster-table .cell-sub{font-size:11px;color:#99a1b3;margin-top:3px}
       .academic-shell{display:grid;gap:16px}.academic-selected-head{display:flex;align-items:center;justify-content:space-between;gap:14px;background:#fff;border:1px solid var(--border);border-radius:14px;padding:15px 18px;box-shadow:0 1px 2px rgba(16,20,40,.04)}.academic-selected-head h3{margin:0;font-size:17px;color:#061633}.academic-tabs{display:flex;gap:6px;width:max-content;max-width:100%;overflow-x:auto;background:#fff;border:1px solid var(--border);border-radius:10px;padding:4px;box-shadow:0 1px 2px rgba(16,20,40,.04)}.academic-tab{border:0;background:transparent;color:var(--text-600);border-radius:8px;padding:8px 13px;font-size:12.5px;font-weight:700;white-space:nowrap}.academic-tab.active{background:var(--indigo-500);color:#fff;box-shadow:0 4px 12px rgba(79,107,255,.25)}.academic-tab:disabled{opacity:.38;cursor:not-allowed}.batch-switch{display:flex;gap:8px;overflow-x:auto;padding-bottom:2px}.batch-pill{flex:0 0 178px;background:#fff;border:1px solid var(--border);border-radius:10px;padding:11px 14px;text-align:left;cursor:pointer;box-shadow:0 1px 2px rgba(16,20,40,.04)}.batch-pill.selected{border-color:var(--indigo-500);box-shadow:0 0 0 1px var(--indigo-500) inset}.batch-pill span{display:block}.batch-pill .course{font-size:10.5px;color:var(--indigo-600);font-weight:800;text-transform:uppercase;letter-spacing:.04em}.batch-pill .nm{font-weight:800;color:#061633;font-size:13.5px;margin:3px 0}.batch-pill .meta{font-size:11px;color:var(--text-400)}.academic-card{border-radius:14px;overflow:hidden}.academic-overview-grid{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:12px}.class-list{padding:0 18px 4px}.class-list-item{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:13px 0;border-bottom:1px solid var(--border-soft)}.class-list-item:last-child{border-bottom:0}.class-list-item .badge+.badge{margin-left:6px}.class-list-meta{margin-left:8px;color:var(--text-600);font-size:12px}.class-faculty{color:var(--text-400);font-size:12px;font-weight:700;white-space:nowrap}.academic-banner{display:flex;align-items:center;justify-content:space-between;gap:14px;background:var(--indigo-100);border:1px solid #cfd7ff;border-radius:12px;padding:13px 16px;color:var(--indigo-600);font-weight:700}.academic-banner-copy{display:grid;gap:8px}.class-color-legend{display:flex;align-items:center;gap:12px;flex-wrap:wrap}.class-color-legend span{display:inline-flex;align-items:center;gap:6px;color:var(--text-600);font-size:11.5px;font-weight:800}.class-color-legend i{width:12px;height:12px;border-radius:4px;border:1px solid var(--indigo-500);background:var(--indigo-100);box-shadow:0 1px 2px rgba(16,20,40,.05)}.class-color-legend i.practical{border-color:#f2bd62;background:var(--amber-50)}.academic-banner-actions,.academic-head-actions{display:flex;align-items:center;gap:8px;flex-wrap:wrap}.academic-banner .fbtn{height:34px;background:#fff}.academic-log-shell{display:grid;gap:12px}.academic-log-head{display:flex;align-items:center;justify-content:space-between}.academic-log-head h3{margin:0;font-size:15px;color:#061633}.academic-log-head .sub{font-size:12px;color:var(--text-400);margin-top:3px}.academic-roster-table{min-width:920px;width:100%;border-collapse:collapse}.academic-roster-table th{height:38px;padding:10px 8px;background:#fafbfd;color:#99a1b3;font-size:10.5px;letter-spacing:.4px;text-align:left}.academic-roster-table td{vertical-align:top;min-width:112px;padding:8px;border-bottom:1px solid var(--border-soft);color:#333a56}.academic-roster-table td:first-child{min-width:150px}.roster-slot{display:block;width:100%;border:1px solid var(--indigo-500);background:var(--indigo-100);color:var(--text-700);border-radius:9px;padding:7px 8px;text-align:left;margin-bottom:5px;font-size:11px}.roster-slot.practical{border-color:#f2bd62;background:var(--amber-50)}.roster-slot.selected{box-shadow:0 0 0 2px rgba(79,107,255,.22)}.roster-slot.preview{border-style:dashed;opacity:.55;filter:saturate(.6);pointer-events:none}.roster-slot strong,.roster-slot span,.roster-slot em{display:block}.roster-slot strong{font-size:11.5px;color:#061633}.roster-slot.preview strong{color:var(--text-600)}.roster-slot span{color:var(--text-600);margin-top:2px}.roster-slot em{font-style:normal;color:var(--text-400);font-size:10.5px;margin-top:3px}.roster-empty{color:var(--text-400);font-size:12px}.academic-topic-form{display:grid;grid-template-columns:1fr 1.2fr auto;gap:12px;align-items:end;padding:16px 18px;border-top:1px solid var(--border-soft);background:#fbfcff}.academic-topic-form .field{margin:0}.academic-tracker-list{padding:6px 18px 14px}.academic-tracker-row{display:grid;grid-template-columns:minmax(0,1fr) 172px 78px;align-items:center;gap:12px;padding:13px 0;border-bottom:1px solid var(--border-soft)}.academic-tracker-row:last-child{border-bottom:0}.tracker-select{height:36px;border:1px solid var(--border);border-radius:9px;background:#fff;padding:0 10px;color:#061633;font-size:12px;font-weight:800}.tracker-covered,.tracker-completed{background:var(--teal-50);border-color:#b8eee7;color:var(--teal-700)}.tracker-in-progress,.tracker-needs-repeat{background:var(--amber-50);border-color:#f5dfaf;color:var(--amber-700)}.tracker-not-started,.tracker-pending{background:#f8f9fd;color:var(--text-600)}.topic-edit-modal{width:600px;max-width:calc(100vw - 24px);overflow:hidden}.topic-edit-body{grid-template-columns:repeat(2,minmax(0,1fr));padding:20px 22px 10px}.topic-edit-body .field:last-child{grid-column:1 / 2}.topic-edit-actions{display:flex;justify-content:flex-end;gap:10px;padding:12px 22px 22px}.topic-edit-actions .btn{min-width:104px;justify-content:center}.practical-table{min-width:860px;width:100%;border-collapse:collapse}.practical-table th{height:38px;padding:10px 14px;background:#fafbfd;color:#99a1b3;font-size:10.5px;letter-spacing:.4px;text-align:left}.practical-table td{padding:12px 14px;border-bottom:1px solid var(--border-soft);vertical-align:middle}.compact-row-button{border:0;background:transparent;padding:0;text-align:left}.compact-row-button span span{display:block}.practical-note{width:100%;height:34px}.academic-modal{width:650px;max-width:calc(100vw - 24px);overflow:hidden;background:#f8f9fd}.academic-modal .modal-head{position:static;padding:18px 22px;background:#fff}.academic-modal .modal-body{padding:18px 22px 20px;background:#f8f9fd}.academic-modal .modal-foot{padding:16px 22px;background:#fff}.class-context{display:flex;align-items:center;gap:11px;background:#fff;border:1px solid var(--border);border-radius:12px;padding:12px 14px;margin-bottom:14px;box-shadow:0 1px 2px rgba(16,20,40,.04)}.class-context strong,.class-context em{display:block}.class-context strong{font-size:13.5px;color:#061633;font-weight:900}.class-context em{font-style:normal;color:var(--text-400);font-size:11.5px;margin-top:2px}.academic-steps{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px;margin:0 0 20px}.academic-steps button{position:relative;display:flex;align-items:center;gap:8px;border:1px solid var(--border);background:#fff;border-radius:10px;padding:9px 10px;text-align:left;color:var(--text-400);font-weight:800;cursor:default}.academic-steps button.done{cursor:pointer}.academic-steps button span{width:22px;height:22px;border-radius:999px;display:grid;place-items:center;background:#eef1f8;color:#6c7487;font-size:11px}.academic-steps button em{font-style:normal;font-size:12px}.academic-steps button.active{border-color:var(--indigo-500);color:var(--indigo-600);box-shadow:0 0 0 1px rgba(79,107,255,.15) inset}.academic-steps button.active span,.academic-steps button.done span{background:var(--indigo-500);color:#fff}.academic-steps button.done{color:#061633}.academic-modal .field{margin-bottom:18px}.academic-modal .field label{margin-bottom:9px}.academic-choice-section{display:grid;gap:20px}.mini-label{font-size:11px;font-weight:900;color:var(--text-400);text-transform:uppercase;letter-spacing:.04em;margin-bottom:9px}.academic-choice-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px}.academic-choice{position:relative;display:grid;grid-template-columns:auto 1fr;align-items:start;gap:12px;min-height:112px;border:1px solid var(--border);background:#fff;border-radius:14px;padding:15px 42px 36px 15px;text-align:left;color:#061633;box-shadow:0 2px 7px rgba(16,20,40,.04);cursor:pointer;transition:border-color .18s ease,box-shadow .18s ease,transform .18s ease,background .18s ease}.academic-choice:hover{border-color:#bdc8ff;box-shadow:0 12px 28px rgba(79,107,255,.13);transform:translateY(-2px)}.academic-choice.active{border-color:var(--indigo-500);background:linear-gradient(180deg,#fff,#f4f6ff);box-shadow:0 0 0 1px rgba(79,107,255,.22) inset,0 14px 32px rgba(79,107,255,.16)}.academic-choice.active:before{content:"";position:absolute;left:0;top:14px;bottom:14px;width:4px;border-radius:0 999px 999px 0;background:var(--indigo-500)}.choice-icon{width:40px;height:40px;border-radius:12px;display:grid;place-items:center;background:var(--indigo-100);color:var(--indigo-600)}.academic-choice.active .choice-icon{background:var(--indigo-500);color:#fff}.academic-choice strong,.academic-choice em{display:block}.academic-choice strong{font-size:14px;font-weight:900}.academic-choice em{font-style:normal;color:var(--text-400);font-size:11.5px;line-height:1.4;margin-top:5px}.academic-choice small{position:absolute;left:15px;bottom:12px;display:inline-flex;align-items:center;height:22px;border-radius:999px;background:#f2f4fb;color:var(--text-600);font-size:10.5px;font-weight:900;padding:0 9px}.academic-choice.active small{background:#e8fff5;color:var(--teal-700)}.choice-check{position:absolute;right:13px;top:13px;color:#c3c9d8}.academic-choice.active .choice-check{color:var(--teal-600)}.academic-seg{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px}.academic-chip,.academic-day{border:1px solid var(--border);background:#fff;color:var(--text-600);border-radius:999px;padding:10px 12px;font-size:12px;font-weight:800;cursor:pointer;min-height:36px}.academic-chip.on,.academic-day.on{border-color:var(--indigo-500);background:var(--indigo-100);color:var(--indigo-600)}.academic-day{width:42px;padding:8px 0}.academic-review{border:1px dashed var(--border);border-radius:10px;padding:14px;text-align:left;background:#fff}@media (max-width:1100px){.academic-overview-grid{grid-template-columns:repeat(2,minmax(0,1fr))}}@media (max-width:900px){.academic-topic-form{grid-template-columns:1fr 1fr}.academic-topic-form .btn{height:38px}}@media (max-width:640px){.academic-selected-head{align-items:flex-start;flex-direction:column}.academic-banner{align-items:flex-start;flex-direction:column}.academic-choice-grid,.academic-overview-grid{grid-template-columns:1fr}.academic-topic-form,.topic-edit-body{grid-template-columns:1fr}.topic-edit-body .field:last-child{grid-column:auto}.topic-edit-actions{padding:10px 16px 18px}.academic-tracker-row{grid-template-columns:1fr}.academic-modal{width:calc(100vw - 18px)}.academic-steps button{padding:8px 7px}.academic-steps button em{font-size:11px}}
@@ -5703,22 +8062,101 @@ function CrmStyles() {
       .emi-metrics{grid-template-columns:repeat(3,1fr)}.emi-filter-bar{gap:10px;margin-bottom:14px}.emi-filter-bar .filter-spacer{flex:1}.emi-card{border-radius:14px;overflow:hidden}.emi-table-wrap{overflow-x:auto}.emi-table{min-width:880px}.emi-table thead th{height:38px;padding:10px 12px;background:#fafbfd;color:#99a1b3;font-size:10.5px;letter-spacing:.4px}.emi-table tbody td{height:58px;padding:10px 12px;color:#333a56}.emi-table tbody tr:hover{background:#f8f9fd}.emi-table .cell-name{font-size:12.5px;font-weight:700;color:#161b33}.emi-table .cell-sub{font-size:11px;color:#99a1b3;margin-top:3px}.emi-table .btn-green{white-space:nowrap}
       .receipts-filter-bar{gap:10px;margin-bottom:14px}.receipts-filter-bar .fbtn{height:34px;width:240px}.receipts-filter-bar .filter-spacer{flex:1}.receipts-card{border-radius:14px;overflow:hidden}.receipts-table-wrap{overflow-x:auto}.receipts-table{min-width:900px}.receipts-table thead th{height:38px;padding:10px 12px;background:#fafbfd;color:#99a1b3;font-size:10.5px;letter-spacing:.4px}.receipts-table tbody td{height:58px;padding:10px 12px;color:#333a56}.receipts-table tbody tr:hover{background:#f8f9fd}.receipts-table .cell-name{font-size:12.5px;font-weight:700;color:#161b33}.receipts-table .cell-sub{font-size:11px;color:#99a1b3;margin-top:3px}.receipt-drawer{width:720px;max-width:96vw}.receipt-tabs{overflow-x:auto}.receipt-tabs .dtab{white-space:nowrap}.receipt-drawer-body{padding:18px 0 28px;background:#fff}.invoice-card{background:#fff!important;border:0!important;box-shadow:none!important;border-radius:0!important;padding:0 18px!important;overflow:auto!important}.invoice-actions{width:min(820px,100%);margin:14px auto 0;display:flex;justify-content:flex-end;gap:10px;flex-wrap:wrap}.tax-invoice{width:820px;max-width:none;margin:0 auto;background:#fff;color:#111;font-family:Arial,Helvetica,sans-serif;font-size:11px;line-height:1.32;border:1px solid #555}.tax-title{text-align:center;font-weight:700;padding:8px 0;border-bottom:1px solid #555}.invoice-top-grid{display:grid;grid-template-columns:1fr 1fr;border-bottom:1px solid #555}.invoice-seller{padding:8px;display:grid;gap:2px;border-right:1px solid #555;min-height:190px}.invoice-seller strong,.invoice-buyer strong{font-size:12px}.invoice-meta-grid{display:grid;grid-template-columns:1fr 1fr}.invoice-meta-grid>div{min-height:31px;padding:5px 6px;border-right:1px solid #777;border-bottom:1px solid #777;display:grid;align-content:start;gap:2px}.invoice-meta-grid>div:nth-child(2n){border-right:0}.invoice-meta-grid span,.invoice-buyer>span:first-child,.amount-words span,.tax-words span{font-size:10px}.invoice-meta-grid b{font-size:10.5px}.invoice-terms{grid-column:1/-1;min-height:58px!important;border-bottom:0!important}.invoice-buyer{padding:8px;display:grid;gap:2px;border-bottom:1px solid #555;min-height:95px}.invoice-items,.gst-summary{width:100%;border-collapse:collapse;table-layout:fixed}.invoice-items th,.invoice-items td,.gst-summary th,.gst-summary td{border-right:1px solid #777;border-bottom:1px solid #777;padding:5px 6px;vertical-align:top;line-height:1.28}.invoice-items th:last-child,.invoice-items td:last-child,.gst-summary th:last-child,.gst-summary td:last-child{border-right:0;text-align:right}.invoice-items th{font-weight:400;text-align:center;vertical-align:middle;height:24px}.invoice-items td:nth-child(1){width:42px;text-align:center}.invoice-items td:nth-child(2){width:38%}.invoice-items td:nth-child(3),.invoice-items td:nth-child(4),.invoice-items td:nth-child(5),.invoice-items td:nth-child(6){text-align:center}.payment-items td:nth-child(2){width:42%;text-align:left}.payment-items td:nth-child(3),.payment-items td:nth-child(4){text-align:center}.payment-items td:nth-child(5){text-align:right}.payment-summary th,.payment-summary td{text-align:right!important}.payment-summary th:first-child,.payment-summary td:first-child{text-align:left!important}.invoice-items tbody tr:not(.invoice-total-row){height:32px}.invoice-items small{display:block;font-size:10px;margin-top:2px;line-height:1.25}.tax-line{text-align:right;font-weight:700}.invoice-total-row td{font-weight:700;border-top:1px solid #555}.invoice-total-row td:first-child{text-align:right}.amount-words{position:relative;padding:6px 8px;border-bottom:1px solid #555;display:grid;gap:2px}.amount-words em{position:absolute;right:8px;top:6px;font-style:normal;font-size:10px}.gst-summary th{font-size:10px;font-weight:400;text-align:center;vertical-align:middle}.gst-summary td{text-align:right}.gst-summary td:first-child{text-align:left}.tax-words{padding:6px 8px;border-bottom:1px solid #555;display:flex;gap:8px}.invoice-bottom{display:grid;grid-template-columns:1.1fr .9fr;min-height:112px}.invoice-bottom>div{padding:8px;display:grid;align-content:start;gap:3px}.bank-details{border-left:1px solid #555}.bank-details>b{margin-top:10px;text-align:right}.bank-details em{text-align:right;font-style:normal;margin-top:20px}.paid-due{margin-top:8px;font-weight:700}.invoice-footer{text-align:center;font-size:10px;padding:5px;border-top:1px solid #555}
       .tax-invoice th,.tax-invoice td{white-space:normal;overflow-wrap:anywhere}.tax-invoice td:last-child,.tax-invoice .invoice-total-row td:last-child,.tax-invoice .gst-summary td:not(:first-child){white-space:nowrap}.invoice-col-sl{width:46px}.invoice-col-particulars{width:31%}.invoice-col-hsn{width:84px}.invoice-col-qty{width:76px}.invoice-col-rate{width:70px}.invoice-col-per{width:64px}.invoice-col-amount{width:126px}.gst-col-hsn{width:98px}.gst-col-taxable{width:116px}.gst-col-rate{width:94px}.gst-col-amount{width:112px}.gst-col-total{width:124px}
-      .cert-filter-bar{gap:10px;margin-bottom:14px}.cert-filter-bar .fbtn{height:34px;width:240px}.cert-filter-bar .filter-spacer{flex:1}.cert-card-table{border-radius:14px;overflow:hidden}.cert-table-wrap{overflow-x:auto}.cert-table{min-width:880px}.cert-table thead th{height:38px;padding:10px 12px;background:#fafbfd;color:#99a1b3;font-size:10.5px;letter-spacing:.4px}.cert-table tbody td{height:58px;padding:10px 12px;color:#333a56}.cert-table tbody tr:hover{background:#f8f9fd}.cert-table .cell-name{font-size:12.5px;font-weight:700;color:#161b33}.cert-table .cell-sub{font-size:11px;color:#99a1b3;margin-top:3px}.modal-overlay{position:fixed;inset:0;background:rgba(10,14,29,.45);display:none;align-items:center;justify-content:center;z-index:220;padding:18px}.modal-overlay.show{display:flex}.modal{background:#fff;border-radius:16px;width:600px;max-width:92vw;max-height:88vh;overflow-y:auto;box-shadow:0 18px 48px rgba(10,14,29,.28)}.cert-modal{width:min(1280px,96vw)}.modal-head{display:flex;align-items:center;justify-content:space-between;padding:18px 22px;border-bottom:1px solid var(--border-soft);position:sticky;top:0;background:#fff;z-index:2}.modal-head h3{margin:0;font-size:15px;font-weight:700}.modal-body{padding:20px 22px}.modal-foot{display:flex;justify-content:flex-end;gap:10px;padding:16px 22px;border-top:1px solid var(--border-soft)}.logbook-review-modal{width:520px;max-width:calc(100vw - 24px);overflow:hidden}.logbook-review-body{display:grid;grid-template-columns:38px minmax(0,1fr);gap:14px;align-items:start;padding:20px 22px 14px}.logbook-review-copy p{margin:0 0 12px;color:var(--text-700);font-size:13px;line-height:1.45}.review-entry-snapshot{display:grid;gap:3px;background:#f8f9fd;border:1px solid var(--border-soft);border-radius:11px;padding:10px 12px;margin-bottom:14px}.review-entry-snapshot b{font-size:13px;color:var(--text-900)}.review-entry-snapshot span{font-size:11.5px;color:var(--text-400);font-weight:700}.logbook-review-copy .field{margin:0}.logbook-review-copy .field span{display:block;margin-bottom:7px;color:var(--text-600);font-size:12px;font-weight:800}.logbook-review-copy textarea{width:100%;resize:vertical;border:1px solid var(--border);border-radius:10px;padding:10px 12px;font:inherit;color:var(--text-900);outline:none}.logbook-review-copy textarea:focus{border-color:var(--indigo-500);box-shadow:0 0 0 3px rgba(79,107,255,.12)}.document-preview-modal{width:min(1040px,96vw);height:min(820px,92vh);max-height:92vh;display:flex;flex-direction:column;overflow:hidden}.document-preview-head{position:relative;top:auto;flex:0 0 auto}.document-preview-actions{display:flex;align-items:center;gap:8px}.document-preview-body{flex:1;min-height:0;background:#eef2f8;display:grid;place-items:center;padding:12px;overflow:auto}.document-preview-frame{width:100%;height:100%;border:0;background:#fff;border-radius:10px}.document-preview-image{display:block;max-width:100%;max-height:100%;object-fit:contain;background:#fff;border-radius:10px;box-shadow:0 12px 34px rgba(15,23,42,.16)}.certificate-card{background:#fff;border:1px solid var(--border);border-radius:13px;padding:22px;display:grid;gap:16px;overflow:auto}.certificate-preview-shell{padding:10px}.imed-certificate-exact-frame{width:1220px;height:862.49px;max-width:none;margin:0 auto;overflow:hidden;background:#fff;box-shadow:0 18px 44px rgba(17,33,61,.08)}.imed-certificate-exact-frame>div{width:3508px;height:2480px;transform:scale(.3477765);transform-origin:top left}.cert-verify-field{margin-top:14px}
+      .cert-filter-bar{gap:10px;margin-bottom:14px}.cert-filter-bar .fbtn{height:34px;width:240px}.cert-filter-bar .filter-spacer{flex:1}.cert-card-table{border-radius:14px;overflow:hidden}.cert-table-wrap{overflow-x:auto}.cert-table{min-width:880px}.cert-table thead th{height:38px;padding:10px 12px;background:#fafbfd;color:#99a1b3;font-size:10.5px;letter-spacing:.4px}.cert-table tbody td{height:58px;padding:10px 12px;color:#333a56}.cert-table tbody tr:hover{background:#f8f9fd}.cert-table .cell-name{font-size:12.5px;font-weight:700;color:#161b33}.cert-table .cell-sub{font-size:11px;color:#99a1b3;margin-top:3px}.modal-overlay{position:fixed;inset:0;background:rgba(10,14,29,.45);display:none;align-items:center;justify-content:center;z-index:220;padding:18px}.modal-overlay.show{display:flex}
+      .inventory-prototype{display:grid;gap:14px;width:100%;max-width:100%;min-width:0;overflow-x:hidden}
+      .inventory-prototype>*{min-width:0!important;max-width:100%!important}
+      .inventory-metrics-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:12px;margin-bottom:0;width:100%;max-width:100%;min-width:0}
+      .inventory-metrics-grid .metric-card{min-width:0;overflow:hidden}
+      .inventory-metrics-grid .m-delta{overflow-wrap:break-word;word-break:break-word}
+      .inventory-filter-bar{display:flex;justify-content:space-between;align-items:center;gap:12px;margin-bottom:14px;flex-wrap:wrap;width:100%;max-width:100%;min-width:0}
+      .inventory-pill-tabs{display:flex;gap:6px;overflow-x:auto;-webkit-overflow-scrolling:touch;scrollbar-width:none;padding-bottom:2px;max-width:100%;width:100%;min-width:0}
+      .inventory-pill-tabs::-webkit-scrollbar{display:none}
+      .inventory-pill-tabs .pill-tab{white-space:nowrap;flex:0 0 auto}
+      .inventory-action-group{display:flex;align-items:center;gap:8px;flex-wrap:wrap}
+      .inventory-alert-banner{max-width:100%!important;min-width:0!important;box-sizing:border-box!important}
+      .inventory-alert-banner .academic-banner-copy{min-width:0!important;overflow-wrap:anywhere!important}
+      .inventory-table-wrap{width:100%!important;max-width:100%!important;overflow-x:auto!important;-webkit-overflow-scrolling:touch!important;box-sizing:border-box!important}
+      .inventory-overview-table{min-width:620px}
+      .inventory-tablets-table{min-width:780px}
+      .inventory-checklist-table{min-width:760px}
+      .inventory-logs-table{min-width:740px}
+      .inventory-search-head{display:flex;justify-content:space-between;align-items:center;gap:12px;flex-wrap:wrap;width:100%;max-width:100%}
+      .inventory-search-controls{display:flex;gap:8px;align-items:center;max-width:100%;min-width:0}
+      .inventory-modal{width:560px;max-width:calc(100vw - 20px);max-height:88vh;display:flex!important;flex-direction:column!important;overflow:hidden!important;padding:0;border-radius:16px}
+      .inventory-modal form{display:flex;flex-direction:column;flex:1 1 auto;min-height:0;overflow:hidden;margin:0}
+      .inventory-modal .modal-body{flex:1 1 auto;overflow-y:auto;min-height:0;scrollbar-width:thin}
+      .inventory-modal .modal-body::-webkit-scrollbar{width:5px}
+      .inventory-modal .modal-body::-webkit-scrollbar-thumb{background:rgba(100,116,139,.25);border-radius:4px}
+      .inventory-modal .modal-foot{flex:0 0 auto;border-top:1px solid var(--border-soft);background:#fff;display:flex;justify-content:flex-end;gap:10px}
+      .inventory-issue-row{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:7px 0;border-bottom:1px solid var(--border-soft);min-height:38px}
+      .inventory-issue-row:last-child{border-bottom:0}
+      .inventory-issue-label{display:flex;align-items:center;gap:10px;flex:1 1 auto;min-width:0;cursor:pointer;margin:0}
+      .inventory-issue-title{display:flex;align-items:center;gap:7px;width:195px;flex-shrink:0;font-weight:600;font-size:12.5px;color:#1E293B;white-space:nowrap}
+      .inventory-issue-stock{width:85px;flex-shrink:0}
+      .inventory-issue-controls{width:190px;flex-shrink:0;display:flex;justify-content:flex-end;align-items:center}
+      .inventory-unselected-text{font-size:11.5px;color:#94A3B8;font-style:italic}
+      .inventory-type-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:8px}
+      .inventory-size-tabs{display:flex;gap:8px}
+      @media(max-width:820px){
+        .inventory-filter-bar{flex-direction:column;align-items:stretch;gap:10px;width:100%;max-width:100%}
+        .inventory-pill-tabs{width:100%;max-width:100%}
+        .inventory-action-group{width:100%;display:flex}
+        .inventory-action-group .btn{flex:1;justify-content:center}
+        .inventory-search-head{flex-direction:column;align-items:stretch;gap:10px}
+        .inventory-search-controls{width:100%;display:flex}
+        .inventory-search-controls input{flex:1 1 0%!important;min-width:0!important;width:100%!important;max-width:100%!important}
+      }
+      @media(max-width:640px){
+        .inventory-metrics-grid{grid-template-columns:repeat(2,minmax(0,1fr))!important;gap:8px!important}
+        .inventory-metrics-grid .metric-card{padding:12px 14px}
+        .inventory-metrics-grid .m-value{font-size:20px}
+        .inventory-dashboard-grid{grid-template-columns:repeat(2,minmax(0,1fr))!important;gap:8px!important}
+        .inventory-alert-banner{flex-direction:column;align-items:stretch!important;gap:8px}
+        .inventory-alert-banner .btn{width:100%;justify-content:center}
+      }
+      @media(max-width:540px){
+        .inventory-action-group{flex-direction:column!important;align-items:stretch!important;gap:8px!important}
+        .inventory-action-group .btn{width:100%!important}
+        .inventory-modal{width:100%!important;max-width:calc(100vw - 16px)!important;max-height:92vh!important;border-radius:14px!important}
+        .inventory-modal .modal-head{padding:12px 14px!important}
+        .inventory-modal .modal-body{padding:12px 14px!important;gap:10px!important;overflow-x:hidden!important}
+        .inventory-modal .modal-foot{padding:10px 14px!important}
+        .inventory-modal .modal-foot .btn{flex:1;justify-content:center;height:38px;font-size:12.5px}
+        .inventory-issue-row{flex-direction:column!important;align-items:stretch!important;gap:8px!important;padding:8px 0!important;min-height:auto!important}
+        .inventory-issue-label{width:100%!important;justify-content:space-between!important;gap:8px!important}
+        .inventory-issue-title{width:auto!important;flex:1 1 auto!important;min-width:0!important;font-size:12.5px!important}
+        .inventory-issue-stock{width:auto!important;flex:0 0 auto!important;margin-left:auto!important}
+        .inventory-issue-controls{width:100%!important;max-width:100%!important;justify-content:stretch!important;align-items:stretch!important;padding-left:24px!important;box-sizing:border-box!important}
+        .inventory-issue-controls.unselected,.inventory-unselected-text{display:none!important}
+        .inventory-item-input{width:100%!important;height:34px!important;font-size:12px!important}
+        .inventory-type-grid{grid-template-columns:repeat(4,minmax(0,1fr))!important;gap:6px!important}
+        .inventory-type-grid button{padding:8px 2px!important;font-size:10.5px!important}
+        .inventory-size-tabs{display:flex;gap:6px;width:100%}
+        .inventory-size-tabs button{flex:1!important;min-width:0!important;padding:0 4px!important;height:34px!important}
+      }
+      @media(max-width:420px){
+        .inventory-metrics-grid{grid-template-columns:1fr!important}
+        .inventory-dashboard-grid{grid-template-columns:1fr!important}
+        .inventory-search-controls{flex-direction:column!important;align-items:stretch!important}
+        .inventory-search-controls input{width:100%!important}
+        .inventory-search-controls .btn{width:100%!important;justify-content:center}
+      }
+      .modal{background:#fff;border-radius:16px;width:600px;max-width:92vw;max-height:88vh;overflow-y:auto;box-shadow:0 18px 48px rgba(10,14,29,.28)}.cert-modal{width:min(1280px,96vw)}.modal-head{display:flex;align-items:center;justify-content:space-between;padding:18px 22px;border-bottom:1px solid var(--border-soft);position:sticky;top:0;background:#fff;z-index:2}.modal-head h3{margin:0;font-size:15px;font-weight:700}.modal-body{padding:20px 22px}.modal-foot{display:flex;justify-content:flex-end;gap:10px;padding:16px 22px;border-top:1px solid var(--border-soft)}.logbook-review-modal{width:520px;max-width:calc(100vw - 24px);overflow:hidden}.logbook-review-body{display:grid;grid-template-columns:38px minmax(0,1fr);gap:14px;align-items:start;padding:20px 22px 14px}.logbook-review-copy p{margin:0 0 12px;color:var(--text-700);font-size:13px;line-height:1.45}.review-entry-snapshot{display:grid;gap:3px;background:#f8f9fd;border:1px solid var(--border-soft);border-radius:11px;padding:10px 12px;margin-bottom:14px}.review-entry-snapshot b{font-size:13px;color:var(--text-900)}.review-entry-snapshot span{font-size:11.5px;color:var(--text-400);font-weight:700}.logbook-review-copy .field{margin:0}.logbook-review-copy .field span{display:block;margin-bottom:7px;color:var(--text-600);font-size:12px;font-weight:800}.logbook-review-copy textarea{width:100%;resize:vertical;border:1px solid var(--border);border-radius:10px;padding:10px 12px;font:inherit;color:var(--text-900);outline:none}.logbook-review-copy textarea:focus{border-color:var(--indigo-500);box-shadow:0 0 0 3px rgba(79,107,255,.12)}.document-preview-modal{width:min(1040px,96vw);height:min(820px,92vh);max-height:92vh;display:flex;flex-direction:column;overflow:hidden}.document-preview-head{position:relative;top:auto;flex:0 0 auto}.document-preview-actions{display:flex;align-items:center;gap:8px}.document-preview-body{flex:1;min-height:0;background:#eef2f8;display:grid;place-items:center;padding:12px;overflow:auto}.document-preview-frame{width:100%;height:100%;border:0;background:#fff;border-radius:10px}.document-preview-image{display:block;max-width:100%;max-height:100%;object-fit:contain;background:#fff;border-radius:10px;box-shadow:0 12px 34px rgba(15,23,42,.16)}.certificate-card{background:#fff;border:1px solid var(--border);border-radius:13px;padding:22px;display:grid;gap:16px;overflow:auto}.certificate-preview-shell{padding:10px}.imed-certificate-exact-frame{width:1220px;height:862.49px;max-width:none;margin:0 auto;overflow:hidden;background:#fff;box-shadow:0 18px 44px rgba(17,33,61,.08)}.imed-certificate-exact-frame>div{width:3508px;height:2480px;transform:scale(.3477765);transform-origin:top left}.cert-verify-field{margin-top:14px}
       .document-actions{display:flex;align-items:center;justify-content:flex-end;gap:8px;min-width:0}.document-actions .badge{max-width:220px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}.document-actions .btn{height:30px;padding:0 10px;gap:6px;white-space:nowrap}
       @media print{@page certificate-page{size:A4 landscape;margin:0}@page receipt-page{size:A4 portrait;margin:8mm}html,body{background:#fff!important;overflow:visible!important}body.imed-print-certificate{width:297mm;height:210mm;overflow:hidden!important}body.imed-print-certificate *{visibility:hidden!important}body.imed-print-certificate .certificate-export-target,body.imed-print-certificate .certificate-export-target *{visibility:visible!important}body.imed-print-certificate .certificate-export-target{page:certificate-page;position:fixed!important;inset:0!important;width:297mm!important;height:210mm!important;margin:0!important;background:#fff!important;overflow:hidden!important}body.imed-print-certificate .certificate-export-target .certificate-card{border:0!important;border-radius:0!important;padding:0!important;box-shadow:none!important;width:297mm!important;height:210mm!important;overflow:hidden!important}body.imed-print-certificate .certificate-export-target .imed-certificate-exact-frame{width:297mm!important;height:210mm!important;margin:0!important;box-shadow:none!important;border-radius:0!important;overflow:hidden!important}body.imed-print-certificate .certificate-export-target .imed-certificate-exact-frame>div{width:3508px!important;height:2480px!important;transform:scale(.32)!important;transform-origin:top left!important}body.imed-print-receipt *{visibility:hidden!important}body.imed-print-receipt .receipt-print-target,body.imed-print-receipt .receipt-print-target *{visibility:visible!important}body.imed-print-receipt .receipt-print-target{page:receipt-page;position:absolute!important;left:0!important;top:0!important;width:100%!important;max-width:none!important;margin:0!important;padding:0!important;background:#fff!important;overflow:visible!important}body.imed-print-receipt .receipt-print-target .tax-invoice{width:100%!important;min-width:0!important;margin:0!important;box-shadow:none!important}}
        .crow{display:flex;align-items:center;justify-content:space-between;gap:14px;padding:12px 0;border-bottom:1px solid var(--border-soft)}.crow:last-child{border-bottom:0}.who{display:flex;align-items:center;gap:11px}.mini{width:32px;height:32px;border-radius:999px;background:var(--blue-50);color:var(--indigo-600);display:inline-flex;align-items:center;justify-content:center;font-size:12px;font-weight:800}.row-list{display:grid}.row-button{width:100%;border:0;background:transparent;text-align:left}.collection-box{display:grid;gap:8px}.collection-box strong{font-size:23px;color:#061633}.collection-box span{color:var(--text-400)}.nps-metrics{grid-template-columns:repeat(4,minmax(0,1fr));gap:14px;margin-bottom:18px}.nps-metrics .metric-card{min-height:118px;padding:18px 20px;border-radius:14px;background:linear-gradient(180deg,#fff 0%,#fbfcff 100%)}.nps-metrics .m-label{font-size:12px;font-weight:800;color:#405070}.nps-metrics .m-value{font-size:28px;line-height:34px;font-weight:900;letter-spacing:0;color:#061633;margin-top:8px}.nps-metrics .m-delta{font-size:11.5px;font-weight:800;margin-top:8px}.nps-filter-bar{display:grid;grid-template-columns:minmax(220px,1.35fr) repeat(4,minmax(130px,.72fr)) auto;gap:10px;align-items:center;margin-bottom:18px}.nps-filter-bar .search-box{width:100%;height:36px}.nps-filter-bar .fbtn,.nps-filter-bar .btn{height:36px;border-radius:9px;font-size:12px}.nps-insight-grid{margin-bottom:18px;align-items:stretch}.nps-insight-grid>.card{min-height:264px;border-radius:14px;overflow:hidden}.nps-insight-grid .card-head h3,.nps-insight-grid .card-head p,.card-head h3,.card-head p{letter-spacing:0}.nps-insight-grid .card-head h3{font-size:14px;font-weight:900;color:#061633}.nps-insight-grid .card-head p{font-size:12px;color:var(--text-400);margin-top:3px}.nps-trend{height:190px;display:flex;align-items:end;gap:16px;overflow-x:auto;padding:24px 18px 18px}.nps-trend-day{min-width:58px;height:142px;display:grid;grid-template-rows:1fr auto auto;gap:6px;align-items:end;text-align:center}.nps-trend-bar{width:48px;height:110px;margin:0 auto;border-radius:999px;background:#edf2fb;display:flex;align-items:end;overflow:hidden;box-shadow:inset 0 0 0 1px rgba(215,223,239,.7)}.nps-trend-bar i{display:block;width:100%;min-height:8px;border-radius:999px;background:linear-gradient(180deg,#4f6bff 0%,#17a673 100%)}.nps-trend-day b{font-size:13px;font-weight:900;color:#061633}.nps-trend-day span{font-size:11px;font-weight:700;color:var(--text-400);white-space:nowrap}.nps-alert-list{display:grid;gap:12px;align-content:start;padding:18px}.nps-alert{display:flex;align-items:flex-start;gap:13px;border:1px solid var(--border-soft);border-radius:14px;background:#fff;padding:14px 16px;box-shadow:0 1px 2px rgba(16,20,40,.04)}.nps-alert>span{width:10px;height:10px;border-radius:999px;margin-top:5px;flex:0 0 auto}.nps-alert.warn>span{background:#f5a524}.nps-alert.bad>span{background:#e5484d}.nps-alert.good>span{background:#17a673}.nps-alert b{font-size:13px;font-weight:900;color:#061633}.nps-alert p{margin:4px 0 0;color:var(--text-400);font-size:12px;line-height:17px}.nps-heatmap{display:grid;gap:14px;padding:18px}.nps-heat-row{display:grid;grid-template-columns:180px minmax(0,1fr) 44px;gap:14px;align-items:center}.nps-heat-row span{font-size:12px;font-weight:900;color:#405070}.nps-heat-row div{height:10px;border-radius:999px;background:#e9edf5;overflow:hidden}.nps-heat-row i{display:block;height:100%;border-radius:inherit;background:linear-gradient(90deg,var(--indigo-500),var(--teal-500))}.nps-heat-row b{text-align:right;color:#061633;font-weight:900}.nps-promoter{background:#ddfbef;color:#008060}.nps-passive{background:#fff4da;color:#b77900}.nps-detractor{background:#ffe8e8;color:#c62828}.nps-note-history{display:grid;gap:8px;border:1px solid var(--border-soft);border-radius:12px;background:#fbfcff;padding:12px}.nps-note-history>b{font-size:12px;color:#061633}.nps-note-history div{border-top:1px solid var(--border-soft);padding-top:8px}.nps-note-history div:first-of-type{border-top:0;padding-top:0}.nps-note-history p{margin:0;color:#2f3954;font-size:12.5px;line-height:18px}.nps-note-history span{display:block;margin-top:4px;color:var(--text-400);font-size:11px}.nps-responses-card{margin-bottom:18px}.nps-summary-section{margin-top:0}.nps-summary-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:14px;padding:16px}.nps-summary-card{border:1px solid var(--border-soft);border-radius:14px;background:linear-gradient(135deg,#fff 0%,#f8fbff 100%);padding:18px;display:grid;grid-template-columns:minmax(0,1fr) auto;gap:6px 14px;align-items:center}.nps-summary-card b{font-size:13px;font-weight:900;color:#061633;text-transform:uppercase}.nps-summary-card strong{font-size:30px;line-height:34px;color:var(--indigo-600);font-weight:900}.nps-summary-card span{grid-column:1/-1;font-size:12px;font-weight:700;color:var(--text-400)}@media(max-width:1100px){.nps-metrics{grid-template-columns:repeat(2,minmax(0,1fr))}.nps-filter-bar{grid-template-columns:repeat(2,minmax(0,1fr))}.nps-filter-bar .search-box{grid-column:1/-1}.nps-filter-bar .btn{justify-content:center}}@media(max-width:680px){.nps-metrics{grid-template-columns:1fr}.nps-filter-bar{grid-template-columns:1fr}.nps-insight-grid{grid-template-columns:1fr}.nps-heat-row{grid-template-columns:1fr 54px}.nps-heat-row div{grid-column:1/-1;grid-row:2}.nps-trend{padding:18px 14px}.nps-summary-card{grid-template-columns:1fr}.nps-summary-card strong{font-size:26px}.nps-responses-card{margin-bottom:14px}}.cash-deposit-card{margin-bottom:16px}.cash-deposit-table{min-width:980px}.cash-deposit-form{display:grid;grid-template-columns:90px 132px 150px 150px 130px 120px 150px auto;gap:8px;align-items:center}.cash-deposit-form input{height:34px;border:1px solid var(--border);border-radius:8px;padding:7px 9px;font-size:11.5px;font-family:inherit;color:var(--text-900);background:#fff;min-width:0}.cash-deposit-form input[type=file]{padding:6px;background:#fff}.cash-deposit-history{display:grid;gap:5px}.cash-deposit-history div{display:flex;flex-wrap:wrap;gap:6px 10px;align-items:center}.cash-deposit-history b{font-size:12px}.cash-deposit-history span{font-size:11px;color:var(--text-400)}.field-grid{display:grid;grid-template-columns:1fr 1fr;gap:14px}.field{margin-bottom:0}.field.full{grid-column:1/-1}.field label{display:block;font-size:11.5px;font-weight:700;color:var(--text-600);margin-bottom:6px}.required-star{color:var(--red-500);font-weight:800;margin-left:3px}.field input,.field select,.field textarea{width:100%;border:1px solid var(--border);border-radius:8px;padding:9px 11px;font-size:12.5px;font-family:inherit;color:var(--text-900);background:#fff}.field input[type=file]{padding:7px 9px}.field textarea{min-height:70px}.field-help{display:block;margin-top:5px;font-size:10.5px;color:var(--text-400)}.day-picker{display:flex;flex-wrap:wrap;gap:8px}.day-picker label{display:flex!important;align-items:center;gap:6px;border:1px solid var(--border);border-radius:999px;padding:7px 10px;background:#fff;margin:0!important}.class-card{margin-bottom:16px}.class-att-grid .att-row{min-width:760px}.pager{display:flex;align-items:center;justify-content:space-between;padding:12px 18px;border-top:1px solid var(--border-soft);font-size:12px;color:var(--text-400)}.pager-btns{display:flex;gap:6px}.pager-btns button{min-width:40px;height:28px;border-radius:7px;border:1px solid var(--border);background:#fff;font-size:12px;color:var(--text-600)}.pager-btns button.active{background:var(--indigo-500);color:#fff;border-color:var(--indigo-500)}.empty-state{text-align:center;padding:34px 20px;color:var(--text-400)}.settings-shell{display:grid;grid-template-columns:1fr 1fr;gap:16px}.settings-prototype-shell{grid-template-columns:220px minmax(0,1fr);align-items:start}.settings-nav{background:#fff;border:1px solid var(--border);border-radius:14px;padding:10px;display:grid;gap:4px;box-shadow:0 1px 2px rgba(16,20,40,.05)}.settings-nav button{border:0;background:transparent;color:var(--text-600);border-radius:9px;padding:10px 12px;text-align:left;font-size:12.5px;font-weight:700}.settings-nav button.active{background:var(--indigo-500);color:#fff;box-shadow:0 4px 12px rgba(79,107,255,.28)}.settings-pane-wrap{min-width:0}.settings-card{border-radius:14px;overflow:hidden}.settings-card .card-head button{margin-left:auto}.settings-table-wrap{overflow-x:auto}.settings-table{min-width:760px}.settings-table thead th{height:38px;padding:10px 12px;background:#fafbfd;color:#99a1b3;font-size:10.5px;letter-spacing:.4px}.settings-table tbody td{height:58px;padding:10px 12px;color:#333a56}.settings-table tbody tr:hover{background:#f8f9fd}.settings-table .cell-name{font-size:12.5px;font-weight:700;color:#161b33}.settings-table .cell-sub{font-size:11px;color:#99a1b3;margin-top:3px}.settings-search-body{padding-bottom:0}.settings-search-body .fbtn{width:260px;height:34px}.settings-add-form{border-bottom:1px solid var(--border-soft);background:#fafbfd}.settings-security-card{max-width:420px}.settings-security-card .card-body{display:grid;gap:14px}.staff-role-note>div{border:1px solid var(--border-soft);border-radius:8px;background:#fafbfd;color:var(--text-600);font-size:12px;line-height:1.4;padding:10px 11px}.pill-list{display:flex;flex-wrap:wrap;gap:10px;padding:0 18px 18px}.pill-list span{padding:8px 12px;border-radius:999px;background:var(--blue-50);color:var(--indigo-600);font-weight:700}.profile-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:16px}.profile-grid b{display:block;color:var(--text-400);font-size:11px;text-transform:uppercase;margin-bottom:5px}.profile-grid p{margin:0;font-weight:700}.payment-form{grid-column:1/-1;display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:12px;align-items:start}.payment-form-actions{grid-column:1/-1;display:flex;justify-content:flex-end;padding-top:2px}.payment-form-actions .btn{min-width:150px}.profile-own-card{max-width:520px;border-radius:14px;overflow:hidden}.profile-own-head{gap:14px}.profile-own-avatar{width:46px;height:46px;font-size:15px;background:linear-gradient(135deg,var(--indigo-500),#8A6BFF);color:#fff}.profile-security-btn{margin-top:16px}.profile-shell{max-width:760px;border-radius:14px;overflow:hidden}.profile-head{padding:20px 22px;border-bottom:1px solid var(--border-soft);display:flex;align-items:flex-start;gap:14px}.profile-title{flex:1;min-width:0}.profile-title h3{margin:0;font-size:15px;line-height:1.25}.profile-title .cell-sub{display:flex;align-items:center;gap:6px;flex-wrap:wrap;margin-top:4px}.profile-tabs{padding:0 22px;overflow-x:auto}.profile-drawer-body{padding-bottom:18px}.profile-metrics{grid-template-columns:1fr 1fr;margin-bottom:10px}.profile-metrics .metric-card{padding:14px}.profile-metrics .m-value{font-size:21px}.profile-metrics .m-delta:empty{display:none}.profile-progress{width:100px}.profile-payment-form{margin-top:12px;grid-template-columns:repeat(2,minmax(0,1fr))}.profile-payment-form .btn{height:38px;justify-content:center}.profile-edit-form{padding:18px 22px}.profile-edit-actions{grid-column:1/-1;display:flex;justify-content:flex-end;gap:10px;border-top:1px solid var(--border-soft);padding-top:14px}.feedback-form{padding-bottom:16px;border-bottom:1px solid var(--border-soft)}.feedback-timeline{display:grid;gap:10px;margin-top:16px}.feedback-item{border:1px solid var(--border-soft);border-radius:10px;padding:12px;background:#fff}.feedback-item>div:first-child{display:flex;align-items:center;justify-content:space-between;gap:10px}.feedback-item b{font-size:12.5px}.feedback-item p{margin:8px 0;color:var(--text-700);line-height:1.45}.profile-shell .table-wrap{border:1px solid var(--border-soft);border-radius:10px;overflow:auto}.profile-shell table thead th{background:#fafbfd}.profile-shell .certificate-card{border-radius:10px}
       .internship-status-card{display:flex;align-items:center;justify-content:space-between;gap:14px;margin-bottom:14px;border:1px solid var(--border-soft);border-radius:12px;background:linear-gradient(135deg,#fff 0%,#fff9ef 100%);padding:14px}.internship-status-card.assigned{background:linear-gradient(135deg,#fff 0%,#effdf7 100%)}.internship-status-card h4{margin:8px 0 4px;font-size:14px;color:var(--text-900)}.internship-status-card p{margin:0;color:var(--text-400);font-size:11.5px;line-height:1.45}.internship-form{margin-top:0}.internship-form .profile-edit-actions{padding-top:14px}.internship-panel{display:grid;gap:16px}.internship-metrics{grid-template-columns:repeat(4,1fr)}.internship-monitor-card{border-radius:14px;overflow:hidden}.internship-monitor-body{padding:14px 18px 18px}.internship-filter-bar{margin-bottom:14px}.internship-filter-bar .fbtn{height:34px}.internship-search-field{width:280px;display:flex;align-items:center;gap:8px;padding:0 11px}.internship-search-field svg{flex:0 0 14px}.internship-filter-bar .internship-search-field input{height:auto;width:100%;min-width:0;border:0;background:transparent;outline:0;padding:0;font-size:12.5px;color:var(--text-900);font-family:inherit}.internship-date-input{width:156px}.internship-monitor-table{min-width:1120px;table-layout:fixed}.internship-monitor-table thead th{height:38px;padding:10px 12px;background:#fafbfd;color:#99a1b3;font-size:10.5px;letter-spacing:.4px}.internship-monitor-table tbody td{height:62px;padding:10px 12px;color:#333a56;vertical-align:middle;overflow:hidden}.internship-monitor-table th:nth-child(1){width:250px}.internship-monitor-table th:nth-child(2){width:160px}.internship-monitor-table th:nth-child(3){width:104px}.internship-monitor-table th:nth-child(4),.internship-monitor-table th:nth-child(5){width:160px}.internship-monitor-table th:nth-child(6){width:72px}.internship-monitor-table th:nth-child(7){width:86px}.internship-monitor-table th:nth-child(8){width:228px}.internship-monitor-table tbody tr:hover{background:#f8f9fd}.internship-monitor-table .cell-name{font-size:12.5px;font-weight:700;color:#161b33}.internship-monitor-table .cell-sub{font-size:11px;color:#99a1b3;margin-top:3px}.internship-student-cell{min-width:0}.internship-student-cell>div{min-width:0}.internship-student-cell .cell-name,.internship-student-cell .cell-sub,.internship-hospital-cell,.internship-hospital-cell .cell-sub{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}.internship-monitor-table td.mono{font-size:11px;white-space:nowrap}.internship-gps-status{overflow:visible!important}.internship-gps-status .badge{max-width:100%;overflow:hidden;text-overflow:ellipsis}.internship-gps-status .cell-sub{white-space:normal;line-height:1.35}
       .internship-metrics{grid-template-columns:repeat(auto-fit,minmax(170px,1fr))}.internship-tabs{width:max-content;max-width:100%;margin:0;overflow-x:auto}.internship-tabs .pill-tab{white-space:nowrap;display:inline-flex;align-items:center;gap:7px}.tab-badge{min-width:18px;height:18px;border-radius:999px;background:var(--amber-500);color:#fff;display:inline-grid;place-items:center;padding:0 6px;font-size:10px;font-style:normal;font-weight:800}.internship-logbook-card{border-radius:14px;overflow:hidden}.internship-logbook-card .segmented.tiny{margin-left:auto}.internship-logbook-card .segmented.tiny button{height:30px;padding:0 10px;font-size:11.5px}.internship-logbook-list{display:grid;gap:10px;background:#fbfcff}.internship-logbook-item{display:grid;grid-template-columns:230px minmax(0,1fr) 142px;gap:14px;align-items:start;background:#fff;border:1px solid var(--border-soft);border-radius:12px;padding:12px}.internship-logbook-content{min-width:0}.internship-logbook-top{display:flex;align-items:center;justify-content:space-between;gap:12px;margin-bottom:10px}.internship-logbook-top b{font-size:13px;color:var(--text-900);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}.internship-logbook-top span{font-size:11px;color:var(--text-400);font-weight:700;white-space:nowrap}.internship-logbook-notes{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px}.internship-logbook-notes>div{border:1px solid var(--border-soft);border-radius:10px;background:#fafbfd;padding:9px 10px}.internship-logbook-notes>div:nth-child(3){grid-column:1/-1}.internship-logbook-notes span{display:block;color:var(--indigo-600);font-size:10.5px;font-weight:800;text-transform:uppercase;letter-spacing:.35px}.internship-logbook-notes p{margin:5px 0 0;color:var(--text-700);font-size:12px;line-height:1.45;white-space:normal}.internship-logbook-actions{display:grid;justify-items:end;align-content:start;gap:10px}.internship-logbook-actions .btn{white-space:nowrap}.internship-logbook-list .empty-state{background:#fff;border:1px dashed var(--border);border-radius:12px}@media(max-width:1100px){.internship-logbook-item{grid-template-columns:1fr}.internship-logbook-actions{justify-items:start;display:flex;align-items:center;justify-content:space-between}.internship-logbook-card .segmented.tiny{margin-left:0}}@media(max-width:900px){.study-note-form{grid-template-columns:1fr 1fr}.study-note-form .field.full{grid-column:1/-1}.study-note-form .btn{justify-content:center}}@media(max-width:700px){.internship-tabs{width:100%}.internship-tabs .pill-tab{flex:1;justify-content:center}.internship-logbook-notes{grid-template-columns:1fr}.internship-logbook-actions{align-items:flex-start;flex-direction:column}.internship-logbook-top{align-items:flex-start;flex-direction:column;gap:4px}.study-note-form{grid-template-columns:1fr}.study-note-row{grid-template-columns:38px minmax(0,1fr);align-items:start}.study-note-row .action-icons{grid-column:1/-1;justify-content:flex-end}.study-note-icon{width:38px;height:38px}}
       .chart-body{display:flex;align-items:center;gap:22px;flex-wrap:wrap}.donut-wrap{position:relative;flex:0 0 auto;display:flex;align-items:center;justify-content:center}.donut-center{position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center;pointer-events:none}.donut-center strong{font-size:19px;font-weight:800;color:#061633;font-family:JetBrains Mono,monospace;line-height:1.1}.donut-center span{font-size:10px;color:var(--text-400);font-weight:600;text-transform:uppercase;letter-spacing:.3px;margin-top:2px}.donut-legend{flex:1;min-width:160px;display:flex;flex-direction:column;gap:9px}.donut-legend-row{display:grid;grid-template-columns:9px 1fr auto auto;align-items:center;gap:9px;font-size:12px}.donut-legend-row .dot{width:9px;height:9px;border-radius:3px}.donut-legend-row .lbl{color:var(--text-700);font-weight:600;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}.donut-legend-row .val{color:var(--text-400);font-family:JetBrains Mono,monospace;font-size:11px}.donut-legend-row .pct{color:var(--text-900);font-weight:700;min-width:34px;text-align:right}
-      .main,.content,.card,.metric-card,.table-wrap,.settings-pane-wrap,.profile-title,.drawer-title{min-width:0}.table-wrap{max-width:100%;overflow-x:auto}.filter-bar{display:flex;align-items:center;flex-wrap:wrap;gap:10px}.filter-bar .fbtn,.filter-bar select,.filter-bar input{max-width:100%}.drawer{max-width:96vw}.drawer-body{overflow-x:hidden}.att-grid{overflow-x:auto;padding-bottom:2px}.att-row{min-width:760px}.modal-body,.card-body{min-width:0}.invoice-card,.certificate-card{max-width:100%}.date-filter,.dtabs,.settings-nav,.pager-btns,.nav-scroll,.table-wrap,.att-grid,.invoice-card,.certificate-card,.certificate-preview-shell{scrollbar-width:none;-ms-overflow-style:none}.date-filter::-webkit-scrollbar,.dtabs::-webkit-scrollbar,.settings-nav::-webkit-scrollbar,.pager-btns::-webkit-scrollbar,.nav-scroll::-webkit-scrollbar,.table-wrap::-webkit-scrollbar,.att-grid::-webkit-scrollbar,.invoice-card::-webkit-scrollbar,.certificate-card::-webkit-scrollbar,.certificate-preview-shell::-webkit-scrollbar{display:none}
+      .main,.content,.card,.metric-card,.table-wrap,.settings-pane-wrap,.profile-title,.drawer-title{min-width:0}.card{max-width:100%!important;min-width:0!important;overflow:hidden!important;box-sizing:border-box!important}.table-wrap{max-width:100%!important;width:100%!important;overflow-x:auto!important;box-sizing:border-box!important}.filter-bar{display:flex;align-items:center;flex-wrap:wrap;gap:10px}.filter-bar .fbtn,.filter-bar select,.filter-bar input{max-width:100%}.drawer{max-width:96vw}.drawer-body{overflow-x:hidden}.att-grid{overflow-x:auto;padding-bottom:2px}.att-row{min-width:760px}.modal-body,.card-body{min-width:0}.invoice-card,.certificate-card{max-width:100%}.date-filter,.dtabs,.settings-nav,.pager-btns,.nav-scroll,.table-wrap,.att-grid,.invoice-card,.certificate-card,.certificate-preview-shell{scrollbar-width:none;-ms-overflow-style:none}.date-filter::-webkit-scrollbar,.dtabs::-webkit-scrollbar,.settings-nav::-webkit-scrollbar,.pager-btns::-webkit-scrollbar,.nav-scroll::-webkit-scrollbar,.table-wrap::-webkit-scrollbar,.att-grid::-webkit-scrollbar,.invoice-card::-webkit-scrollbar,.certificate-card::-webkit-scrollbar,.certificate-preview-shell::-webkit-scrollbar{display:none}
       .roster-lanes{display:grid;grid-template-rows:minmax(92px,auto) minmax(92px,auto);gap:5px}.roster-lane{min-height:92px}.roster-lane .roster-slot{position:relative;min-height:87px;margin-bottom:0}.roster-slot .roster-date{color:var(--indigo-600);font-size:10.5px;font-weight:700}.roster-slot.practical .roster-date{color:var(--amber-700)}.roster-slot.selected{border-width:2px!important;background:#fff!important;box-shadow:0 0 0 3px rgba(79,107,255,.16),0 10px 24px rgba(79,107,255,.18)!important;transform:translateY(-1px)}.roster-slot.practical.selected{box-shadow:0 0 0 3px rgba(245,158,11,.18),0 10px 24px rgba(245,158,11,.18)!important}.roster-slot-wrap{position:relative;margin-bottom:5px}.roster-slot-wrap .roster-slot{margin-bottom:0}.roster-edit-btn{position:absolute;top:5px;right:5px;width:22px;height:22px;border-radius:6px;border:1px solid var(--indigo-500);background:#fff;color:var(--indigo-600);display:grid;place-items:center;opacity:0;transform:scale(.8);transition:opacity .15s,transform .15s;pointer-events:none;z-index:2}.roster-slot-wrap:hover .roster-edit-btn{opacity:1;transform:scale(1);pointer-events:auto}.roster-slot-wrap:hover .roster-edit-btn:hover{background:var(--indigo-500);color:#fff}.roster-slot-wrap .roster-slot.practical~.roster-edit-btn{border-color:#f2bd62;color:var(--amber-700)}.roster-slot-wrap .roster-slot.practical~.roster-edit-btn:hover{background:var(--amber-500);color:#fff}.class-edit-modal{width:500px;max-width:calc(100vw - 24px)}.class-edit-body{grid-template-columns:1fr 1fr;padding:20px 22px 10px}
-      .class-attendance-shell{display:grid;gap:12px}.class-attendance-tools{display:flex;align-items:center;gap:10px;flex-wrap:wrap;padding-bottom:2px}.class-attendance-search{width:260px;height:34px;background:#fff}.class-attendance-filters{overflow-x:auto}.class-attendance-save{position:sticky;bottom:0;z-index:3;display:flex;align-items:center;justify-content:space-between;gap:12px;margin:4px -18px -16px;padding:12px 18px;background:rgba(255,255,255,.96);border-top:1px solid var(--border-soft);box-shadow:0 -8px 22px rgba(16,20,40,.06)}.class-attendance-save span{color:var(--text-400);font-size:12px;font-weight:700}.class-attendance-save .btn{white-space:nowrap}.class-attendance-actions{display:flex;align-items:center;justify-content:flex-end;gap:8px;flex-wrap:wrap}.btn-danger-soft{background:var(--red-50);border-color:#f7d7d7;color:var(--red-700)}
+      .class-attendance-shell{display:grid;gap:12px}.class-attendance-tools{display:flex;align-items:center;gap:10px;flex-wrap:wrap;padding-bottom:2px}.class-attendance-search{width:260px;height:34px;background:#fff}.class-attendance-filters{overflow-x:auto}.class-attendance-save{position:sticky;bottom:0;z-index:3;display:flex;align-items:center;justify-content:space-between;gap:12px;margin:4px -18px -16px;padding:12px 18px;background:rgba(255,255,255,.96);border-top:1px solid var(--border-soft);box-shadow:0 -8px 22px rgba(16,20,40,.06)}.class-attendance-save span{color:var(--text-400);font-size:12px;font-weight:700}.class-attendance-save .btn{white-space:nowrap}.class-attendance-actions{display:flex;align-items:center;justify-content:flex-end;gap:8px;flex-wrap:wrap}.btn-danger-soft{background:var(--red-50);border-color:#f7d7d7;color:var(--red-700)}.notif-wrap{position:relative;display:inline-flex;align-items:center}.notif-btn{position:relative;cursor:pointer;transition:all .15s ease}.notif-btn:hover,.notif-btn.active{background:var(--bg);color:var(--indigo-600);border-color:var(--indigo-500)}.notif-badge{position:absolute;top:-4px;right:-4px;min-width:18px;height:18px;border-radius:999px;background:var(--indigo-600);color:#fff;font-size:10px;font-weight:800;display:flex;align-items:center;justify-content:center;padding:0 4px;line-height:1;border:2px solid #fff;box-shadow:0 2px 6px rgba(0,0,0,.15)}.notif-badge.urgent{background:#E5484D;animation:notif-pulse 2s infinite}@keyframes notif-pulse{0%,100%{transform:scale(1)}50%{transform:scale(1.15)}}.notif-dropdown{position:absolute;top:calc(100% + 10px);right:0;width:360px;max-width:calc(100vw - 24px);background:#fff;border:1px solid var(--border);border-radius:14px;box-shadow:0 12px 36px rgba(15,23,42,.18);z-index:100;overflow:hidden;animation:notif-fade-in .15s ease-out}@keyframes notif-fade-in{from{opacity:0;transform:translateY(-6px)}to{opacity:1;transform:translateY(0)}}@media(max-width:600px){.notif-dropdown{position:fixed;top:66px;left:10px;right:10px;width:auto;max-width:none;max-height:calc(100vh - 84px)}}.notif-header{padding:14px 16px;border-bottom:1px solid var(--border-soft);background:#FAFBFD}.notif-title-row{display:flex;align-items:center;justify-content:space-between}.notif-title{display:flex;align-items:center;gap:7px;font-weight:700;font-size:13.5px;color:var(--text-900)}.notif-count-pill{font-size:11px;font-weight:700;background:var(--indigo-100);color:var(--indigo-600);padding:3px 8px;border-radius:999px}.notif-alert-banner{margin-top:8px;padding:7px 10px;background:#FFF4F4;border:1px solid #FCD4D4;border-radius:8px;color:#C92A2A;font-size:11.5px;font-weight:600;display:flex;align-items:center;gap:7px;line-height:1.35}.notif-alert-banner svg{flex:0 0 14px;color:#E5484D}.notif-body{max-height:380px;overflow-y:auto;overscroll-behavior:contain;scrollbar-width:thin;scrollbar-color:#cbd5e1 transparent}.notif-body::-webkit-scrollbar{width:6px}.notif-body::-webkit-scrollbar-track{background:transparent}.notif-body::-webkit-scrollbar-thumb{background:#cbd5e1;border-radius:999px}.notif-body::-webkit-scrollbar-thumb:hover{background:#94a3b8}.notif-empty{padding:36px 20px;text-align:center}.notif-empty-icon{width:46px;height:46px;border-radius:12px;background:var(--indigo-100);color:var(--indigo-600);display:flex;align-items:center;justify-content:center;margin:0 auto 10px}.notif-empty-text{font-size:13px;font-weight:700;color:var(--text-800)}.notif-empty-sub{font-size:11.5px;color:var(--text-400);margin-top:4px}.notif-list{display:flex;flex-direction:column}.notif-item{display:flex;align-items:flex-start;gap:10px;padding:12px 14px;border:none;background:transparent;border-bottom:1px solid var(--border-soft);text-align:left;width:100%;cursor:pointer;transition:background .12s ease;font-family:inherit}.notif-item:hover{background:#F8F9FD}.notif-item:last-child{border-bottom:none}.notif-avatar{width:32px;height:32px;border-radius:8px;background:var(--indigo-100);color:var(--indigo-600);display:flex;align-items:center;justify-content:center;font-weight:700;font-size:11.5px;flex:0 0 32px;margin-top:2px}.notif-item-info{flex:1;min-width:0}.notif-item-top{display:flex;align-items:center;justify-content:space-between;gap:6px;margin-bottom:3px}.notif-item-name{font-size:12.5px;font-weight:700;color:var(--text-900);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}.notif-item-meta{font-size:11px;color:var(--text-400);margin-bottom:4px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}.notif-item-time{font-size:11px;font-weight:600;color:var(--indigo-600);display:flex;align-items:center;gap:5px}.notif-item-time svg{flex:0 0 12px;color:var(--indigo-500)}.notif-footer{padding:10px 14px;border-top:1px solid var(--border-soft);background:#FAFBFD;text-align:center;display:flex;flex-direction:column;align-items:center;gap:6px}.notif-more-hint{font-size:11px;color:var(--text-400);font-weight:600}.notif-view-all-btn{border:none;background:transparent;color:var(--indigo-600);font-size:12px;font-weight:700;cursor:pointer;padding:4px 8px;border-radius:6px;font-family:inherit;display:inline-flex;align-items:center;gap:5px}.notif-view-all-btn:hover{text-decoration:underline}.notif-item-wrap{display:flex;align-items:center;width:100%;border-bottom:1px solid var(--border-soft);transition:background .12s ease}.notif-item-wrap:hover{background:#F8F9FD}.notif-item-wrap:last-child{border-bottom:none}.notif-item{display:flex;align-items:flex-start;gap:10px;padding:12px 14px;border:none;background:transparent;border-bottom:none;text-align:left;flex:1;min-width:0;cursor:pointer;transition:none;font-family:inherit}.notif-quick-done-btn{width:28px;height:28px;border-radius:8px;border:1px solid #d1fae5;background:#ecfdf5;color:#059669;display:flex;align-items:center;justify-content:center;margin-right:12px;cursor:pointer;flex:0 0 28px;transition:all .15s ease}.notif-quick-done-btn:hover{background:#059669;color:#fff;border-color:#059669;transform:scale(1.08)}.active-followup-banner{display:flex;align-items:center;justify-content:space-between;gap:10px;background:linear-gradient(135deg,#FFF9F0 0%,#FFF 100%);border:1px solid #FED7AA;border-radius:12px;padding:12px 14px;margin-bottom:16px;box-shadow:0 1px 3px rgba(245,158,11,.08)}.active-followup-main{display:flex;align-items:center;gap:10px;min-width:0}.active-followup-icon{width:32px;height:32px;border-radius:8px;background:#FFEDD5;color:#EA580C;display:flex;align-items:center;justify-content:center;flex:0 0 32px}.active-followup-title{font-size:11px;font-weight:800;text-transform:uppercase;letter-spacing:.35px;color:#C2410C}.active-followup-meta{display:flex;align-items:center;gap:6px;font-size:12px;color:#334155;font-weight:600;margin-top:2px;flex-wrap:wrap}.active-followup-meta svg{color:#64748B}.active-followup-btns{display:flex;align-items:center;gap:6px;flex-shrink:0}.btn-followup-done{background:#ECFDF5;color:#059669;border:1px solid #A7F3D0;font-size:11.5px;font-weight:700;padding:6px 10px;border-radius:8px;display:inline-flex;align-items:center;gap:5px;cursor:pointer;transition:all .15s ease}.btn-followup-done:hover{background:#059669;color:#fff;border-color:#059669}.btn-followup-clear{background:#F8FAFC;color:#64748B;border:1px solid #E2E8F0;font-size:11.5px;font-weight:600;padding:6px 9px;border-radius:8px;display:inline-flex;align-items:center;gap:4px;cursor:pointer;transition:all .15s ease}.btn-followup-clear:hover{background:#FEE2E2;color:#DC2626;border-color:#FECACA}.btn-timeline-done{background:#ECFDF5;color:#059669;border:1px solid #A7F3D0;font-size:11px;font-weight:700;padding:3px 7px;border-radius:6px;display:inline-flex;align-items:center;gap:4px;cursor:pointer;transition:all .15s ease}.btn-timeline-done:hover{background:#059669;color:#fff;border-color:#059669}
       // @media(max-width:1200px){.lower-grid{grid-template-columns:1fr 1fr}.finance-metrics{grid-template-columns:repeat(2,minmax(0,1fr))}.finance-grid,.attdetail-grid{grid-template-columns:1fr}.settings-prototype-shell{grid-template-columns:190px minmax(0,1fr)}}
       // @media(max-width:1100px){.sidebar{width:74px;flex-basis:74px}.brand-text,.nav-group-label,.nav-item span,.role-meta{display:none}.sidebar-brand,.nav-item{justify-content:center}.nav-badge{position:absolute;right:12px;top:7px;margin:0;min-width:17px;height:17px;padding:0 5px;font-size:9.5px}.two-col,.settings-shell,.lower-grid,.batch-grid{grid-template-columns:1fr}.batch-card-grid{grid-template-columns:repeat(2,minmax(0,1fr))}.topbar{height:auto;min-height:0;flex:0 0 auto;display:grid;grid-template-columns:1fr;align-items:stretch;padding:14px;gap:10px}.topbar-spacer{display:none}.search-box{width:100%}.date-filter{flex-wrap:wrap}.field-grid,.profile-grid,.payment-form{grid-template-columns:1fr}.card-head{align-items:flex-start;flex-wrap:wrap}.card-head button,.card-head input{margin-left:0}.settings-prototype-shell{grid-template-columns:1fr}.settings-nav{display:flex;overflow-x:auto;white-space:nowrap}.settings-nav button{flex:0 0 auto}.batch-metrics,.emi-metrics{grid-template-columns:repeat(2,minmax(0,1fr))}}
             @media(max-width:1100px){.sidebar{width:74px;flex-basis:74px}.brand-text,.nav-group-label,.nav-item span,.role-meta{display:none}.sidebar-brand,.nav-item{justify-content:center}.sidebar-brand .brand-full-logo{width:42px;height:42px;max-width:42px;object-fit:contain;object-position:left center}.nav-badge{position:absolute;right:12px;top:7px;margin:0;min-width:17px;height:17px;padding:0 5px;font-size:9.5px}.two-col,.settings-shell,.lower-grid,.batch-grid{grid-template-columns:1fr}.batch-card-grid{grid-template-columns:repeat(2,minmax(0,1fr))}.topbar{height:auto;min-height:0;flex:0 0 auto;display:grid;grid-template-columns:1fr;align-items:stretch;padding:14px;gap:10px}.topbar-spacer{display:none}.search-box{width:100%}.date-filter{flex-wrap:wrap}.field-grid,.profile-grid,.payment-form{grid-template-columns:1fr}.card-head{align-items:flex-start;flex-wrap:wrap}.card-head button,.card-head input{margin-left:0}.settings-prototype-shell{grid-template-columns:1fr}.settings-nav{display:flex;overflow-x:auto;white-space:nowrap}.settings-nav button{flex:0 0 auto}.batch-metrics,.emi-metrics{grid-template-columns:repeat(2,minmax(0,1fr))}}
-      @media(max-width:800px){.topbar{display:flex;flex-direction:column;align-items:stretch;gap:8px}.scope-select{width:100%;height:36px}.date-filter{width:100%;overflow-x:auto;justify-content:flex-start;flex-wrap:nowrap}.df-btn{flex:0 0 auto}.df-date.show{width:100%}.topbar>.icon-btn{align-self:flex-end;flex:0 0 34px}.search-box{width:100%;min-height:38px;flex:0 0 auto}.filter-bar{align-items:stretch}.filter-bar .fbtn,.filter-bar select,.filter-bar input,.logs-filter-bar .fbtn,.receipts-filter-bar .fbtn,.cert-filter-bar .fbtn{width:100%;min-width:0}.filter-spacer{display:none}.drawer{width:100vw!important;max-width:100vw;border-radius:0}.receipt-drawer{width:100vw;max-width:100vw}.drawer-head{padding:16px}.drawer-body{padding:14px}.receipt-drawer-body{padding:14px 0 24px}.invoice-card{padding:0 10px!important}.tax-invoice{min-width:720px}.invoice-actions{padding:0 10px}.profile-shell{max-width:none}.modal{width:100%;max-width:100%;border-radius:14px}.delete-modal{width:390px;max-width:calc(100vw - 20px)}.modal-overlay{padding:10px}.modal-body,.modal-head,.modal-foot{padding-left:16px;padding-right:16px}.modal-foot{flex-wrap:wrap}.modal-foot .btn,.modal-actions .btn{flex:1;justify-content:center}.delete-modal-actions .btn{flex:0 0 auto}.date-range-row{flex-direction:column}.finance-metrics,.batch-metrics,.emi-metrics{grid-template-columns:1fr}.chart-body{flex-direction:column;align-items:stretch}.donut-wrap{align-self:center}.donut-legend{width:100%}.pager{align-items:flex-start;gap:10px;flex-direction:column}.pager-btns{width:100%;overflow-x:auto}.profile-edit-actions{justify-content:stretch;flex-wrap:wrap}.profile-edit-actions .btn{flex:1;justify-content:center}}
-      @media(max-width:700px){.imed-admin-prototype #app{display:block;min-height:100vh;height:100vh;overflow:hidden}.sidebar{position:fixed;left:0;right:0;bottom:0;top:auto;width:100%;height:76px;z-index:20;display:flex;flex-direction:row;border-right:0;border-top:1px solid var(--navy-line)}.sidebar-brand,.sidebar-footer{display:none}.nav-scroll{display:flex;overflow-x:auto;overflow-y:hidden;padding:0;scrollbar-width:none}.nav-scroll::-webkit-scrollbar{display:none}.nav-scroll>div{display:contents}.nav-item{min-width:72px;height:76px;border-radius:0;display:grid;place-items:center;gap:5px;font-size:10px;margin:0;padding:8px 6px}.nav-item svg{width:17px;height:17px}.nav-item span{display:block;max-width:64px;text-align:center;line-height:1.15;white-space:normal}.mobile-logout{display:grid;color:#FCA5A5}.mobile-logout:hover{background:var(--navy-800);color:#fff}.main{height:calc(100vh - 76px);width:100%;overflow:hidden}.content{padding:12px 10px 18px}.grid-metrics,.batch-card-grid{grid-template-columns:1fr;gap:10px}.metric-card{padding:14px}.m-value{font-size:21px}.funnel-row{grid-template-columns:88px minmax(0,1fr) 56px}.topbar{position:sticky;top:0;z-index:10;box-shadow:0 1px 0 var(--border)}.page-title{font-size:15px}.page-sub{font-size:11px}.field-grid,.profile-grid,.payment-form{grid-template-columns:1fr}.card-head,.card-body{padding-left:14px;padding-right:14px}.attendance-card .card-body{padding:14px 10px}.att-row{min-width:700px}.cal-grid{gap:4px}.cal-cell{font-size:11px;border-radius:7px}.profile-head{padding:16px 14px}.profile-tabs{padding:0 14px}.dtabs{overflow-x:auto}.dtab{white-space:nowrap}.certificate-preview-shell{padding:0;overflow-x:auto}.imed-certificate-exact-frame{transform:scale(.48);transform-origin:top left;margin:0;width:1220px}.cert-modal .certificate-card{padding:10px;overflow:auto}}
-      @media(max-width:420px){.content{padding-left:8px;padding-right:8px}.auth-card{padding:22px 18px}.topbar{padding:12px 10px}.date-filter{padding:3px}.df-btn{padding:6px 8px}.metric-card,.card{border-radius:12px}.card-head,.card-body{padding-left:12px;padding-right:12px}.funnel-row{grid-template-columns:76px minmax(0,1fr) 48px;gap:7px}.flabel,.fval{font-size:11px}.invoice-card{padding:0 6px!important}.tax-invoice{min-width:680px;font-size:10px}.drawer-head{padding:14px 12px}.drawer-body{padding:12px}.modal-overlay{padding:6px}.modal-head,.modal-body,.modal-foot{padding-left:12px;padding-right:12px}.settings-nav{border-radius:12px}.nav-item{min-width:68px}.att-row{min-width:660px}.profile-metrics{grid-template-columns:1fr}.crow{align-items:flex-start}.who{min-width:0}.who>div{min-width:0}.who .cell-name,.who .cell-sub{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}.collection-box strong{font-size:21px}}
+      @media(max-width:800px){.topbar{display:flex;flex-direction:column;align-items:stretch;gap:8px;width:100%!important;max-width:100vw!important;overflow:visible!important;box-sizing:border-box}.scope-select{width:100%;height:36px}.date-filter{width:100%;overflow-x:auto;justify-content:flex-start;flex-wrap:nowrap}.df-btn{flex:0 0 auto}.df-date.show{width:100%}.topbar>.icon-btn{align-self:flex-end;flex:0 0 34px}.search-box{width:100%;min-height:38px;flex:0 0 auto}.filter-bar{align-items:stretch}.filter-bar .fbtn,.filter-bar select,.filter-bar input,.logs-filter-bar .fbtn,.receipts-filter-bar .fbtn,.cert-filter-bar .fbtn{width:100%;min-width:0}.filter-spacer{display:none}.drawer{width:100vw!important;max-width:100vw;border-radius:0}.receipt-drawer{width:100vw;max-width:100vw}.drawer-head{padding:16px}.drawer-body{padding:14px}.receipt-drawer-body{padding:14px 0 24px}.invoice-card{padding:0 10px!important}.tax-invoice{min-width:720px}.invoice-actions{padding:0 10px}.profile-shell{max-width:none}.modal{width:100%;max-width:100%;border-radius:14px}.delete-modal{width:390px;max-width:calc(100vw - 20px)}.modal-overlay{padding:10px}.modal-body,.modal-head,.modal-foot{padding-left:16px;padding-right:16px}.modal-foot{flex-wrap:wrap}.modal-foot .btn,.modal-actions .btn{flex:1;justify-content:center}.delete-modal-actions .btn{flex:0 0 auto}.date-range-row{flex-direction:column}.finance-metrics,.batch-metrics,.emi-metrics{grid-template-columns:1fr}.chart-body{flex-direction:column;align-items:stretch}.donut-wrap{align-self:center}.donut-legend{width:100%}.pager{align-items:flex-start;gap:10px;flex-direction:column}.pager-btns{width:100%;overflow-x:auto}.profile-edit-actions{justify-content:stretch;flex-wrap:wrap}.profile-edit-actions .btn{flex:1;justify-content:center}}
+      @media(max-width:700px){.imed-admin-prototype #app{display:block;min-height:100vh;height:100vh;overflow:hidden;width:100%!important;max-width:100vw!important}.sidebar{position:fixed;left:0;right:0;bottom:0;top:auto;width:100%!important;max-width:100vw!important;height:76px;z-index:20;display:flex;flex-direction:row;border-right:0;border-top:1px solid var(--navy-line);box-sizing:border-box}.sidebar-brand,.sidebar-footer{display:none}.nav-scroll{display:flex;overflow-x:auto;overflow-y:hidden;padding:0;scrollbar-width:none}.nav-scroll::-webkit-scrollbar{display:none}.nav-scroll>div{display:contents}.nav-item{min-width:72px;height:76px;border-radius:0;display:grid;place-items:center;gap:5px;font-size:10px;margin:0;padding:8px 6px}.nav-item svg{width:17px;height:17px}.nav-item span{display:block;max-width:64px;text-align:center;line-height:1.15;white-space:normal}.mobile-logout{display:grid;color:#FCA5A5}.mobile-logout:hover{background:var(--navy-800);color:#fff}.main{height:calc(100vh - 76px);width:100%!important;max-width:100vw!important;overflow:hidden!important;box-sizing:border-box}.content{padding:12px 10px 18px;width:100%!important;max-width:100vw!important;overflow-x:hidden!important;box-sizing:border-box}.grid-metrics,.batch-card-grid{grid-template-columns:1fr;gap:10px}.metric-card{padding:14px}.m-value{font-size:21px}.funnel-row{grid-template-columns:88px minmax(0,1fr) 56px}.topbar{position:sticky;top:0;z-index:40;box-shadow:0 1px 0 var(--border);width:100%!important;max-width:100vw!important;overflow:visible!important;box-sizing:border-box}.page-title{font-size:15px}.page-sub{font-size:11px}.field-grid,.profile-grid,.payment-form{grid-template-columns:1fr}.card-head,.card-body{padding-left:14px;padding-right:14px}.attendance-card .card-body{padding:14px 10px}.att-row{min-width:700px}.cal-grid{gap:4px}.cal-cell{font-size:11px;border-radius:7px}.profile-head{padding:16px 14px}.profile-tabs{padding:0 14px}.dtabs{overflow-x:auto}.dtab{white-space:nowrap}.certificate-preview-shell{padding:0;overflow-x:auto}.imed-certificate-exact-frame{transform:scale(.48);transform-origin:top left;margin:0;width:1220px}.cert-modal .certificate-card{padding:10px;overflow:auto}}
+      @media(max-width:420px){.content{padding-left:8px;padding-right:8px;width:100%!important;max-width:100vw!important;overflow-x:hidden!important;box-sizing:border-box}.auth-card{padding:22px 18px}.topbar{padding:12px 10px;width:100%!important;max-width:100vw!important;overflow:visible!important;box-sizing:border-box}.date-filter{padding:3px}.df-btn{padding:6px 8px}.metric-card,.card{border-radius:12px}.card-head,.card-body{padding-left:12px;padding-right:12px}.funnel-row{grid-template-columns:76px minmax(0,1fr) 48px;gap:7px}.flabel,.fval{font-size:11px}.invoice-card{padding:0 6px!important}.tax-invoice{min-width:680px;font-size:10px}.drawer-head{padding:14px 12px}.drawer-body{padding:12px}.modal-overlay{padding:6px}.modal-head,.modal-body,.modal-foot{padding-left:12px;padding-right:12px}.settings-nav{border-radius:12px}.nav-item{min-width:68px}.att-row{min-width:660px}.profile-metrics{grid-template-columns:1fr}.crow{align-items:flex-start}.who{min-width:0}.who>div{min-width:0}.who .cell-name,.who .cell-sub{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}.collection-box strong{font-size:21px}}
     `}</style>
   );
 }

@@ -40,20 +40,36 @@ function scrollToSkillBridgeSection(sectionId: string) {
           return section.getBoundingClientRect().top + window.scrollY;
         })();
 
+  const targetTop = Math.max(0, sectionTop - navOffset);
   window.scrollTo({
-    top: Math.max(0, sectionTop - navOffset),
+    top: targetTop,
     behavior: "smooth",
   });
+  const root = document.getElementById("root");
+  if (root && root.scrollTop !== undefined && root.scrollHeight > root.clientHeight) {
+    root.scrollTo({
+      top: targetTop,
+      behavior: "smooth",
+    });
+  }
 }
 
 function navigateToRoute(route: string) {
+  const root = document.getElementById("root");
   if (route === "") {
     window.location.hash = "";
     window.scrollTo({ top: 0, behavior: "smooth" });
+    if (root) root.scrollTo({ top: 0, behavior: "smooth" });
     return;
   }
-  if (window.location.hash === route) return;
+  if (window.location.hash === route) {
+    window.scrollTo({ top: 0, behavior: "smooth" });
+    if (root) root.scrollTo({ top: 0, behavior: "smooth" });
+    return;
+  }
   window.location.hash = route;
+  window.scrollTo({ top: 0, behavior: "smooth" });
+  if (root) root.scrollTo({ top: 0, behavior: "smooth" });
 }
 
 function Group4() {
@@ -3559,7 +3575,8 @@ export default function SkillBridge() {
   useEffect(() => {
     const navTop = 66;
     const onScroll = () => {
-      const y = window.scrollY;
+      const root = document.getElementById("root");
+      const y = window.scrollY || root?.scrollTop || 0;
       const pinAt = navTop * scale + 6;
       const unpinAt = navTop * scale - 18;
 
@@ -3572,7 +3589,12 @@ export default function SkillBridge() {
 
     onScroll();
     window.addEventListener("scroll", onScroll, { passive: true });
-    return () => window.removeEventListener("scroll", onScroll);
+    const root = document.getElementById("root");
+    if (root) root.addEventListener("scroll", onScroll, { passive: true });
+    return () => {
+      window.removeEventListener("scroll", onScroll);
+      if (root) root.removeEventListener("scroll", onScroll);
+    };
   }, [scale]);
 
   return (
@@ -3598,6 +3620,7 @@ export default function SkillBridge() {
         <div className="absolute left-0 top-[1075px] h-px w-px" id="sb-modules" />
         <div className="absolute left-0 top-[2088px] h-px w-px" id="sb-process" />
         <div className="absolute left-0 top-[2751px] h-px w-px" id="sb-colleges" />
+        <div className="absolute left-0 top-[3722px] h-px w-px" id="sb-pricing" />
         <div className="absolute left-0 top-[5349px] h-px w-px" id="sb-how-it-works" />
         <div className="absolute left-0 top-[6060px] h-px w-px" id="sb-contact" />
         <NavBar1 />

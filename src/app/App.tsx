@@ -18,6 +18,7 @@ const loadTermsAndConditions = () => import("../imports/TermsAndConditions/Terms
 const loadAdminCrm = () => import("../imports/AdminCrm/AdminCrm");
 const loadStudentLms = () => import("../imports/StudentLms/StudentLms");
 const loadCertificateVerify = () => import("../imports/CertificateVerify/CertificateVerify");
+const loadApplyNow = () => import("../imports/ApplyNow/ApplyNow");
 
 const HomePage = lazy(loadHomePage);
 const CareersPage = lazy(loadCareersPage);
@@ -36,6 +37,7 @@ const TermsAndConditions = lazy(loadTermsAndConditions);
 const AdminCrm = lazy(loadAdminCrm);
 const StudentLms = lazy(loadStudentLms);
 const CertificateVerify = lazy(loadCertificateVerify);
+const ApplyNow = lazy(loadApplyNow);
 
 const preloadByHash: Record<string, () => Promise<unknown>> = {
   "#emt": loadEmergencyMedicalTechnician,
@@ -53,6 +55,8 @@ const preloadByHash: Record<string, () => Promise<unknown>> = {
   "#careers": loadCareersPage,
   "#privacy-policy": loadPrivacyPolicy,
   "#terms-and-conditions": loadTermsAndConditions,
+  "#applynow": loadApplyNow,
+  "#apply-now": loadApplyNow,
   "": loadHomePage,
 };
 
@@ -150,6 +154,16 @@ const SEO_BY_HASH: Record<string, SeoConfig> = {
     description: "iMED Academy student learning portal for timetable, attendance, progress, and internship logbook.",
     path: "/#student",
   },
+  "#applynow": {
+    title: "Apply Now | iMED Academy",
+    description: "Apply for healthcare courses at iMED Academy and kickstart your career with hands-on hospital training.",
+    path: "/#applynow",
+  },
+  "#apply-now": {
+    title: "Apply Now | iMED Academy",
+    description: "Apply for healthcare courses at iMED Academy and kickstart your career with hands-on hospital training.",
+    path: "/#applynow",
+  },
 };
 
 function upsertMeta(attr: "name" | "property", key: string, value: string) {
@@ -187,6 +201,9 @@ export default function App() {
       if (["#acha", "#aahp"].includes(window.location.hash.toLowerCase())) {
         window.history.replaceState(null, "", "#ahap");
       }
+      if (window.location.hash.toLowerCase() === "#apply-now") {
+        window.history.replaceState(null, "", "#applynow");
+      }
       setHash(window.location.hash);
     };
     normalizeHash();
@@ -221,6 +238,7 @@ export default function App() {
       preloadRoute("#radiology");
       preloadRoute("#ahap");
       preloadRoute("#blogs");
+      preloadRoute("#applynow");
     };
 
     if ("requestIdleCallback" in window) {
@@ -238,7 +256,7 @@ export default function App() {
 
   useEffect(() => {
     const normalizeLabel = (value: string) => value.replace(/\s+/g, " ").trim().toLowerCase();
-    const applyLabels = new Set(["apply now", "talk to expert", "talk to experts"]);
+    const applyLabels = new Set(["talk to expert", "talk to experts"]);
     const legalRoutes: Record<string, string> = {
       "privacy policy": "#privacy-policy",
       "terms of use": "#terms-and-conditions",
@@ -250,6 +268,9 @@ export default function App() {
       ocha: "#ocha",
       skillbridge: "#skillbridge",
       blogs: "#blogs",
+      applynow: "#applynow",
+      "apply now": "#applynow",
+      "apply-now": "#applynow",
     };
     const navToId: Record<string, string> = {
       about: "why-imed",
@@ -287,6 +308,55 @@ export default function App() {
       const target = event.target as HTMLElement | null;
       if (!target) return;
 
+      // Maintain SkillBridge's own previous flow and internal section scrolling
+      if (window.location.hash.toLowerCase() === "#skillbridge") {
+        return;
+      }
+
+      // 1. High priority: Check if clicked element or its container represents an "Apply Now" trigger
+      const applyTrigger = target.closest(
+        "[data-nav-target='applynow'], [data-nav-target='apply-now'], a[href='#applynow'], a[href='#apply-now'], button, a, [role='button'], [data-name='Button'], [data-name='button'], [data-nav-target], div"
+      ) as HTMLElement | null;
+
+      if (applyTrigger) {
+        const navTarget = (applyTrigger.getAttribute("data-nav-target") || "").toLowerCase().trim();
+        const href = (applyTrigger.getAttribute("href") || "").toLowerCase().trim();
+        const triggerText = normalizeLabel(applyTrigger.textContent || "");
+        const targetText = normalizeLabel(target.textContent || "");
+
+        const isApplyNowClick =
+          navTarget === "applynow" ||
+          navTarget === "apply-now" ||
+          href === "#applynow" ||
+          href === "#apply-now" ||
+          triggerText === "apply now" ||
+          triggerText === "apply now!" ||
+          triggerText === "applynow" ||
+          targetText === "apply now" ||
+          targetText === "apply now!" ||
+          targetText === "applynow" ||
+          (triggerText.startsWith("apply now") && triggerText.length <= 16) ||
+          (targetText.startsWith("apply now") && targetText.length <= 16);
+
+        if (isApplyNowClick) {
+          event.preventDefault();
+          if (window.location.hash.toLowerCase() === "#applynow" || window.location.hash.toLowerCase() === "#apply-now") {
+            const form = document.getElementById("apply-form") || document.querySelector("[data-name='Apply Now Page']");
+            if (form) {
+              form.scrollIntoView({ behavior: "smooth", block: "start" });
+            } else {
+              window.scrollTo({ top: 0, behavior: "smooth" });
+            }
+            return;
+          }
+
+          preloadRoute("#applynow");
+          window.location.hash = "#applynow";
+          window.scrollTo({ top: 0, behavior: "smooth" });
+          return;
+        }
+      }
+
       const explicitTarget = target.closest("[data-nav-target]") as HTMLElement | null;
       if (explicitTarget) {
         const sectionId = explicitTarget.dataset.navTarget;
@@ -311,6 +381,12 @@ export default function App() {
           if (sectionId === "skillbridge") {
             preloadRoute("#skillbridge");
             window.location.hash = "#skillbridge";
+            window.scrollTo({ top: 0, behavior: "smooth" });
+            return;
+          }
+          if (sectionId === "applynow" || sectionId === "apply-now") {
+            preloadRoute("#applynow");
+            window.location.hash = "#applynow";
             window.scrollTo({ top: 0, behavior: "smooth" });
             return;
           }
@@ -402,6 +478,8 @@ export default function App() {
     page = <Skillbridge />;
   } else if (hash === "#blogs") {
     page = <BlogsPage />;
+  } else if (hash === "#applynow" || hash === "#apply-now") {
+    page = <ApplyNow />;
   } else if (hash.startsWith("#admin")) {
     page = <AdminCrm />;
   } else if (hash.startsWith("#student")) {

@@ -70,7 +70,7 @@ const admissionPaymentModeValues = [...admissionPaymentModes, legacyPartialEmiPa
 const paymentNoteMaxLength = 250;
 const paymentReferenceMaxLength = 80;
 const kochiCourseOptions = ["AHAP", "GCA"];
-const leadFeedbackOptions = ["New", "Interested", "Qualified", "Follow-up", "On Hold", "Converted", "Lost", "Not Connected", "Busy Call later", "Invalid"];
+const leadFeedbackOptions = ["New", "Interested", "Qualified", "Follow-up", "On Hold", "Converted", "Lost", "Not Connected", "Busy Call later", "Invalid", "Junk"];
 const leadPriorityOptions = ["P0", "P1", "P2", "P3"];
 const leadStageOptions = ["New Lead", "Contacted", "Counselling", "Demo / Visit", "Admission", "Enrolled", "Alumni", "Lost"];
 const leadCreateStageOptions = ["New Lead", "Contacted", "Counselling", "Demo / Visit", "Admission", "Lost"];
@@ -183,7 +183,7 @@ const adminUserSchema = new mongoose.Schema({
   name: { type: String, required: true, trim: true },
   email: { type: String, required: true, unique: true, lowercase: true, trim: true },
   passwordHash: { type: String, required: true },
-  role: { type: String, enum: ["superadmin", "admin", "counsellor", "teacher", "franchise_superadmin", "franchise_counsellor", "franchise_teacher"], default: "admin" },
+  role: { type: String, enum: ["superadmin", "admin", "counsellor", "teacher", "operations_executive", "franchise_superadmin", "franchise_counsellor", "franchise_teacher", "franchise_operations_executive"], default: "admin" },
   franchiseId: { type: mongoose.Schema.Types.ObjectId, ref: "Centre" },
   passwordResetTokenHash: { type: String, default: "" },
   passwordResetExpiresAt: { type: Date },
@@ -377,6 +377,24 @@ const studentSchema = new mongoose.Schema({
   payments: [paymentSchema],
   feedbacks: [studentFeedbackSchema],
   activities: [activitySchema],
+  kitDistribution: {
+    idCardIssued: { type: Boolean, default: false },
+    idCardNumber: { type: String, default: "" },
+    idCardIssuedAt: { type: Date },
+    tshirtIssued: { type: Boolean, default: false },
+    tshirtSize: { type: String, default: "" },
+    tshirtQuantity: { type: Number, default: 1 },
+    tshirts: [{ size: { type: String, default: "" }, quantity: { type: Number, default: 1 } }],
+    tshirtIssuedAt: { type: Date },
+    bagIssued: { type: Boolean, default: false },
+    bagIssuedAt: { type: Date },
+    tabletIssued: { type: Boolean, default: false },
+    tabletAssetId: { type: String, default: "" },
+    tabletSerialNumber: { type: String, default: "" },
+    tabletIssuedAt: { type: Date },
+    issuedBy: { type: String, default: "" },
+    notes: { type: String, default: "" },
+  },
 }, { timestamps: true });
 studentSchema.index({ leadId: 1 }, { unique: true, partialFilterExpression: { leadId: { $type: "objectId" } } });
 studentSchema.index({ admissionNumber: 1 }, { unique: true, partialFilterExpression: { admissionNumber: { $type: "string", $gt: "" } } });
@@ -567,6 +585,51 @@ const npsResponseSchema = new mongoose.Schema({
 }, { timestamps: true });
 npsResponseSchema.index({ studentId: 1, touchpoint: 1 }, { unique: true });
 
+const inventoryItemSchema = new mongoose.Schema({
+  itemType: { type: String, enum: ["id_card", "tshirt", "bag"], required: true },
+  size: { type: String, enum: ["S", "M", "L", "XL", "XXL", "All", "NA"], default: "NA" },
+  quantity: { type: Number, default: 0, min: 0 },
+  minThreshold: { type: Number, default: 5 },
+  centre: { type: String, default: "" },
+  franchiseId: { type: mongoose.Schema.Types.ObjectId, ref: "Centre" },
+}, { timestamps: true });
+inventoryItemSchema.index({ itemType: 1, size: 1, franchiseId: 1 }, { unique: true });
+
+const tabletAssetSchema = new mongoose.Schema({
+  assetId: { type: String, required: true, trim: true },
+  serialNumber: { type: String, required: true, trim: true },
+  brandModel: { type: String, default: "Android Tablet", trim: true },
+  status: { type: String, enum: ["In Stock", "Assigned", "Under Repair", "Returned", "Decommissioned"], default: "In Stock" },
+  assignedStudentId: { type: mongoose.Schema.Types.ObjectId, ref: "Student" },
+  assignedStudentName: { type: String, default: "" },
+  assignedStudentAdmissionNo: { type: String, default: "" },
+  assignedDate: { type: Date },
+  returnedDate: { type: Date },
+  centre: { type: String, default: "" },
+  franchiseId: { type: mongoose.Schema.Types.ObjectId, ref: "Centre" },
+  remarks: { type: String, default: "" },
+}, { timestamps: true });
+tabletAssetSchema.index({ assetId: 1, franchiseId: 1 }, { unique: true });
+tabletAssetSchema.index({ serialNumber: 1, franchiseId: 1 }, { unique: true });
+
+const inventoryTransactionSchema = new mongoose.Schema({
+  type: { type: String, enum: ["Stock In", "Stock Out", "Return", "Adjustment"], required: true },
+  itemType: { type: String, enum: ["id_card", "tshirt", "bag", "tablet"], required: true },
+  size: { type: String, default: "" },
+  quantity: { type: Number, default: 1 },
+  tabletId: { type: mongoose.Schema.Types.ObjectId, ref: "TabletAsset" },
+  assetId: { type: String, default: "" },
+  serialNumber: { type: String, default: "" },
+  studentId: { type: mongoose.Schema.Types.ObjectId, ref: "Student" },
+  studentName: { type: String, default: "" },
+  vendorChallan: { type: String, default: "" },
+  handledBy: { type: String, default: "" },
+  date: { type: Date, default: Date.now },
+  notes: { type: String, default: "" },
+  centre: { type: String, default: "" },
+  franchiseId: { type: mongoose.Schema.Types.ObjectId, ref: "Centre" },
+}, { timestamps: true });
+
 const AdminUser = mongoose.model("AdminUser", adminUserSchema);
 const Counter = mongoose.model("Counter", counterSchema);
 const Centre = mongoose.model("Centre", centreSchema);
@@ -584,6 +647,9 @@ const InternshipAssignment = mongoose.model("InternshipAssignment", internshipAs
 const InternshipLog = mongoose.model("InternshipLog", internshipLogSchema);
 const LogbookEntry = mongoose.model("LogbookEntry", logbookEntrySchema);
 const NpsResponse = mongoose.model("NpsResponse", npsResponseSchema);
+const InventoryItem = mongoose.model("InventoryItem", inventoryItemSchema);
+const TabletAsset = mongoose.model("TabletAsset", tabletAssetSchema);
+const InventoryTransaction = mongoose.model("InventoryTransaction", inventoryTransactionSchema);
 
 async function seedBaseData() {
   await Promise.all([
@@ -815,6 +881,10 @@ function adminScopeFilter(query = {}) {
   return filter;
 }
 
+function isOperationsAccount(user) {
+  return ["operations_executive", "franchise_operations_executive"].includes(user?.role);
+}
+
 function isHeadAdmin(user) {
   return ["superadmin", "admin"].includes(user?.role);
 }
@@ -828,7 +898,7 @@ function isHeadBranchAdmin(user) {
 }
 
 function isFranchiseUser(user) {
-  return ["franchise_superadmin", "franchise_counsellor", "franchise_teacher"].includes(user?.role);
+  return ["franchise_superadmin", "franchise_counsellor", "franchise_teacher", "franchise_operations_executive"].includes(user?.role);
 }
 
 function isFranchiseSuperAdmin(user) {
@@ -844,27 +914,31 @@ function isTeacherAccount(user) {
 }
 
 function isStudentStaffAccount(user) {
-  return isCounsellorAccount(user) || isTeacherAccount(user);
+  return isCounsellorAccount(user) || isTeacherAccount(user) || isOperationsAccount(user);
 }
 
 function canManageFees(user) {
-  return isHeadAdmin(user) || isFranchiseSuperAdmin(user);
+  return isHeadAdmin(user) || isFranchiseSuperAdmin(user) || isOperationsAccount(user);
 }
 
 function canManageCertificates(user) {
-  return isHeadAdmin(user) || isFranchiseSuperAdmin(user);
+  return isHeadAdmin(user) || isFranchiseSuperAdmin(user) || isOperationsAccount(user);
 }
 
 function canManageInternships(user) {
-  return isHeadAdmin(user) || isFranchiseSuperAdmin(user);
+  return isHeadAdmin(user) || isFranchiseSuperAdmin(user) || isOperationsAccount(user);
 }
 
 function canManageNps(user) {
-  return isHeadAdmin(user) || isFranchiseSuperAdmin(user);
+  return isHeadAdmin(user) || isFranchiseSuperAdmin(user) || isOperationsAccount(user);
 }
 
 function canManageAlumni(user) {
-  return isHeadAdmin(user) || isFranchiseSuperAdmin(user);
+  return isHeadAdmin(user) || isFranchiseSuperAdmin(user) || isOperationsAccount(user);
+}
+
+function canManageInventory(user) {
+  return isHeadAdmin(user) || isFranchiseSuperAdmin(user) || isOperationsAccount(user);
 }
 
 function canUseLeads(user) {
@@ -872,11 +946,11 @@ function canUseLeads(user) {
 }
 
 function canAssignStaff(user) {
-  return isHeadAdmin(user) || isFranchiseSuperAdmin(user);
+  return isHeadAdmin(user) || isFranchiseSuperAdmin(user) || isOperationsAccount(user);
 }
 
 function canManageStudentLmsAccess(user) {
-  return isHeadAdmin(user) || isFranchiseSuperAdmin(user);
+  return isHeadAdmin(user) || isFranchiseSuperAdmin(user) || isOperationsAccount(user);
 }
 
 function studentLmsAccessBlockReason(student = {}) {
@@ -891,7 +965,7 @@ function studentLmsAccessBlockReason(student = {}) {
 }
 
 function canUseAttendance(user) {
-  return isHeadAdmin(user) || isFranchiseSuperAdmin(user) || isTeacherAccount(user);
+  return isHeadAdmin(user) || isFranchiseSuperAdmin(user) || isTeacherAccount(user) || isOperationsAccount(user);
 }
 
 async function teacherAcademicBatchScope(user) {
@@ -948,7 +1022,7 @@ function priorityFromLeadFeedback(feedback = "") {
   const normalized = String(feedback || "").toLowerCase();
   if (normalized.includes("qualified") || normalized.includes("converted")) return "P0";
   if (normalized.includes("interested")) return "P1";
-  if (normalized.includes("lost") || normalized.includes("invalid") || normalized.includes("not connected")) return "P3";
+  if (normalized.includes("lost") || normalized.includes("invalid") || normalized.includes("junk") || normalized.includes("not connected")) return "P3";
   if (normalized) return "P2";
   return "";
 }
@@ -970,6 +1044,10 @@ function normalizeLeadFeedbackStatus(value = "") {
     "Call back": "Busy Call later",
     "Not interested": "Lost",
     "Invalid number": "Invalid",
+    Spam: "Junk",
+    Fake: "Junk",
+    "Junk lead": "Junk",
+    junk: "Junk",
   };
   const status = legacyMap[value] || value || "New";
   return leadFeedbackOptions.includes(status) ? status : "New";
@@ -1002,7 +1080,7 @@ function excelNumber(row, aliases = []) {
 }
 
 function isHeadBranchScoped(user) {
-  return ["admin", "counsellor", "teacher"].includes(user?.role);
+  return ["admin", "counsellor", "teacher", "operations_executive"].includes(user?.role);
 }
 
 async function headOfficeBranchScope(user) {
@@ -1717,16 +1795,16 @@ app.get("/api/centres", async (_req, res) => {
 
 app.get("/api/admin/counsellors", requireAuth, requireFranchiseManager, async (req, res) => {
   const filter = isFranchiseSuperAdmin(req.user)
-    ? { role: { $in: ["franchise_counsellor", "franchise_teacher"] }, franchiseId: req.user.franchiseId || emptyObjectId }
+    ? { role: { $in: ["franchise_counsellor", "franchise_teacher", "franchise_operations_executive"] }, franchiseId: req.user.franchiseId || emptyObjectId }
     : isHeadBranchAdmin(req.user)
-      ? { role: { $in: ["admin", "counsellor", "teacher"] }, ...(req.user.franchiseId ? { franchiseId: req.user.franchiseId } : {}) }
-      : { role: { $in: ["superadmin", "admin", "counsellor", "teacher", "franchise_superadmin", "franchise_counsellor", "franchise_teacher"] } };
+      ? { role: { $in: ["admin", "counsellor", "teacher", "operations_executive"] }, ...(req.user.franchiseId ? { franchiseId: req.user.franchiseId } : {}) }
+      : { role: { $in: ["superadmin", "admin", "counsellor", "teacher", "operations_executive", "franchise_superadmin", "franchise_counsellor", "franchise_teacher", "franchise_operations_executive"] } };
   const counsellors = await AdminUser.find(filter).select("name email role franchiseId").sort({ name: 1 }).lean();
   res.json({ ok: true, data: counsellors });
 });
 
 app.get("/api/admin/teachers", requireAuth, async (req, res) => {
-  if (!(isHeadAdmin(req.user) || isFranchiseSuperAdmin(req.user) || isCounsellorAccount(req.user))) return sendError(res, 403, "Teacher list is restricted to admin and counsellor accounts");
+  if (!(isHeadAdmin(req.user) || isFranchiseSuperAdmin(req.user) || isCounsellorAccount(req.user) || isOperationsAccount(req.user))) return sendError(res, 403, "Teacher list is restricted to admin, counsellor, and operations accounts");
   let filter = { role: { $in: ["teacher", "franchise_teacher"] } };
   if (isFranchiseUser(req.user)) {
     filter = { ...filter, franchiseId: req.user.franchiseId || emptyObjectId };
@@ -1741,16 +1819,16 @@ app.post("/api/admin/counsellors", requireAuth, requireFranchiseManager, async (
   const { name, email, password, role = "counsellor", franchiseId = "" } = req.body || {};
   if (!name || !email || !password) return sendError(res, 400, "Name, email, and password are required");
   if (String(password).length < 8) return sendError(res, 400, "Password must be at least 8 characters");
-  if (!["superadmin", "admin", "counsellor", "teacher", "franchise_superadmin", "franchise_counsellor", "franchise_teacher"].includes(role)) return sendError(res, 400, "Invalid staff role");
-  if (isFranchiseSuperAdmin(req.user) && !["franchise_counsellor", "franchise_teacher"].includes(role)) return sendError(res, 403, "Franchise super admin can create only franchise staff");
-  if (isHeadBranchAdmin(req.user) && !["admin", "counsellor", "teacher"].includes(role)) return sendError(res, 403, "Head admin can create only head office staff");
+  if (!["superadmin", "admin", "counsellor", "teacher", "operations_executive", "franchise_superadmin", "franchise_counsellor", "franchise_teacher", "franchise_operations_executive"].includes(role)) return sendError(res, 400, "Invalid staff role");
+  if (isFranchiseSuperAdmin(req.user) && !["franchise_counsellor", "franchise_teacher", "franchise_operations_executive"].includes(role)) return sendError(res, 403, "Franchise super admin can create only franchise staff");
+  if (isHeadBranchAdmin(req.user) && !["admin", "counsellor", "teacher", "operations_executive"].includes(role)) return sendError(res, 403, "Head admin can create only head office staff");
   if (role === "superadmin" && !isHeadSuperAdmin(req.user)) return sendError(res, 403, "Head super admin access required");
-  if (!isHeadAdmin(req.user) && ["superadmin", "admin", "counsellor", "teacher", "franchise_superadmin"].includes(role)) return sendError(res, 403, "Head admin access required");
+  if (!isHeadAdmin(req.user) && ["superadmin", "admin", "counsellor", "teacher", "operations_executive", "franchise_superadmin"].includes(role)) return sendError(res, 403, "Head admin access required");
   const assignedFranchiseId = isFranchiseSuperAdmin(req.user) || isHeadBranchAdmin(req.user) ? req.user.franchiseId : franchiseId;
-  const needsAssignedCentre = ["admin", "counsellor", "teacher", "franchise_superadmin", "franchise_counsellor", "franchise_teacher"].includes(role);
-  if (needsAssignedCentre && !mongoose.isValidObjectId(String(assignedFranchiseId || ""))) return sendError(res, 400, ["admin", "counsellor", "teacher"].includes(role) ? "Branch is required" : "Franchise is required");
+  const needsAssignedCentre = ["admin", "counsellor", "teacher", "operations_executive", "franchise_superadmin", "franchise_counsellor", "franchise_teacher", "franchise_operations_executive"].includes(role);
+  if (needsAssignedCentre && !mongoose.isValidObjectId(String(assignedFranchiseId || ""))) return sendError(res, 400, ["admin", "counsellor", "teacher", "operations_executive"].includes(role) ? "Branch is required" : "Franchise is required");
   if (needsAssignedCentre) {
-    const expectedType = ["admin", "counsellor", "teacher"].includes(role) ? "branch" : "franchise";
+    const expectedType = ["admin", "counsellor", "teacher", "operations_executive"].includes(role) ? "branch" : "franchise";
     const centre = await Centre.findOne({ _id: assignedFranchiseId, type: expectedType }).lean();
     if (!centre) return sendError(res, 404, expectedType === "branch" ? "Branch not found" : "Franchise not found");
   }
@@ -1869,9 +1947,45 @@ app.get("/api/admin/leads", requireAuth, async (req, res) => {
   const { page, limit, skip } = paginationFromQuery(req.query);
   const [total, leads] = await Promise.all([
     Lead.countDocuments(filter),
-    Lead.find(filter).sort({ updatedAt: -1 }).skip(skip).limit(limit).lean(),
+    Lead.aggregate([
+      { $match: filter },
+      {
+        $addFields: {
+          isJunk: {
+            $cond: [
+              {
+                $or: [
+                  { $in: ["$leadFeedback", ["Junk", "Lost", "Invalid"]] },
+                  { $eq: ["$stage", "Lost"] },
+                ],
+              },
+              1,
+              0,
+            ],
+          },
+        },
+      },
+      {
+        $sort: {
+          isJunk: 1,
+          createdAt: -1,
+          _id: -1,
+        },
+      },
+      { $skip: skip },
+      { $limit: limit },
+    ]),
   ]);
   res.json({ ok: true, data: leads, meta: paginationMeta(total, page, limit) });
+});
+
+app.get("/api/admin/leads/followups", requireAuth, async (req, res) => {
+  if (!canUseLeads(req.user)) return sendError(res, 403, "Lead access is restricted to counsellor and admin accounts");
+  const filter = { nextFollowUp: { $exists: true, $ne: null } };
+  Object.assign(filter, await scopedDataFilter(req, req.query));
+  if (isCounsellorAccount(req.user)) filter.counsellor = req.user.name;
+  const leads = await Lead.find(filter).sort({ nextFollowUp: 1 }).limit(100).lean();
+  res.json({ ok: true, data: leads });
 });
 
 app.get("/api/admin/admissions/pending-count", requireAuth, async (req, res) => {
@@ -2033,7 +2147,15 @@ app.patch("/api/admin/leads/:id", requireAuth, async (req, res) => {
   if (!canAssignStaff(req.user)) delete allowedLeadUpdates.counsellor;
   if (Object.prototype.hasOwnProperty.call(allowedLeadUpdates, "leadFeedback")) allowedLeadUpdates.leadFeedback = normalizeLeadFeedbackStatus(allowedLeadUpdates.leadFeedback);
   if (allowedLeadUpdates.leadFeedback) allowedLeadUpdates.priority = priorityFromLeadFeedback(allowedLeadUpdates.leadFeedback) || allowedLeadUpdates.priority;
-  if (Object.prototype.hasOwnProperty.call(allowedLeadUpdates, "priority")) allowedLeadUpdates.priority = normalizeLeadPriority(allowedLeadUpdates.priority);
+  if (Object.prototype.hasOwnProperty.call(allowedLeadUpdates, "nextFollowUp")) {
+    allowedLeadUpdates.nextFollowUp = allowedLeadUpdates.nextFollowUp ? new Date(allowedLeadUpdates.nextFollowUp) : null;
+  }
+  if (["Enrolled", "Alumni"].includes(allowedLeadUpdates.stage) && !Object.prototype.hasOwnProperty.call(allowedLeadUpdates, "nextFollowUp")) {
+    allowedLeadUpdates.nextFollowUp = null;
+  }
+  if (allowedLeadUpdates.leadFeedback === "Junk") {
+    allowedLeadUpdates.nextFollowUp = null;
+  }
   const existingLead = await Lead.findById(req.params.id).lean();
   if (!existingLead) return sendError(res, 404, "Lead not found");
   if (!(await canAccessRecord(req, existingLead))) return sendError(res, 403, "You can access only permitted records");
@@ -2104,22 +2226,37 @@ app.post("/api/admin/leads/:id/followups", requireAuth, async (req, res) => {
   const existingLead = await Lead.findById(req.params.id).lean();
   if (!existingLead) return sendError(res, 404, "Lead not found");
   if (!(await canAccessRecord(req, existingLead))) return sendError(res, 403, "You can access only permitted records");
-  const scheduledAt = req.body?.scheduledAt ? new Date(req.body.scheduledAt) : null;
-  if (!scheduledAt || Number.isNaN(scheduledAt.getTime())) return sendError(res, 400, "Follow-up date is required");
+  const status = req.body?.status || "Scheduled";
+  const isCompleted = ["Completed", "Not interested"].includes(status) || req.body?.clearReminder === true;
+  const rawScheduled = req.body?.scheduledAt;
+  const scheduledAt = rawScheduled ? new Date(rawScheduled) : null;
+  if (!isCompleted && (!scheduledAt || Number.isNaN(scheduledAt.getTime()))) {
+    return sendError(res, 400, "Follow-up date is required when scheduling");
+  }
+  const followUpDate = (scheduledAt && !Number.isNaN(scheduledAt.getTime())) ? scheduledAt : new Date();
   const followUp = {
     type: req.body?.type || "Call",
-    status: req.body?.status || "Scheduled",
-    scheduledAt,
+    status,
+    scheduledAt: followUpDate,
     note: String(req.body?.note || "").trim(),
     by: req.user.name,
   };
+
+  let nextFollowUp = null;
+  if (req.body?.nextScheduledAt) {
+    const nextDate = new Date(req.body.nextScheduledAt);
+    if (!Number.isNaN(nextDate.getTime())) nextFollowUp = nextDate;
+  } else if (!isCompleted && scheduledAt && !Number.isNaN(scheduledAt.getTime())) {
+    nextFollowUp = scheduledAt;
+  }
+
   const lead = await Lead.findByIdAndUpdate(
     req.params.id,
     {
-      $set: { nextFollowUp: scheduledAt },
+      $set: { nextFollowUp },
       $push: {
         followUps: { $each: [followUp], $position: 0 },
-        activities: { type: "follow-up", message: `${followUp.status}: ${followUp.type} on ${scheduledAt.toLocaleDateString("en-IN")}`, by: req.user.name },
+        activities: { type: "follow-up", message: `${followUp.status}: ${followUp.type} on ${followUpDate.toLocaleDateString("en-IN")}`, by: req.user.name },
       },
     },
     { new: true, runValidators: true },
@@ -2187,6 +2324,7 @@ app.post("/api/admin/leads/:id/convert", requireAuth, async (req, res) => {
     return res.json({ ok: true, data: student });
   }
   lead.stage = "Enrolled";
+  lead.nextFollowUp = null;
   if (assignedCounsellor) lead.counsellor = assignedCounsellor;
   lead.leadFeedback = normalizeLeadFeedbackStatus(lead.leadFeedback);
   lead.priority = priorityFromLeadFeedback(lead.leadFeedback) || normalizeLeadPriority(lead.priority);
@@ -2509,6 +2647,483 @@ app.get("/api/nps/export", requireAuth, async (req, res) => {
   res.setHeader("Content-Type", "text/csv; charset=utf-8");
   res.setHeader("Content-Disposition", `attachment; filename="imed-nps-${Date.now()}.csv"`);
   res.send(csv);
+});
+
+// --- INVENTORY & STUDENT KIT APIS ---
+
+async function getInventoryScope(req) {
+  const filter = {};
+  if (isFranchiseUser(req.user)) {
+    if (req.user.franchiseId) filter.franchiseId = req.user.franchiseId;
+  } else if (req.query.franchiseId && mongoose.isValidObjectId(String(req.query.franchiseId))) {
+    filter.franchiseId = new mongoose.Types.ObjectId(String(req.query.franchiseId));
+  } else if (req.query.centre) {
+    const centre = await Centre.findOne({ name: req.query.centre }).lean();
+    if (centre) filter.franchiseId = centre._id;
+  }
+  return filter;
+}
+
+async function ensureDefaultInventoryItems(franchiseId, centreName = "") {
+  const existing = await InventoryItem.countDocuments({ franchiseId });
+  if (existing > 0) return;
+  const items = [
+    { itemType: "id_card", size: "NA", quantity: 0, minThreshold: 10, franchiseId, centre: centreName },
+    { itemType: "bag", size: "NA", quantity: 0, minThreshold: 5, franchiseId, centre: centreName },
+    { itemType: "tshirt", size: "S", quantity: 0, minThreshold: 5, franchiseId, centre: centreName },
+    { itemType: "tshirt", size: "M", quantity: 0, minThreshold: 5, franchiseId, centre: centreName },
+    { itemType: "tshirt", size: "L", quantity: 0, minThreshold: 5, franchiseId, centre: centreName },
+    { itemType: "tshirt", size: "XL", quantity: 0, minThreshold: 5, franchiseId, centre: centreName },
+    { itemType: "tshirt", size: "XXL", quantity: 0, minThreshold: 5, franchiseId, centre: centreName },
+  ];
+  await InventoryItem.insertMany(items).catch(() => undefined);
+}
+
+app.get("/api/admin/inventory/summary", requireAuth, async (req, res) => {
+  if (!canManageInventory(req.user)) return sendError(res, 403, "Inventory management is restricted");
+  const scope = await getInventoryScope(req);
+  if (scope.franchiseId) {
+    const c = await Centre.findById(scope.franchiseId).lean();
+    await ensureDefaultInventoryItems(scope.franchiseId, c?.name || "");
+  }
+  const [items, tablets, recentTransactions] = await Promise.all([
+    InventoryItem.find(scope).lean(),
+    TabletAsset.find(scope).lean(),
+    InventoryTransaction.find(scope).sort({ date: -1 }).limit(6).lean(),
+  ]);
+
+  const idCardItem = items.find((i) => i.itemType === "id_card");
+  const bagItem = items.find((i) => i.itemType === "bag");
+  const tshirtItems = items.filter((i) => i.itemType === "tshirt");
+
+  const tshirtBySize = {
+    S: tshirtItems.find((i) => i.size === "S")?.quantity || 0,
+    M: tshirtItems.find((i) => i.size === "M")?.quantity || 0,
+    L: tshirtItems.find((i) => i.size === "L")?.quantity || 0,
+    XL: tshirtItems.find((i) => i.size === "XL")?.quantity || 0,
+    XXL: tshirtItems.find((i) => i.size === "XXL")?.quantity || 0,
+  };
+  const totalTshirts = Object.values(tshirtBySize).reduce((sum, q) => sum + q, 0);
+
+  const tabletSummary = {
+    total: tablets.length,
+    inStock: tablets.filter((t) => t.status === "In Stock").length,
+    assigned: tablets.filter((t) => t.status === "Assigned").length,
+    underRepair: tablets.filter((t) => t.status === "Under Repair").length,
+  };
+
+  const lowStockAlerts = [];
+  if (idCardItem && idCardItem.quantity <= (idCardItem.minThreshold || 5)) {
+    lowStockAlerts.push({ item: "ID Cards", current: idCardItem.quantity, threshold: idCardItem.minThreshold || 5 });
+  }
+  if (bagItem && bagItem.quantity <= (bagItem.minThreshold || 5)) {
+    lowStockAlerts.push({ item: "Bags", current: bagItem.quantity, threshold: bagItem.minThreshold || 5 });
+  }
+  tshirtItems.forEach((t) => {
+    if (t.quantity <= (t.minThreshold || 5)) {
+      lowStockAlerts.push({ item: `T-Shirt (${t.size})`, current: t.quantity, threshold: t.minThreshold || 5 });
+    }
+  });
+
+  res.json({
+    ok: true,
+    data: {
+      idCards: idCardItem?.quantity || 0,
+      bags: bagItem?.quantity || 0,
+      tshirts: {
+        total: totalTshirts,
+        bySize: tshirtBySize,
+      },
+      tablets: tabletSummary,
+      lowStockAlerts,
+      recentTransactions,
+    },
+  });
+});
+
+app.get("/api/admin/inventory/items", requireAuth, async (req, res) => {
+  if (!canManageInventory(req.user)) return sendError(res, 403, "Inventory management is restricted");
+  const scope = await getInventoryScope(req);
+  if (scope.franchiseId) {
+    const c = await Centre.findById(scope.franchiseId).lean();
+    await ensureDefaultInventoryItems(scope.franchiseId, c?.name || "");
+  }
+  const items = await InventoryItem.find(scope).sort({ itemType: 1, size: 1 }).lean();
+  res.json({ ok: true, data: items });
+});
+
+app.get("/api/admin/inventory/tablets", requireAuth, async (req, res) => {
+  if (!canManageInventory(req.user)) return sendError(res, 403, "Inventory management is restricted");
+  const scope = await getInventoryScope(req);
+  const filter = { ...scope };
+  if (req.query.status) filter.status = String(req.query.status);
+  if (req.query.q) {
+    const q = new RegExp(escapeRegex(String(req.query.q)), "i");
+    filter.$or = [{ assetId: q }, { serialNumber: q }, { assignedStudentName: q }, { brandModel: q }];
+  }
+  const tablets = await TabletAsset.find(filter).sort({ createdAt: -1 }).lean();
+  res.json({ ok: true, data: tablets });
+});
+
+app.get("/api/admin/inventory/transactions", requireAuth, async (req, res) => {
+  if (!canManageInventory(req.user)) return sendError(res, 403, "Inventory management is restricted");
+  const scope = await getInventoryScope(req);
+  const filter = { ...scope };
+  if (req.query.itemType) filter.itemType = String(req.query.itemType);
+  if (req.query.type) filter.type = String(req.query.type);
+  const limit = Math.min(Number(req.query.limit) || 50, 200);
+  const transactions = await InventoryTransaction.find(filter).sort({ date: -1 }).limit(limit).lean();
+  res.json({ ok: true, data: transactions });
+});
+
+app.post("/api/admin/inventory/stock-in", requireAuth, async (req, res) => {
+  if (!canManageInventory(req.user)) return sendError(res, 403, "Inventory management is restricted");
+  const itemType = String(req.body?.itemType || "").trim().toLowerCase();
+  const vendorChallan = String(req.body?.vendorChallan || "").trim().toUpperCase();
+  if (vendorChallan && vendorChallan.length < 3) {
+    return sendError(res, 400, "Delivery challan / invoice reference must be at least 3 characters if provided");
+  }
+  const notes = String(req.body?.notes || "").trim();
+
+  let targetFranchiseId = isFranchiseUser(req.user) ? req.user.franchiseId : req.body?.franchiseId;
+  let targetCentre = "";
+  if (targetFranchiseId && mongoose.isValidObjectId(String(targetFranchiseId))) {
+    const c = await Centre.findById(targetFranchiseId).lean();
+    if (c) targetCentre = c.name;
+  } else {
+    const defaultCentre = await Centre.findOne().lean();
+    if (defaultCentre) {
+      targetFranchiseId = defaultCentre._id;
+      targetCentre = defaultCentre.name;
+    }
+  }
+
+  if (itemType === "tablet") {
+    const tablets = Array.isArray(req.body?.tablets) ? req.body.tablets : [
+      {
+        assetId: String(req.body?.assetId || "").trim(),
+        serialNumber: String(req.body?.serialNumber || "").trim(),
+        brandModel: String(req.body?.brandModel || "Android Tablet").trim(),
+        remarks: notes,
+      },
+    ];
+    if (!tablets.length) return sendError(res, 400, "Provide at least one tablet to add");
+
+    const createdTablets = [];
+    for (const t of tablets) {
+      if (!t.assetId) return sendError(res, 400, "Unique Asset ID is required for each tablet");
+      if (!t.serialNumber) return sendError(res, 400, "Serial Number is required for each tablet");
+      const existing = await TabletAsset.findOne({
+        franchiseId: targetFranchiseId,
+        $or: [{ assetId: t.assetId }, { serialNumber: t.serialNumber }],
+      }).lean();
+      if (existing) {
+        return sendError(res, 400, `Tablet with ID "${t.assetId}" or S/N "${t.serialNumber}" already exists`);
+      }
+      const tablet = await TabletAsset.create({
+        assetId: t.assetId,
+        serialNumber: t.serialNumber,
+        brandModel: t.brandModel || "Android Tablet",
+        status: "In Stock",
+        centre: targetCentre,
+        franchiseId: targetFranchiseId,
+        remarks: t.remarks || notes,
+      });
+      await InventoryTransaction.create({
+        type: "Stock In",
+        itemType: "tablet",
+        quantity: 1,
+        tabletId: tablet._id,
+        assetId: tablet.assetId,
+        serialNumber: tablet.serialNumber,
+        vendorChallan,
+        handledBy: req.user.name || "Operations",
+        notes,
+        centre: targetCentre,
+        franchiseId: targetFranchiseId,
+      });
+      createdTablets.push(tablet);
+    }
+    return res.json({ ok: true, message: `Added ${createdTablets.length} tablet(s) to stock`, data: createdTablets });
+  }
+
+  // Bulk items: id_card, bag, tshirt
+  if (!["id_card", "bag", "tshirt"].includes(itemType)) {
+    return sendError(res, 400, "Select a valid item type (id_card, tshirt, bag, tablet)");
+  }
+  const quantity = Number(req.body?.quantity || 0);
+  if (!Number.isFinite(quantity) || quantity <= 0) return sendError(res, 400, "Enter a valid positive quantity");
+
+  const size = itemType === "tshirt" ? String(req.body?.size || "M").toUpperCase().trim() : "NA";
+  if (itemType === "tshirt" && !["S", "M", "L", "XL", "XXL"].includes(size)) {
+    return sendError(res, 400, "Select a valid T-Shirt size (S, M, L, XL, XXL)");
+  }
+
+  const updatedItem = await InventoryItem.findOneAndUpdate(
+    { itemType, size, franchiseId: targetFranchiseId },
+    { $inc: { quantity }, $setOnInsert: { centre: targetCentre, minThreshold: 5 } },
+    { new: true, upsert: true },
+  );
+
+  await InventoryTransaction.create({
+    type: "Stock In",
+    itemType,
+    size,
+    quantity,
+    vendorChallan,
+    handledBy: req.user.name || "Operations",
+    notes,
+    centre: targetCentre,
+    franchiseId: targetFranchiseId,
+  });
+
+  res.json({ ok: true, message: `Added ${quantity} ${itemType === "tshirt" ? `T-Shirt (${size})` : itemType} to stock`, data: updatedItem });
+});
+
+app.post("/api/admin/inventory/stock-out", requireAuth, async (req, res) => {
+  if (!canManageInventory(req.user)) return sendError(res, 403, "Inventory management is restricted");
+  const itemType = String(req.body?.itemType || "").trim().toLowerCase();
+  const quantity = Number(req.body?.quantity || 0);
+  const notes = String(req.body?.notes || "").trim();
+  const size = itemType === "tshirt" ? String(req.body?.size || "M").toUpperCase().trim() : "NA";
+
+  let targetFranchiseId = isFranchiseUser(req.user) ? req.user.franchiseId : req.body?.franchiseId;
+  const item = await InventoryItem.findOne({ itemType, size, franchiseId: targetFranchiseId });
+  if (!item || item.quantity < quantity) {
+    return sendError(res, 400, `Insufficient stock. Available: ${item?.quantity || 0}`);
+  }
+
+  item.quantity = Math.max(0, item.quantity - quantity);
+  await item.save();
+
+  await InventoryTransaction.create({
+    type: "Stock Out",
+    itemType,
+    size,
+    quantity,
+    handledBy: req.user.name || "Operations",
+    notes,
+    centre: item.centre,
+    franchiseId: item.franchiseId,
+  });
+
+  res.json({ ok: true, message: `Deducted ${quantity} from stock`, data: item });
+});
+
+app.post("/api/admin/inventory/issue-kit", requireAuth, async (req, res) => {
+  if (!canManageInventory(req.user)) return sendError(res, 403, "Inventory management is restricted");
+  const studentId = String(req.body?.studentId || "").trim();
+  if (!studentId || !mongoose.isValidObjectId(studentId)) return sendError(res, 400, "Valid Student is required");
+
+  const student = await Student.findById(studentId);
+  if (!student) return sendError(res, 404, "Student not found");
+
+  const issueIdCard = Boolean(req.body?.issueIdCard);
+  const idCardNumber = String(req.body?.idCardNumber || student.admissionNumber || "").trim();
+  const issueTshirt = Boolean(req.body?.issueTshirt);
+  let tshirtsToIssue = [];
+  if (issueTshirt) {
+    if (Array.isArray(req.body?.tshirts) && req.body.tshirts.length > 0) {
+      tshirtsToIssue = req.body.tshirts
+        .map((t) => ({
+          size: String(t.size || "").toUpperCase().trim(),
+          quantity: Math.max(1, parseInt(t.quantity, 10) || 1),
+        }))
+        .filter((t) => ["S", "M", "L", "XL", "XXL"].includes(t.size));
+    } else {
+      const singleSize = String(req.body?.tshirtSize || "M").toUpperCase().trim();
+      const singleQty = Math.max(1, parseInt(req.body?.tshirtQuantity, 10) || 1);
+      if (["S", "M", "L", "XL", "XXL"].includes(singleSize)) {
+        tshirtsToIssue = [{ size: singleSize, quantity: singleQty }];
+      }
+    }
+    if (!tshirtsToIssue.length) {
+      return sendError(res, 400, "Choose at least one valid T-Shirt size and quantity");
+    }
+  }
+  const issueBag = Boolean(req.body?.issueBag);
+  const issueTablet = Boolean(req.body?.issueTablet);
+  const tabletId = String(req.body?.tabletId || "").trim();
+  const notes = String(req.body?.notes || "").trim();
+
+  if (!issueIdCard && !issueTshirt && !issueBag && !issueTablet) {
+    return sendError(res, 400, "Select at least one item to issue");
+  }
+
+  const targetFranchiseId = student.franchiseId || (isFranchiseUser(req.user) ? req.user.franchiseId : null);
+  const targetCentre = student.centre || "";
+
+  if (issueIdCard) {
+    const idItem = await InventoryItem.findOne({ itemType: "id_card", franchiseId: targetFranchiseId });
+    if (!idItem || idItem.quantity < 1) return sendError(res, 400, "ID Cards are out of stock");
+  }
+  if (issueTshirt && tshirtsToIssue.length > 0) {
+    const aggregatedBySize = {};
+    for (const t of tshirtsToIssue) {
+      aggregatedBySize[t.size] = (aggregatedBySize[t.size] || 0) + t.quantity;
+    }
+    for (const [size, qty] of Object.entries(aggregatedBySize)) {
+      const tsItem = await InventoryItem.findOne({ itemType: "tshirt", size, franchiseId: targetFranchiseId });
+      if (!tsItem || tsItem.quantity < qty) {
+        return sendError(res, 400, `Not enough stock for T-Shirt Size ${size}. (Available: ${tsItem?.quantity || 0}, Requested: ${qty})`);
+      }
+    }
+  }
+  if (issueBag) {
+    const bagItem = await InventoryItem.findOne({ itemType: "bag", franchiseId: targetFranchiseId });
+    if (!bagItem || bagItem.quantity < 1) return sendError(res, 400, "Bags are out of stock");
+  }
+  let tabletDoc = null;
+  if (issueTablet) {
+    if (!tabletId || !mongoose.isValidObjectId(tabletId)) return sendError(res, 400, "Select a tablet from stock");
+    tabletDoc = await TabletAsset.findById(tabletId);
+    if (!tabletDoc || tabletDoc.status !== "In Stock") return sendError(res, 400, "Selected tablet is not in stock");
+  }
+
+  const now = new Date();
+  const operatorName = req.user.name || "Operations";
+  if (!student.kitDistribution) student.kitDistribution = {};
+
+  if (issueIdCard) {
+    await InventoryItem.updateOne({ itemType: "id_card", franchiseId: targetFranchiseId }, { $inc: { quantity: -1 } });
+    await InventoryTransaction.create({
+      type: "Stock Out",
+      itemType: "id_card",
+      quantity: 1,
+      studentId: student._id,
+      studentName: student.fullName,
+      handledBy: operatorName,
+      notes: `Issued ID Card ${idCardNumber ? `(${idCardNumber})` : ""}. ${notes}`.trim(),
+      centre: targetCentre,
+      franchiseId: targetFranchiseId,
+    });
+    student.kitDistribution.idCardIssued = true;
+    student.kitDistribution.idCardNumber = idCardNumber;
+    student.kitDistribution.idCardIssuedAt = now;
+  }
+
+  if (issueTshirt && tshirtsToIssue.length > 0) {
+    for (const t of tshirtsToIssue) {
+      await InventoryItem.updateOne({ itemType: "tshirt", size: t.size, franchiseId: targetFranchiseId }, { $inc: { quantity: -t.quantity } });
+      await InventoryTransaction.create({
+        type: "Stock Out",
+        itemType: "tshirt",
+        size: t.size,
+        quantity: t.quantity,
+        studentId: student._id,
+        studentName: student.fullName,
+        handledBy: operatorName,
+        notes: `Issued ${t.quantity}x T-Shirt Size ${t.size}. ${notes}`.trim(),
+        centre: targetCentre,
+        franchiseId: targetFranchiseId,
+      });
+    }
+    const totalTshirts = tshirtsToIssue.reduce((sum, t) => sum + t.quantity, 0);
+    const sizeSummary = tshirtsToIssue
+      .map((t) => (t.quantity > 1 ? `${t.size} (×${t.quantity})` : t.size))
+      .join(", ");
+    student.kitDistribution.tshirtIssued = true;
+    student.kitDistribution.tshirtSize = sizeSummary;
+    student.kitDistribution.tshirtQuantity = totalTshirts;
+    student.kitDistribution.tshirts = tshirtsToIssue;
+    student.kitDistribution.tshirtIssuedAt = now;
+  }
+
+  if (issueBag) {
+    await InventoryItem.updateOne({ itemType: "bag", franchiseId: targetFranchiseId }, { $inc: { quantity: -1 } });
+    await InventoryTransaction.create({
+      type: "Stock Out",
+      itemType: "bag",
+      quantity: 1,
+      studentId: student._id,
+      studentName: student.fullName,
+      handledBy: operatorName,
+      notes: `Issued Bag. ${notes}`.trim(),
+      centre: targetCentre,
+      franchiseId: targetFranchiseId,
+    });
+    student.kitDistribution.bagIssued = true;
+    student.kitDistribution.bagIssuedAt = now;
+  }
+
+  if (issueTablet && tabletDoc) {
+    tabletDoc.status = "Assigned";
+    tabletDoc.assignedStudentId = student._id;
+    tabletDoc.assignedStudentName = student.fullName;
+    tabletDoc.assignedStudentAdmissionNo = student.admissionNumber || "";
+    tabletDoc.assignedDate = now;
+    await tabletDoc.save();
+
+    await InventoryTransaction.create({
+      type: "Stock Out",
+      itemType: "tablet",
+      quantity: 1,
+      tabletId: tabletDoc._id,
+      assetId: tabletDoc.assetId,
+      serialNumber: tabletDoc.serialNumber,
+      studentId: student._id,
+      studentName: student.fullName,
+      handledBy: operatorName,
+      notes: `Assigned Tablet ${tabletDoc.assetId} (S/N: ${tabletDoc.serialNumber}). ${notes}`.trim(),
+      centre: targetCentre,
+      franchiseId: targetFranchiseId,
+    });
+    student.kitDistribution.tabletIssued = true;
+    student.kitDistribution.tabletAssetId = tabletDoc.assetId;
+    student.kitDistribution.tabletSerialNumber = tabletDoc.serialNumber;
+    student.kitDistribution.tabletIssuedAt = now;
+  }
+
+  student.kitDistribution.issuedBy = operatorName;
+  if (notes) student.kitDistribution.notes = notes;
+  await student.save();
+
+  res.json({ ok: true, message: `Kit issued to ${student.fullName}`, data: student });
+});
+
+app.post("/api/admin/inventory/tablets/:id/return", requireAuth, async (req, res) => {
+  if (!canManageInventory(req.user)) return sendError(res, 403, "Inventory management is restricted");
+  if (!mongoose.isValidObjectId(req.params.id)) return sendError(res, 400, "Invalid tablet ID");
+
+  const tablet = await TabletAsset.findById(req.params.id);
+  if (!tablet) return sendError(res, 404, "Tablet not found");
+  if (tablet.status === "In Stock") return sendError(res, 400, "Tablet is already in stock");
+
+  const previousStudentId = tablet.assignedStudentId;
+  const previousStudentName = tablet.assignedStudentName;
+
+  tablet.status = "In Stock";
+  tablet.returnedDate = new Date();
+  tablet.assignedStudentId = undefined;
+  tablet.assignedStudentName = "";
+  tablet.assignedStudentAdmissionNo = "";
+  await tablet.save();
+
+  if (previousStudentId) {
+    await Student.findByIdAndUpdate(previousStudentId, {
+      $set: {
+        "kitDistribution.tabletIssued": false,
+        "kitDistribution.notes": `Tablet ${tablet.assetId} returned on ${new Date().toLocaleDateString("en-IN")}`,
+      },
+    });
+  }
+
+  await InventoryTransaction.create({
+    type: "Return",
+    itemType: "tablet",
+    quantity: 1,
+    tabletId: tablet._id,
+    assetId: tablet.assetId,
+    serialNumber: tablet.serialNumber,
+    studentId: previousStudentId,
+    studentName: previousStudentName,
+    handledBy: req.user.name || "Operations",
+    notes: req.body?.notes || "Tablet returned to stock",
+    centre: tablet.centre,
+    franchiseId: tablet.franchiseId,
+  });
+
+  res.json({ ok: true, message: `Tablet ${tablet.assetId} returned to stock`, data: tablet });
 });
 
 app.post("/api/admin/attendance", requireAuth, async (req, res) => {
@@ -2857,11 +3472,20 @@ app.post("/api/admin/students/:id/payments", requireAuth, leadDocumentUpload.sin
   const proof = saveLeadDocument(req.file);
   if (mode !== "Cash" && !proof?.storedName) return sendError(res, 400, "Payment proof is required for non-cash payments");
   const remainingAfterPayment = pendingDue - amount;
+  const emiShortfall = paymentPurpose === "Fees Installment" && existingStudent.emiEnabled && existingStudent.emiAmount && amount < existingStudent.emiAmount
+    ? Math.max(0, existingStudent.emiAmount - amount)
+    : 0;
   const paymentUpdate = {
     $inc: { paidAmount: amount },
     $push: {
       payments: { amount, paymentPurpose, mode, transactionId, emiReference, loanProviderName, note, proof, by: req.user.name },
-      activities: { type: "payment", message: `${paymentPurpose} received: ${amount}${proof ? " with proof" : ""}`, by: req.user.name },
+      activities: {
+        type: "payment",
+        message: emiShortfall > 0
+          ? `${paymentPurpose} received: ${amount}${proof ? " with proof" : ""}. Shortfall of ${emiShortfall} carried forward to next EMI.`
+          : `${paymentPurpose} received: ${amount}${proof ? " with proof" : ""}`,
+        by: req.user.name,
+      },
     },
   };
   if (paymentPurpose === "Fees Installment" && existingStudent.emiEnabled) {
@@ -3188,6 +3812,17 @@ app.patch("/api/admin/batches/:id", requireAuth, requireFranchiseManager, async 
   const nextBatchCourse = Object.prototype.hasOwnProperty.call(updates, "course") ? updates.course : existingBatch.course;
   if (!isCourseAllowedForCentre(nextBatchCentre, nextBatchCourse)) return sendError(res, 400, "Kochi centre allows only AHAP and GCA courses");
   const batch = await Batch.findByIdAndUpdate(req.params.id, { $set: updates }, { new: true, runValidators: true });
+  if (updates.name || updates.commenceDate) {
+    const studentUpdates = {};
+    if (updates.name) studentUpdates.batch = updates.name;
+    if (updates.commenceDate) studentUpdates.batchCommenceDate = updates.commenceDate;
+    if (existingBatch.name) {
+      await Student.updateMany(
+        { batch: { $regex: new RegExp(`^${existingBatch.name.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}$`, "i") } },
+        { $set: studentUpdates }
+      );
+    }
+  }
   res.json({ ok: true, data: batch });
 });
 
@@ -3670,17 +4305,41 @@ app.post("/api/contact", async (req, res) => {
   const { fullName, phone, email, preferredProgram, message } = req.body || {};
   if (!fullName || !phone || !preferredProgram) return sendError(res, 400, "Full name, phone, and preferred program are required.");
   try {
-    await transporter.sendMail({
-      from: `iMED Academy <${process.env.SMTP_USER}>`,
-      to: toAddress,
-      replyTo: email || process.env.SMTP_USER,
-      subject: `New iMED enquiry - ${preferredProgram}`,
-      html: `<h2>New iMED Academy Enquiry</h2><table cellpadding="8" cellspacing="0" border="1" style="border-collapse:collapse;font-family:Arial,sans-serif;"><tr><th align="left">Full Name</th><td>${escapeHtml(fullName)}</td></tr><tr><th align="left">Phone</th><td>${escapeHtml(phone)}</td></tr><tr><th align="left">Email</th><td>${escapeHtml(email || "Not provided")}</td></tr><tr><th align="left">Preferred Program</th><td>${escapeHtml(preferredProgram)}</td></tr><tr><th align="left">Message</th><td>${escapeHtml(message || "Not provided")}</td></tr></table>`,
-    });
-    await Lead.create({ fullName, phone: normalizePhone(phone), email: email || "", source: "Website Enquiry", course: preferredProgram, notes: message || "", activities: [{ type: "website", message: "Created from website enquiry", by: "Website" }] });
-    res.json({ ok: true, message: "Enquiry submitted successfully." });
+    let createdLead = null;
+    try {
+      createdLead = await Lead.create({
+        fullName,
+        phone: normalizePhone(phone),
+        email: email || "",
+        source: "Website Enquiry",
+        course: preferredProgram,
+        notes: message || "",
+        activities: [{ type: "website", message: "Created from website enquiry", by: "Website" }],
+      });
+    } catch (dbError) {
+      console.error("Contact form DB create error:", dbError);
+    }
+
+    try {
+      await transporter.sendMail({
+        from: `iMED Academy <${process.env.SMTP_USER}>`,
+        to: toAddress,
+        replyTo: email || process.env.SMTP_USER,
+        subject: `New iMED enquiry - ${preferredProgram}`,
+        html: `<h2>New iMED Academy Enquiry</h2><table cellpadding="8" cellspacing="0" border="1" style="border-collapse:collapse;font-family:Arial,sans-serif;"><tr><th align="left">Full Name</th><td>${escapeHtml(fullName)}</td></tr><tr><th align="left">Phone</th><td>${escapeHtml(phone)}</td></tr><tr><th align="left">Email</th><td>${escapeHtml(email || "Not provided")}</td></tr><tr><th align="left">Preferred Program</th><td>${escapeHtml(preferredProgram)}</td></tr><tr><th align="left">Message</th><td>${escapeHtml(message || "Not provided")}</td></tr></table>`,
+      });
+    } catch (mailError) {
+      console.error("Contact form mail delivery error (lead was recorded if DB connected):", mailError);
+    }
+
+    if (createdLead) {
+      return res.json({ ok: true, message: "Enquiry submitted successfully." });
+    }
+
+    // If DB failed, but mail succeeded, it's still received
+    return res.json({ ok: true, message: "Enquiry submitted successfully." });
   } catch (error) {
-    console.error("Contact form mail error:", error);
+    console.error("Contact form error:", error);
     sendError(res, 500, "Unable to send enquiry right now. Please try again later.");
   }
 });

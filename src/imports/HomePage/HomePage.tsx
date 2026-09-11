@@ -348,7 +348,7 @@ function Frame23() {
 
 function Button() {
   return (
-    <div data-nav-target="contact-us" className="bg-[#25a88d] content-stretch flex h-[36px] items-center justify-center px-[16px] py-[8px] relative rounded-[8px] shrink-0 w-[140px]" data-name="Button">
+    <div data-nav-target="applynow" className="bg-[#25a88d] content-stretch flex h-[36px] items-center justify-center px-[16px] py-[8px] relative rounded-[8px] shrink-0 w-[140px] cursor-pointer hover:opacity-95 transition-opacity" data-name="Button">
       <p className="font-['Inter:Medium',sans-serif] font-medium leading-[20px] not-italic relative shrink-0 text-[14px] text-center text-white whitespace-nowrap">{`Apply Now `}</p>
     </div>
   );
@@ -424,7 +424,7 @@ function Frame162() {
 
 function Frame24() {
   return (
-    <div data-nav-target="contact-us" className="bg-[#25a88d] content-stretch flex h-[50px] items-center justify-center overflow-clip px-[17px] py-[8px] relative rounded-[12px] shrink-0 w-[220px] cursor-pointer">
+    <div data-nav-target="applynow" className="bg-[#25a88d] content-stretch flex h-[50px] items-center justify-center overflow-clip px-[17px] py-[8px] relative rounded-[12px] shrink-0 w-[220px] cursor-pointer hover:opacity-95 transition-opacity">
       <p className="font-['Inter:Semi_Bold',sans-serif] font-semibold leading-[32.5px] not-italic relative shrink-0 text-[18px] text-white whitespace-nowrap">{`Apply Now `}</p>
     </div>
   );
@@ -3057,7 +3057,7 @@ function Paragraph11() {
 
 function Frame28() {
   return (
-    <div data-nav-target="contact-us" className="bg-[#25a88d] content-stretch flex h-[50px] items-center justify-center overflow-clip px-[17px] py-[8px] relative rounded-[12px] shrink-0 w-[220px] cursor-pointer">
+    <div data-nav-target="applynow" className="bg-[#25a88d] content-stretch flex h-[50px] items-center justify-center overflow-clip px-[17px] py-[8px] relative rounded-[12px] shrink-0 w-[220px] cursor-pointer hover:opacity-95 transition-opacity">
       <p className="font-['Inter:Semi_Bold',sans-serif] font-semibold leading-[32.5px] not-italic relative shrink-0 text-[18px] text-white whitespace-nowrap">{`Apply Now `}</p>
     </div>
   );
