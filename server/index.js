@@ -70,10 +70,10 @@ const admissionPaymentModeValues = [...admissionPaymentModes, legacyPartialEmiPa
 const paymentNoteMaxLength = 250;
 const paymentReferenceMaxLength = 80;
 const kochiCourseOptions = ["AHAP", "GCA"];
-const leadFeedbackOptions = ["New", "Interested", "Qualified", "Follow-up", "On Hold", "Converted", "Lost", "Not Connected", "Busy Call later", "Invalid", "Junk"];
+const leadFeedbackOptions = ["New", "Interested", "Qualified", "Follow-up", "RNR", "Not Interested", "Future Cohort", "On Hold", "Converted", "Lost", "Not Connected", "Busy Call later", "Invalid", "Junk"];
 const leadPriorityOptions = ["P0", "P1", "P2", "P3"];
-const leadStageOptions = ["New Lead", "Contacted", "Counselling", "Demo / Visit", "Admission", "Enrolled", "Alumni", "Lost"];
-const leadCreateStageOptions = ["New Lead", "Contacted", "Counselling", "Demo / Visit", "Admission", "Lost"];
+const leadStageOptions = ["New Lead", "Contacted", "Counselling", "Demo / Visit", "Admission", "Enrolled", "Alumni", "Lost", "RNR", "Not Interested", "Future Cohort"];
+const leadCreateStageOptions = ["New Lead", "Contacted", "Counselling", "Demo / Visit", "Admission", "Lost", "RNR", "Not Interested", "Future Cohort"];
 const npsTouchpoints = ["mid_course", "post_classroom", "post_internship"];
 const npsTouchpointLabels = {
   mid_course: "Mid-course feedback",
@@ -105,7 +105,8 @@ function isKochiCentre(centre = "") {
   return String(centre || "").trim().toLowerCase() === "kochi";
 }
 
-function isCourseAllowedForCentre(centre = "", course = "") {
+function isCourseAllowedForCentre(centre = "", course = "", user = null) {
+  if (user?.role === "superadmin") return true;
   if (!isKochiCentre(centre) || !course) return true;
   return kochiCourseOptions.includes(normalizeCourseCode(course));
 }
@@ -286,6 +287,8 @@ const leadSchema = new mongoose.Schema({
   nextFollowUp: { type: Date },
   followUps: [leadFollowUpSchema],
   notes: { type: String, default: "" },
+  assignedAt: { type: Date },
+  assignedBy: { type: String, default: "" },
   activities: [activitySchema],
 }, { timestamps: true });
 
@@ -877,7 +880,13 @@ function adminScopeFilter(query = {}) {
   const filter = {};
   if (query.centre) filter.centre = String(query.centre);
   if (query.franchiseId && mongoose.isValidObjectId(String(query.franchiseId))) filter.franchiseId = new mongoose.Types.ObjectId(String(query.franchiseId));
-  if (query.counsellor) filter.counsellor = String(query.counsellor);
+  if (query.counsellor) {
+    if (query.counsellor === "Unassigned") {
+      filter.counsellor = { $in: ["Unassigned", "", null] };
+    } else {
+      filter.counsellor = String(query.counsellor);
+    }
+  }
   return filter;
 }
 
@@ -1021,6 +1030,7 @@ async function nextCounterValue(key, floor = 0) {
 function priorityFromLeadFeedback(feedback = "") {
   const normalized = String(feedback || "").toLowerCase();
   if (normalized.includes("qualified") || normalized.includes("converted")) return "P0";
+  if (normalized.includes("not interested")) return "P3";
   if (normalized.includes("interested")) return "P1";
   if (normalized.includes("lost") || normalized.includes("invalid") || normalized.includes("junk") || normalized.includes("not connected")) return "P3";
   if (normalized) return "P2";
@@ -1039,15 +1049,19 @@ function normalizeLeadFeedbackStatus(value = "") {
     "Hot lead": "Interested",
     "Warm lead": "Follow-up",
     "Cold lead": "Lost",
-    RNR: "Not Connected",
     DNP: "Not Connected",
     "Call back": "Busy Call later",
-    "Not interested": "Lost",
     "Invalid number": "Invalid",
     Spam: "Junk",
     Fake: "Junk",
     "Junk lead": "Junk",
     junk: "Junk",
+    rnr: "RNR",
+    "not interested": "Not Interested",
+    "not intrested": "Not Interested",
+    "Not intrested": "Not Interested",
+    "future cohort": "Future Cohort",
+    "Future cohort": "Future Cohort",
   };
   const status = legacyMap[value] || value || "New";
   return leadFeedbackOptions.includes(status) ? status : "New";
@@ -1085,11 +1099,11 @@ function isHeadBranchScoped(user) {
 
 async function headOfficeBranchScope(user) {
   const assignedBranchId = isHeadBranchScoped(user) && user?.franchiseId ? String(user.franchiseId) : "";
-  const branches = await Centre.find({
-    active: true,
-    type: "branch",
-    ...(assignedBranchId ? { _id: assignedBranchId } : {}),
-  }).select("_id name").lean();
+  const branches = await Centre.find(
+    assignedBranchId
+      ? { _id: assignedBranchId }
+      : { active: true, type: "branch" }
+  ).select("_id name").lean();
   return {
     ids: branches.map((branch) => branch._id),
     names: branches.map((branch) => branch.name),
@@ -1110,12 +1124,24 @@ async function scopedDataFilter(req, query = {}) {
   const filter = { ...adminScopeFilter(query) };
   if (isFranchiseUser(req.user)) {
     if (!req.user.franchiseId) return { ...filter, franchiseId: emptyObjectId };
-    filter.franchiseId = req.user.franchiseId;
+    const userCentre = await Centre.findById(req.user.franchiseId).select("name").lean();
+    const centreName = userCentre?.name || "";
+    if (centreName) {
+      filter.$or = [
+        { franchiseId: req.user.franchiseId },
+        { centre: centreName },
+        { centre: { $regex: new RegExp(`^${escapeRegex(centreName)}$`, "i") } },
+      ];
+    } else {
+      filter.franchiseId = req.user.franchiseId;
+    }
   } else if (isHeadBranchScoped(req.user)) {
     const branchScope = await headOfficeBranchScope(req.user);
+    const regexNames = branchScope.names.map((name) => new RegExp(`^${escapeRegex(name)}$`, "i"));
     filter.$or = [
       { franchiseId: { $in: branchScope.ids } },
       { centre: { $in: branchScope.names } },
+      ...(regexNames.length ? [{ centre: { $in: regexNames } }] : []),
     ];
   }
   return filter;
@@ -1129,7 +1155,11 @@ async function canAccessRecord(req, record) {
   const teacherOwner = String(rawRecord?.teacher || "");
   const recordBatchName = String(rawRecord?.batch || rawRecord?.batchName || rawRecord?.name || "");
   if (isFranchiseUser(req.user)) {
-    const inFranchise = Boolean(req.user.franchiseId && record?.franchiseId && String(record.franchiseId) === String(req.user.franchiseId));
+    const userCentre = req.user.franchiseId ? await Centre.findById(req.user.franchiseId).select("name").lean() : null;
+    const inFranchise = Boolean(
+      (req.user.franchiseId && record?.franchiseId && String(record.franchiseId) === String(req.user.franchiseId)) ||
+      (userCentre?.name && record?.centre && String(record.centre).toLowerCase() === String(userCentre.name).toLowerCase())
+    );
     if (!inFranchise) return false;
     if (isCounsellorAccount(req.user) && hasCounsellorOwner) return counsellorOwner === req.user.name;
     if (isTeacherAccount(req.user)) {
@@ -1142,7 +1172,8 @@ async function canAccessRecord(req, record) {
   if (isHeadBranchScoped(req.user)) {
     const branchScope = await headOfficeBranchScope(req.user);
     const recordFranchiseId = record?.franchiseId ? String(record.franchiseId) : "";
-    const inBranch = branchScope.ids.some((id) => String(id) === recordFranchiseId) || branchScope.names.includes(String(record?.centre || ""));
+    const inBranch = branchScope.ids.some((id) => String(id) === recordFranchiseId) ||
+      branchScope.names.some((name) => String(name).toLowerCase() === String(record?.centre || "").toLowerCase());
     if (!inBranch) return false;
     if (isCounsellorAccount(req.user) && hasCounsellorOwner) return counsellorOwner === req.user.name;
     if (isTeacherAccount(req.user)) {
@@ -1160,13 +1191,20 @@ async function resolveFranchiseFromRequest(req, centreName = "") {
     if (!req.user.franchiseId) return null;
     return Centre.findById(req.user.franchiseId).lean();
   }
-  const assignedBranchFilter = isHeadBranchScoped(req.user) && req.user.franchiseId ? { _id: req.user.franchiseId, type: "branch" } : {};
+  const assignedBranchFilter = isHeadBranchScoped(req.user) && req.user.franchiseId ? { _id: req.user.franchiseId } : {};
   const bodyFranchiseId = req.body?.franchiseId || req.query?.franchiseId;
   if (bodyFranchiseId && mongoose.isValidObjectId(String(bodyFranchiseId))) {
-    const centre = await Centre.findOne({ _id: bodyFranchiseId, ...(isHeadBranchScoped(req.user) ? { type: "branch" } : {}), ...assignedBranchFilter }).lean();
+    const centre = await Centre.findOne({ _id: bodyFranchiseId, ...assignedBranchFilter }).lean();
     if (centre) return centre;
   }
-  if (centreName) return Centre.findOne({ name: centreName, ...(isHeadBranchScoped(req.user) ? { type: "branch" } : {}), ...assignedBranchFilter }).lean();
+  if (centreName) {
+    const trimmed = String(centreName).trim();
+    const centre = await Centre.findOne({
+      name: { $regex: new RegExp(`^${escapeRegex(trimmed)}$`, "i") },
+      ...assignedBranchFilter,
+    }).lean();
+    if (centre) return centre;
+  }
   return null;
 }
 
@@ -1932,7 +1970,13 @@ app.get("/api/admin/leads", requireAuth, async (req, res) => {
   if (leadFeedback) filter.leadFeedback = leadFeedback;
   if (centre) filter.centre = centre;
   if (course) filter.course = course;
-  if (counsellor) filter.counsellor = counsellor;
+  if (counsellor) {
+    if (counsellor === "Unassigned") {
+      filter.counsellor = { $in: ["Unassigned", "", null] };
+    } else {
+      filter.counsellor = counsellor;
+    }
+  }
   if (isCounsellorAccount(req.user)) filter.counsellor = req.user.name;
   Object.assign(filter, await scopedDataFilter(req, req.query));
   if (q) {
@@ -1955,7 +1999,7 @@ app.get("/api/admin/leads", requireAuth, async (req, res) => {
             $cond: [
               {
                 $or: [
-                  { $in: ["$leadFeedback", ["Junk", "Lost", "Invalid"]] },
+                  { $in: ["$leadFeedback", ["Junk", "Lost", "Invalid", "Not Interested"]] },
                   { $eq: ["$stage", "Lost"] },
                 ],
               },
@@ -1988,6 +2032,23 @@ app.get("/api/admin/leads/followups", requireAuth, async (req, res) => {
   res.json({ ok: true, data: leads });
 });
 
+app.get("/api/admin/leads/assigned", requireAuth, async (req, res) => {
+  if (!canUseLeads(req.user)) return sendError(res, 403, "Lead access is restricted to counsellor and admin accounts");
+  const thirtyDaysAgo = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000);
+  const filter = {
+    $or: [
+      { assignedAt: { $exists: true, $ne: null, $gte: thirtyDaysAgo } },
+      { "activities.type": "assigned", updatedAt: { $gte: thirtyDaysAgo } },
+      { stage: { $in: ["New Lead", "New", ""] }, createdAt: { $gte: thirtyDaysAgo } },
+      { source: { $in: ["Website Enquiry", "Website"] }, createdAt: { $gte: thirtyDaysAgo } },
+    ],
+  };
+  Object.assign(filter, await scopedDataFilter(req, req.query));
+  if (isCounsellorAccount(req.user)) filter.counsellor = req.user.name;
+  const leads = await Lead.find(filter).sort({ assignedAt: -1, updatedAt: -1, createdAt: -1 }).limit(100).lean();
+  res.json({ ok: true, data: leads });
+});
+
 app.get("/api/admin/admissions/pending-count", requireAuth, async (req, res) => {
   if (!canUseLeads(req.user)) return sendError(res, 403, "Lead access is restricted to counsellor and admin accounts");
   const leadFilter = { stage: "Admission" };
@@ -2017,7 +2078,7 @@ app.post("/api/admin/leads", requireAuth, leadDocumentUpload.fields([
   if (isFranchiseUser(req.user) && !franchise) return sendError(res, 403, "Franchise account is not assigned");
   const centreName = franchise?.name || body.centre || "";
   if (!centreName) return sendError(res, 400, "Centre is required");
-  if (!isCourseAllowedForCentre(centreName, body.course || "")) return sendError(res, 400, "Kochi centre allows only AHAP and GCA courses");
+  if (!isCourseAllowedForCentre(centreName, body.course || "", req.user)) return sendError(res, 400, "Kochi centre allows only AHAP and GCA courses");
   const leadFeedback = normalizeLeadFeedbackStatus(body.leadFeedback);
   const requestedStage = String(body.stage || "New Lead").trim();
   if (!leadCreateStageOptions.includes(requestedStage)) return sendError(res, 400, "Use Admission and batch assignment before enrolling a lead");
@@ -2040,7 +2101,7 @@ app.post("/api/admin/leads", requireAuth, leadDocumentUpload.fields([
     city: body.city || "",
     expectedFee: canManageFees(req.user) ? Number(body.expectedFee || 0) : feeWithGst((await Course.findOne({ $or: [{ code: body.course }, { name: body.course }], active: true }).lean())?.fee || 0),
     notes: body.notes || "",
-    activities: [{ type: "created", message: "Lead created", by: req.user.name }],
+    activities: [{ type: "created", message: "Lead created", by: req.user.name, at: new Date() }],
   });
   res.status(201).json({ ok: true, data: lead });
 });
@@ -2093,7 +2154,7 @@ app.post("/api/admin/leads/import", requireAuth, upload.single("file"), async (r
       continue;
     }
     const courseValue = courseInput || matchedCourse?.code || matchedCourse?.name || "";
-    if (!isCourseAllowedForCentre(centreName, courseValue)) {
+    if (!isCourseAllowedForCentre(centreName, courseValue, req.user)) {
       skipped.push({ row: rowNumber, reason: "Kochi centre allows only AHAP and GCA courses" });
       continue;
     }
@@ -2124,7 +2185,7 @@ app.post("/api/admin/leads/import", requireAuth, upload.single("file"), async (r
       city: excelString(row, ["City"]),
       expectedFee,
       notes: excelString(row, ["Notes", "Remark", "Remarks"]),
-      activities: [{ type: "created", message: "Lead imported from Excel", by: req.user.name }],
+      activities: [{ type: "created", message: "Lead imported from Excel", by: req.user.name, at: new Date() }],
     });
   }
 
@@ -2165,16 +2226,53 @@ app.patch("/api/admin/leads/:id", requireAuth, async (req, res) => {
     if (franchise) {
       allowedLeadUpdates.centre = franchise.name;
       allowedLeadUpdates.franchiseId = franchise._id;
+    } else {
+      const fallbackCentre = await Centre.findOne({
+        name: { $regex: new RegExp(`^${escapeRegex(String(allowedLeadUpdates.centre).trim())}$`, "i") },
+      }).lean();
+      if (fallbackCentre) {
+        allowedLeadUpdates.centre = fallbackCentre.name;
+        allowedLeadUpdates.franchiseId = fallbackCentre._id;
+      }
     }
   }
   const nextLeadCentre = Object.prototype.hasOwnProperty.call(allowedLeadUpdates, "centre") ? allowedLeadUpdates.centre : existingLead.centre;
   const nextLeadCourse = Object.prototype.hasOwnProperty.call(allowedLeadUpdates, "course") ? allowedLeadUpdates.course : existingLead.course;
-  if (!isCourseAllowedForCentre(nextLeadCentre, nextLeadCourse)) return sendError(res, 400, "Kochi centre allows only AHAP and GCA courses");
+  if (!isCourseAllowedForCentre(nextLeadCentre, nextLeadCourse, req.user)) return sendError(res, 400, "Kochi centre allows only AHAP and GCA courses");
   if (["Enrolled", "Alumni"].includes(allowedLeadUpdates.stage)) {
     const linkedStudent = await Student.findOne({ leadId: existingLead._id }).select("_id").lean();
     if (!linkedStudent) return sendError(res, 400, "Use Admission stage and assign a batch before enrolling this lead");
   }
-  const lead = await Lead.findByIdAndUpdate(req.params.id, { $set: allowedLeadUpdates }, { new: true, runValidators: true });
+
+  const activitiesToPush = [];
+  if (allowedLeadUpdates.centre && allowedLeadUpdates.centre !== existingLead.centre) {
+    allowedLeadUpdates.assignedAt = new Date();
+    allowedLeadUpdates.assignedBy = req.user.name || "Super Admin";
+    activitiesToPush.push({
+      type: "assigned",
+      message: `Lead assigned to ${allowedLeadUpdates.centre} centre by ${req.user.name || "Super Admin"}`,
+      by: req.user.name || "Super Admin",
+      at: new Date(),
+    });
+  }
+  if (allowedLeadUpdates.counsellor && allowedLeadUpdates.counsellor !== existingLead.counsellor) {
+    if (!allowedLeadUpdates.assignedAt) {
+      allowedLeadUpdates.assignedAt = new Date();
+      allowedLeadUpdates.assignedBy = req.user.name || "Super Admin";
+    }
+    activitiesToPush.push({
+      type: "assigned",
+      message: `Assigned counsellor set to ${allowedLeadUpdates.counsellor} by ${req.user.name || "Super Admin"}`,
+      by: req.user.name || "Super Admin",
+      at: new Date(),
+    });
+  }
+
+  const updateQuery = { $set: allowedLeadUpdates };
+  if (activitiesToPush.length) {
+    updateQuery.$push = { activities: { $each: activitiesToPush } };
+  }
+  const lead = await Lead.findByIdAndUpdate(req.params.id, updateQuery, { new: true, runValidators: true });
   if (!lead) return sendError(res, 404, "Lead not found");
   const studentSyncUpdates = {};
   ["fullName", "phone", "parentMobile", "email", "governmentProof", "highestQualificationCertificate", "studentLocation", "centre", "franchiseId", "course", "counsellor"].forEach((field) => {
@@ -2201,6 +2299,110 @@ app.patch("/api/admin/leads/:id", requireAuth, async (req, res) => {
   res.json({ ok: true, data: lead });
 });
 
+app.post("/api/admin/leads/bulk-assign-centre", requireAuth, async (req, res) => {
+  if (!canUseLeads(req.user)) return sendError(res, 403, "Lead access is restricted to counsellor and admin accounts");
+  if (isFranchiseUser(req.user)) return sendError(res, 403, "Franchise accounts cannot reassign leads to other centres");
+  const { ids = [], centre = "" } = req.body || {};
+  if (!Array.isArray(ids) || !ids.length) return sendError(res, 400, "No leads selected");
+  if (!centre) return sendError(res, 400, "Centre is required");
+
+  const franchise = await resolveFranchiseFromRequest(req, centre);
+  let resolvedCentre = centre;
+  let resolvedFranchiseId = null;
+  if (franchise) {
+    resolvedCentre = franchise.name;
+    resolvedFranchiseId = franchise._id;
+  } else {
+    const fallbackCentre = await Centre.findOne({
+      name: { $regex: new RegExp(`^${escapeRegex(String(centre).trim())}$`, "i") },
+    }).lean();
+    if (fallbackCentre) {
+      resolvedCentre = fallbackCentre.name;
+      resolvedFranchiseId = fallbackCentre._id;
+    }
+  }
+
+  const existingLeads = await Lead.find({ _id: { $in: ids } }).lean();
+  const accessibleLeads = [];
+  const skippedIncompatible = [];
+  for (const lead of existingLeads) {
+    if (await canAccessRecord(req, lead)) {
+      if (isCourseAllowedForCentre(resolvedCentre, lead.course, req.user)) {
+        accessibleLeads.push(lead);
+      } else {
+        skippedIncompatible.push(lead);
+      }
+    }
+  }
+
+  if (!accessibleLeads.length) {
+    if (skippedIncompatible.length) {
+      return sendError(res, 400, `${resolvedCentre} centre allows only AHAP and GCA courses`);
+    }
+    return sendError(res, 400, "No eligible leads to assign");
+  }
+
+  const targetIds = accessibleLeads.map((l) => l._id);
+  const now = new Date();
+  const userName = req.user.name || "Super Admin";
+
+  await Lead.updateMany(
+    { _id: { $in: targetIds } },
+    {
+      $set: {
+        centre: resolvedCentre,
+        ...(resolvedFranchiseId ? { franchiseId: resolvedFranchiseId } : {}),
+        assignedAt: now,
+        assignedBy: userName,
+      },
+      $push: {
+        activities: {
+          type: "assigned",
+          message: `Lead assigned to ${resolvedCentre} centre by ${userName}`,
+          by: userName,
+          at: now,
+        },
+      },
+    }
+  );
+
+  await Student.updateMany(
+    { leadId: { $in: targetIds } },
+    {
+      $set: {
+        centre: resolvedCentre,
+        ...(resolvedFranchiseId ? { franchiseId: resolvedFranchiseId } : {}),
+      },
+    }
+  );
+
+  res.json({
+    ok: true,
+    data: {
+      count: targetIds.length,
+      skipped: skippedIncompatible.length,
+    },
+  });
+});
+
+app.post("/api/admin/leads/bulk-delete", requireAuth, requireFranchiseManager, async (req, res) => {
+  const { ids = [] } = req.body || {};
+  if (!Array.isArray(ids) || !ids.length) return sendError(res, 400, "No leads selected");
+
+  const existingLeads = await Lead.find({ _id: { $in: ids } }).lean();
+  const deletableIds = [];
+  for (const lead of existingLeads) {
+    if (await canAccessRecord(req, lead)) {
+      deletableIds.push(lead._id);
+    }
+  }
+
+  if (!deletableIds.length) return sendError(res, 400, "No leads eligible for deletion");
+
+  await Lead.deleteMany({ _id: { $in: deletableIds } });
+  res.json({ ok: true, data: { count: deletableIds.length } });
+});
+
 app.delete("/api/admin/leads/:id", requireAuth, requireFranchiseManager, async (req, res) => {
   const existingLead = await Lead.findById(req.params.id).lean();
   if (!existingLead) return sendError(res, 404, "Lead not found");
@@ -2216,7 +2418,7 @@ app.post("/api/admin/leads/:id/activities", requireAuth, async (req, res) => {
   const existingLead = await Lead.findById(req.params.id).lean();
   if (!existingLead) return sendError(res, 404, "Lead not found");
   if (!(await canAccessRecord(req, existingLead))) return sendError(res, 403, "You can access only permitted records");
-  const lead = await Lead.findByIdAndUpdate(req.params.id, { $push: { activities: { type, message, by: req.user.name } } }, { new: true });
+  const lead = await Lead.findByIdAndUpdate(req.params.id, { $push: { activities: { type, message, by: req.user.name, at: new Date() } } }, { new: true });
   if (!lead) return sendError(res, 404, "Lead not found");
   res.json({ ok: true, data: lead });
 });
@@ -2256,7 +2458,7 @@ app.post("/api/admin/leads/:id/followups", requireAuth, async (req, res) => {
       $set: { nextFollowUp },
       $push: {
         followUps: { $each: [followUp], $position: 0 },
-        activities: { type: "follow-up", message: `${followUp.status}: ${followUp.type} on ${followUpDate.toLocaleDateString("en-IN")}`, by: req.user.name },
+        activities: { type: "follow-up", message: `${followUp.status}: ${followUp.type} on ${followUpDate.toLocaleDateString("en-IN")}`, by: req.user.name, at: new Date() },
       },
     },
     { new: true, runValidators: true },
@@ -2312,7 +2514,7 @@ app.post("/api/admin/leads/:id/convert", requireAuth, async (req, res) => {
     status: "Enrolled",
     totalFee: canManageFees(req.user) ? Number(req.body?.totalFee || lead.expectedFee || 0) : Number(lead.expectedFee || 0),
     paidAmount: canManageFees(req.user) ? Number(req.body?.paidAmount || lead.paidAmount || 0) : Number(lead.paidAmount || 0),
-    activities: [{ type: "converted", message: "Lead converted to student", by: req.user.name }],
+    activities: [{ type: "converted", message: "Lead converted to student", by: req.user.name, at: new Date() }],
   }).catch(async (error) => {
     if (error?.code === 11000) {
       const linkedStudent = await Student.findOne({ leadId: lead._id });
@@ -3227,7 +3429,7 @@ app.patch("/api/admin/students/:id", requireAuth, async (req, res) => {
   const nextStudentCourse = Object.prototype.hasOwnProperty.call(allowedStudentUpdates, "course") ? allowedStudentUpdates.course : existingStudent.course;
   const nextStudentStatus = Object.prototype.hasOwnProperty.call(allowedStudentUpdates, "status") ? allowedStudentUpdates.status : existingStudent.status;
   const nextStudentBatch = Object.prototype.hasOwnProperty.call(allowedStudentUpdates, "batch") ? allowedStudentUpdates.batch : existingStudent.batch;
-  if (!isCourseAllowedForCentre(nextStudentCentre, nextStudentCourse)) return sendError(res, 400, "Kochi centre allows only AHAP and GCA courses");
+  if (!isCourseAllowedForCentre(nextStudentCentre, nextStudentCourse, req.user)) return sendError(res, 400, "Kochi centre allows only AHAP and GCA courses");
   if (Object.prototype.hasOwnProperty.call(allowedStudentUpdates, "status") && nextStudentStatus === "Active Student" && !nextStudentBatch) return sendError(res, 400, "Assign a batch before marking student as active");
   const nextTotalFee = Object.prototype.hasOwnProperty.call(allowedStudentUpdates, "totalFee") ? Number(allowedStudentUpdates.totalFee || 0) : Number(existingStudent.totalFee || 0);
   const nextDiscount = Object.prototype.hasOwnProperty.call(allowedStudentUpdates, "discountAmount") ? Number(allowedStudentUpdates.discountAmount || 0) : Number(existingStudent.discountAmount || 0);
@@ -3290,7 +3492,7 @@ app.patch("/api/admin/students/:id", requireAuth, async (req, res) => {
     await Attendance.updateMany({ studentId: student._id }, { $set: { teacher: student.teacher || "" } });
   }
   if (Object.prototype.hasOwnProperty.call(allowedStudentUpdates, "status") && student.leadId && ["Enrolled", "Alumni"].includes(student.status)) {
-    await Lead.findByIdAndUpdate(student.leadId, { $set: { stage: student.status }, $push: { activities: { type: "stage", message: `Student status synced to ${student.status}`, by: req.user.name } } });
+    await Lead.findByIdAndUpdate(student.leadId, { $set: { stage: student.status }, $push: { activities: { type: "stage", message: `Student status synced to ${student.status}`, by: req.user.name, at: new Date() } } });
   }
   res.json({ ok: true, data: await studentAdminWithInternshipResponse(student) });
 });
@@ -3773,7 +3975,7 @@ app.post("/api/admin/batches", requireAuth, requireFranchiseManager, async (req,
   const franchise = await resolveFranchiseFromRequest(req, req.body.centre || "");
   if (isFranchiseUser(req.user) && !franchise) return sendError(res, 403, "Franchise account is not assigned");
   const centreName = franchise?.name || req.body.centre || "";
-  if (!isCourseAllowedForCentre(centreName, req.body.course || "")) return sendError(res, 400, "Kochi centre allows only AHAP and GCA courses");
+  if (!isCourseAllowedForCentre(centreName, req.body.course || "", req.user)) return sendError(res, 400, "Kochi centre allows only AHAP and GCA courses");
   const assignedFaculty = Array.isArray(req.body?.assignedFaculty)
     ? req.body.assignedFaculty
     : String(req.body?.assignedFaculty || "").split(",");
@@ -3810,7 +4012,7 @@ app.patch("/api/admin/batches/:id", requireAuth, requireFranchiseManager, async 
   }
   const nextBatchCentre = Object.prototype.hasOwnProperty.call(updates, "centre") ? updates.centre : existingBatch.centre;
   const nextBatchCourse = Object.prototype.hasOwnProperty.call(updates, "course") ? updates.course : existingBatch.course;
-  if (!isCourseAllowedForCentre(nextBatchCentre, nextBatchCourse)) return sendError(res, 400, "Kochi centre allows only AHAP and GCA courses");
+  if (!isCourseAllowedForCentre(nextBatchCentre, nextBatchCourse, req.user)) return sendError(res, 400, "Kochi centre allows only AHAP and GCA courses");
   const batch = await Batch.findByIdAndUpdate(req.params.id, { $set: updates }, { new: true, runValidators: true });
   if (updates.name || updates.commenceDate) {
     const studentUpdates = {};
@@ -4302,19 +4504,42 @@ app.get("/api/student/study-notes/:id/download", requireStudentAuth, async (req,
 });
 
 app.post("/api/contact", async (req, res) => {
-  const { fullName, phone, email, preferredProgram, message } = req.body || {};
+  const { fullName, phone, email, preferredProgram, message, city } = req.body || {};
   if (!fullName || !phone || !preferredProgram) return sendError(res, 400, "Full name, phone, and preferred program are required.");
   try {
     let createdLead = null;
+    let leadCourse = preferredProgram;
+    let leadCentre = "";
+    let leadCity = city || "";
+
+    const progStr = String(preferredProgram);
+    if (
+      progStr.startsWith("Apply Now") ||
+      progStr.toLowerCase().includes("healthcare administration") ||
+      progStr.toLowerCase().includes("degree") ||
+      progStr.toLowerCase().includes("graduate")
+    ) {
+      leadCourse = "AHAP";
+      leadCentre = "Kochi";
+    }
+
+    if (!leadCity && message) {
+      const cityMatch = message.match(/City:\s*([^,]+)/i);
+      if (cityMatch) leadCity = cityMatch[1].trim();
+    }
+
     try {
       createdLead = await Lead.create({
         fullName,
         phone: normalizePhone(phone),
         email: email || "",
         source: "Website Enquiry",
-        course: preferredProgram,
+        course: leadCourse,
+        centre: leadCentre,
+        studentLocation: leadCity,
+        city: leadCity,
         notes: message || "",
-        activities: [{ type: "website", message: "Created from website enquiry", by: "Website" }],
+        activities: [{ type: "website", message: "Created from website enquiry", by: "Website", at: new Date() }],
       });
     } catch (dbError) {
       console.error("Contact form DB create error:", dbError);

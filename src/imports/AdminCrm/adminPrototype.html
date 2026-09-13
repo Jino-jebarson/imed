@@ -842,7 +842,7 @@ RENDERERS.leads = function(){
     <input class="fbtn" placeholder="Search leads…" style="width:200px" oninput="filterLeadsTable(this.value)">
     <select class="fbtn" id="lfStage" onchange="filterLeadsTable()"><option value="">All stages</option>${STAGES.slice(0,4).map(s=>`<option>${s}</option>`).join('')}</select>
     <select class="fbtn" id="lfCentre" onchange="filterLeadsTable()"><option value="">All centres</option>${CENTRES.map(c=>`<option>${c}</option>`).join('')}</select>
-    <select class="fbtn" id="lfCounsellor" onchange="filterLeadsTable()"><option value="">All counsellors</option>${COUNSELLORS.map(c=>`<option>${c}</option>`).join('')}</select>
+    <select class="fbtn" id="lfCounsellor" onchange="filterLeadsTable()"><option value="">All counsellors</option><option value="Unassigned">Unassigned</option>${COUNSELLORS.map(c=>`<option>${c}</option>`).join('')}</select>
     <div style="flex:1"></div>
     <button class="btn btn-ghost" onclick="toast('Excel template downloaded (demo).')">⭳ Download Excel</button>
     <button class="btn btn-ghost" onclick="toast('Upload leads via Excel (xls/xlsx/csv/tsv) — demo only.')">⭱ Upload Excel</button>
@@ -883,7 +883,7 @@ function filterLeadsTable(){
   const couns=document.getElementById('lfCounsellor').value;
   let rows=scopedLeads().filter(l=>
     (!q || l.name.toLowerCase().includes(q) || l.phone.includes(q)) &&
-    (!stage||l.stage===stage) && (!centre||l.centre===centre) && (!couns||l.counsellor===couns));
+    (!stage||l.stage===stage) && (!centre||l.centre===centre) && (!couns||(couns==='Unassigned'?(l.counsellor==='Unassigned'||!l.counsellor):l.counsellor===couns)));
   document.querySelector('#leadsTable tbody').innerHTML = leadsRows(rows);
 }
 function updateLeadStage(id,val){

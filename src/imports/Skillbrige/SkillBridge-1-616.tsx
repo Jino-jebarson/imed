@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from "react";
+import { trackPixelLead } from "../../shared/metaPixel";
 import svgPaths from "./svg-wgdwc3ue3l";
 import imgImage1712 from "./36b610493eb683f0e81e17848fd143c365f117fd.png";
 import imgContainer from "./b0953757e6b12f75b023f2ff895d21614fa1bfcf.png";
@@ -3486,6 +3487,11 @@ function SkillBridgeContactForm() {
       if (!response.ok) {
         throw new Error("Request failed");
       }
+
+      trackPixelLead({
+        content_name: "SkillBridge Contact Form",
+        content_category: formValues.preferredProgram,
+      });
 
       setFeedback("Message sent successfully.");
       setFormValues({

@@ -1,9 +1,11 @@
 import { createContext, useContext, useState, useRef, useLayoutEffect, type FormEvent } from "react";
+import { Toaster, toast } from "sonner";
 import svgPaths from "./svg-hjwn49xw3e";
 import imgApp from "./9e3ed55bd7cd40d1450972816add156e9327d2a9.png";
 import imgImage2052 from "./22d559004cd56b1e350ec8c06dc87baf6de92650.png";
 import imgImage1745 from "./137aad5facdc077606e64b0d1af6c016f938d2dd.png";
-import imgImage1712 from "./36b610493eb683f0e81e17848fd143c365f117fd.png";
+import imgImage1712 from "../HomePage/imedLogoTMTag.svg";
+import { trackPixelLead } from "../../shared/metaPixel";
 
 type ApplyFormContextType = {
   fullName: string;
@@ -17,7 +19,6 @@ type ApplyFormContextType = {
   canAttend: "Yes" | "Not sure yet";
   setCanAttend: (val: "Yes" | "Not sure yet") => void;
   isSubmitting: boolean;
-  feedback: { type: "success" | "error"; message: string } | null;
   handleSubmit: (e: FormEvent) => void;
   scrollToForm: () => void;
 };
@@ -93,7 +94,7 @@ function Container6() {
   return (
     <div className="content-stretch flex flex-col h-[21.335px] items-start pt-[3.414px] relative shrink-0 w-[241.996px]" data-name="Container">
       <p className="[word-break:break-word] font-['Instrument_Sans:Regular',sans-serif] font-normal leading-[17.922px] relative shrink-0 text-[#4e6178] text-[12.801px] whitespace-nowrap" style={{ fontVariationSettings: '"wdth" 100' }}>
-        Healthcare Administration trainee
+        Healthcare Administration Trainee
       </p>
     </div>
   );
@@ -169,7 +170,7 @@ function Paragraph() {
 
 function Label() {
   return (
-    <div className="content-stretch flex flex-col h-[24.749px] items-start pb-[5.12px] relative shrink-0 w-[324.297px]" data-name="Label">
+    <div className="content-stretch flex justify-between items-center relative shrink-0 w-[324.297px] pb-[5.12px]" data-name="Label">
       <p className="[word-break:break-word] font-['Instrument_Sans:SemiBold',sans-serif] font-semibold leading-[19.116px] relative shrink-0 text-[#1c3556] text-[11.948px] whitespace-nowrap" style={{ fontVariationSettings: '"wdth" 100' }}>
         Full name
       </p>
@@ -183,11 +184,10 @@ function TextInput() {
     <input
       type="text"
       name="fullName"
-      required
       placeholder="e.g. Rahul Sharma"
       value={fullName}
       onChange={(e) => setFullName(e.target.value)}
-      className="absolute bg-[#fafcfb] border-[#d3dedc] border-[0.683px] border-solid h-[42.671px] left-0 rounded-[8.534px] top-[0.17px] w-[324.297px] px-[12px] text-[13px] text-[#0a1f3d] font-['Instrument_Sans:Regular',sans-serif] outline-none focus:border-[#0d9488] focus:ring-1 focus:ring-[#0d9488] transition-colors"
+      className="absolute border-solid h-[42.671px] left-0 rounded-[8.534px] top-[0.17px] w-[324.297px] px-[12px] text-[13px] font-['Instrument_Sans:Regular',sans-serif] outline-none bg-[#fafcfb] border-[#d3dedc] border-[0.683px] text-[#0a1f3d] focus:border-[#0d9488] focus:ring-1 focus:ring-[#0d9488] transition-colors"
       data-name="Text Input"
     />
   );
@@ -212,7 +212,7 @@ function Container8() {
 
 function Label1() {
   return (
-    <div className="content-stretch flex flex-col items-start relative shrink-0 w-full" data-name="Label">
+    <div className="content-stretch flex justify-between items-center relative shrink-0 w-full pb-[2px]" data-name="Label">
       <p className="[word-break:break-word] font-['Instrument_Sans:SemiBold',sans-serif] font-semibold leading-[19.116px] relative shrink-0 text-[#1c3556] text-[11.948px] whitespace-nowrap" style={{ fontVariationSettings: '"wdth" 100' }}>
         WhatsApp number
       </p>
@@ -222,7 +222,7 @@ function Label1() {
 
 function Text2() {
   return (
-    <div className="bg-[#edf2f1] border-[#d3dedc] border-b-[0.683px] border-l-[0.683px] border-solid border-t-[0.683px] grid grid-cols-[_19.46px] grid-rows-[_41.31px] h-full px-[10.241px] relative rounded-bl-[8.534px] rounded-tl-[8.534px] shrink-0 w-[40.964px]" data-name="Text">
+    <div className="border-b-[0.683px] border-l-[0.683px] border-solid border-t-[0.683px] grid grid-cols-[_19.46px] grid-rows-[_41.31px] h-full px-[10.241px] relative rounded-bl-[8.534px] rounded-tl-[8.534px] shrink-0 w-[40.964px] bg-[#edf2f1] border-[#d3dedc] transition-colors" data-name="Text">
       <p className="[word-break:break-word] col-1 font-['Instrument_Sans:SemiBold',sans-serif] font-semibold justify-self-center leading-[20.482px] relative row-1 self-center shrink-0 text-[#1c3556] text-[12.801px] whitespace-nowrap" style={{ fontVariationSettings: '"wdth" 100' }}>
         +91
       </p>
@@ -236,11 +236,10 @@ function PhoneInput() {
     <input
       type="tel"
       name="phone"
-      required
       placeholder="98765 43210"
       value={phone}
       onChange={(e) => setPhone(e.target.value.replace(/[^0-9]/g, "").slice(0, 10))}
-      className="bg-[#fafcfb] border-[#d3dedc] border-[0.683px] border-solid h-[42.671px] relative rounded-br-[8.534px] rounded-tr-[8.534px] shrink-0 w-[283.333px] px-[12px] text-[13px] text-[#0a1f3d] font-['Instrument_Sans:Regular',sans-serif] outline-none focus:border-[#0d9488] focus:ring-1 focus:ring-[#0d9488] transition-colors"
+      className="border-solid h-[42.671px] relative rounded-br-[8.534px] rounded-tr-[8.534px] shrink-0 w-[283.333px] px-[12px] text-[13px] font-['Instrument_Sans:Regular',sans-serif] outline-none bg-[#fafcfb] border-[#d3dedc] border-[0.683px] text-[#0a1f3d] focus:border-[#0d9488] focus:ring-1 focus:ring-[#0d9488] transition-colors"
       data-name="Phone Input"
     />
   );
@@ -266,7 +265,7 @@ function Container10() {
 
 function Label2() {
   return (
-    <div className="content-stretch flex flex-col h-[24.749px] items-start pb-[5.12px] relative shrink-0 w-[156.175px]" data-name="Label">
+    <div className="content-stretch flex justify-between items-center h-[24.749px] pb-[5.12px] relative shrink-0 w-[156.175px]" data-name="Label">
       <p className="[word-break:break-word] font-['Instrument_Sans:SemiBold',sans-serif] font-semibold leading-[19.116px] relative shrink-0 text-[#1c3556] text-[11.948px] whitespace-nowrap" style={{ fontVariationSettings: '"wdth" 100' }}>
         City
       </p>
@@ -283,7 +282,7 @@ function TextInput1() {
       placeholder="e.g. Kochi"
       value={city}
       onChange={(e) => setCity(e.target.value)}
-      className="absolute bg-[#fafcfb] border-[#d3dedc] border-[0.683px] border-solid h-[42.671px] left-0 rounded-[8.534px] top-[0.17px] w-[156.175px] px-[10px] text-[12px] text-[#0a1f3d] font-['Instrument_Sans:Regular',sans-serif] outline-none focus:border-[#0d9488] focus:ring-1 focus:ring-[#0d9488] transition-colors"
+      className="absolute border-solid h-[42.671px] left-0 rounded-[8.534px] top-[0.17px] w-[156.175px] px-[10px] text-[12px] font-['Instrument_Sans:Regular',sans-serif] outline-none bg-[#fafcfb] border-[#d3dedc] border-[0.683px] text-[#0a1f3d] focus:border-[#0d9488] focus:ring-1 focus:ring-[#0d9488] transition-colors"
       data-name="Text Input"
     />
   );
@@ -316,7 +315,7 @@ function ContainerMargin1() {
 
 function Label3() {
   return (
-    <div className="content-stretch flex flex-col h-[24.749px] items-start pb-[5.12px] relative shrink-0 w-[156.175px]" data-name="Label">
+    <div className="content-stretch flex justify-between items-center h-[24.749px] pb-[5.12px] relative shrink-0 w-[156.175px]" data-name="Label">
       <p className="[word-break:break-word] font-['Instrument_Sans:SemiBold',sans-serif] font-semibold leading-[19.116px] relative shrink-0 text-[#1c3556] text-[11.948px] whitespace-nowrap" style={{ fontVariationSettings: '"wdth" 100' }}>
         Highest qualification
       </p>
@@ -331,7 +330,7 @@ function Dropdown() {
       name="qualification"
       value={qualification}
       onChange={(e) => setQualification(e.target.value)}
-      className="absolute bg-[#fafcfb] border-[#d3dedc] border-[0.683px] border-solid h-[42.671px] left-0 rounded-[8.534px] top-[0.17px] w-[156.175px] px-[6px] text-[11px] text-[#0a1f3d] font-['Instrument_Sans:Regular',sans-serif] outline-none focus:border-[#0d9488] focus:ring-1 focus:ring-[#0d9488] cursor-pointer transition-colors"
+      className="absolute border-solid h-[42.671px] left-0 rounded-[8.534px] top-[0.17px] w-[156.175px] px-[6px] text-[11px] font-['Instrument_Sans:Regular',sans-serif] outline-none cursor-pointer bg-[#fafcfb] border-[#d3dedc] border-[0.683px] text-[#0a1f3d] focus:border-[#0d9488] focus:ring-1 focus:ring-[#0d9488] transition-colors"
       data-name="Dropdown"
     >
       <option value="">Qualification</option>
@@ -388,7 +387,7 @@ function ContainerMargin() {
 
 function Legend() {
   return (
-    <div className="content-stretch flex flex-col items-start relative shrink-0 w-full" data-name="Legend">
+    <div className="content-stretch flex justify-between items-center relative shrink-0 w-full" data-name="Legend">
       <p className="[word-break:break-word] font-['Instrument_Sans:SemiBold',sans-serif] font-semibold leading-[19.116px] relative shrink-0 text-[#1c3556] text-[11.948px] whitespace-nowrap" style={{ fontVariationSettings: '"wdth" 100' }}>
         Can you attend classes in Kochi for six months?
       </p>
@@ -403,11 +402,10 @@ function Label4() {
     <button
       type="button"
       onClick={() => setCanAttend("Yes")}
-      className={`border-[0.683px] border-solid col-1 content-stretch flex h-[39.257px] items-center justify-center justify-self-stretch relative rounded-[8.534px] row-1 self-start shrink-0 cursor-pointer transition-all ${
-        isSelected
-          ? "bg-[#e3f4f0] border-[#0d9488] text-[#0b7a66] font-semibold ring-1 ring-[#0d9488]"
-          : "bg-[#fafcfb] border-[#d3dedc] text-[#0a1f3d] hover:bg-slate-50"
-      }`}
+      className={`border-[0.683px] border-solid col-1 content-stretch flex h-[39.257px] items-center justify-center justify-self-stretch relative rounded-[8.534px] row-1 self-start shrink-0 cursor-pointer transition-all ${isSelected
+        ? "bg-[#e3f4f0] border-[#0d9488] text-[#0b7a66] font-semibold ring-1 ring-[#0d9488]"
+        : "bg-[#fafcfb] border-[#d3dedc] text-[#0a1f3d] hover:bg-slate-50"
+        }`}
       data-name="Label"
     >
       <p className="[word-break:break-word] font-['Instrument_Sans:SemiBold',sans-serif] font-semibold leading-[20.482px] relative shrink-0 text-[12.801px] whitespace-nowrap" style={{ fontVariationSettings: '"wdth" 100' }}>
@@ -424,11 +422,10 @@ function Label5() {
     <button
       type="button"
       onClick={() => setCanAttend("Not sure yet")}
-      className={`border-[0.683px] border-solid col-2 content-stretch flex h-[39.257px] items-center justify-center justify-self-stretch relative rounded-[8.534px] row-1 self-start shrink-0 cursor-pointer transition-all ${
-        isSelected
-          ? "bg-[#e3f4f0] border-[#0d9488] text-[#0b7a66] font-semibold ring-1 ring-[#0d9488]"
-          : "bg-[#fafcfb] border-[#d3dedc] text-[#0a1f3d] hover:bg-slate-50"
-      }`}
+      className={`border-[0.683px] border-solid col-2 content-stretch flex h-[39.257px] items-center justify-center justify-self-stretch relative rounded-[8.534px] row-1 self-start shrink-0 cursor-pointer transition-all ${isSelected
+        ? "bg-[#e3f4f0] border-[#0d9488] text-[#0b7a66] font-semibold ring-1 ring-[#0d9488]"
+        : "bg-[#fafcfb] border-[#d3dedc] text-[#0a1f3d] hover:bg-slate-50"
+        }`}
       data-name="Label"
     >
       <p className="[word-break:break-word] font-['Instrument_Sans:SemiBold',sans-serif] font-semibold leading-[20.482px] relative shrink-0 text-[12.801px] whitespace-nowrap" style={{ fontVariationSettings: '"wdth" 100' }}>
@@ -498,16 +495,11 @@ function Paragraph1() {
 }
 
 function Form() {
-  const { handleSubmit, feedback } = useApplyForm();
+  const { handleSubmit } = useApplyForm();
   return (
     <form onSubmit={handleSubmit} id="apply-form" className="content-stretch flex flex-col items-start pb-[25.602px] pt-[20.482px] px-[25.602px] relative shrink-0 w-[375.502px]" data-name="Form">
       <Heading1 />
       <Paragraph />
-      {feedback && (
-        <div className={`mt-[10px] mb-[6px] w-full rounded-[8px] px-[12px] py-[8px] text-[12px] font-['Instrument_Sans:Regular',sans-serif] ${feedback.type === 'success' ? 'bg-[#d1fae5] text-[#065f46] border border-[#a7f3d0]' : 'bg-[#fee2e2] text-[#991b1b] border border-[#fecaca]'}`}>
-          {feedback.message}
-        </div>
-      )}
       <Container8 />
       <Container10 />
       <ContainerMargin />
@@ -587,7 +579,7 @@ function Group3() {
 
 function Frame11() {
   return (
-    <div className="absolute h-[791px] left-[944px] top-[-29px] w-[425px] z-20">
+    <div className="id-card-badge-anim absolute h-[791px] left-[944px] top-[-29px] w-[425px] z-20">
       <Container1 />
       <Group3 />
     </div>
@@ -3179,9 +3171,9 @@ function Section5({
 function Group() {
   return (
     <div className="grid-cols-[max-content] grid-rows-[max-content] inline-grid place-items-start relative shrink-0">
-      <div className="col-1 h-[29px] ml-0 mt-0 relative row-1 w-[22.895px]" data-name="image 1712">
+      <div className="col-1 h-[38px] ml-0 mt-0 relative row-1 w-[203px]" data-name="image 1712">
         <div className="absolute inset-0 overflow-hidden pointer-events-none">
-          <img alt="" className="absolute h-[131.58%] left-[-33.33%] max-w-none top-[-15.79%] w-[166.67%]" src={imgImage1712} />
+          <img loading="lazy" decoding="async" alt="iMED Academy" className="absolute inset-0 h-full w-full max-w-none object-contain" src={imgImage1712} />
         </div>
       </div>
     </div>
@@ -3194,7 +3186,7 @@ function Frame() {
     window.scrollTo({ top: 0, behavior: "smooth" });
   };
   return (
-    <div onClick={goHome} className="content-stretch flex gap-[10px] items-center leading-[0] relative shrink-0 w-[203px] cursor-pointer hover:opacity-90 transition-opacity">
+    <div onClick={goHome} className="content-stretch flex gap-[10px] items-center leading-[0] relative shrink-0 w-[203px] cursor-pointer hover:opacity-90 transition-opacity [&>p]:hidden">
       <Group />
       <p className="[word-break:break-word] font-['Inter:Bold',sans-serif] font-bold h-[18px] not-italic relative shrink-0 text-[#1f3471] text-[22.992px] text-center w-[170px]">
         <span className="leading-[21px]">{`iMED `}</span>
@@ -3450,9 +3442,9 @@ function Section6({ extraTop = 0 }: { extraTop?: number }) {
 function Group1() {
   return (
     <div className="grid-cols-[max-content] grid-rows-[max-content] inline-grid place-items-start relative shrink-0">
-      <div className="col-1 h-[29px] ml-0 mt-0 relative row-1 w-[22.895px]" data-name="image 1712">
+      <div className="col-1 h-[38px] ml-0 mt-0 relative row-1 w-[203px]" data-name="image 1712">
         <div className="absolute inset-0 overflow-hidden pointer-events-none">
-          <img alt="" className="absolute h-[131.58%] left-[-33.33%] max-w-none top-[-15.79%] w-[166.67%]" src={imgImage1712} />
+          <img loading="lazy" decoding="async" alt="iMED Academy" className="absolute inset-0 h-full w-full max-w-none object-contain" src={imgImage1712} />
         </div>
       </div>
     </div>
@@ -3465,7 +3457,7 @@ function Frame1() {
     window.scrollTo({ top: 0, behavior: "smooth" });
   };
   return (
-    <div onClick={goHome} className="content-stretch flex gap-[10px] items-center leading-[0] relative shrink-0 w-[203px] cursor-pointer hover:opacity-90 transition-opacity">
+    <div onClick={goHome} className="content-stretch flex gap-[10px] items-center leading-[0] relative shrink-0 w-[203px] cursor-pointer hover:opacity-90 transition-opacity [&>p]:hidden">
       <Group1 />
       <p className="[word-break:break-word] font-['Inter:Bold',sans-serif] font-bold h-[18px] not-italic relative shrink-0 text-[#1f3471] text-[22.992px] text-center w-[170px]">
         <span className="leading-[21px]">{`iMED `}</span>
@@ -3514,11 +3506,888 @@ function Footer({ extraTop = 0 }: { extraTop?: number }) {
   );
 }
 
+const mobileOpportunityCards = [
+  {
+    title: "Healthcare Industry Growth",
+    description: "One of the fastest expanding sectors globally with double-digit growth.",
+    icon: (
+      <svg className="size-6" fill="none" viewBox="0 0 24.4068 24.4068">
+        <path d={svgPaths.p109f3580} stroke="#0D9488" strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.0339" />
+      </svg>
+    ),
+  },
+  {
+    title: "Hospital Expansion",
+    description: "Rapid private hospital growth across Tier 1, 2 and 3 cities in India.",
+    icon: (
+      <svg className="size-6" fill="none" viewBox="0 0 24.4068 24.4068">
+        <path d={svgPaths.p34aec980} stroke="#0D9488" strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.0339" />
+        <path d={svgPaths.p498b580} stroke="#0D9488" strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.0339" />
+        <path d={svgPaths.p1caefb80} stroke="#0D9488" strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.0339" />
+        <path d="M10.1695 6.10158H14.2373" stroke="#0D9488" strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.0339" />
+        <path d="M10.1695 10.169H14.2373" stroke="#0D9488" strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.0339" />
+        <path d="M10.1694 14.2373H14.2372" stroke="#0D9488" strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.0339" />
+        <path d="M10.1694 18.3047H14.2372" stroke="#0D9488" strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.0339" />
+      </svg>
+    ),
+  },
+  {
+    title: "Career Opportunities",
+    description: "Diverse roles across hospitals, clinics, insurance and health-tech.",
+    icon: (
+      <svg className="size-6" fill="none" viewBox="0 0 24.4068 24.4068">
+        <path d={svgPaths.p8df0000} stroke="#0D9488" strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.0339" />
+        <path d={svgPaths.p1049c340} stroke="#0D9488" strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.0339" />
+      </svg>
+    ),
+  },
+  {
+    title: "Leadership Roles",
+    description: "Pathway to operational, strategic and senior management positions.",
+    icon: (
+      <svg className="size-6" fill="none" viewBox="0 0 24.4068 24.4068">
+        <path d={svgPaths.p1e978f80} stroke="#0D9488" strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.0339" />
+        <path d={svgPaths.p9db77f0} stroke="#0D9488" strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.0339" />
+        <path d={svgPaths.p1d764fc0} stroke="#0D9488" strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.0339" />
+        <path d={svgPaths.p29ee240} stroke="#0D9488" strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.0339" />
+      </svg>
+    ),
+  },
+  {
+    title: "Job Stability",
+    description: "Recession-resilient profession with long-term demand security.",
+    icon: (
+      <svg className="size-6" fill="none" viewBox="0 0 24.4068 24.4068">
+        <path d={svgPaths.p352deb00} stroke="#0D9488" strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.0339" />
+      </svg>
+    ),
+  },
+  {
+    title: "High Demand",
+    description: "Skilled administrators consistently outpace available talent supply.",
+    icon: (
+      <svg className="size-6" fill="none" viewBox="0 0 24.4068 24.4068">
+        <path d={svgPaths.pa8d6800} stroke="#0D9488" strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.0339" />
+        <path d={svgPaths.p3a64c440} stroke="#0D9488" strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.0339" />
+        <path d={svgPaths.p389320f0} stroke="#0D9488" strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.0339" />
+      </svg>
+    ),
+  },
+  {
+    title: "Global Opportunities",
+    description: "Internationally recognised skill set with cross-border mobility.",
+    icon: (
+      <svg className="size-6" fill="none" viewBox="0 0 24.4068 24.4068">
+        <path d={svgPaths.pa8d6800} stroke="#0D9488" strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.0339" />
+        <path d={svgPaths.p3869280} stroke="#0D9488" strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.0339" />
+        <path d="M2.03375 12.203H22.3727" stroke="#0D9488" strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.0339" />
+      </svg>
+    ),
+  },
+  {
+    title: "Professional Growth",
+    description: "Structured ladder from executive to CXO-level management roles.",
+    icon: (
+      <svg className="size-6" fill="none" viewBox="0 0 24.4068 24.4068">
+        <path d={svgPaths.p3f36cac0} stroke="#0D9488" strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.0339" />
+        <path d={svgPaths.p3a4f6000} stroke="#0D9488" strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.0339" />
+      </svg>
+    ),
+  },
+];
+
+const mobileGainCards = [
+  {
+    title: "Job-Ready Skills",
+    description: "Industry-mapped curriculum aligned to real hospital roles.",
+    icon: (
+      <svg className="size-6" fill="none" viewBox="0 0 24.4068 24.4068">
+        <path d={svgPaths.p28011180} stroke="white" strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.0339" />
+        <path d={svgPaths.p13915300} stroke="white" strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.0339" />
+      </svg>
+    ),
+  },
+  {
+    title: "Mentor Support",
+    description: "One-on-one guidance from active healthcare professionals.",
+    icon: (
+      <svg className="size-6" fill="none" viewBox="0 0 24.4068 24.4068">
+        <path d={svgPaths.p2788db00} stroke="white" strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.0339" />
+        <path d={svgPaths.p1a4fa800} stroke="white" strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.0339" />
+        <path d={svgPaths.p1c04bec0} stroke="white" strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.0339" />
+        <path d={svgPaths.p3276fe80} stroke="white" strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.0339" />
+      </svg>
+    ),
+  },
+  {
+    title: "Lifetime Access",
+    description: "Lifetime access to LMS resources and alumni network.",
+    icon: (
+      <svg className="size-6" fill="none" viewBox="0 0 24.4068 24.4068">
+        <path d={svgPaths.p50cfb00} stroke="white" strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.0339" />
+        <path d={svgPaths.p2e6d4da0} stroke="white" strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.0339" />
+      </svg>
+    ),
+  },
+  {
+    title: "Live Projects",
+    description: "Work on 5 real hospital case studies during the program.",
+    icon: (
+      <svg className="size-6" fill="none" viewBox="0 0 24.4068 24.4068">
+        <path d={svgPaths.p36458240} stroke="white" strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.0339" />
+        <path d="M18.3052 17.2879V9.15234" stroke="white" strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.0339" />
+        <path d="M13.2202 17.2874V5.08398" stroke="white" strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.0339" />
+        <path d="M8.13525 17.2872V14.2363" stroke="white" strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.0339" />
+      </svg>
+    ),
+  },
+  {
+    title: "Hospital Exposure",
+    description: "Site visits and guest lectures from senior administrators.",
+    icon: (
+      <svg className="size-6" fill="none" viewBox="0 0 24.4068 24.4068">
+        <path d={svgPaths.pc1f5000} stroke="white" strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.0339" />
+        <path d={svgPaths.p22a84c00} stroke="white" strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.0339" />
+        <path d={svgPaths.p3e4aa40} stroke="white" strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.0339" />
+        <path d="M10.1694 6.10156H14.2372" stroke="white" strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.0339" />
+        <path d="M10.1694 10.1719H14.2372" stroke="white" strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.0339" />
+        <path d="M10.1694 14.2363H14.2372" stroke="white" strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.0339" />
+        <path d="M10.1694 18.3066H14.2372" stroke="white" strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.0339" />
+      </svg>
+    ),
+  },
+];
+
+const mobileEligibilityCards = [
+  {
+    title: "Fresh Graduates",
+    description: "Any UG or PG degree, any stream",
+    icon: (
+      <svg className="size-6" fill="none" viewBox="0 0 26.8858 26.8858">
+        <path d={svgPaths.pc8c5970} stroke="white" strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.24048" />
+        <path d="M24.645 11.2012V17.9226" stroke="white" strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.24048" />
+        <path d={svgPaths.p1517c680} stroke="white" strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.24048" />
+      </svg>
+    ),
+  },
+  {
+    title: "Working Professionals",
+    description: "Seeking career growth in healthcare",
+    icon: (
+      <svg className="size-6" fill="none" viewBox="0 0 26.8858 26.8858">
+        <path d={svgPaths.p12031680} stroke="white" strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.24048" />
+        <path d={svgPaths.p3b802760} stroke="white" strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.24048" />
+      </svg>
+    ),
+  },
+  {
+    title: "Career Switchers",
+    description: "Transitioning into the healthcare sector",
+    icon: (
+      <svg className="size-6" fill="none" viewBox="0 0 26.8858 26.8858">
+        <path d={svgPaths.pdaa33e0} stroke="white" strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.24048" />
+        <path d={svgPaths.p18a0a360} stroke="white" strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.24048" />
+      </svg>
+    ),
+  },
+  {
+    title: "Healthcare Workers",
+    description: "Nurses, technicians & para-medical staff",
+    icon: (
+      <svg className="size-6" fill="none" viewBox="0 0 26.8858 26.8858">
+        <path d={svgPaths.p2b015280} stroke="white" strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.24048" />
+        <path d={svgPaths.p2ee64c40} stroke="white" strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.24048" />
+      </svg>
+    ),
+  },
+  {
+    title: "Entrepreneurs",
+    description: "Looking to start healthcare ventures / clinics",
+    icon: (
+      <svg className="size-6" fill="none" viewBox="0 0 26.8858 26.8858">
+        <path d={svgPaths.p1e854c80} stroke="white" strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.24048" />
+        <path d="M20.1646 19.0439V10.082" stroke="white" strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.24048" />
+        <path d="M14.563 19.0444V5.60156" stroke="white" strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.24048" />
+        <path d="M8.9624 19.0463V15.6855" stroke="white" strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.24048" />
+      </svg>
+    ),
+  },
+];
+
+const mobileCareerRoles = [
+  "Hospital Administrator",
+  "Operations Manager",
+  "Patient Relations Executive",
+  "Healthcare Consultant",
+  "Medical Office Manager",
+  "Health Insurance Manager",
+  "Quality Assurance Officer",
+  "Clinical Coordinator",
+  "Healthcare IT Manager",
+  "Revenue Cycle Analyst",
+  "Public Health Administrator",
+  "Medical Practice Manager",
+];
+
+function MobileApplyNow({
+  openFaqIndex,
+  onToggleFaq,
+}: {
+  openFaqIndex: number | null;
+  onToggleFaq: (index: number) => void;
+}) {
+  const {
+    fullName,
+    setFullName,
+    phone,
+    setPhone,
+    city,
+    setCity,
+    qualification,
+    setQualification,
+    canAttend,
+    setCanAttend,
+    isSubmitting,
+    handleSubmit,
+    scrollToForm,
+  } = useApplyForm();
+
+  const goHome = () => {
+    window.location.hash = "";
+    window.scrollTo({ top: 0, behavior: "smooth" });
+  };
+
+  const goToAbout = () => {
+    window.location.hash = "";
+    setTimeout(() => {
+      document.getElementById("why-imed")?.scrollIntoView({ behavior: "smooth" });
+    }, 150);
+  };
+
+  const goToContact = () => {
+    window.location.hash = "";
+    setTimeout(() => {
+      document.getElementById("contact-us")?.scrollIntoView({ behavior: "smooth" });
+    }, 150);
+  };
+
+  return (
+    <div className="bg-white overflow-x-hidden min-h-screen text-[#1c3556] font-['Instrument_Sans:Regular',sans-serif]">
+      {/* Sticky Mobile Nav */}
+      <header className="sticky top-0 z-50 bg-white/95 backdrop-blur border-b border-slate-150 px-4 py-3 flex items-center shadow-[0px_2px_4px_rgba(40,53,147,0.08)]">
+        <div onClick={goHome} className="flex items-center cursor-pointer">
+          <img src={imgImage1712} alt="iMED Academy" className="h-8 w-auto object-contain" />
+        </div>
+      </header>
+
+      {/* Hero Section - Matching Desktop Hero with 100% responsiveness */}
+      <section className="relative bg-[#0d2240] text-white px-4 pt-8 pb-16 overflow-hidden">
+        {/* Background photo & overlays matching desktop Container */}
+        <div className="absolute inset-0 pointer-events-none opacity-40">
+          <img src={imgImage2052} alt="" className="w-full h-full object-cover object-center" />
+        </div>
+        <div
+          className="absolute inset-0 pointer-events-none"
+          style={{
+            backgroundImage:
+              "linear-gradient(113.67563944858165deg, rgba(13, 34, 64, 0.92) 7.735%, rgba(13, 34, 64, 0.82) 54.226%, rgba(13, 34, 64, 0.6) 92.265%)",
+          }}
+        />
+        <div
+          className="absolute inset-0 pointer-events-none"
+          style={{
+            backgroundImage:
+              "linear-gradient(89.9999999999999deg, rgb(31, 52, 113) 0%, rgba(31, 52, 113, 0.91) 25.962%, rgba(31, 52, 113, 0.5) 60.577%, rgba(31, 52, 113, 0) 100%)",
+          }}
+        />
+        {/* Glow circle blur */}
+        <div className="absolute -top-[100px] left-1/2 -translate-x-1/2 w-[350px] h-[350px] bg-[#1F3471] rounded-full blur-[100px] pointer-events-none opacity-60" />
+
+        <div className="relative z-10 max-w-lg mx-auto flex flex-col items-start">
+          {/* Glassy Pill Badge matching desktop Text8 */}
+          <div className="relative inline-flex max-w-full items-center gap-[6px] sm:gap-[8px] px-[12px] sm:px-[16.8px] py-[5px] sm:py-[6.8px] rounded-full border-[0.8px] border-[rgba(255,255,255,0.3)] border-solid backdrop-blur-sm mb-4">
+            <span className="font-['Inter:Semi_Bold',sans-serif] font-semibold text-[#2dd4bf] text-[10px] sm:text-[12px] shrink-0">✦</span>
+            <p className="font-['Inter:Semi_Bold',sans-serif] font-semibold text-[9.5px] min-[370px]:text-[10.5px] sm:text-[13px] leading-snug text-[rgba(255,255,255,0.95)] tracking-[0.4px] min-[370px]:tracking-[0.7px] sm:tracking-[1.2px] uppercase text-left">
+              Advanced Healthcare Administration Programme
+            </p>
+          </div>
+
+          {/* Heading matching desktop Heading */}
+          <h1 className="font-['Inter:Extra_Bold',sans-serif] font-extrabold not-italic text-white text-[28px] min-[380px]:text-[32px] sm:text-[44px] leading-[34px] min-[380px]:leading-[38px] sm:leading-[50px] tracking-tight">
+            <span>{`Study in Kochi. `}</span>
+            <span className="text-[#2dd4bf]">Start your Healthcare Career.</span>
+          </h1>
+
+          {/* Subtitle matching desktop Paragraph2 */}
+          <p className="font-['Inter:Regular',sans-serif] font-normal leading-[23px] sm:leading-[26px] not-italic text-[14.5px] sm:text-[16.5px] text-[rgba(255,255,255,0.85)] mt-3 sm:mt-4">
+            Advance your future with industry-focused healthcare administration training designed for aspiring professionals. Gain practical knowledge, leadership skills and career support from healthcare experts.
+          </p>
+
+          {/* 4 Perks 2x2 grid matching desktop Container23 */}
+          <div className="grid grid-cols-2 gap-x-4 sm:gap-x-6 gap-y-4 my-6 w-full max-w-[460px]">
+            {/* 1. Internship with Stipend */}
+            <div className="flex gap-[12px] items-start">
+              <div
+                className="content-stretch flex items-center justify-center rounded-[10px] shrink-0 size-[44px] shadow-sm"
+                style={{ backgroundImage: "linear-gradient(135deg, rgb(13, 148, 136) 0%, rgb(45, 212, 191) 100%)" }}
+              >
+                <Icon />
+              </div>
+              <div className="flex flex-col items-start">
+                <p className="font-['Arimo:Regular',sans-serif] font-normal leading-[20.25px] text-[13.5px] text-white whitespace-nowrap">Internship with</p>
+                <p className="font-['Arimo:Regular',sans-serif] font-normal leading-[20.25px] text-[13.5px] text-white whitespace-nowrap">Stipend</p>
+              </div>
+            </div>
+
+            {/* 2. Placement assistance */}
+            <div className="flex gap-[12px] items-start">
+              <div
+                className="content-stretch flex items-center justify-center rounded-[10px] shrink-0 size-[44px] shadow-sm"
+                style={{ backgroundImage: "linear-gradient(135deg, rgb(13, 148, 136) 0%, rgb(45, 212, 191) 100%)" }}
+              >
+                <Icon1 />
+              </div>
+              <div className="flex flex-col items-start">
+                <p className="font-['Arimo:Regular',sans-serif] font-normal leading-[20.25px] text-[13.5px] text-white whitespace-nowrap">{`Placement `}</p>
+                <p className="font-['Arimo:Regular',sans-serif] font-normal leading-[20.25px] text-[13.5px] text-white whitespace-nowrap">assistance</p>
+              </div>
+            </div>
+
+            {/* 3. Free tablet for learners */}
+            <div className="flex gap-[12px] items-start">
+              <div
+                className="content-stretch flex items-center justify-center rounded-[10px] shrink-0 size-[44px] shadow-sm"
+                style={{ backgroundImage: "linear-gradient(135deg, rgb(13, 148, 136) 0%, rgb(45, 212, 191) 100%)" }}
+              >
+                <Icon2 />
+              </div>
+              <div className="flex flex-col items-start">
+                <p className="font-['Arimo:Regular',sans-serif] font-normal leading-[20.25px] text-[13.5px] text-white whitespace-nowrap">{`Free tablet `}</p>
+                <p className="font-['Arimo:Regular',sans-serif] font-normal leading-[20.25px] text-[13.5px] text-white whitespace-nowrap">for learners</p>
+              </div>
+            </div>
+
+            {/* 4. Global curriculum */}
+            <div className="flex gap-[12px] items-start">
+              <div
+                className="content-stretch flex items-center justify-center rounded-[10px] shrink-0 size-[44px] shadow-sm"
+                style={{ backgroundImage: "linear-gradient(135deg, rgb(13, 148, 136) 0%, rgb(45, 212, 191) 100%)" }}
+              >
+                <Icon3 />
+              </div>
+              <div className="flex flex-col items-start">
+                <p className="font-['Arimo:Regular',sans-serif] font-normal leading-[20.25px] text-[13.5px] text-white whitespace-nowrap">{`Global `}</p>
+                <p className="font-['Arimo:Regular',sans-serif] font-normal leading-[20.25px] text-[13.5px] text-white whitespace-nowrap">curriculum</p>
+              </div>
+            </div>
+          </div>
+
+          {/* Action buttons matching desktop Button1 and Button2 */}
+          <div className="flex flex-wrap gap-3 sm:gap-4 w-full mb-8">
+            <button
+              type="button"
+              onClick={scrollToForm}
+              className="content-stretch flex items-center justify-center px-[24px] py-[12px] rounded-[6px] cursor-pointer hover:opacity-95 active:scale-[0.98] transition-all shadow-md flex-1 sm:flex-initial min-w-[150px]"
+              style={{ backgroundImage: "linear-gradient(164.24882633654698deg, rgb(13, 148, 136) 0%, rgb(45, 212, 191) 100%)" }}
+            >
+              <p className="font-['Inter:Semi_Bold',sans-serif] font-semibold leading-[20px] not-italic text-[16px] text-center text-white whitespace-nowrap">Request a call</p>
+            </button>
+            <a
+              href="https://wa.me/919266790357?text=Hi%2C%20I%20would%20like%20to%20know%20more%20about%20admissions%20at%20iMED%20Academy."
+              target="_blank"
+              rel="noopener noreferrer"
+              className="content-stretch flex items-center justify-center px-[24.8px] py-[12px] rounded-[6px] cursor-pointer hover:bg-white/10 active:scale-[0.98] transition-all border-[0.8px] border-[rgba(255,255,255,0.35)] border-solid backdrop-blur-sm flex-1 sm:flex-initial min-w-[150px]"
+            >
+              <p className="font-['Inter:Semi_Bold',sans-serif] font-semibold leading-[20px] not-italic text-[16px] text-center text-white whitespace-nowrap">Chat on WhatsApp</p>
+            </a>
+          </div>
+
+          {/* Trainee ID Badge & Form Card matching desktop Frame11 & Container1 with Lanyard Straps */}
+          <div className="id-card-badge-anim w-full max-w-[425px] mx-auto relative pt-[90px]">
+            {/* Realistic Lanyard Straps hanging from above matching Group3 */}
+            <div className="absolute top-0 left-1/2 -translate-x-1/2 h-[105px] w-[80px] pointer-events-none z-20">
+              {/* Left strap (-11 deg) */}
+              <div className="absolute left-[12px] top-0 h-[100px] w-[24px] -rotate-11">
+                <div className="size-full bg-[#0fa98e] shadow-[inset_3px_0px_0px_0px_rgba(0,0,0,0.1),inset_-3px_0px_0px_0px_rgba(0,0,0,0.1)]" />
+              </div>
+              {/* Right strap (+11 deg) */}
+              <div className="absolute right-[12px] top-0 h-[100px] w-[24px] rotate-11">
+                <div className="size-full bg-[#0fa98e] shadow-[inset_3px_0px_0px_0px_rgba(0,0,0,0.1),inset_-3px_0px_0px_0px_rgba(0,0,0,0.1)]" />
+              </div>
+              {/* Metallic Clip matching Text6 */}
+              <div className="absolute left-1/2 -translate-x-1/2 top-[80px] w-[40px] h-[34px] bg-gradient-to-b from-[#e6eceb] to-[#aebbb9] rounded-bl-[10px] rounded-br-[10px] rounded-tl-[8px] rounded-tr-[8px] drop-shadow-[0px_2px_1.5px_rgba(10,31,61,0.25)] flex items-center justify-center">
+                <div className="bg-[#7d8d8b] h-[8px] w-[20px] rounded-[4px]" />
+              </div>
+            </div>
+
+            {/* ID Card Card matching desktop Container1 */}
+            <div className="w-full bg-white rounded-[18.775px] border-[#d3dedc] border-[0.683px] border-solid drop-shadow-[0px_34.137px_29.869px_rgba(10,31,61,0.4),0px_1.707px_0px_rgba(10,31,61,0.03)] relative overflow-hidden text-[#1c3556]">
+              {/* ID Notch Cutout Hole matching Text3 */}
+              <div className="-translate-x-1/2 absolute h-[9.388px] left-1/2 pointer-events-none rounded-[5.12px] top-[13.57px] w-[52.912px] bg-[#edf2f1] shadow-[inset_0px_0.853px_1.707px_0px_rgba(10,31,61,0.2)]" />
+
+              {/* Trainee Profile Bar matching desktop Container2 */}
+              <div className="border-[#d3dedc] border-b-[0.683px] border-solid flex gap-[16px] sm:gap-[21px] items-center pb-[21px] pt-[40px] px-[20px] sm:px-[25px] bg-white">
+                <div className="bg-[#e3f4f0] border-[#c5e6de] border-[0.683px] border-solid content-stretch flex h-[78.514px] items-center px-[14px] py-[11px] relative rounded-[10.241px] shrink-0 w-[66.566px]">
+                  <Group2 />
+                </div>
+                <div className="flex-1 min-w-0 flex flex-col items-start">
+                  <p className={`font-['Inter:Semi_Bold',sans-serif] font-semibold text-[20px] sm:text-[23.042px] leading-[26.5px] truncate w-full transition-colors ${fullName.trim() ? "text-[#0d9488]" : "text-[#98a8b8]"}`}>
+                    {fullName.trim() || "Your name"}
+                  </p>
+                  <p className="font-['Instrument_Sans:Regular',sans-serif] font-normal leading-[17.922px] text-[#4e6178] text-[12.801px] pt-[3.414px]">
+                    Healthcare Administration trainee
+                  </p>
+                  <div className="flex items-center justify-between w-full pt-[8.534px]">
+                    <span className="font-['Instrument_Sans:SemiBold',sans-serif] font-semibold leading-[17.751px] text-[#0b7a66] text-[11.094px]">
+                      iMED Academy, Kochi
+                    </span>
+                    <span className="font-['Instrument_Sans:SemiBold',sans-serif] font-semibold leading-[17.751px] text-[#0b7a66] text-[11.094px]">
+                      2026
+                    </span>
+                  </div>
+                </div>
+              </div>
+
+              {/* Counsellor Request Form matching desktop Form */}
+              <form onSubmit={handleSubmit} id="apply-form" className="flex flex-col items-start pb-[25.602px] pt-[20.482px] px-[20px] sm:px-[25.602px] w-full">
+                <div className="flex flex-col items-start w-full">
+                  <p className="font-['Instrument_Sans:SemiBold',sans-serif] font-semibold leading-[25.944px] text-[#0a1f3d] text-[16.215px]">
+                    Request a call from a counsellor
+                  </p>
+                  <p className="font-['Instrument_Sans:Regular',sans-serif] font-normal leading-[20.482px] text-[#4e6178] text-[12.801px] pt-[3.414px]">
+                    Get the syllabus, fees and next batch date.
+                  </p>
+                </div>
+
+                {/* Full Name */}
+                <div className="flex flex-col items-start pt-[17.068px] w-full">
+                  <div className="flex justify-between items-center w-full pb-[5.12px]">
+                    <label className="font-['Instrument_Sans:SemiBold',sans-serif] font-semibold leading-[19.116px] text-[#1c3556] text-[11.948px]">
+                      Full name
+                    </label>
+                  </div>
+                  <input
+                    type="text"
+                    name="fullName"
+                    placeholder="e.g. Rahul Sharma"
+                    value={fullName}
+                    onChange={(e) => setFullName(e.target.value)}
+                    className="w-full border-solid h-[42.671px] rounded-[8.534px] px-[12px] text-[13px] font-['Instrument_Sans:Regular',sans-serif] outline-none bg-[#fafcfb] border-[#d3dedc] border-[0.683px] text-[#0a1f3d] focus:border-[#0d9488] focus:ring-1 focus:ring-[#0d9488] transition-colors"
+                  />
+                </div>
+
+                {/* WhatsApp Number */}
+                <div className="flex flex-col items-start pt-[13.655px] w-full">
+                  <div className="flex justify-between items-center w-full pb-[5.12px]">
+                    <label className="font-['Instrument_Sans:SemiBold',sans-serif] font-semibold leading-[19.116px] text-[#1c3556] text-[11.948px]">
+                      WhatsApp number
+                    </label>
+                  </div>
+                  <div className="flex h-[42.671px] w-full rounded-[8.534px] overflow-hidden border-solid border-[#d3dedc] border-[0.683px] bg-[#fafcfb]">
+                    <div className="border-r border-solid flex items-center justify-center px-[10.241px] shrink-0 w-[40.964px] bg-[#edf2f1] border-[#d3dedc]">
+                      <span className="font-['Instrument_Sans:SemiBold',sans-serif] font-semibold leading-[20.482px] text-[#1c3556] text-[12.801px]">
+                        +91
+                      </span>
+                    </div>
+                    <input
+                      type="tel"
+                      name="phone"
+                      placeholder="98765 43210"
+                      value={phone}
+                      onChange={(e) => setPhone(e.target.value.replace(/[^0-9]/g, "").slice(0, 10))}
+                      className="flex-1 h-full px-[12px] bg-transparent text-[13px] text-[#0a1f3d] font-['Instrument_Sans:Regular',sans-serif] outline-none focus:ring-1 focus:ring-[#0d9488] transition-colors"
+                    />
+                  </div>
+                </div>
+
+                {/* City & Highest Qualification */}
+                <div className="grid grid-cols-2 gap-[11.95px] pt-[13.655px] w-full">
+                  <div className="flex flex-col items-start">
+                    <div className="flex justify-between items-center w-full pb-[5.12px]">
+                      <label className="font-['Instrument_Sans:SemiBold',sans-serif] font-semibold leading-[19.116px] text-[#1c3556] text-[11.948px]">
+                        City
+                      </label>
+                    </div>
+                    <input
+                      type="text"
+                      name="city"
+                      placeholder="e.g. Kochi"
+                      value={city}
+                      onChange={(e) => setCity(e.target.value)}
+                      className="w-full border-solid h-[42.671px] rounded-[8.534px] px-[10px] text-[12px] font-['Instrument_Sans:Regular',sans-serif] outline-none bg-[#fafcfb] border-[#d3dedc] border-[0.683px] text-[#0a1f3d] focus:border-[#0d9488] focus:ring-1 focus:ring-[#0d9488] transition-colors"
+                    />
+                  </div>
+                  <div className="flex flex-col items-start">
+                    <div className="flex justify-between items-center w-full pb-[5.12px]">
+                      <label className="font-['Instrument_Sans:SemiBold',sans-serif] font-semibold leading-[19.116px] text-[#1c3556] text-[11.948px]">
+                        Highest qualification
+                      </label>
+                    </div>
+                    <select
+                      name="qualification"
+                      value={qualification}
+                      onChange={(e) => setQualification(e.target.value)}
+                      className="w-full border-solid h-[42.671px] rounded-[8.534px] px-[8px] text-[11px] font-['Instrument_Sans:Regular',sans-serif] outline-none cursor-pointer bg-[#fafcfb] border-[#d3dedc] border-[0.683px] text-[#0a1f3d] focus:border-[#0d9488] focus:ring-1 focus:ring-[#0d9488] transition-colors"
+                    >
+                      <option value="">Qualification</option>
+                      <option value="12th">12th</option>
+                      <option value="Any Degree / Graduate">Any Degree / Graduate</option>
+                      <option value="Diploma">Diploma</option>
+                      <option value="B.Sc / Allied Health">B.Sc / Allied Health</option>
+                      <option value="Other">Other</option>
+                    </select>
+                  </div>
+                </div>
+
+                {/* Attend classes in Kochi question */}
+                <div className="flex flex-col items-start pt-[13.655px] pb-[13.655px] w-full">
+                  <div className="flex justify-between items-center w-full pb-[5.12px]">
+                    <legend className="font-['Instrument_Sans:SemiBold',sans-serif] font-semibold leading-[19.116px] text-[#1c3556] text-[11.948px]">
+                      Can you attend classes in Kochi for six months?
+                    </legend>
+                  </div>
+                  <div className="grid grid-cols-2 gap-[8.534px] w-full">
+                    <button
+                      type="button"
+                      onClick={() => setCanAttend("Yes")}
+                      className={`border-[0.683px] border-solid flex h-[39.257px] items-center justify-center rounded-[8.534px] cursor-pointer transition-all ${canAttend === "Yes"
+                        ? "bg-[#e3f4f0] border-[#0d9488] text-[#0b7a66] font-semibold ring-1 ring-[#0d9488]"
+                        : "bg-[#fafcfb] border-[#d3dedc] text-[#0a1f3d] hover:bg-slate-50"
+                        }`}
+                    >
+                      <span className="font-['Instrument_Sans:SemiBold',sans-serif] font-semibold leading-[20.482px] text-[12.801px]">
+                        Yes
+                      </span>
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setCanAttend("Not sure yet")}
+                      className={`border-[0.683px] border-solid flex h-[39.257px] items-center justify-center rounded-[8.534px] cursor-pointer transition-all ${canAttend === "Not sure yet"
+                        ? "bg-[#e3f4f0] border-[#0d9488] text-[#0b7a66] font-semibold ring-1 ring-[#0d9488]"
+                        : "bg-[#fafcfb] border-[#d3dedc] text-[#0a1f3d] hover:bg-slate-50"
+                        }`}
+                    >
+                      <span className="font-['Instrument_Sans:SemiBold',sans-serif] font-semibold leading-[20.482px] text-[12.801px]">
+                        Not sure yet
+                      </span>
+                    </button>
+                  </div>
+                </div>
+
+                {/* Submit button matching desktop Button */}
+                <div className="pt-[5.29px] w-full">
+                  <button
+                    type="submit"
+                    disabled={isSubmitting}
+                    className="w-full border-[0.683px] border-[rgba(0,0,0,0)] border-solid flex h-[47.791px] items-center justify-center px-[20.482px] rounded-[10.241px] cursor-pointer hover:opacity-95 active:scale-[0.99] transition-all disabled:opacity-60 shadow-sm"
+                    style={{ backgroundImage: "linear-gradient(171.6167513454805deg, rgb(13, 148, 136) 0%, rgb(45, 212, 191) 100%)" }}
+                  >
+                    <p className="font-['Instrument_Sans:SemiBold',sans-serif] font-semibold leading-[27.2px] text-[17px] text-center text-white whitespace-nowrap">
+                      {isSubmitting ? "Submitting..." : "Submit"}
+                    </p>
+                  </button>
+                </div>
+
+                {/* Disclaimer */}
+                <div className="flex flex-col items-center pt-[10.241px] w-full">
+                  <p className="font-['Instrument_Sans:Regular',sans-serif] font-normal leading-[17.751px] text-[#4e6178] text-[11.094px] text-center">
+                    {`We'll contact you by call or WhatsApp about admissions.`}
+                  </p>
+                </div>
+              </form>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      {/* Stats Counter Bar - Matching exact 5 Desktop metrics without duplication */}
+      <section className="bg-white border-b border-[#f3f4f6] px-4 py-8">
+        <div className="max-w-lg mx-auto grid grid-cols-2 sm:grid-cols-3 gap-6 text-center">
+          {[
+            { val: "1000+", label: "STUDENTS TRAINED" },
+            { val: "98%", label: "LEARNERS PLACED" },
+            { val: "100+", label: "HIRING PARTNERS" },
+            { val: "100%", label: "PLACEMENT ASSISTANCE" },
+            { val: "20-35K", label: "AVERAGE SALARY" },
+          ].map((item, idx) => (
+            <div key={idx} className={`flex flex-col items-center ${idx === 4 ? "col-span-2 sm:col-span-1" : ""}`}>
+              <p className="font-['Inter:Extra_Bold',sans-serif] font-extrabold text-2xl sm:text-3xl text-[#0d2240]">
+                {item.val}
+              </p>
+              <p className="font-['Inter:Semi_Bold',sans-serif] font-semibold text-[11px] text-[#6a7282] tracking-wider uppercase mt-1">
+                {item.label}
+              </p>
+            </div>
+          ))}
+        </div>
+      </section>
+
+      {/* The Opportunity Section */}
+      <section className="bg-white px-4 py-12">
+        <div className="max-w-lg mx-auto text-center">
+          <div className="inline-block bg-[rgba(45,212,191,0.08)] border-[#2dd4bf] border-[0.98px] rounded-full px-3.5 py-1 mb-3">
+            <span className="text-[#25a88d] text-xs font-semibold tracking-wider uppercase font-['Inter:Semi_Bold',sans-serif]">
+              THE OPPORTUNITY
+            </span>
+          </div>
+
+          <h2 className="text-2xl font-extrabold font-['Inter:Extra_Bold',sans-serif] text-[#1f3471]">
+            Why <span className="text-[#25a88d]">Healthcare Administration?</span>
+          </h2>
+
+          <p className="mt-2 text-xs sm:text-sm text-[#333] leading-relaxed">
+            Healthcare is no longer just about doctors and nurses. Behind every great hospital is a
+            team of administrators making care possible — and the world needs more of them.
+          </p>
+
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mt-8 text-left">
+            {mobileOpportunityCards.map((card, idx) => (
+              <div
+                key={idx}
+                className="bg-white border border-[#f3f4f6] rounded-[19.5px] p-5 shadow-[0px_1.22px_1.83px_rgba(0,0,0,0.1)] flex flex-col items-start"
+              >
+                <div className="bg-[rgba(45,212,191,0.15)] rounded-full size-11 flex items-center justify-center mb-3">
+                  {card.icon}
+                </div>
+                <h3 className="font-['Inter:Bold',sans-serif] font-bold text-sm sm:text-base text-[#1f3471]">
+                  {card.title}
+                </h3>
+                <p className="font-['Inter:Regular',sans-serif] text-xs text-[#333] mt-1.5 leading-relaxed">
+                  {card.description}
+                </p>
+              </div>
+            ))}
+          </div>
+        </div>
+      </section>
+
+      {/* Career Paths Section - Positioned right after The Opportunity matching Desktop Section3 */}
+      <section className="bg-[#f8fafc] px-4 py-12 border-t border-slate-100">
+        <div className="max-w-lg mx-auto text-center">
+          <div className="inline-block bg-[rgba(45,212,191,0.08)] border-[#2dd4bf] border-[0.98px] rounded-full px-3.5 py-1 mb-3">
+            <span className="text-[#25a88d] text-xs font-semibold tracking-wider uppercase font-['Inter:Semi_Bold',sans-serif]">
+              CAREER PATHS
+            </span>
+          </div>
+
+          <h2 className="text-2xl font-extrabold font-['Inter:Extra_Bold',sans-serif] text-[#1f3471]">
+            Roles you can <span className="text-[#25a88d]">step into</span>
+          </h2>
+
+          <p className="mt-2 text-xs text-[#333] leading-relaxed">
+            iMED graduates work across hospitals, clinics, insurance companies and health-tech firms.
+          </p>
+
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5 mt-6 text-left">
+            {mobileCareerRoles.map((role, idx) => (
+              <div
+                key={idx}
+                className="bg-white border border-[#f3f4f6] rounded-[19.5px] px-4 py-3 shadow-[0px_1.22px_1.83px_rgba(0,0,0,0.06)] flex items-center gap-3"
+              >
+                <div className="size-2.5 rounded-full bg-[#2dd4bf] shrink-0" />
+                <span className="font-['Inter:Medium',sans-serif] font-medium text-xs sm:text-sm text-[#1f3471]">
+                  {role}
+                </span>
+              </div>
+            ))}
+          </div>
+        </div>
+      </section>
+
+      {/* What You Gain Section */}
+      <section className="bg-[#f0fdf9] px-4 py-12 border-y border-teal-100/60">
+        <div className="max-w-lg mx-auto text-center">
+          <div className="inline-block bg-[rgba(45,212,191,0.08)] border-[#2dd4bf] border-[0.98px] rounded-full px-3.5 py-1 mb-3">
+            <span className="text-[#25a88d] text-xs font-semibold tracking-wider uppercase font-['Inter:Semi_Bold',sans-serif]">
+              WHAT YOU GAIN
+            </span>
+          </div>
+
+          <h2 className="text-2xl font-extrabold font-['Inter:Extra_Bold',sans-serif] text-[#0d2240]">
+            Benefits that go beyond a certificate
+          </h2>
+
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mt-8 text-left">
+            {mobileGainCards.map((card, idx) => (
+              <div
+                key={idx}
+                className="bg-white border border-[#f3f4f6] rounded-[19.5px] p-5 shadow-[0px_1.22px_1.83px_rgba(0,0,0,0.1)] flex flex-col items-start"
+              >
+                <div
+                  className="rounded-full size-11 flex items-center justify-center mb-3 shadow-xs"
+                  style={{ backgroundImage: "linear-gradient(135deg, rgb(45, 212, 191) 0%, rgb(13, 148, 136) 100%)" }}
+                >
+                  {card.icon}
+                </div>
+                <h3 className="font-['Inter:Bold',sans-serif] font-bold text-sm sm:text-base text-[#0d2240]">
+                  {card.title}
+                </h3>
+                <p className="font-['Inter:Regular',sans-serif] text-xs text-[#6a7282] mt-1.5 leading-relaxed">
+                  {card.description}
+                </p>
+              </div>
+            ))}
+          </div>
+        </div>
+      </section>
+
+      {/* Eligibility Section */}
+      <section className="bg-white px-4 py-12">
+        <div className="max-w-lg mx-auto text-center">
+          <div className="inline-block bg-[rgba(45,212,191,0.08)] border-[#2dd4bf] border-[0.98px] rounded-full px-3.5 py-1 mb-3">
+            <span className="text-[#25a88d] text-xs font-semibold tracking-wider uppercase font-['Inter:Semi_Bold',sans-serif]">
+              ELIGIBILITY
+            </span>
+          </div>
+
+          <h2 className="text-2xl font-extrabold font-['Inter:Extra_Bold',sans-serif] text-[#1f3471]">
+            Who is this program for?
+          </h2>
+
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5 mt-8">
+            {mobileEligibilityCards.map((card, idx) => (
+              <div
+                key={idx}
+                className="border border-[#f3f4f6] rounded-[19.5px] p-4 bg-slate-50/60 flex flex-col items-center text-center"
+              >
+                <div
+                  className="rounded-full size-11 flex items-center justify-center mb-2.5 shadow-xs"
+                  style={{ backgroundImage: "linear-gradient(135deg, rgb(45, 212, 191) 0%, rgb(13, 148, 136) 100%)" }}
+                >
+                  {card.icon}
+                </div>
+                <h3 className="font-['Inter:Bold',sans-serif] font-bold text-sm text-[#1f3471]">
+                  {card.title}
+                </h3>
+                <p className="font-['Inter:Regular',sans-serif] text-xs text-[#333] mt-1 leading-relaxed">
+                  {card.description}
+                </p>
+              </div>
+            ))}
+          </div>
+        </div>
+      </section>
+
+      {/* Frequently Asked Questions */}
+      <section className="bg-[#f0fdf9] px-4 py-12 border-t border-teal-100/60">
+        <div className="max-w-lg mx-auto text-center">
+          <div className="inline-block bg-[rgba(45,212,191,0.08)] border-[#2dd4bf] border-[0.98px] rounded-full px-3.5 py-1 mb-3">
+            <span className="text-[#0d9488] text-xs font-semibold tracking-wider uppercase font-['Inter:Semi_Bold',sans-serif]">
+              FREQUENTLY ASKED
+            </span>
+          </div>
+
+          <h2 className="text-2xl font-extrabold font-['Inter:Extra_Bold',sans-serif] text-[#1f3471] mb-6">
+            Common questions answered
+          </h2>
+
+          <div className="bg-white rounded-[19.5px] border border-[#f3f4f6] shadow-sm divide-y divide-[#f3f4f6] overflow-hidden text-left">
+            {applyNowFaqItems.map((faq, idx) => {
+              const isOpen = openFaqIndex === idx;
+              return (
+                <div key={idx}>
+                  <button
+                    type="button"
+                    onClick={() => onToggleFaq(idx)}
+                    className="w-full text-left px-4 py-3.5 flex items-center justify-between gap-3 cursor-pointer hover:bg-slate-50 transition-colors"
+                  >
+                    <span className={`text-xs sm:text-sm font-semibold font-['Inter:Semi_Bold',sans-serif] ${isOpen ? "text-[#0d9488]" : "text-black"}`}>
+                      {faq.question}
+                    </span>
+                    <span className={`text-xs text-[#0d9488] transition-transform duration-200 shrink-0 ${isOpen ? "rotate-180" : ""}`}>
+                      ▼
+                    </span>
+                  </button>
+                  {isOpen && (
+                    <div className="px-4 pb-4 pt-1 text-xs text-[#4e6178] leading-relaxed border-t border-slate-50">
+                      {faq.answer}
+                    </div>
+                  )}
+                </div>
+              );
+            })}
+          </div>
+        </div>
+      </section>
+
+      {/* Visit Centre CTA */}
+      <section
+        className="px-4 py-10 text-white text-center"
+        style={{
+          backgroundImage:
+            "linear-gradient(164.75deg, rgb(13, 148, 136) 0%, rgb(45, 212, 191) 100%)",
+        }}
+      >
+        <div className="max-w-lg mx-auto flex flex-col items-center">
+          <h2 className="text-2xl font-['Poppins:SemiBold',sans-serif] font-semibold leading-snug">
+            Come see the centre before you decide
+          </h2>
+          <p className="text-xs text-white/95 mt-2 leading-relaxed">
+            Bring your parents to our centre in Kaloor. A counsellor will take you through the
+            syllabus, the internship, the fees and the batch schedule in person.
+          </p>
+
+          <div className="flex flex-col gap-2.5 w-full mt-6">
+            <a
+              href="https://www.google.com/maps/search/?api=1&query=iMED+Academy+Kaloor+Kochi"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="w-full py-3 px-4 rounded-xl bg-white text-[#0a1f3d] font-semibold text-xs sm:text-sm shadow-md active:scale-98 transition-all"
+            >
+              Get directions
+            </a>
+            <a
+              href="https://wa.me/919266790357?text=Hi%2C%20I%20would%20like%20to%20book%20a%20visit%20to%20the%20iMED%20Academy%20Kaloor%20centre%20with%20my%20parents."
+              target="_blank"
+              rel="noopener noreferrer"
+              className="w-full py-3 px-4 rounded-xl bg-white/20 border border-white/40 text-white font-semibold text-xs sm:text-sm backdrop-blur-sm active:scale-98 transition-all"
+            >
+              Book a visit on WhatsApp
+            </a>
+            <a
+              href="tel:+919266790357"
+              className="w-full py-3 px-4 rounded-xl bg-white/20 border border-white/40 text-white font-semibold text-xs sm:text-sm backdrop-blur-sm active:scale-98 transition-all"
+            >
+              Call +91 92667 90357
+            </a>
+            <p className="text-xs text-white/90 mt-2">
+              Or email{" "}
+              <a
+                href="mailto:admissions@imedacademy.in?subject=Enquiry%20-%20iMED%20Academy%20Admission"
+                className="underline font-medium"
+              >
+                admissions@imedacademy.in
+              </a>
+            </p>
+          </div>
+        </div>
+      </section>
+
+      {/* Mobile Footer */}
+      <footer className="bg-white border-t border-slate-100 py-6 px-4 text-center flex flex-col items-center gap-2">
+        <div onClick={goHome} className="flex items-center cursor-pointer">
+          <img src={imgImage1712} alt="iMED Academy" className="h-6 w-auto object-contain" />
+        </div>
+        <p className="text-[11px] text-[#333]">
+          iMED Healthcare Academy LLP, Kaloor, Kochi, Kerala. Ac 2026
+        </p>
+      </footer>
+    </div>
+  );
+}
+
 export default function ApplyNow() {
   const designWidth = 1440;
   const pageRef = useRef<HTMLDivElement>(null);
   const [pageScale, setPageScale] = useState(1);
   const [scaledHeight, setScaledHeight] = useState<number | null>(null);
+
+  const [isMobile, setIsMobile] = useState<boolean>(() => {
+    if (typeof window !== "undefined") {
+      return (document.documentElement.clientWidth || window.innerWidth) < 1024;
+    }
+    return false;
+  });
 
   const [openFaqIndex, setOpenFaqIndex] = useState<number | null>(null);
   const [faqExtraHeight, setFaqExtraHeight] = useState(0);
@@ -3541,11 +4410,11 @@ export default function ApplyNow() {
   const [qualification, setQualification] = useState("");
   const [canAttend, setCanAttend] = useState<"Yes" | "Not sure yet">("Yes");
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const [feedback, setFeedback] = useState<{ type: "success" | "error"; message: string } | null>(null);
 
   useLayoutEffect(() => {
     const updateScale = () => {
       const viewportWidth = document.documentElement.clientWidth || window.innerWidth;
+      setIsMobile(viewportWidth < 1024);
       const nextScale = viewportWidth / designWidth;
       setPageScale(nextScale);
 
@@ -3577,10 +4446,52 @@ export default function ApplyNow() {
 
   const handleSubmit = async (e: FormEvent) => {
     e.preventDefault();
-    setFeedback(null);
 
-    if (!fullName.trim() || !phone.trim()) {
-      setFeedback({ type: "error", message: "Please fill in your name and phone number." });
+    const trimmedName = fullName.trim();
+    if (!trimmedName) {
+      toast.error("Please enter your full name.");
+      return;
+    }
+    if (trimmedName.length < 2) {
+      toast.error("Please enter a valid full name (at least 2 characters).");
+      return;
+    }
+    if (!/^[a-zA-Z\s.'-]+$/.test(trimmedName)) {
+      toast.error("Please enter a valid full name using letters only.");
+      return;
+    }
+
+    const cleanPhone = phone.replace(/\D/g, "");
+    if (!cleanPhone) {
+      toast.error("Please enter your WhatsApp mobile number.");
+      return;
+    }
+    if (cleanPhone.length !== 10) {
+      toast.error("Please enter a valid 10-digit WhatsApp mobile number.");
+      return;
+    }
+    if (!/^[6-9]/.test(cleanPhone)) {
+      toast.error("Please enter a valid mobile number starting with 6, 7, 8, or 9.");
+      return;
+    }
+
+    const trimmedCity = city.trim();
+    if (!trimmedCity) {
+      toast.error("Please enter your city.");
+      return;
+    }
+    if (trimmedCity.length < 2) {
+      toast.error("Please enter a valid city name.");
+      return;
+    }
+
+    if (!qualification || !qualification.trim()) {
+      toast.error("Please select your highest qualification.");
+      return;
+    }
+
+    if (!canAttend) {
+      toast.error("Please select whether you can attend classes in Kochi.");
       return;
     }
 
@@ -3599,10 +4510,13 @@ export default function ApplyNow() {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          fullName: fullName.trim(),
-          phone: phone.trim(),
-          preferredProgram: `Apply Now (${qualification || "Healthcare Administration"})`,
-          message: `City: ${city || "Not provided"}, Qualification: ${qualification || "Not provided"}, Can attend 6-month Kochi classes: ${canAttend}`,
+          fullName: trimmedName,
+          phone: cleanPhone,
+          preferredProgram: "AHAP",
+          city: trimmedCity,
+          qualification: qualification,
+          canAttend: canAttend,
+          message: `City: ${trimmedCity || "Not provided"}, Qualification: ${qualification || "Not provided"}, Can attend 6-month Kochi classes: ${canAttend}`,
         }),
       });
 
@@ -3610,17 +4524,19 @@ export default function ApplyNow() {
         throw new Error("Failed to submit");
       }
 
-      setFeedback({
-        type: "success",
-        message: "Thank you! Your application enquiry has been received. Our admissions team will contact you shortly.",
+      trackPixelLead({
+        content_name: "Apply Now Enquiry",
+        content_category: qualification || "Healthcare Administration",
       });
+
+      toast.success("Thank you! Your enquiry has been received. Our counsellor will contact you shortly.");
       setFullName("");
       setPhone("");
       setCity("");
       setQualification("");
       setCanAttend("Yes");
     } catch {
-      setFeedback({ type: "error", message: "Failed to submit enquiry. Please try again or reach out on WhatsApp." });
+      toast.error("Failed to submit enquiry. Please try again or reach out on WhatsApp.");
     } finally {
       setIsSubmitting(false);
     }
@@ -3638,42 +4554,66 @@ export default function ApplyNow() {
     canAttend,
     setCanAttend,
     isSubmitting,
-    feedback,
     handleSubmit,
     scrollToForm,
   };
 
   return (
     <ApplyFormContext.Provider value={contextValue}>
-      <div
-        className="bg-white overflow-x-hidden relative w-full"
-        data-name="Apply Now Page"
-        style={{ height: scaledHeight ? `${scaledHeight}px` : "100vh" }}
-      >
+      <Toaster richColors position="top-right" />
+      <style>{`
+        @keyframes idCardPendulum {
+          0% {
+            transform: rotate(-2.4deg) translateX(-7px) rotateY(-1.5deg);
+          }
+          100% {
+            transform: rotate(2.4deg) translateX(7px) rotateY(1.5deg);
+          }
+        }
+
+        .id-card-badge-anim {
+          transform-origin: 50% 0%;
+          animation: idCardPendulum 2.6s ease-in-out infinite alternate;
+          will-change: transform;
+        }
+
+        .id-card-badge-anim:focus-within {
+          animation-play-state: paused;
+        }
+      `}</style>
+      {isMobile ? (
+        <MobileApplyNow openFaqIndex={openFaqIndex} onToggleFaq={handleToggleFaq} />
+      ) : (
         <div
-          className="fixed left-0 top-0 z-[200] origin-top-left"
-          style={{ transform: `scale(${pageScale})`, width: `${designWidth}px` }}
+          className="bg-white overflow-x-hidden relative w-full"
+          data-name="Apply Now Page"
+          style={{ height: scaledHeight ? `${scaledHeight}px` : "100vh" }}
         >
-          <NavBar />
-        </div>
-        <div
-          ref={pageRef}
-          className="origin-top-left"
-          style={{ transform: `scale(${pageScale})`, width: `${designWidth}px` }}
-        >
-          <div className="bg-white relative size-full">
-            <App />
-            <Section />
-            <Section1 />
-            <Section2 />
-            <Section3 />
-            <Section4 />
-            <Section5 openIndex={openFaqIndex} onToggle={handleToggleFaq} faqRef={faqRef} />
-            <Section6 extraTop={faqExtraHeight} />
-            <Footer extraTop={faqExtraHeight} />
+          <div
+            className="fixed left-0 top-0 z-[200] origin-top-left"
+            style={{ transform: `scale(${pageScale})`, width: `${designWidth}px` }}
+          >
+            <NavBar />
+          </div>
+          <div
+            ref={pageRef}
+            className="origin-top-left"
+            style={{ transform: `scale(${pageScale})`, width: `${designWidth}px` }}
+          >
+            <div className="bg-white relative size-full">
+              <App />
+              <Section />
+              <Section1 />
+              <Section2 />
+              <Section3 />
+              <Section4 />
+              <Section5 openIndex={openFaqIndex} onToggle={handleToggleFaq} faqRef={faqRef} />
+              <Section6 extraTop={faqExtraHeight} />
+              <Footer extraTop={faqExtraHeight} />
+            </div>
           </div>
         </div>
-      </div>
+      )}
     </ApplyFormContext.Provider>
   );
 }

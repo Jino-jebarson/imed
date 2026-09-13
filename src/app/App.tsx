@@ -1,5 +1,6 @@
-import { Suspense, lazy, useEffect, useState } from "react";
+import { Suspense, lazy, useEffect, useRef, useState } from "react";
 import FloatingWhatsApp from "./components/FloatingWhatsApp";
+import { trackPixelPageView } from "../shared/metaPixel";
 
 const loadHomePage = () => import("../imports/HomePage/HomePage");
 const loadCareersPage = () => import("../imports/CareersModal/CareersPage");
@@ -227,6 +228,19 @@ export default function App() {
     upsertCanonical(canonical);
   }, [hash]);
 
+  const isFirstRouteRender = useRef(true);
+  useEffect(() => {
+    if (isFirstRouteRender.current) {
+      isFirstRouteRender.current = false;
+      return;
+    }
+    const currentHash = (hash || "").toLowerCase();
+    if (currentHash.startsWith("#admin") || currentHash.startsWith("#student")) {
+      return;
+    }
+    trackPixelPageView();
+  }, [hash]);
+
   useEffect(() => {
     // Warm up likely route chunks to avoid white flashes on first route switch.
     const warm = () => {
@@ -256,7 +270,7 @@ export default function App() {
 
   useEffect(() => {
     const normalizeLabel = (value: string) => value.replace(/\s+/g, " ").trim().toLowerCase();
-    const applyLabels = new Set(["talk to expert", "talk to experts"]);
+    const applyLabels = new Set(["apply now", "apply now!", "talk to expert", "talk to experts"]);
     const legalRoutes: Record<string, string> = {
       "privacy policy": "#privacy-policy",
       "terms of use": "#terms-and-conditions",
@@ -269,8 +283,6 @@ export default function App() {
       skillbridge: "#skillbridge",
       blogs: "#blogs",
       applynow: "#applynow",
-      "apply now": "#applynow",
-      "apply-now": "#applynow",
     };
     const navToId: Record<string, string> = {
       about: "why-imed",
@@ -298,6 +310,16 @@ export default function App() {
       target.scrollIntoView({ behavior: "smooth", block: "start" });
     };
 
+    const goToHomeContact = () => {
+      if (window.location.hash !== "") {
+        preloadRoute("");
+        window.location.hash = "";
+        setTimeout(scrollToHomeContact, 150);
+        return;
+      }
+      scrollToHomeContact();
+    };
+
     const scrollToSection = (sectionId: string) => {
       const section = document.getElementById(sectionId) || (document.querySelector(`[data-nav="${sectionId}"]`) as HTMLElement | null);
       if (!section) return;
@@ -313,49 +335,24 @@ export default function App() {
         return;
       }
 
-      // 1. High priority: Check if clicked element or its container represents an "Apply Now" trigger
-      const applyTrigger = target.closest(
-        "[data-nav-target='applynow'], [data-nav-target='apply-now'], a[href='#applynow'], a[href='#apply-now'], button, a, [role='button'], [data-name='Button'], [data-name='button'], [data-nav-target], div"
-      ) as HTMLElement | null;
-
-      if (applyTrigger) {
-        const navTarget = (applyTrigger.getAttribute("data-nav-target") || "").toLowerCase().trim();
-        const href = (applyTrigger.getAttribute("href") || "").toLowerCase().trim();
-        const triggerText = normalizeLabel(applyTrigger.textContent || "");
-        const targetText = normalizeLabel(target.textContent || "");
-
-        const isApplyNowClick =
-          navTarget === "applynow" ||
-          navTarget === "apply-now" ||
-          href === "#applynow" ||
-          href === "#apply-now" ||
-          triggerText === "apply now" ||
-          triggerText === "apply now!" ||
-          triggerText === "applynow" ||
-          targetText === "apply now" ||
-          targetText === "apply now!" ||
-          targetText === "applynow" ||
-          (triggerText.startsWith("apply now") && triggerText.length <= 16) ||
-          (targetText.startsWith("apply now") && targetText.length <= 16);
-
-        if (isApplyNowClick) {
+      // If already on the Apply Now page, scroll to form on apply clicks
+      if (window.location.hash.toLowerCase() === "#applynow" || window.location.hash.toLowerCase() === "#apply-now") {
+        const applyTarget = target.closest("[data-nav-target='applynow'], [data-nav-target='apply-now'], a[href='#applynow'], a[href='#apply-now']");
+        if (applyTarget) {
           event.preventDefault();
-          if (window.location.hash.toLowerCase() === "#applynow" || window.location.hash.toLowerCase() === "#apply-now") {
-            const form = document.getElementById("apply-form") || document.querySelector("[data-name='Apply Now Page']");
-            if (form) {
-              form.scrollIntoView({ behavior: "smooth", block: "start" });
-            } else {
-              window.scrollTo({ top: 0, behavior: "smooth" });
-            }
-            return;
+          const form = document.getElementById("apply-form") || document.querySelector("[data-name='Apply Now Page']");
+          if (form) {
+            form.scrollIntoView({ behavior: "smooth", block: "start" });
+          } else {
+            window.scrollTo({ top: 0, behavior: "smooth" });
           }
-
-          preloadRoute("#applynow");
-          window.location.hash = "#applynow";
-          window.scrollTo({ top: 0, behavior: "smooth" });
           return;
         }
       }
+
+      // ONLY when coming from AHAP (#ahap), route "Apply Now" to the new #applynow page
+      const currentHash = window.location.hash.toLowerCase();
+      const isFromAhap = currentHash === "#ahap" || currentHash === "#acha" || currentHash === "#aahp";
 
       const explicitTarget = target.closest("[data-nav-target]") as HTMLElement | null;
       if (explicitTarget) {
@@ -385,9 +382,19 @@ export default function App() {
             return;
           }
           if (sectionId === "applynow" || sectionId === "apply-now") {
-            preloadRoute("#applynow");
-            window.location.hash = "#applynow";
-            window.scrollTo({ top: 0, behavior: "smooth" });
+            if (isFromAhap) {
+              preloadRoute("#applynow");
+              window.location.hash = "#applynow";
+              window.scrollTo({ top: 0, behavior: "smooth" });
+              return;
+            } else {
+              // Non-AHAP: route to Home page contact form section
+              goToHomeContact();
+              return;
+            }
+          }
+          if (sectionId === "contact-us" || sectionId === "contact") {
+            goToHomeContact();
             return;
           }
           scrollToSection(sectionId);
@@ -399,6 +406,15 @@ export default function App() {
       if (!clickable) return;
 
       const label = normalizeLabel(clickable.textContent || "");
+
+      // If clicked from AHAP and label is Apply Now, navigate to #applynow
+      if (isFromAhap && (label === "apply now" || label === "apply now!" || label.startsWith("apply now"))) {
+        event.preventDefault();
+        preloadRoute("#applynow");
+        window.location.hash = "#applynow";
+        window.scrollTo({ top: 0, behavior: "smooth" });
+        return;
+      }
 
       const legalRoute = legalRoutes[label];
       if (legalRoute) {
@@ -414,19 +430,17 @@ export default function App() {
         const sectionId = navToId[label];
         if (!sectionId) return;
         event.preventDefault();
+        if (sectionId === "contact-us" || sectionId === "contact") {
+          goToHomeContact();
+          return;
+        }
         scrollToSection(sectionId);
         return;
       }
 
       if (applyLabels.has(label)) {
         event.preventDefault();
-        preloadRoute("");
-        if (window.location.hash !== "") {
-          window.location.hash = "";
-          setTimeout(scrollToHomeContact, 120);
-          return;
-        }
-        scrollToHomeContact();
+        goToHomeContact();
         return;
       }
 

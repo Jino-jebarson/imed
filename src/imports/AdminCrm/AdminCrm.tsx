@@ -48,6 +48,8 @@ import {
   UserRound,
   Users,
   Check,
+  Clock,
+  UserCheck,
   X,
 } from "lucide-react";
 
@@ -71,7 +73,7 @@ const legacyPartialEmiPaymentMode = "Upfront + EMI";
 const admissionPaymentModes = ["Full Payment", "EMI", partialEmiPaymentMode, "Loan Provider"];
 const paymentNoteMaxLength = 250;
 const paymentReferenceMaxLength = 80;
-const leadFeedbackOptions = ["New", "Interested", "Qualified", "Follow-up", "On Hold", "Converted", "Lost", "Not Connected", "Busy Call later", "Invalid", "Junk"];
+const leadFeedbackOptions = ["New", "Interested", "Qualified", "Follow-up", "RNR", "Not Interested", "Future Cohort", "On Hold", "Converted", "Lost", "Not Connected", "Busy Call later", "Invalid", "Junk"];
 const leadPamphlets = [
   { key: "first-contact", label: "Course enquiry" },
   { key: "contacted-followup", label: "Called earlier" },
@@ -120,7 +122,8 @@ type AdminUser = { name: string; email: string; role: string; franchiseId?: stri
 type GoogleCalendarStatus = { configured: boolean; connected: boolean; email?: string };
 type DocumentFile = { originalName?: string; storedName?: string; mimeType?: string; size?: number; uploadedAt?: string };
 type LeadFollowUp = { type?: string; status?: string; scheduledAt?: string; note?: string; by?: string; createdAt?: string };
-type Lead = { _id: string; fullName: string; phone: string; parentMobile?: string; email?: string; governmentProof?: DocumentFile; highestQualificationCertificate?: DocumentFile; source?: string; centre?: string; franchiseId?: string; course?: string; counsellor?: string; stage: string; priority?: string; leadFeedback?: string; city?: string; studentLocation?: string; expectedFee?: number; nextFollowUp?: string; followUps?: LeadFollowUp[]; notes?: string; createdAt?: string; updatedAt?: string };
+type LeadActivity = { type: string; message: string; by?: string; at?: string };
+type Lead = { _id: string; fullName: string; phone: string; parentMobile?: string; email?: string; governmentProof?: DocumentFile; highestQualificationCertificate?: DocumentFile; source?: string; centre?: string; franchiseId?: string; course?: string; counsellor?: string; stage: string; priority?: string; leadFeedback?: string; city?: string; studentLocation?: string; expectedFee?: number; nextFollowUp?: string; followUps?: LeadFollowUp[]; notes?: string; activities?: LeadActivity[]; assignedAt?: string; assignedBy?: string; createdAt?: string; updatedAt?: string };
 type CashDeposit = { amount?: number; bank?: string; referenceNumber?: string; note?: string; proof?: DocumentFile; depositedBy?: string; by?: string; depositedAt?: string; createdAt?: string };
 type PaymentRecord = { amount?: number; mode?: string; paymentPurpose?: string; transactionId?: string; emiReference?: string; loanProviderName?: string; note?: string; proof?: DocumentFile; cashDeposits?: CashDeposit[]; by?: string; paidAt?: string };
 type StudentFeedback = { type?: string; status?: string; note?: string; nextFollowUpDate?: string; by?: string; at?: string };
@@ -485,6 +488,7 @@ function courseShortCode(course = "") {
   if (["HA", "EMT", "GDA", "OCHA", "AHAP", "GCA"].includes(normalized)) return normalized;
   if (normalized.includes("EMERGENCY")) return "EMT";
   if (normalized.includes("GENERAL")) return "GDA";
+  if (normalized.includes("HEALTHCARE") || normalized.includes("APPLY NOW") || normalized.includes("DEGREE") || normalized.includes("GRADUATE")) return "AHAP";
   if (normalized.includes("HOSPITAL")) return "HA";
   return course;
 }
@@ -524,8 +528,8 @@ function uniqueOptions(options: string[]) {
   return Array.from(new Set(options.filter(Boolean)));
 }
 
-function courseOptionsForCentre(centre = "", options: string[] = fallbackCourses) {
-  return isKochiCentre(centre) ? kochiCourseOptions : uniqueOptions(options);
+function courseOptionsForCentre(centre = "", options: string[] = fallbackCourses, isSuperAdmin = false) {
+  return !isSuperAdmin && isKochiCentre(centre) ? kochiCourseOptions : uniqueOptions(options);
 }
 
 function feeWithGst(baseFee = 0) {
@@ -864,15 +868,19 @@ function normalizeLeadFeedbackStatus(value = "") {
     "Hot lead": "Interested",
     "Warm lead": "Follow-up",
     "Cold lead": "Lost",
-    RNR: "Not Connected",
     DNP: "Not Connected",
     "Call back": "Busy Call later",
-    "Not interested": "Lost",
     "Invalid number": "Invalid",
     Spam: "Junk",
     Fake: "Junk",
     "Junk lead": "Junk",
     junk: "Junk",
+    rnr: "RNR",
+    "not interested": "Not Interested",
+    "not intrested": "Not Interested",
+    "Not intrested": "Not Interested",
+    "future cohort": "Future Cohort",
+    "Future cohort": "Future Cohort",
   };
   const status = legacyMap[value] || value || "New";
   return leadFeedbackOptions.includes(status) ? status : "New";
@@ -882,8 +890,11 @@ function leadFeedbackBadgeClass(feedback = "") {
   const normalized = normalizeLeadFeedbackStatus(feedback).toLowerCase();
   if (normalized.includes("junk")) return "badge-junk";
   if (normalized.includes("converted") || normalized.includes("qualified")) return "badge-green";
+  if (normalized.includes("not interested")) return "badge-gray";
   if (normalized.includes("interested")) return "badge-red";
   if (normalized.includes("lost") || normalized.includes("invalid") || normalized.includes("not connected")) return "badge-gray";
+  if (normalized === "rnr" || normalized.includes("rnr")) return "badge-amber";
+  if (normalized.includes("future cohort") || normalized.includes("cohort")) return "badge-purple";
   if (normalized.includes("hold") || normalized.includes("busy")) return "badge-amber";
   if (normalized.includes("follow")) return "badge-blue";
   return "badge-green";
@@ -1032,11 +1043,17 @@ export default function AdminCrm() {
   const [leadPage, setLeadPage] = useState(1);
   const [studentPage, setStudentPage] = useState(1);
   const [filters, setFilters] = useState({ q: "", stage: "", centre: "", course: "", counsellor: "", leadFeedback: "" });
+  const filtersRef = useRef(filters);
+  filtersRef.current = filters;
+  const leadPageRef = useRef(leadPage);
+  leadPageRef.current = leadPage;
+  const leadRequestIdRef = useRef(0);
   const [profile, setProfile] = useState<ProfileTarget>(null);
   const [profileReturnPanel, setProfileReturnPanel] = useState<Panel | "">("");
   const [leadDrawer, setLeadDrawer] = useState<Lead | null>(null);
   const [leadDrawerTab, setLeadDrawerTab] = useState<"info" | "follow" | "docs" | "act">("info");
   const [dedicatedFollowUps, setDedicatedFollowUps] = useState<Lead[]>([]);
+  const [dedicatedAssignedLeads, setDedicatedAssignedLeads] = useState<Lead[]>([]);
   const [receiptStudent, setReceiptStudent] = useState<Student | null>(null);
   const [receiptSelection, setReceiptSelection] = useState<ReceiptSelection>({ type: "invoice" });
   const [deletePrompt, setDeletePrompt] = useState<DeletePrompt | null>(null);
@@ -1051,6 +1068,7 @@ export default function AdminCrm() {
   const [batchResumeTab, setBatchResumeTab] = useState<AcademicTab>("batches");
   const [loading, setLoading] = useState(false);
   const [notifOpen, setNotifOpen] = useState(false);
+  const [notifTab, setNotifTab] = useState<"assigned" | "followups">("assigned");
   const notifRef = useRef<HTMLDivElement>(null);
 
   const isHeadSuperAdmin = user?.role === "superadmin";
@@ -1097,6 +1115,50 @@ export default function AdminCrm() {
   const showDateFilter = dateFilterPanels.includes(panel);
   const showTopbarSearch = canUseLeads && searchPanels.includes(panel);
   const activeTopbarDate = showDateFilter ? selectedDate : "";
+  const activeTopbarDateRef = useRef(activeTopbarDate);
+  activeTopbarDateRef.current = activeTopbarDate;
+  const scopedFranchiseIdRef = useRef(scopedFranchiseId);
+  scopedFranchiseIdRef.current = scopedFranchiseId;
+
+  const [dismissedAssignedIds, setDismissedAssignedIds] = useState<string[]>(() => {
+    try {
+      return JSON.parse(localStorage.getItem("imed_dismissed_assigned_leads") || "[]");
+    } catch {
+      return [];
+    }
+  });
+
+  const dismissAssignedLead = (leadId: string) => {
+    setDismissedAssignedIds((prev) => {
+      const next = Array.from(new Set([...prev, leadId]));
+      try {
+        localStorage.setItem("imed_dismissed_assigned_leads", JSON.stringify(next));
+      } catch {
+        // ignore
+      }
+      return next;
+    });
+  };
+
+  const newAssignedLeads = useMemo(() => {
+    const map = new Map<string, Lead>();
+    leads.forEach((l) => map.set(l._id, l));
+    dedicatedAssignedLeads.forEach((l) => map.set(l._id, l));
+    const all = Array.from(map.values());
+    const thirtyDaysAgo = Date.now() - 30 * 24 * 60 * 60 * 1000;
+    return all.filter((lead) => {
+      if (dismissedAssignedIds.includes(lead._id)) return false;
+      const hasAssignedActivity = lead.activities?.some((a) => a.type === "assigned" && new Date(a.at || 0).getTime() >= thirtyDaysAgo);
+      const isAssignedRecent = Boolean(lead.assignedAt && new Date(lead.assignedAt).getTime() >= thirtyDaysAgo);
+      const isNewRecent = (lead.stage === "New Lead" || !lead.stage) && new Date(lead.createdAt || 0).getTime() >= thirtyDaysAgo;
+      const isWebsiteEnquiry = (lead.source === "Website Enquiry" || lead.source === "Website") && new Date(lead.createdAt || 0).getTime() >= thirtyDaysAgo;
+      return Boolean(hasAssignedActivity || isAssignedRecent || isNewRecent || isWebsiteEnquiry);
+    }).sort((a, b) => {
+      const timeA = new Date(a.assignedAt || a.updatedAt || a.createdAt || 0).getTime();
+      const timeB = new Date(b.assignedAt || b.updatedAt || b.createdAt || 0).getTime();
+      return timeB - timeA;
+    });
+  }, [leads, dedicatedAssignedLeads, dismissedAssignedIds]);
 
   const followUpLeads = useMemo(() => {
     const map = new Map<string, Lead>();
@@ -1116,6 +1178,9 @@ export default function AdminCrm() {
     const endToday = new Date(today.getFullYear(), today.getMonth(), today.getDate(), 23, 59, 59, 999).getTime();
     return followUpLeads.filter((lead) => new Date(lead.nextFollowUp || "").getTime() <= endToday).length;
   }, [followUpLeads]);
+
+  const totalNotifCount = followUpLeads.length + newAssignedLeads.length;
+  const urgentNotifCount = dueFollowUpCount + newAssignedLeads.length;
 
   useEffect(() => {
     if (!notifOpen) return;
@@ -1224,22 +1289,32 @@ export default function AdminCrm() {
     setCentreStats(centreRes.data || []);
   };
 
-  const loadLeads = async (page = leadPage) => {
+  const loadLeads = async (page?: number) => {
+    const targetPage = page !== undefined ? page : leadPageRef.current;
+    const currentFilters = filtersRef.current;
+    const currentFranchiseId = scopedFranchiseIdRef.current;
     const suffix = queryString({
-      q: filters.q,
-      stage: filters.stage,
-      centre: scopedFranchiseId ? "" : filters.centre,
-      course: filters.course,
-      franchiseId: scopedFranchiseId,
-      counsellor: isCounsellorAccount ? user?.name || "" : filters.counsellor,
-      leadFeedback: filters.leadFeedback,
-      date: activeTopbarDate,
-      page: String(page),
+      q: currentFilters.q,
+      stage: currentFilters.stage,
+      centre: currentFranchiseId ? "" : currentFilters.centre,
+      course: currentFilters.course,
+      franchiseId: currentFranchiseId,
+      counsellor: isCounsellorAccount ? user?.name || "" : currentFilters.counsellor,
+      leadFeedback: currentFilters.leadFeedback,
+      date: activeTopbarDateRef.current,
+      page: String(targetPage),
       limit: String(defaultPageSize),
     });
-    const res = await api<Lead[]>(`/api/admin/leads${suffix}`, { headers: authedHeaders });
-    setLeads(res.data || []);
-    setLeadMeta(res.meta || null);
+    const requestId = ++leadRequestIdRef.current;
+    try {
+      const res = await api<Lead[]>(`/api/admin/leads${suffix}`, { headers: authedHeaders });
+      if (requestId !== leadRequestIdRef.current) return;
+      setLeads(res.data || []);
+      setLeadMeta(res.meta || null);
+    } catch (error) {
+      if (requestId !== leadRequestIdRef.current) return;
+      console.error("Unable to load leads", error);
+    }
   };
 
   const loadAdmissionPendingCount = async () => {
@@ -1258,6 +1333,20 @@ export default function AdminCrm() {
       const suffix = queryString({ franchiseId: scopedFranchiseId });
       const res = await api<Lead[]>(`/api/admin/leads/followups${suffix}`, { headers: authedHeaders });
       if (res.data) setDedicatedFollowUps(res.data);
+    } catch {
+      // fallback silently
+    }
+  };
+
+  const loadAssignedLeads = async () => {
+    if (!token || !canUseLeads) return;
+    try {
+      const suffix = queryString({ franchiseId: scopedFranchiseIdRef.current, limit: "100" });
+      let res = await api<Lead[]>(`/api/admin/leads/assigned${suffix}`, { headers: authedHeaders }).catch(() => null);
+      if (!res?.data) {
+        res = await api<Lead[]>(`/api/admin/leads${suffix}`, { headers: authedHeaders }).catch(() => null);
+      }
+      if (res?.data) setDedicatedAssignedLeads(res.data);
     } catch {
       // fallback silently
     }
@@ -1554,7 +1643,7 @@ export default function AdminCrm() {
   const refreshAll = async () => {
     if (!token) return;
     try {
-      await Promise.all([loadMeta(), loadDashboard(), canUseLeads ? Promise.all([loadLeads(1), loadAdmissionPendingCount(), loadFollowUps()]) : Promise.resolve(), loadStudents(1), loadCounsellors(), loadTeachers(), isTeacherAccount ? loadGoogleCalendarStatus() : Promise.resolve(), canUseAcademics ? Promise.all([loadClassSchedules(), loadTopicProgress(), loadPracticalRecords(), loadStudyNotes()]) : Promise.resolve(), (canManageNps || isTeacherAccount) ? loadNps(1) : Promise.resolve(), canManageInventory ? refreshInventory() : Promise.resolve()]);
+      await Promise.all([loadMeta(), loadDashboard(), canUseLeads ? Promise.all([loadLeads(1), loadAdmissionPendingCount(), loadFollowUps(), loadAssignedLeads()]) : Promise.resolve(), loadStudents(1), loadCounsellors(), loadTeachers(), isTeacherAccount ? loadGoogleCalendarStatus() : Promise.resolve(), canUseAcademics ? Promise.all([loadClassSchedules(), loadTopicProgress(), loadPracticalRecords(), loadStudyNotes()]) : Promise.resolve(), (canManageNps || isTeacherAccount) ? loadNps(1) : Promise.resolve(), canManageInventory ? refreshInventory() : Promise.resolve()]);
     } catch (error) {
       toast.error(error instanceof Error ? error.message : "Unable to load CRM data");
     }
@@ -1574,6 +1663,30 @@ export default function AdminCrm() {
   useEffect(() => { if (token && canUseLeads) void loadLeads(leadPage); }, [leadPage, filters.stage, filters.centre, filters.course, filters.counsellor, filters.leadFeedback, canUseLeads]);
   useEffect(() => { if (token && canUseLeads) void loadAdmissionPendingCount(); }, [token, canUseLeads, scopedFranchiseId]);
   useEffect(() => { if (token && canUseLeads) void loadFollowUps(); }, [token, canUseLeads, scopedFranchiseId]);
+  useEffect(() => { if (token && canUseLeads) void loadAssignedLeads(); }, [token, canUseLeads, scopedFranchiseId]);
+
+  // Periodic polling every 20 seconds so center admin gets real-time notification when superadmin assigns leads
+  useEffect(() => {
+    if (!token || !canUseLeads) return;
+    const interval = setInterval(() => {
+      void loadAssignedLeads();
+      void loadFollowUps();
+      void loadAdmissionPendingCount();
+    }, 20000);
+    return () => clearInterval(interval);
+  }, [token, canUseLeads, scopedFranchiseId]);
+
+  // Refresh notifications immediately when window/tab regains focus
+  useEffect(() => {
+    if (!token || !canUseLeads) return;
+    const onFocus = () => {
+      void loadAssignedLeads();
+      void loadFollowUps();
+      void loadAdmissionPendingCount();
+    };
+    window.addEventListener("focus", onFocus);
+    return () => window.removeEventListener("focus", onFocus);
+  }, [token, canUseLeads, scopedFranchiseId]);
   useEffect(() => { if (token) void loadStudents(studentPage); }, [studentPage, panel]);
   useEffect(() => { if (token && canManageSettings) void loadCounsellors(); }, [token, canManageSettings]);
   useEffect(() => { if (token && (canManageSettings || isCounsellorAccount)) void loadTeachers(); }, [token, canManageSettings, isCounsellorAccount]);
@@ -1809,9 +1922,11 @@ export default function AdminCrm() {
 
   const patchLead = async (id: string, updates: Partial<Lead>) => {
     try {
-      if (updates.leadFeedback === "Junk") {
+      if (updates.leadFeedback === "Junk" || updates.leadFeedback === "Not Interested") {
         updates.nextFollowUp = null as any;
       }
+      const targetLead = leads.find((l) => l._id === id) || (leadDrawer?._id === id ? leadDrawer : null);
+      const leadName = targetLead?.fullName || "Lead";
       const res = await api<Lead>(`/api/admin/leads/${id}`, { method: "PATCH", headers: authedHeaders, body: JSON.stringify(updates) });
       if (profile?.type === "lead" && profile.data._id === id && res.data) setProfile({ type: "lead", data: res.data });
       if (leadDrawer?._id === id && res.data) setLeadDrawer(res.data);
@@ -1821,11 +1936,43 @@ export default function AdminCrm() {
           const filtered = current.filter((l) => l._id !== res.data._id);
           return res.data.nextFollowUp ? [...filtered, res.data].sort((a, b) => new Date(a.nextFollowUp || "").getTime() - new Date(b.nextFollowUp || "").getTime()) : filtered;
         });
+        setDedicatedAssignedLeads((current) => {
+          const filtered = current.filter((l) => l._id !== res.data._id);
+          return [res.data, ...filtered];
+        });
       }
-      toast.success("Lead updated");
-      await refreshAll();
+      if (updates.centre) {
+        toast.success(`Lead "${leadName}" assigned to ${updates.centre} centre successfully!`);
+      } else if (updates.counsellor) {
+        toast.success(`Lead "${leadName}" assigned to counsellor ${updates.counsellor}`);
+      } else {
+        toast.success("Lead updated");
+      }
+      void loadDashboard();
+      void loadAdmissionPendingCount();
+      void loadFollowUps();
     } catch (error) {
       toast.error(error instanceof Error ? error.message : "Unable to update lead");
+    }
+  };
+
+  const addLeadActivity = async (leadId: string, message: string, type = "note") => {
+    try {
+      const res = await api<Lead>(`/api/admin/leads/${leadId}/activities`, {
+        method: "POST",
+        headers: authedHeaders,
+        body: JSON.stringify({ message, type }),
+      });
+      if (res.data) {
+        if (leadDrawer?._id === leadId) setLeadDrawer(res.data);
+        if (profile?.type === "lead" && profile.data._id === leadId) setProfile({ type: "lead", data: res.data });
+        setLeads((current) => current.map((l) => (l._id === leadId ? res.data : l)));
+      }
+      toast.success("Activity note added");
+      void loadDashboard();
+      void loadFollowUps();
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : "Unable to add activity note");
     }
   };
 
@@ -1925,6 +2072,52 @@ export default function AdminCrm() {
           await refreshAll();
         } catch (error) {
           toast.error(error instanceof Error ? error.message : "Unable to delete lead");
+        }
+      },
+    });
+  };
+
+  const bulkAssignLeadCentre = async (ids: string[], centre: string) => {
+    if (!ids.length || !centre) return;
+    try {
+      const res = await api<{ count: number; skipped?: number }>("/api/admin/leads/bulk-assign-centre", {
+        method: "POST",
+        headers: authedHeaders,
+        body: JSON.stringify({ ids, centre }),
+      });
+      const count = res.data?.count ?? ids.length;
+      toast.success(`${count} lead(s) assigned to ${centre} centre successfully!`);
+      if (res.data?.skipped) {
+        toast.info(`${res.data.skipped} lead(s) were skipped due to centre course restrictions.`);
+      }
+      await refreshAll();
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : "Unable to bulk assign centre");
+      throw error;
+    }
+  };
+
+  const bulkDeleteLeads = async (ids: string[], onSuccess?: () => void) => {
+    if (!ids.length) return;
+    setDeletePrompt({
+      title: "Bulk delete leads",
+      message: `Permanently delete ${ids.length} selected lead(s)? This action cannot be undone.`,
+      tone: "danger",
+      onConfirm: async () => {
+        try {
+          const res = await api<{ count: number }>("/api/admin/leads/bulk-delete", {
+            method: "POST",
+            headers: authedHeaders,
+            body: JSON.stringify({ ids }),
+          });
+          const count = res.data?.count ?? ids.length;
+          toast.success(`${count} lead(s) deleted successfully`);
+          if (leadDrawer && ids.includes(leadDrawer._id)) setLeadDrawer(null);
+          if (profile?.type === "lead" && ids.includes(profile.data._id)) setProfile(null);
+          onSuccess?.();
+          await refreshAll();
+        } catch (error) {
+          toast.error(error instanceof Error ? error.message : "Unable to delete selected leads");
         }
       },
     });
@@ -2687,6 +2880,7 @@ export default function AdminCrm() {
                 {group.items.map((item) => (
                   <button key={item.key} className={`nav-item ${panel === item.key ? "active" : ""}`} onClick={() => { if (item.key === "profile") setProfile(null); setPanel(item.key); }}>
                     {item.icon}<span>{item.label}</span>
+                    {item.key === "leads" && newAssignedLeads.length > 0 && <em className="nav-badge" style={{ background: "#4f46e5", color: "#ffffff", fontWeight: 800 }}>{newAssignedLeads.length}</em>}
                     {item.key === "admissions" && admissionPendingCount > 0 && <em className="nav-badge nav-badge-admission">{admissionPendingCount}</em>}
                     {item.key === "internship" && pendingLogbookReviewCount > 0 && <em className="nav-badge">{pendingLogbookReviewCount}</em>}
                   </button>
@@ -2736,13 +2930,13 @@ export default function AdminCrm() {
                   type="button"
                   className={`icon-btn notif-btn ${notifOpen ? "active" : ""}`}
                   onClick={() => setNotifOpen((prev) => !prev)}
-                  title="Lead follow-up reminders"
-                  aria-label="Lead follow-up reminders"
+                  title="Lead notifications & reminders"
+                  aria-label="Lead notifications & reminders"
                 >
                   <Bell size={15} />
-                  {followUpLeads.length > 0 && (
-                    <span className={`notif-badge ${dueFollowUpCount > 0 ? "urgent" : ""}`}>
-                      {followUpLeads.length > 99 ? "99+" : followUpLeads.length}
+                  {totalNotifCount > 0 && (
+                    <span className={`notif-badge ${newAssignedLeads.length > 0 ? "urgent notif-pulse" : urgentNotifCount > 0 ? "urgent" : ""}`}>
+                      {totalNotifCount > 99 ? "99+" : totalNotifCount}
                     </span>
                   )}
                 </button>
@@ -2752,11 +2946,50 @@ export default function AdminCrm() {
                       <div className="notif-title-row">
                         <div className="notif-title">
                           <Bell size={15} />
-                          <span>Lead Follow-ups</span>
+                          <span>Notifications</span>
                         </div>
-                        <span className="notif-count-pill">{followUpLeads.length} total</span>
+                        <span className="notif-count-pill">{totalNotifCount} total</span>
                       </div>
-                      {dueFollowUpCount > 0 && (
+                      <div className="notif-tabs" style={{ display: "flex", gap: "6px", marginTop: "10px" }}>
+                        <button
+                          type="button"
+                          className={`btn ${notifTab === "assigned" ? "btn-primary" : "btn-ghost"}`}
+                          style={{ flex: 1, padding: "5px 8px", fontSize: "11.5px", height: "auto" }}
+                          onClick={() => setNotifTab("assigned")}
+                        >
+                          <UserCheck size={13} />
+                          <span>Assign ({newAssignedLeads.length})</span>
+                        </button>
+                        <button
+                          type="button"
+                          className={`btn ${notifTab === "followups" ? "btn-primary" : "btn-ghost"}`}
+                          style={{ flex: 1, padding: "5px 8px", fontSize: "11.5px", height: "auto" }}
+                          onClick={() => setNotifTab("followups")}
+                        >
+                          <Clock size={13} />
+                          <span>Follow-ups ({followUpLeads.length})</span>
+                        </button>
+                      </div>
+                      {notifTab === "assigned" && newAssignedLeads.length > 0 && (
+                        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginTop: "8px", gap: "6px" }}>
+                          <div className="notif-alert-banner" style={{ flex: 1, margin: 0, background: "#EEF2FF", borderColor: "#C7D2FE", color: "#3730A3" }}>
+                            <UserCheck size={14} style={{ color: "#4F46E5" }} />
+                            <span><strong>{newAssignedLeads.length}</strong> new assign lead{newAssignedLeads.length > 1 ? "s" : ""} in your centre!</span>
+                          </div>
+                          <button
+                            type="button"
+                            className="btn btn-ghost"
+                            style={{ fontSize: "11px", padding: "4px 8px", height: "auto", whiteSpace: "nowrap", color: "#4F46E5", fontWeight: 700 }}
+                            title="Hide all assigned leads from notifications"
+                            onClick={() => {
+                              newAssignedLeads.forEach((l) => dismissAssignedLead(l._id));
+                            }}
+                          >
+                            Hide all
+                          </button>
+                        </div>
+                      )}
+                      {notifTab === "followups" && dueFollowUpCount > 0 && (
                         <div className="notif-alert-banner">
                           <AlertTriangle size={14} />
                           <span><strong>{dueFollowUpCount}</strong> follow-up{dueFollowUpCount > 1 ? "s" : ""} due today or overdue!</span>
@@ -2764,79 +2997,135 @@ export default function AdminCrm() {
                       )}
                     </div>
                     <div className="notif-body">
-                      {followUpLeads.length === 0 ? (
-                        <div className="notif-empty">
-                          <div className="notif-empty-icon"><Bell size={24} /></div>
-                          <div className="notif-empty-text">No upcoming lead follow-ups</div>
-                          <div className="notif-empty-sub">Scheduled follow-up reminders for leads will appear here.</div>
-                        </div>
-                      ) : (
-                        <div className="notif-list">
-                          {followUpLeads.slice(0, 15).map((lead) => (
-                            <div key={lead._id} className="notif-item-wrap">
-                              <button
-                                type="button"
-                                className="notif-item"
-                                onClick={() => {
-                                  openLeadDrawer(lead);
-                                  setNotifOpen(false);
-                                }}
-                              >
-                                <div className="notif-avatar">{initials(lead.fullName)}</div>
-                                <div className="notif-item-info">
-                                  <div className="notif-item-top">
-                                    <span className="notif-item-name">{lead.fullName}</span>
-                                    <span className={`tag ${followUpTagClass(lead.nextFollowUp)}`}>
-                                      {followUpDueLabel(lead.nextFollowUp)}
-                                    </span>
-                                  </div>
-                                  <div className="notif-item-meta">
-                                    <span>{courseShortCode(lead.course)}</span>
-                                    {lead.centre && <span> • {lead.centre}</span>}
-                                    {lead.phone && <span> • {lead.phone}</span>}
-                                  </div>
-                                  <div className="notif-item-time">
-                                    <Calendar size={12} />
-                                    <span>{formatDateTime(lead.nextFollowUp)}</span>
-                                  </div>
+                      {notifTab === "assigned" ? (
+                        newAssignedLeads.length === 0 ? (
+                          <div className="notif-empty">
+                            <div className="notif-empty-icon"><UserCheck size={24} /></div>
+                            <div className="notif-empty-text">No new assign leads</div>
+                            <div className="notif-empty-sub">Leads assigned to your centre by super admin will appear here.</div>
+                          </div>
+                        ) : (
+                          <div className="notif-list">
+                            {newAssignedLeads.slice(0, 15).map((lead) => {
+                              const assignActivity = lead.activities?.find((a) => a.type === "assigned");
+                              return (
+                                <div key={lead._id} className="notif-item-wrap">
+                                  <button
+                                    type="button"
+                                    className="notif-item"
+                                    onClick={() => {
+                                      openLeadDrawer(lead);
+                                      setNotifOpen(false);
+                                    }}
+                                  >
+                                    <div className="notif-avatar" style={{ background: "#EEF2FF", color: "#4F46E5" }}>
+                                      {initials(lead.fullName)}
+                                    </div>
+                                    <div className="notif-item-info">
+                                      <div className="notif-item-top">
+                                        <span className="notif-item-name">{lead.fullName}</span>
+                                        <div style={{ display: "flex", gap: "4px", alignItems: "center" }}>
+                                          {lead.source && <span className="tag tag-gray" style={{ fontSize: "9.5px", padding: "1px 5px" }}>{lead.source}</span>}
+                                          <span className="tag tag-blue" style={{ fontSize: "10.5px" }}>
+                                            {lead.centre || "Assign"}
+                                          </span>
+                                        </div>
+                                      </div>
+                                      <div className="notif-item-meta">
+                                        <span>{courseShortCode(lead.course)}</span>
+                                        {lead.counsellor && <span> • Counsellor: {lead.counsellor}</span>}
+                                        {lead.phone && <span> • {lead.phone}</span>}
+                                      </div>
+                                      <div className="notif-item-time" style={{ color: "#4F46E5" }}>
+                                        <UserCheck size={12} />
+                                        <span>{assignActivity?.message || `Assigned to ${lead.centre || "centre"}`}</span>
+                                      </div>
+                                    </div>
+                                  </button>
+                                  <button
+                                    type="button"
+                                    className="notif-quick-done-btn"
+                                    title="Dismiss from notifications"
+                                    onClick={(event) => {
+                                      event.stopPropagation();
+                                      dismissAssignedLead(lead._id);
+                                    }}
+                                  >
+                                    <Check size={14} />
+                                  </button>
                                 </div>
-                              </button>
-                              <button
-                                type="button"
-                                className="notif-quick-done-btn"
-                                title="Mark follow-up done & remove reminder"
-                                onClick={(event) => {
-                                  event.stopPropagation();
-                                  markLeadFollowUpDone(lead);
-                                }}
-                              >
-                                <Check size={14} />
-                              </button>
-                            </div>
-                          ))}
-                        </div>
+                              );
+                            })}
+                          </div>
+                        )
+                      ) : (
+                        followUpLeads.length === 0 ? (
+                          <div className="notif-empty">
+                            <div className="notif-empty-icon"><Bell size={24} /></div>
+                            <div className="notif-empty-text">No upcoming lead follow-ups</div>
+                            <div className="notif-empty-sub">Scheduled follow-up reminders for leads will appear here.</div>
+                          </div>
+                        ) : (
+                          <div className="notif-list">
+                            {followUpLeads.slice(0, 15).map((lead) => (
+                              <div key={lead._id} className="notif-item-wrap">
+                                <button
+                                  type="button"
+                                  className="notif-item"
+                                  onClick={() => {
+                                    openLeadDrawer(lead);
+                                    setNotifOpen(false);
+                                  }}
+                                >
+                                  <div className="notif-avatar">{initials(lead.fullName)}</div>
+                                  <div className="notif-item-info">
+                                    <div className="notif-item-top">
+                                      <span className="notif-item-name">{lead.fullName}</span>
+                                      <span className={`tag ${followUpTagClass(lead.nextFollowUp)}`}>
+                                        {followUpDueLabel(lead.nextFollowUp)}
+                                      </span>
+                                    </div>
+                                    <div className="notif-item-meta">
+                                      <span>{courseShortCode(lead.course)}</span>
+                                      {lead.centre && <span> • {lead.centre}</span>}
+                                      {lead.phone && <span> • {lead.phone}</span>}
+                                    </div>
+                                    <div className="notif-item-time">
+                                      <Calendar size={12} />
+                                      <span>{formatDateTime(lead.nextFollowUp)}</span>
+                                    </div>
+                                  </div>
+                                </button>
+                                <button
+                                  type="button"
+                                  className="notif-quick-done-btn"
+                                  title="Mark follow-up done & remove reminder"
+                                  onClick={(event) => {
+                                    event.stopPropagation();
+                                    markLeadFollowUpDone(lead);
+                                  }}
+                                >
+                                  <Check size={14} />
+                                </button>
+                              </div>
+                            ))}
+                          </div>
+                        )
                       )}
                     </div>
-                    {followUpLeads.length > 0 && (
-                      <div className="notif-footer">
-                        {followUpLeads.length > 15 && (
-                          <span className="notif-more-hint">
-                            Showing top 15 urgent • {followUpLeads.length - 15} more in Leads
-                          </span>
-                        )}
-                        <button
-                          type="button"
-                          className="notif-view-all-btn"
-                          onClick={() => {
-                            setPanel("leads");
-                            setNotifOpen(false);
-                          }}
-                        >
-                          <span>View all {followUpLeads.length > 1 ? `${followUpLeads.length} ` : ""}leads</span>
-                          <ArrowRight size={13} />
-                        </button>
-                      </div>
-                    )}
+                    <div className="notif-footer">
+                      <button
+                        type="button"
+                        className="notif-view-all-btn"
+                        onClick={() => {
+                          setPanel("leads");
+                          setNotifOpen(false);
+                        }}
+                      >
+                        <span>View all leads</span>
+                        <ArrowRight size={13} />
+                      </button>
+                    </div>
                   </div>
                 )}
               </div>
@@ -2845,8 +3134,8 @@ export default function AdminCrm() {
 
           <section className="content">
             {panel === "dashboard" && (isCounsellorAccount ? <SalesCounsellorDashboardPanel leads={leads} students={visibleStudents} onOpenLead={openLeadDrawer} onGoLeads={() => setPanel("leads")} onGoAddLead={() => setPanel("addlead")} onGoAdmissions={() => setPanel("admissions")} onOpenStudent={(student) => openProfile({ type: "student", data: student }, "dashboard")} /> : isTeacherAccount ? <TeacherDashboardPanel batches={batches} students={visibleStudents} sessions={classSessions} schedules={classSchedulesState} topicProgress={topicProgress} practicalRecords={practicalRecords} user={user} googleCalendarStatus={googleCalendarStatus} calendarSyncing={calendarSyncing} onConnectCalendar={connectGoogleCalendar} onDisconnectCalendar={disconnectGoogleCalendar} onSyncCalendar={syncGoogleCalendar} onOpenStudent={(student) => openProfile({ type: "student", data: student }, "dashboard")} onOpenBatch={(batchId, sessionId) => { setSelectedBatchId(batchId); setSelectedClassSessionId(sessionId || ""); setPanel("batch"); }} /> : isOperationsAccount ? <OperationsDashboardPanel students={students} batches={batches} onOpenStudent={(student) => openProfile({ type: "student", data: student }, "dashboard")} onGoStudents={() => setPanel("allstudents")} onGoFinance={() => setPanel("finance")} onGoEmi={() => setPanel("emi")} onGoCert={() => setPanel("cert")} onGoInternship={() => setPanel("internship")} onGoInventory={() => setPanel("inventory")} inventorySummary={inventorySummary} /> : <DashboardPanel summary={summary} funnel={funnel} centreStats={centreStats} students={students} leads={leads} onOpenLead={openLeadDrawer} />)}
-            {panel === "leads" && <LeadsPanel leads={leads} students={students} batches={batches} meta={leadMeta} filters={filters} setFilters={setFilters} centres={centreOptions} courses={courseOptions} canAssign={canAssignCounsellors} canDelete={canDeleteRecords} counsellors={counsellors} onSearch={() => loadLeads(1)} onPage={setLeadPage} onPatch={patchLead} onDelete={deleteLead} onEdit={(lead) => openProfile({ type: "lead", data: lead, mode: "edit" }, "leads")} onAddLead={() => setPanel("addlead")} onImportExcel={importLeadExcel} onOpen={openLeadDrawer} />}
-            {panel === "addlead" && <AddLeadPanel centres={centreOptions} courses={courseOptions} onSubmit={addLead} />}
+            {panel === "leads" && <LeadsPanel leads={leads} students={students} batches={batches} meta={leadMeta} filters={filters} setFilters={setFilters} centres={centreOptions} courses={courseOptions} canAssign={canAssignCounsellors} canDelete={canDeleteRecords} counsellors={counsellors} onSearch={() => loadLeads(1)} onPage={setLeadPage} onPatch={patchLead} onDelete={deleteLead} onEdit={(lead) => openProfile({ type: "lead", data: lead, mode: "edit" }, "leads")} onAddLead={() => setPanel("addlead")} onImportExcel={importLeadExcel} onOpen={openLeadDrawer} onBulkAssignCentre={bulkAssignLeadCentre} onBulkDelete={bulkDeleteLeads} />}
+            {panel === "addlead" && <AddLeadPanel centres={centreOptions} courses={courseOptions} onSubmit={addLead} isSuperAdmin={isHeadSuperAdmin} />}
             {panel === "admissions" && <AdmissionsPanel leads={leads.filter((lead) => lead.stage === "Admission" && !students.some((student) => String(student.leadId || "") === String(lead._id)))} batches={batches} canAssign={canAssignCounsellors} counsellors={counsellors} centres={centreOptions} onPatch={patchLead} onConvert={convertLead} onOpen={openLeadDrawer} />}
             {panel === "batch" && <BatchPanel batches={batches} students={students} schedules={classSchedulesState} sessions={classSessions} topicProgress={topicProgress} practicalRecords={practicalRecords} studyNotes={studyNotes} npsDashboard={npsDashboard} teachers={teachers} user={user} classWeek={classWeek} setClassWeek={setClassWeek} selectedBatchId={selectedBatchId} setSelectedBatchId={setSelectedBatchId} selectedSessionId={selectedClassSessionId} setSelectedSessionId={setSelectedClassSessionId} initialTab={batchResumeTab} classesGenerating={classesGenerating} attendanceDraft={classAttendanceDraft} setAttendanceDraft={setClassAttendanceDraft} attendanceLogs={attendanceSummaries} selectedAttendanceSummary={selectedAttendanceSummary} attendanceDetailLogs={attendanceDetailLogs} attendanceDetailFilters={attendanceDetailFilters} setAttendanceDetailFilters={setAttendanceDetailFilters} onSelectAttendanceSummary={setSelectedAttendanceSummary} onCreateSchedule={createClassSchedule} onGenerateWeek={generateWeeklyRoster} onSaveAttendance={saveClassAttendance} onResetAttendance={resetClassAttendance} onEditSession={patchClassSession} onTopicProgress={updateTopicProgress} onDeleteTopic={deleteTopicProgress} onCreateBatchPractical={createBatchPractical} onPracticalRecord={updatePracticalRecord} onUploadStudyNote={uploadStudyNote} onDownloadStudyNote={downloadStudyNote} onDeleteStudyNote={deleteStudyNote} onOpen={(student) => { setBatchResumeTab("students"); openProfile({ type: "student", data: student }, "batch"); }} />}
             {panel === "mystudents" && <StudentsPanel title="My candidates" students={visibleStudents} meta={studentMeta} batches={batches} canAssign={canAssignTeachers} canDelete={canDeleteRecords} teachers={teachers} onPage={setStudentPage} onPatch={patchStudent} onDelete={deleteStudent} onEdit={(student) => openProfile({ type: "student", data: student, mode: "edit" }, "mystudents")} onOpen={(student) => openProfile({ type: "student", data: student }, "mystudents")} />}
@@ -2890,12 +3179,16 @@ export default function AdminCrm() {
         lead={leadDrawer}
         tab={leadDrawerTab}
         setTab={setLeadDrawerTab}
+        canAssign={canAssignCounsellors}
+        centres={centreOptions}
+        counsellors={counsellors}
         onClose={closeLeadDrawer}
         onPatch={patchLead}
         onFollowUp={addLeadFollowUp}
         onMarkDone={markLeadFollowUpDone}
         onClearReminder={clearLeadReminder}
         onPreviewDocument={openDocumentPreview}
+        onAddActivity={addLeadActivity}
       />
       <ReceiptDrawer
         student={receiptStudent}
@@ -3692,22 +3985,166 @@ function InternshipPanel({ students, user, onPreviewPhoto, onReviewLogbook }: { 
 
 type LeadFilters = { q: string; stage: string; centre: string; course: string; counsellor: string; leadFeedback: string };
 
-function LeadsPanel(props: { leads: Lead[]; students: Student[]; batches: Batch[]; meta: PaginationMeta | null; filters: LeadFilters; setFilters: (filters: LeadFilters) => void; centres: string[]; courses: string[]; canAssign: boolean; canDelete: boolean; counsellors: Counsellor[]; onSearch: () => void; onPage: (page: number) => void; onPatch: (id: string, updates: Partial<Lead>) => void; onDelete: (lead: Lead) => void; onEdit: (lead: Lead) => void; onAddLead: () => void; onImportExcel: (event: ChangeEvent<HTMLInputElement>) => void; onOpen: (lead: Lead) => void }) {
-  const counsellorNames = props.counsellors.length ? props.counsellors.map((counsellor) => counsellor.name) : Array.from(new Set(props.leads.map((lead) => lead.counsellor).filter(Boolean))) as string[];
+function LeadsPanel(props: {
+  leads: Lead[];
+  students: Student[];
+  batches: Batch[];
+  meta: PaginationMeta | null;
+  filters: LeadFilters;
+  setFilters: (filters: LeadFilters) => void;
+  centres: string[];
+  courses: string[];
+  canAssign: boolean;
+  canDelete: boolean;
+  counsellors: Counsellor[];
+  onSearch: () => void;
+  onPage: (page: number) => void;
+  onPatch: (id: string, updates: Partial<Lead>) => void;
+  onDelete: (lead: Lead) => void;
+  onEdit: (lead: Lead) => void;
+  onAddLead: () => void;
+  onImportExcel: (event: ChangeEvent<HTMLInputElement>) => void;
+  onOpen: (lead: Lead) => void;
+  onBulkAssignCentre?: (ids: string[], centre: string) => Promise<void>;
+  onBulkDelete?: (ids: string[], onSuccess?: () => void) => void;
+}) {
+  const [selectedLeadIds, setSelectedLeadIds] = useState<string[]>([]);
+  const [bulkCentre, setBulkCentre] = useState("");
+  const [isBulkAssigning, setIsBulkAssigning] = useState(false);
+
+  const counsellorNames = (props.counsellors.length
+    ? props.counsellors.map((counsellor) => counsellor.name)
+    : (Array.from(new Set(props.leads.map((lead) => lead.counsellor).filter(Boolean))) as string[])
+  ).filter((name) => name && name !== "Unassigned");
+
+  const filteredLeads = useMemo(() => {
+    return props.leads.filter((lead) => {
+      if (props.filters.stage && lead.stage !== props.filters.stage) return false;
+      if (props.filters.leadFeedback && normalizeLeadFeedbackStatus(lead.leadFeedback) !== normalizeLeadFeedbackStatus(props.filters.leadFeedback)) return false;
+      if (props.filters.centre && lead.centre !== props.filters.centre) return false;
+      if (props.filters.counsellor) {
+        const owner = leadOwnerForDisplay(lead, props.students, props.batches) || lead.counsellor;
+        if (props.filters.counsellor === "Unassigned") {
+          if (owner && owner !== "Unassigned") return false;
+        } else if (owner !== props.filters.counsellor) {
+          return false;
+        }
+      }
+      if (props.filters.q) {
+        const query = props.filters.q.trim().toLowerCase();
+        const matches = [lead.fullName, lead.phone, lead.email, lead.course, lead.centre, lead.counsellor, lead.studentLocation, lead.city].some((v) => String(v || "").toLowerCase().includes(query));
+        if (!matches) return false;
+      }
+      return true;
+    });
+  }, [props.leads, props.filters.stage, props.filters.leadFeedback, props.filters.centre, props.filters.counsellor, props.filters.q, props.students, props.batches]);
+
+  const handleToggleSelect = (id: string) => {
+    setSelectedLeadIds((prev) =>
+      prev.includes(id) ? prev.filter((item) => item !== id) : [...prev, id]
+    );
+  };
+
+  const handleToggleSelectAll = () => {
+    const visibleIds = filteredLeads.map((l) => l._id);
+    const allSelected = visibleIds.length > 0 && visibleIds.every((id) => selectedLeadIds.includes(id));
+    if (allSelected) {
+      setSelectedLeadIds((prev) => prev.filter((id) => !visibleIds.includes(id)));
+    } else {
+      setSelectedLeadIds((prev) => Array.from(new Set([...prev, ...visibleIds])));
+    }
+  };
+
+  const handleExecuteBulkAssign = async () => {
+    if (!selectedLeadIds.length || !bulkCentre || !props.onBulkAssignCentre) return;
+    setIsBulkAssigning(true);
+    try {
+      await props.onBulkAssignCentre(selectedLeadIds, bulkCentre);
+      setSelectedLeadIds([]);
+      setBulkCentre("");
+    } catch {
+      // toast shown in bulkAssignLeadCentre
+    } finally {
+      setIsBulkAssigning(false);
+    }
+  };
+
+  const handleExecuteBulkDelete = () => {
+    if (!selectedLeadIds.length || !props.onBulkDelete) return;
+    props.onBulkDelete(selectedLeadIds, () => setSelectedLeadIds([]));
+  };
+
   return (
     <div className="leads-prototype">
       <div className="filter-bar leads-filter-bar">
-        <input className="fbtn lead-search-input" value={props.filters.q} onChange={(event) => props.setFilters({ ...props.filters, q: event.target.value })} onKeyDown={(event) => { if (event.key === "Enter") props.onSearch(); }} placeholder="Search leads..." />
-        <select className="fbtn" value={props.filters.stage} onChange={(event) => props.setFilters({ ...props.filters, stage: event.target.value })}><option value="">All stages</option>{stages.slice(0, 4).map((stage) => <option key={stage}>{stage}</option>)}</select>
-        <select className="fbtn" value={props.filters.leadFeedback} onChange={(event) => props.setFilters({ ...props.filters, leadFeedback: event.target.value })}><option value="">All statuses</option>{leadFeedbackOptions.map((feedback) => <option key={feedback}>{feedback}</option>)}</select>
-        <select className="fbtn" value={props.filters.centre} onChange={(event) => props.setFilters({ ...props.filters, centre: event.target.value })}><option value="">All centres</option>{props.centres.map((centre) => <option key={centre}>{centre}</option>)}</select>
-        <select className="fbtn" value={props.filters.counsellor} onChange={(event) => props.setFilters({ ...props.filters, counsellor: event.target.value })}><option value="">All counsellors</option>{counsellorNames.map((name) => <option key={name}>{name}</option>)}</select>
+        <input className="fbtn lead-search-input" value={props.filters.q} onChange={(event) => { props.setFilters({ ...props.filters, q: event.target.value }); props.onPage(1); }} onKeyDown={(event) => { if (event.key === "Enter") props.onSearch(); }} placeholder="Search leads..." />
+        <select className="fbtn" value={props.filters.stage} onChange={(event) => { props.setFilters({ ...props.filters, stage: event.target.value }); props.onPage(1); }}><option value="">All stages</option>{stages.slice(0, 4).map((stage) => <option key={stage}>{stage}</option>)}</select>
+        <select className="fbtn" value={props.filters.leadFeedback} onChange={(event) => { props.setFilters({ ...props.filters, leadFeedback: event.target.value }); props.onPage(1); }}><option value="">All statuses</option>{leadFeedbackOptions.map((feedback) => <option key={feedback}>{feedback}</option>)}</select>
+        <select className="fbtn" value={props.filters.centre} onChange={(event) => { props.setFilters({ ...props.filters, centre: event.target.value }); props.onPage(1); }}><option value="">All centres</option>{props.centres.map((centre) => <option key={centre}>{centre}</option>)}</select>
+        <select className="fbtn" value={props.filters.counsellor} onChange={(event) => { props.setFilters({ ...props.filters, counsellor: event.target.value }); props.onPage(1); }}>
+          <option value="">All counsellors</option>
+          <option value="Unassigned">Unassigned</option>
+          {counsellorNames.map((name) => <option key={name} value={name}>{name}</option>)}
+        </select>
         <div className="filter-spacer" />
-        <button className="btn btn-ghost" onClick={() => downloadExcelFile(["Lead", "Contact", "Course", "Source", "Centre", "Counsellor", "Stage", "Priority", "Next follow-up"], props.leads.map((lead) => [lead.fullName, lead.phone, lead.course, lead.source, lead.centre, leadOwnerForDisplay(lead, props.students, props.batches) || "Unassigned", lead.stage, leadPriorityLabel(lead.priority), formatDate(lead.updatedAt || lead.createdAt)]), "imed-leads")}><Download size={15} /> Download Excel</button>
+        <button className="btn btn-ghost" onClick={() => downloadExcelFile(["Lead", "Contact", "Course", "Source", "Centre", "Counsellor", "Stage", "Priority", "Next follow-up"], filteredLeads.map((lead) => [lead.fullName, lead.phone, lead.course, lead.source, lead.centre, leadOwnerForDisplay(lead, props.students, props.batches) || "Unassigned", lead.stage, leadPriorityLabel(lead.priority), formatDate(lead.updatedAt || lead.createdAt)]), "imed-leads")}><Download size={15} /> Download Excel</button>
         <label className="btn btn-ghost file-upload-btn">Upload Excel<input type="file" accept=".xlsx,.xls,.csv" onChange={props.onImportExcel} /></label>
         <button className="btn btn-primary" onClick={props.onAddLead}><Plus size={15} /> Add lead</button>
       </div>
-      <div className="card leads-card"><LeadTable {...props} showAction={false} /></div>
+
+      {selectedLeadIds.length > 0 && (
+        <div className="leads-bulk-bar">
+          <div className="leads-bulk-count">
+            <CheckSquare size={16} />
+            <span><strong>{selectedLeadIds.length}</strong> lead{selectedLeadIds.length > 1 ? "s" : ""} selected</span>
+          </div>
+          <button className="btn btn-ghost btn-sm" onClick={() => setSelectedLeadIds([])}>Clear</button>
+          <div className="leads-bulk-actions">
+            {props.canAssign && (
+              <div style={{ display: "inline-flex", alignItems: "center", gap: "6px" }}>
+                <select
+                  className="fbtn mini-select"
+                  value={bulkCentre}
+                  onChange={(e) => setBulkCentre(e.target.value)}
+                  style={{ height: 32, minWidth: 150 }}
+                >
+                  <option value="">Bulk assign centre...</option>
+                  {props.centres.map((centre) => (
+                    <option key={centre} value={centre}>{centre}</option>
+                  ))}
+                </select>
+                <button
+                  className="btn btn-primary btn-sm"
+                  disabled={!bulkCentre || isBulkAssigning}
+                  onClick={handleExecuteBulkAssign}
+                >
+                  {isBulkAssigning ? "Assigning..." : "Assign Centre"}
+                </button>
+              </div>
+            )}
+            {props.canDelete && (
+              <button
+                className="btn btn-danger btn-sm"
+                onClick={handleExecuteBulkDelete}
+              >
+                <Trash2 size={14} />
+                <span>Delete selected ({selectedLeadIds.length})</span>
+              </button>
+            )}
+          </div>
+        </div>
+      )}
+
+      <div className="card leads-card">
+        <LeadTable
+          {...props}
+          leads={filteredLeads}
+          showAction={false}
+          selectedLeadIds={selectedLeadIds}
+          onToggleSelect={handleToggleSelect}
+          onToggleSelectAll={handleToggleSelectAll}
+        />
+      </div>
       <Pager meta={props.meta} label="leads" onPage={props.onPage} />
     </div>
   );
@@ -3782,12 +4219,44 @@ function LeadPamphletSelect({ lead, compact = false }: { lead: Lead; compact?: b
   );
 }
 
-function LeadTable({ leads, students, batches, canAssign, canDelete = false, counsellors, centres, onPatch, onDelete, onEdit, onOpen, showAction }: { leads: Lead[]; students: Student[]; batches: Batch[]; canAssign: boolean; canDelete?: boolean; counsellors: Counsellor[]; centres: string[]; onPatch: (id: string, updates: Partial<Lead>) => void; onDelete?: (lead: Lead) => void; onEdit?: (lead: Lead) => void; onOpen: (lead: Lead) => void; showAction: boolean }) {
+function LeadTable({
+  leads,
+  students,
+  batches,
+  canAssign,
+  canDelete = false,
+  counsellors,
+  centres,
+  onPatch,
+  onDelete,
+  onEdit,
+  onOpen,
+  showAction,
+  selectedLeadIds = [],
+  onToggleSelect,
+  onToggleSelectAll,
+}: {
+  leads: Lead[];
+  students: Student[];
+  batches: Batch[];
+  canAssign: boolean;
+  canDelete?: boolean;
+  counsellors: Counsellor[];
+  centres: string[];
+  onPatch: (id: string, updates: Partial<Lead>) => void;
+  onDelete?: (lead: Lead) => void;
+  onEdit?: (lead: Lead) => void;
+  onOpen: (lead: Lead) => void;
+  showAction: boolean;
+  selectedLeadIds?: string[];
+  onToggleSelect?: (id: string) => void;
+  onToggleSelectAll?: () => void;
+}) {
   const leadStages = stages;
   const isJunkOrLost = (lead: Lead) => {
     const fb = String(lead.leadFeedback || "").trim().toLowerCase();
     const stg = String(lead.stage || "").trim().toLowerCase();
-    return fb === "junk" || fb === "lost" || fb === "invalid" || stg === "lost";
+    return fb === "junk" || fb === "lost" || fb === "invalid" || fb === "not interested" || stg === "lost";
   };
   const sortedLeads = useMemo(() => {
     return [...leads].sort((a, b) => {
@@ -3799,16 +4268,54 @@ function LeadTable({ leads, students, batches, canAssign, canDelete = false, cou
       return bTime - aTime;
     });
   }, [leads]);
+
+  const visibleIds = sortedLeads.map((lead) => lead._id);
+  const allSelected = visibleIds.length > 0 && visibleIds.every((id) => selectedLeadIds.includes(id));
+  const isIndeterminate = !allSelected && visibleIds.some((id) => selectedLeadIds.includes(id));
+
   return (
     <div className="table-wrap leads-table-wrap">
       <table className="leads-table">
-        <thead><tr><th>Lead</th><th>Contact</th><th>Course</th><th>Source</th><th>Centre</th><th>Counsellor</th><th>Stage</th><th>Status</th><th>Priority</th><th>Next follow-up</th><th /></tr></thead>
+        <thead>
+          <tr>
+            <th className="col-select" onClick={(e) => e.stopPropagation()}>
+              <input
+                type="checkbox"
+                className="lead-checkbox"
+                checked={allSelected}
+                ref={(el) => { if (el) el.indeterminate = isIndeterminate; }}
+                onChange={onToggleSelectAll}
+                title={allSelected ? "Deselect all" : "Select all on this page"}
+              />
+            </th>
+            <th>Lead</th>
+            <th>Contact</th>
+            <th>Course</th>
+            <th>Source</th>
+            <th>Centre</th>
+            <th>Counsellor</th>
+            <th>Stage</th>
+            <th>Status</th>
+            <th>Priority</th>
+            <th>Next follow-up</th>
+            <th />
+          </tr>
+        </thead>
         <tbody>
           {sortedLeads.map((lead) => {
             const displayOwner = leadOwnerForDisplay(lead, students, batches);
             const hasCounsellorOption = !displayOwner || counsellors.some((counsellor) => counsellor.name === displayOwner);
+            const isSelected = selectedLeadIds.includes(lead._id);
             return (
-            <tr key={lead._id} className="clickable" onClick={() => onOpen(lead)}>
+            <tr key={lead._id} className={`clickable ${isSelected ? "row-selected" : ""}`} onClick={() => onOpen(lead)}>
+              <td className="col-select" onClick={(e) => e.stopPropagation()}>
+                <input
+                  type="checkbox"
+                  className="lead-checkbox"
+                  checked={isSelected}
+                  onChange={() => onToggleSelect && onToggleSelect(lead._id)}
+                />
+              </td>
               <td><div className="lead-name-cell"><span className="avatar lead-avatar">{initials(lead.fullName)}</span><div><div className="cell-name">{lead.fullName}</div><div className="cell-sub">{lead._id.slice(-8).toUpperCase()}</div></div></div></td>
               <td>{lead.phone}<div className="cell-sub">{lead.studentLocation || lead.city || lead.email || "-"}</div></td>
               <td>{courseShortCode(lead.course)}</td>
@@ -3829,17 +4336,17 @@ function LeadTable({ leads, students, batches, canAssign, canDelete = false, cou
             </tr>
             );
           })}
-          {!leads.length && <tr><td colSpan={11}><div className="empty-state"><h4>No leads found</h4><p>Try clearing filters or add a new lead.</p></div></td></tr>}
+          {!leads.length && <tr><td colSpan={12}><div className="empty-state"><h4>No leads found</h4><p>Try clearing filters or add a new lead.</p></div></td></tr>}
         </tbody>
       </table>
     </div>
   );
 }
 
-function AddLeadPanel({ centres, courses, onSubmit }: { centres: string[]; courses: string[]; onSubmit: (event: FormEvent<HTMLFormElement>) => void }) {
+function AddLeadPanel({ centres, courses, onSubmit, isSuperAdmin = false }: { centres: string[]; courses: string[]; onSubmit: (event: FormEvent<HTMLFormElement>) => void; isSuperAdmin?: boolean }) {
   const [centreDraft, setCentreDraft] = useState("");
   const [courseDraft, setCourseDraft] = useState("");
-  const availableCourses = courseOptionsForCentre(centreDraft, courses);
+  const availableCourses = courseOptionsForCentre(centreDraft, courses, isSuperAdmin);
   return (
     <div className="card">
       <div className="card-head"><div><h3>Add new lead</h3><div className="sub">Create a prospective student record</div></div></div>
@@ -6916,30 +7423,54 @@ function LeadDrawer({
   lead,
   tab,
   setTab,
+  canAssign = false,
+  centres = [],
+  counsellors = [],
   onClose,
   onPatch,
   onFollowUp,
   onMarkDone,
   onClearReminder,
   onPreviewDocument,
+  onAddActivity,
 }: {
   lead: Lead | null;
   tab: "info" | "follow" | "docs" | "act";
   setTab: (tab: "info" | "follow" | "docs" | "act") => void;
+  canAssign?: boolean;
+  centres?: string[];
+  counsellors?: Counsellor[];
   onClose: () => void;
   onPatch: (id: string, updates: Partial<Lead>) => void;
   onFollowUp: (event: FormEvent<HTMLFormElement>, lead: Lead) => void;
   onMarkDone: (lead: Lead, note?: string) => Promise<void>;
   onClearReminder: (lead: Lead) => Promise<void>;
   onPreviewDocument: (request: DocumentPreviewRequest) => void;
+  onAddActivity?: (leadId: string, message: string, type?: string) => Promise<void>;
 }) {
   const followUps = lead?.followUps || [];
+  const activities = lead?.activities || [];
   const [formStatus, setFormStatus] = useState("Scheduled");
+  const [newNote, setNewNote] = useState("");
+  const [addingNote, setAddingNote] = useState(false);
+
   const saveNotes = (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
     if (!lead) return;
     const notes = String(new FormData(event.currentTarget).get("notes") || "");
     onPatch(lead._id, { notes });
+  };
+
+  const handlePostNote = async (event: FormEvent<HTMLFormElement>) => {
+    event.preventDefault();
+    if (!lead || !newNote.trim() || !onAddActivity) return;
+    setAddingNote(true);
+    try {
+      await onAddActivity(lead._id, newNote.trim(), "note");
+      setNewNote("");
+    } finally {
+      setAddingNote(false);
+    }
   };
 
   return (
@@ -6960,7 +7491,7 @@ function LeadDrawer({
               <button className={`dtab ${tab === "info" ? "active" : ""}`} onClick={() => setTab("info")}>Details</button>
               <button className={`dtab ${tab === "follow" ? "active" : ""}`} onClick={() => setTab("follow")}>Follow-ups</button>
               <button className={`dtab ${tab === "docs" ? "active" : ""}`} onClick={() => setTab("docs")}>Documents</button>
-              <button className={`dtab ${tab === "act" ? "active" : ""}`} onClick={() => setTab("act")}>Activity</button>
+              <button className={`dtab ${tab === "act" ? "active" : ""}`} onClick={() => setTab("act")}>Activity ({activities.length})</button>
             </div>
             <div className="drawer-body">
               <div className={`dpane ${tab === "info" ? "active" : ""}`}>
@@ -6970,8 +7501,44 @@ function LeadDrawer({
                 <div className="kv-row"><span className="k">Parent mobile</span><span className="v">{lead.parentMobile || "-"}</span></div>
                 <div className="kv-row"><span className="k">Email</span><span className="v">{lead.email || "-"}</span></div>
                 <div className="kv-row"><span className="k">Source</span><span className="v">{lead.source || "-"}</span></div>
-                <div className="kv-row"><span className="k">Centre</span><span className="v">{lead.centre || "-"}</span></div>
-                <div className="kv-row"><span className="k">Counsellor</span><span className="v">{lead.counsellor || "-"}</span></div>
+                <div className="kv-row">
+                  <span className="k">Centre</span>
+                  <span className="v">
+                    {canAssign ? (
+                      <select
+                        style={{ padding: "4px 8px", fontSize: "12px", borderRadius: "6px", border: "1px solid var(--border)" }}
+                        value={lead.centre || ""}
+                        onChange={(e) => onPatch(lead._id, { centre: e.target.value })}
+                      >
+                        <option value="">Unassigned</option>
+                        {centres.map((c) => (
+                          <option key={c} value={c}>{c}</option>
+                        ))}
+                      </select>
+                    ) : (
+                      lead.centre || "-"
+                    )}
+                  </span>
+                </div>
+                <div className="kv-row">
+                  <span className="k">Counsellor</span>
+                  <span className="v">
+                    {canAssign ? (
+                      <select
+                        style={{ padding: "4px 8px", fontSize: "12px", borderRadius: "6px", border: "1px solid var(--border)" }}
+                        value={lead.counsellor || ""}
+                        onChange={(e) => onPatch(lead._id, { counsellor: e.target.value })}
+                      >
+                        <option value="">Unassigned</option>
+                        {counsellors.map((c) => (
+                          <option key={c._id} value={c.name}>{c.name}</option>
+                        ))}
+                      </select>
+                    ) : (
+                      lead.counsellor || "-"
+                    )}
+                  </span>
+                </div>
                 <div className="kv-row"><span className="k">Status</span><span className="v"><span className={`badge ${leadFeedbackBadgeClass(lead.leadFeedback)}`}>{normalizeLeadFeedbackStatus(lead.leadFeedback)}</span></span></div>
                 <div className="kv-row"><span className="k">Student location</span><span className="v">{lead.studentLocation || "-"}</span></div>
                 <div className="kv-row"><span className="k">City</span><span className="v">{lead.city || "-"}</span></div>
@@ -7107,9 +7674,51 @@ function LeadDrawer({
                 <LeadDocumentRow label="Qualification certificate" doc={lead.highestQualificationCertificate} type="lead" id={lead._id} field="highestQualificationCertificate" onPreview={onPreviewDocument} />
               </div>
               <div className={`dpane ${tab === "act" ? "active" : ""}`}>
-                <div className="kv-row"><span className="k">Lead created</span><span className="v">{formatDate(lead.createdAt)}</span></div>
-                <div className="kv-row"><span className="k">Stage changed</span><span className="v">{"->"} {lead.stage}</span></div>
-                <div className="kv-row"><span className="k">Last updated</span><span className="v">{formatDate(lead.updatedAt)}</span></div>
+                <div style={{ marginBottom: "14px" }}>
+                  <div className="kv-row"><span className="k">Lead created</span><span className="v">{formatDateTime(lead.createdAt)}</span></div>
+                  <div className="kv-row"><span className="k">Stage</span><span className="v">{"->"} {lead.stage}</span></div>
+                  <div className="kv-row"><span className="k">Last updated</span><span className="v">{formatDateTime(lead.updatedAt || lead.createdAt)}</span></div>
+                </div>
+
+                {onAddActivity && (
+                  <form onSubmit={handlePostNote} style={{ marginBottom: "16px", background: "#FAFBFD", padding: "12px", borderRadius: "10px", border: "1px solid var(--border-soft)" }}>
+                    <label style={{ display: "block", fontSize: "11.5px", fontWeight: 700, color: "var(--text-700)", marginBottom: "6px" }}>Add Note / Activity</label>
+                    <textarea
+                      rows={2}
+                      value={newNote}
+                      onChange={(e) => setNewNote(e.target.value)}
+                      placeholder="Write internal note, call summary, or assignment remark..."
+                      style={{ width: "100%", padding: "8px 10px", fontSize: "12px", borderRadius: "8px", border: "1px solid var(--border)" }}
+                    />
+                    <div style={{ display: "flex", justifyContent: "flex-end", marginTop: "8px" }}>
+                      <button type="submit" disabled={addingNote || !newNote.trim()} className="btn btn-primary" style={{ padding: "5px 12px", fontSize: "12px" }}>
+                        <Plus size={13} /> {addingNote ? "Saving..." : "Post Activity"}
+                      </button>
+                    </div>
+                  </form>
+                )}
+
+                <div className="feedback-timeline">
+                  {activities.map((act, index) => (
+                    <div className="feedback-item" key={`${act.at || index}-${index}`}>
+                      <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: "8px" }}>
+                        <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
+                          <span className={`badge ${act.type === "assigned" ? "badge-blue" : "badge-gray"}`} style={{ fontSize: "10px", textTransform: "capitalize" }}>
+                            {act.type || "activity"}
+                          </span>
+                          <b>{act.by || "Admin"}</b>
+                        </div>
+                        <span className="cell-sub" style={{ fontSize: "10.5px" }}>{formatDateTime(act.at || lead.createdAt)}</span>
+                      </div>
+                      <p style={{ margin: "6px 0 0", fontSize: "12px", color: "var(--text-800)" }}>{act.message}</p>
+                    </div>
+                  ))}
+                  {activities.length === 0 && (
+                    <div className="empty-state" style={{ padding: "20px 10px" }}>
+                      <p>No activity logged yet.</p>
+                    </div>
+                  )}
+                </div>
               </div>
             </div>
           </>
@@ -7160,8 +7769,8 @@ function SettingsPanel({ isHeadSuperAdmin, isHeadBranchAdmin, isFranchiseSuperAd
     setEditingBatchCentreDraft(editingBatch?.centre || "");
     setEditingBatchCourseDraft(editingBatch?.course || "");
   }, [editingBatch?._id]);
-  const batchCourseOptions = courseOptionsForCentre(batchCentreDraft, courseOptions);
-  const editingBatchCourseOptions = courseOptionsForCentre(editingBatchCentreDraft, courseOptions);
+  const batchCourseOptions = courseOptionsForCentre(batchCentreDraft, courseOptions, isHeadSuperAdmin);
+  const editingBatchCourseOptions = courseOptionsForCentre(editingBatchCentreDraft, courseOptions, isHeadSuperAdmin);
   const tabs = [
     ["staff", "Staff access"],
     ["billing", "Branch / franchise billing"],
@@ -7199,7 +7808,7 @@ function SettingsPanel({ isHeadSuperAdmin, isHeadBranchAdmin, isFranchiseSuperAd
         {active === "batches" && <div className="spane active">
           <div className="card settings-card">
             <div className="card-head"><div><h3>Batches</h3></div><button className="btn btn-primary btn-sm" onClick={() => setShowAddBatch((value) => !value)}><Plus size={14} /> Add batch</button></div>
-            {showAddBatch && <form className="card-body field-grid settings-add-form" onSubmit={onAddBatch}><Field name="name" label="Batch name" required /><div className="field"><label>Centre</label><select name="centre" value={batchCentreDraft} onChange={(event) => { setBatchCentreDraft(event.target.value); setBatchCourseDraft(""); }}><option value="">Unassigned</option>{centreOptions.map((centre) => <option key={centre}>{centre}</option>)}</select></div><div className="field"><label>Course</label><select name="course" value={batchCourseDraft} onChange={(event) => setBatchCourseDraft(event.target.value)}><option value="">Unassigned</option>{batchCourseOptions.map((course) => <option key={course}>{course}</option>)}</select></div><Field name="commenceDate" label="Commence date" type="date" required /><div className="field full"><RequiredLabel required>Assigned faculty</RequiredLabel><select name="assignedFaculty" multiple required size={Math.min(Math.max(teachers.length, 2), 5)}>{teachers.map((teacher) => <option key={teacher.email} value={teacher.name}>{teacher.name}</option>)}</select><span className="field-help">Hold Ctrl to select more than one teacher.</span></div><button className="btn btn-primary">Add batch</button></form>}
+            {showAddBatch && <form className="card-body field-grid settings-add-form" onSubmit={onAddBatch}><Field name="name" label="Batch name" required /><div className="field"><label>Centre</label><select name="centre" value={batchCentreDraft} onChange={(event) => { setBatchCentreDraft(event.target.value); if (!isHeadSuperAdmin) setBatchCourseDraft(""); }}><option value="">Unassigned</option>{centreOptions.map((centre) => <option key={centre}>{centre}</option>)}</select></div><div className="field"><label>Course</label><select name="course" value={batchCourseDraft} onChange={(event) => setBatchCourseDraft(event.target.value)}><option value="">Unassigned</option>{batchCourseOptions.map((course) => <option key={course}>{course}</option>)}</select></div><Field name="commenceDate" label="Commence date" type="date" required /><div className="field full"><RequiredLabel required>Assigned faculty</RequiredLabel><select name="assignedFaculty" multiple required size={Math.min(Math.max(teachers.length, 2), 5)}>{teachers.map((teacher) => <option key={teacher.email} value={teacher.name}>{teacher.name}</option>)}</select><span className="field-help">Hold Ctrl to select more than one teacher.</span></div><button className="btn btn-primary">Add batch</button></form>}
             <div className="table-wrap settings-table-wrap"><table className="settings-table"><thead><tr><th>Batch name</th><th>Centre</th><th>Course</th><th>Assigned faculty</th><th>Commence date</th><th /></tr></thead><tbody>{batches.map((batch) => <tr key={batch._id}><td className="cell-name">{batch.name}</td><td>{batch.centre || "-"}</td><td>{courseShortCode(batch.course)}</td><td>{batch.assignedFaculty?.length ? batch.assignedFaculty.join(", ") : "-"}</td><td className="mono">{formatDate(batch.commenceDate)}</td><td><div className="action-icons"><button className="action-icon-btn action-icon-primary" title="Edit batch" onClick={() => setEditingBatch(batch)}><Pencil size={14} /></button><button className="action-icon-btn action-icon-danger" title="Delete batch" onClick={() => onDeleteBatch(batch)}><Trash2 size={14} /></button></div></td></tr>)}{!batches.length && <tr><td colSpan={6}><div className="empty-state"><h4>No batches</h4></div></td></tr>}</tbody></table></div>
           </div>
         </div>}
@@ -7279,7 +7888,7 @@ function SettingsPanel({ isHeadSuperAdmin, isHeadBranchAdmin, isFranchiseSuperAd
           <form onSubmit={async (event) => { const saved = await onUpdateBatch(event, editingBatch._id); if (saved) setEditingBatch(null); }}>
             <div className="modal-body field-grid">
               <Field name="name" label="Batch name" defaultValue={editingBatch.name} required />
-              <div className="field"><label>Centre</label><select name="centre" value={editingBatchCentreDraft} onChange={(event) => { const centre = event.target.value; setEditingBatchCentreDraft(centre); if (isKochiCentre(centre) && !kochiCourseOptions.includes(editingBatchCourseDraft)) setEditingBatchCourseDraft(kochiCourseOptions[0]); }}><option value="">Unassigned</option>{centreOptions.map((centre) => <option key={centre}>{centre}</option>)}</select></div>
+              <div className="field"><label>Centre</label><select name="centre" value={editingBatchCentreDraft} onChange={(event) => { const centre = event.target.value; setEditingBatchCentreDraft(centre); if (!isHeadSuperAdmin && isKochiCentre(centre) && !kochiCourseOptions.includes(editingBatchCourseDraft)) setEditingBatchCourseDraft(kochiCourseOptions[0]); }}><option value="">Unassigned</option>{centreOptions.map((centre) => <option key={centre}>{centre}</option>)}</select></div>
               <div className="field"><label>Course</label><select name="course" value={editingBatchCourseDraft} onChange={(event) => setEditingBatchCourseDraft(event.target.value)}><option value="">Unassigned</option>{editingBatchCourseOptions.map((course) => <option key={course}>{course}</option>)}</select></div>
               <Field name="commenceDate" label="Commence date" type="date" defaultValue={dateInputValue(editingBatch.commenceDate)} required />
               <div className="field full"><RequiredLabel required>Assigned faculty</RequiredLabel><select name="assignedFaculty" multiple required size={Math.min(Math.max(teachers.length, 2), 5)} defaultValue={editingBatch.assignedFaculty || []}>{teachers.map((teacher) => <option key={teacher.email} value={teacher.name}>{teacher.name}</option>)}</select><span className="field-help">Hold Ctrl to select more than one teacher.</span></div>
@@ -7293,6 +7902,7 @@ function SettingsPanel({ isHeadSuperAdmin, isHeadBranchAdmin, isFranchiseSuperAd
 }
 
 function ProfilePanel({ profile, user, accessCount, canManageFees, canManageSettings, canAssignTeachers, canManageCertificates, canManageInternships, canManageInventory, onIssueKit, centres, courses, batches, teachers, onBack, onGoSettings, onLeadPatch, onStudentPatch, onGenerateStudentLmsAccess, onInternshipSave, onInternshipDelete, onPayment, onDownloadPaymentProof, onFeedback, onIssue, onPreviewDocument, onPreviewInternshipPhoto }: { profile: ProfileTarget; user: AdminUser | null; accessCount: number; canManageFees: boolean; canManageSettings: boolean; canAssignTeachers: boolean; canManageCertificates: boolean; canManageInternships: boolean; canManageInventory?: boolean; onIssueKit?: (student: Student) => void; centres: string[]; courses: string[]; batches: Batch[]; teachers: Counsellor[]; onBack: () => void; onGoSettings: () => void; onLeadPatch: (id: string, updates: Partial<Lead>) => void; onStudentPatch: (id: string, updates: Partial<Student>) => void; onGenerateStudentLmsAccess: (student: Student) => void; onInternshipSave: (event: FormEvent<HTMLFormElement>, student: Student) => void; onInternshipDelete: (student: Student) => void; onPayment: (event: FormEvent<HTMLFormElement>, student: Student) => void; onDownloadPaymentProof: (student: Student, payment: PaymentRecord, index: number) => void; onFeedback: (event: FormEvent<HTMLFormElement>, student: Student) => void; onIssue: (student: Student) => void; onPreviewDocument: (request: DocumentPreviewRequest) => void; onPreviewInternshipPhoto: (student: Student, log: InternshipLog, photoType: "login" | "logout") => void }) {
+  const isSuperAdmin = user?.role === "superadmin";
   const [studentTab, setStudentTab] = useState<"sum" | "journey" | "admission" | "pay" | "emi" | "internship" | "feedback" | "cert">("sum");
   const [leadTab, setLeadTab] = useState<"info" | "docs" | "act">("info");
   const [editMode, setEditMode] = useState(profile?.mode === "edit");
@@ -7387,11 +7997,11 @@ function ProfilePanel({ profile, user, accessCount, canManageFees, canManageSett
 
   if (profile.type === "lead" && editMode) {
     const lead = profile.data;
-    const leadCourseOptions = courseOptionsForCentre(editCentreDraft, courses);
+    const leadCourseOptions = courseOptionsForCentre(editCentreDraft, courses, isSuperAdmin);
     const saveLeadEdit = (event: FormEvent<HTMLFormElement>) => {
       event.preventDefault();
       const form = Object.fromEntries(new FormData(event.currentTarget).entries());
-      if (isKochiCentre(String(form.centre || "")) && !kochiCourseOptions.includes(courseShortCode(String(form.course || "")))) return toast.error("Kochi centre allows only AHAP and GCA courses");
+      if (!isSuperAdmin && isKochiCentre(String(form.centre || "")) && !kochiCourseOptions.includes(courseShortCode(String(form.course || "")))) return toast.error("Kochi centre allows only AHAP and GCA courses");
       const updates: Partial<Lead> = {
         fullName: String(form.fullName || ""),
         phone: String(form.phone || ""),
@@ -7425,7 +8035,7 @@ function ProfilePanel({ profile, user, accessCount, canManageFees, canManageSett
           <EditField name="parentMobile" label="Parent mobile" defaultValue={lead.parentMobile} />
           <EditField name="email" label="Email" type="email" defaultValue={lead.email} />
           <EditField name="source" label="Source" defaultValue={lead.source} />
-          <div className="field"><label>Centre</label><select name="centre" value={editCentreDraft} onChange={(event) => { const centre = event.target.value; setEditCentreDraft(centre); if (isKochiCentre(centre) && !kochiCourseOptions.includes(editCourseDraft)) setEditCourseDraft(kochiCourseOptions[0]); }}><option value="">Unassigned</option>{centres.map((centre) => <option key={centre}>{centre}</option>)}</select></div>
+          <div className="field"><label>Centre</label><select name="centre" value={editCentreDraft} onChange={(event) => { const centre = event.target.value; setEditCentreDraft(centre); if (!isSuperAdmin && isKochiCentre(centre) && !kochiCourseOptions.includes(editCourseDraft)) setEditCourseDraft(kochiCourseOptions[0]); }}><option value="">Unassigned</option>{centres.map((centre) => <option key={centre}>{centre}</option>)}</select></div>
           <div className="field"><label>Course</label><select name="course" value={editCourseDraft} onChange={(event) => setEditCourseDraft(event.target.value)}><option value="">Unassigned</option>{leadCourseOptions.map((course) => <option key={course}>{course}</option>)}</select></div>
           {canManageSettings && <EditField name="counsellor" label="Counsellor" defaultValue={lead.counsellor} />}
           <div className="field"><label>Stage</label><select name="stage" defaultValue={lead.stage}>{stages.map((stage) => <option key={stage}>{stage}</option>)}</select></div>
@@ -7472,9 +8082,32 @@ function ProfilePanel({ profile, user, accessCount, canManageFees, canManageSett
             <LeadDocumentRow label="Qualification certificate" doc={lead.highestQualificationCertificate} type="lead" id={lead._id} field="highestQualificationCertificate" onPreview={onPreviewDocument} />
           </div>}
           {leadTab === "act" && <div className="dpane active">
-            <div className="kv-row"><span className="k">Lead created</span><span className="v">{formatDate(lead.createdAt)}</span></div>
-            <div className="kv-row"><span className="k">Stage changed</span><span className="v">{"->"} {lead.stage}</span></div>
-            <div className="kv-row"><span className="k">Last updated</span><span className="v">{formatDate(lead.updatedAt || lead.createdAt)}</span></div>
+            <div style={{ marginBottom: "14px" }}>
+              <div className="kv-row"><span className="k">Lead created</span><span className="v">{formatDateTime(lead.createdAt)}</span></div>
+              <div className="kv-row"><span className="k">Stage changed</span><span className="v">{"->"} {lead.stage}</span></div>
+              <div className="kv-row"><span className="k">Last updated</span><span className="v">{formatDateTime(lead.updatedAt || lead.createdAt)}</span></div>
+            </div>
+            <div className="feedback-timeline">
+              {(lead.activities || []).map((act, index) => (
+                <div className="feedback-item" key={`${act.at || index}-${index}`}>
+                  <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: "8px" }}>
+                    <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
+                      <span className={`badge ${act.type === "assigned" ? "badge-blue" : "badge-gray"}`} style={{ fontSize: "10px", textTransform: "capitalize" }}>
+                        {act.type || "activity"}
+                      </span>
+                      <b>{act.by || "Admin"}</b>
+                    </div>
+                    <span className="cell-sub" style={{ fontSize: "10.5px" }}>{formatDateTime(act.at || lead.createdAt)}</span>
+                  </div>
+                  <p style={{ margin: "6px 0 0", fontSize: "12px", color: "var(--text-800)" }}>{act.message}</p>
+                </div>
+              ))}
+              {(!lead.activities || lead.activities.length === 0) && (
+                <div className="empty-state" style={{ padding: "20px 10px" }}>
+                  <p>No activity logged yet.</p>
+                </div>
+              )}
+            </div>
           </div>}
         </div>
       </div>
@@ -7646,7 +8279,7 @@ function ProfilePanel({ profile, user, accessCount, canManageFees, canManageSett
   };
 
   if (editMode) {
-    const studentCourseOptions = courseOptionsForCentre(editCentreDraft, courses);
+    const studentCourseOptions = courseOptionsForCentre(editCentreDraft, courses, isSuperAdmin);
     const batchOptions = batches.filter((batch) => {
       const courseMatches = !editCourseDraft || !batch.course || courseShortCode(batch.course) === courseShortCode(editCourseDraft);
       const centreMatches = !editCentreDraft || !batch.centre || batch.centre === editCentreDraft;
@@ -7661,7 +8294,7 @@ function ProfilePanel({ profile, user, accessCount, canManageFees, canManageSett
       const editDue = Math.max(0, totalFee - discountAmount - paidAmount);
       const emiEnabled = form.emiEnabled === "true";
       const emiAmount = Number(form.emiAmount || 0);
-      if (isKochiCentre(String(form.centre || "")) && !kochiCourseOptions.includes(courseShortCode(String(form.course || "")))) return toast.error("Kochi centre allows only AHAP and GCA courses");
+      if (!isSuperAdmin && isKochiCentre(String(form.centre || "")) && !kochiCourseOptions.includes(courseShortCode(String(form.course || "")))) return toast.error("Kochi centre allows only AHAP and GCA courses");
       if (canManageFees) {
         if (paidAmount > Math.max(0, totalFee - discountAmount)) return toast.error("Paid amount cannot exceed net course fee");
         if (emiEnabled && editDue <= 0) return toast.error("Cannot enable EMI when fee is fully paid");
@@ -7712,7 +8345,7 @@ function ProfilePanel({ profile, user, accessCount, canManageFees, canManageSett
           <EditField name="studentLocation" label="Student location" defaultValue={student.studentLocation} />
           <EditField name="admissionNumber" label="Admission no." defaultValue={student.admissionNumber} />
           <div className="field"><label>Course</label><select name="course" value={editCourseDraft} onChange={(event) => setEditCourseDraft(event.target.value)}><option value="">Unassigned</option>{studentCourseOptions.map((course) => <option key={course}>{course}</option>)}</select></div>
-          <div className="field"><label>Centre</label><select name="centre" value={editCentreDraft} onChange={(event) => { const centre = event.target.value; setEditCentreDraft(centre); if (isKochiCentre(centre) && !kochiCourseOptions.includes(editCourseDraft)) setEditCourseDraft(kochiCourseOptions[0]); }}><option value="">Unassigned</option>{centres.map((centre) => <option key={centre}>{centre}</option>)}</select></div>
+          <div className="field"><label>Centre</label><select name="centre" value={editCentreDraft} onChange={(event) => { const centre = event.target.value; setEditCentreDraft(centre); if (!isSuperAdmin && isKochiCentre(centre) && !kochiCourseOptions.includes(editCourseDraft)) setEditCourseDraft(kochiCourseOptions[0]); }}><option value="">Unassigned</option>{centres.map((centre) => <option key={centre}>{centre}</option>)}</select></div>
           <div className="field"><label>Batch</label><select name="batch" value={editBatchDraft} onChange={(event) => setEditBatchDraft(event.target.value)}><option value="">Unassigned</option>{editBatchDraft && !batchOptions.some((batch) => batch.name === editBatchDraft) && <option value={editBatchDraft}>{editBatchDraft} - current</option>}{batchOptions.map((batch) => <option key={batch._id} value={batch.name}>{batch.name} - {courseShortCode(batch.course)}{batch.centre ? ` - ${batch.centre}` : ""}</option>)}</select>{!batchOptions.length && <span className="field-help">No matching batch. Create one in Settings - Batches.</span>}</div>
           <EditField name="batchCommenceDate" label="Batch start date" type="date" defaultValue={dateInputValue(batchOptions.find((b) => b.name === (editBatchDraft || student.batch))?.commenceDate || student.batchCommenceDate || "")} />
           {canManageSettings && <EditField name="counsellor" label="Counsellor" defaultValue={student.counsellor} />}
@@ -8048,7 +8681,8 @@ function CrmStyles() {
       .main{flex:1;display:flex;flex-direction:column;height:100vh;overflow:hidden;width:100%;max-width:100%;min-width:0;box-sizing:border-box}.topbar{height:60px;flex:0 0 60px;background:#fff;border-bottom:1px solid var(--border);display:flex;align-items:center;gap:12px;padding:0 22px;width:100%;max-width:100%;min-width:0;box-sizing:border-box;position:relative;z-index:40;overflow:visible}.page-title{font-size:16px;font-weight:700}.page-sub{font-size:11.5px;color:var(--text-400);margin-top:1px}.topbar-spacer{flex:1}.scope-select,.df-select,.fbtn{border:1px solid var(--border);background:#fff;border-radius:8px;padding:7px 10px;font-size:12.5px;color:var(--text-700);font-weight:500;font-family:inherit}.scope-select{height:36px;box-sizing:border-box;display:inline-flex;align-items:center;padding:0 12px;flex-shrink:0}.scope-select-locked{background:var(--bg);color:var(--text-400)}.date-filter{display:inline-flex;align-items:center;gap:4px;background:var(--bg);border:1px solid var(--border);border-radius:9px;padding:3px;height:36px;box-sizing:border-box;flex-shrink:0}.df-btn{border:none;background:transparent;padding:0 11px;height:28px;border-radius:7px;font-size:12px;font-weight:600;color:var(--text-600);white-space:nowrap;display:inline-flex;align-items:center;justify-content:center;line-height:1;flex-shrink:0}.df-btn.active{background:#fff;color:var(--indigo-600);box-shadow:0 1px 2px rgba(16,20,40,.05)}.df-date{border:1px solid var(--border);border-radius:7px;padding:5px 8px;font-size:12px;display:none;height:28px;box-sizing:border-box}.df-date.show{display:inline-block}.icon-btn{width:36px;height:36px;border-radius:9px;border:1px solid var(--border);background:#fff;display:inline-flex;align-items:center;justify-content:center;color:var(--text-600);box-sizing:border-box;flex-shrink:0}.search-box{display:flex;align-items:center;gap:7px;background:var(--bg);border:1px solid var(--border);border-radius:9px;padding:0 12px;width:230px;height:36px;box-sizing:border-box;flex-shrink:0}.search-box input{border:none;background:transparent;outline:none;font-size:12.5px;width:100%;color:var(--text-900);padding:0}
       .content{flex:1;overflow-y:auto;overflow-x:hidden;padding:22px;width:100%;max-width:100%;min-width:0;box-sizing:border-box}.grid-metrics{display:grid;grid-template-columns:repeat(auto-fit,minmax(170px,1fr));gap:14px;margin-bottom:18px}.metric-card,.card{background:#fff;border:1px solid var(--border);border-radius:14px;box-shadow:0 1px 2px rgba(16,20,40,.05)}.metric-card{padding:16px 18px;position:relative;overflow:hidden}.m-label{font-size:11.5px;color:var(--text-600);font-weight:600;display:flex;align-items:center;gap:6px}.m-value{font-size:24px;font-weight:800;margin-top:8px;color:#061633;font-family:JetBrains Mono,monospace}.m-delta{font-size:11px;font-weight:600;margin-top:6px}.m-delta.up{color:var(--green-700)}.m-delta.down{color:var(--red-700)}.m-dot{width:9px;height:9px;border-radius:3px;display:inline-block}.two-col{display:grid;grid-template-columns:1.3fr 1fr;gap:16px;margin-bottom:16px}.lower-grid{grid-template-columns:1fr 1fr .75fr}.card-head{display:flex;align-items:center;gap:12px;padding:16px 18px;border-bottom:1px solid var(--border-soft)}.card-head h3{font-size:13.5px;font-weight:700;margin:0}.card-head .sub{font-size:11px;color:var(--text-400);margin-top:2px}.card-head button,.card-head input{margin-left:auto}.card-body{padding:16px 18px}.funnel-wrap{display:flex;flex-direction:column;gap:6px}.funnel-row{display:grid;grid-template-columns:120px 1fr 90px;align-items:center;gap:10px}.flabel{font-size:12px;font-weight:600;color:var(--text-600)}.funnel-bar-track{background:var(--border-soft);border-radius:6px;height:22px;overflow:hidden}.funnel-bar-fill{height:100%;border-radius:6px;background:linear-gradient(90deg,var(--indigo-500),#8A6BFF);display:flex;align-items:center;justify-content:flex-end;padding-right:8px}.funnel-bar-fill span{color:#fff;font-size:10.5px;font-weight:700}.fval{font-size:12px;color:var(--text-400);text-align:right;font-family:JetBrains Mono,monospace}
       .filter-bar{display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin-bottom:14px}.btn{border:none;border-radius:8px;padding:8px 14px;font-size:12.5px;font-weight:600;display:inline-flex;align-items:center;gap:6px;text-decoration:none}.btn-primary{background:var(--indigo-500);color:#fff;box-shadow:0 4px 10px rgba(79,107,255,.28)}.btn-ghost{background:#fff;border:1px solid var(--border);color:var(--text-700)}.btn-soft{background:var(--indigo-100);color:var(--indigo-600)}.btn-whatsapp{background:#e8f8ef;color:#047a43}.btn-danger{background:var(--red-700);color:#fff;box-shadow:0 4px 10px rgba(229,72,77,.22)}.btn-sm{padding:5px 10px;font-size:11.5px;border-radius:7px}.btn:disabled{opacity:.55;cursor:not-allowed}.file-upload-btn{position:relative;overflow:hidden;cursor:pointer}.file-upload-btn input{position:absolute;inset:0;opacity:0;cursor:pointer}.action-icons{display:flex;align-items:center;gap:6px}.action-icon-btn{width:30px;height:30px;border:1px solid var(--border);border-radius:8px;background:#fff;color:var(--text-600);display:inline-flex;align-items:center;justify-content:center}.action-icon-btn:hover{background:var(--bg);color:var(--text-900)}.action-icon-primary{background:var(--indigo-100);border-color:#dbe2ff;color:var(--indigo-600)}.action-icon-danger{background:var(--red-50);border-color:#f7d7d7;color:var(--red-700)}.action-icon-whatsapp{background:#e8f8ef;border-color:#c8eed9;color:#047a43}.delete-modal,.forgot-modal{width:390px;max-width:92vw;overflow:hidden}.delete-modal .modal-head,.forgot-modal .modal-head{padding:18px 18px 16px}.delete-modal-body,.forgot-modal-body{display:flex;gap:14px;align-items:center;padding:20px 18px}.delete-modal-body p,.forgot-modal-body p{margin:0;color:var(--text-700);line-height:1.45;min-width:0}.forgot-email-field{margin-top:12px}.forgot-email-field input{height:38px}.delete-icon{width:38px;height:38px;border-radius:10px;background:var(--red-50);color:var(--red-700);display:flex;align-items:center;justify-content:center;flex:0 0 38px}.logout-icon{background:var(--indigo-100);color:var(--indigo-600)}.delete-modal-actions{display:flex;justify-content:flex-end;gap:10px;padding:0 18px 18px}.delete-modal-actions .btn{min-width:66px;justify-content:center}.pamphlet-select{height:32px;border:1px solid #dbe2ff;border-radius:8px;background:var(--indigo-100);color:var(--indigo-600);font-size:11.5px;font-weight:700;padding:0 8px;max-width:150px}.pamphlet-select.compact{width:92px;height:30px;padding:0 6px}.table-wrap{overflow-x:auto}table{width:100%;border-collapse:collapse;font-size:12.5px}thead th{text-align:left;font-size:10.5px;text-transform:uppercase;letter-spacing:.4px;color:var(--text-400);font-weight:700;padding:10px 12px;border-bottom:1px solid var(--border);white-space:nowrap;background:#FAFBFD}tbody td{padding:11px 12px;border-bottom:1px solid var(--border-soft);color:var(--text-700);white-space:nowrap}tbody tr:hover{background:#F8F9FD}.clickable{cursor:pointer}.cell-name,.nm{font-weight:700;color:var(--text-900)}.cell-sub,.mt{font-size:11px;color:var(--text-400)}.mini-select,.mini-input{max-width:160px;border:1px solid var(--border);border-radius:7px;padding:5px 7px;background:#fff}.tag{font-size:12px;border-radius:999px;padding:6px 10px;font-weight:700}.tag.green{background:var(--green-50);color:var(--green-700)}.tag.purple{background:var(--purple-50);color:var(--purple-700)}.tag.amber{background:var(--amber-50);color:var(--amber-700)}.tag.blue{background:var(--blue-50);color:var(--indigo-600)}.tag.red{background:var(--red-50);color:var(--red-700)}
-      .badge{display:inline-flex;align-items:center;gap:5px;padding:3px 9px;border-radius:20px;font-size:11px;font-weight:700;white-space:nowrap}.badge-gray{background:#f1f2f6;color:var(--text-600)}.badge-amber{background:var(--amber-50);color:var(--amber-700)}.badge-red{background:var(--red-50);color:var(--red-700)}.badge-green{background:var(--green-50);color:var(--green-700)}.badge-blue{background:var(--blue-50);color:var(--indigo-600)}.badge-purple{background:var(--purple-50);color:var(--purple-700)}.badge-junk{background:#fee2e2;color:#991b1b;border:1px solid #fecaca}.btn-green{background:var(--green-50);color:var(--green-700)}.leads-filter-bar{gap:10px;margin-bottom:14px}.leads-filter-bar .fbtn{height:34px}.leads-filter-bar .lead-search-input{width:200px}.leads-filter-bar .filter-spacer{flex:1}.leads-card{border-radius:14px;overflow:hidden}.leads-table-wrap{overflow-x:auto}.leads-table{min-width:1220px}.leads-table thead th{height:38px;padding:10px 12px;background:#fafbfd;color:#99a1b3;font-size:10.5px;letter-spacing:.4px}.leads-table tbody td{height:58px;padding:10px 12px;color:#333a56}.leads-table tbody tr:hover{background:#f8f9fd}.lead-name-cell{display:flex;align-items:center;gap:9px}.avatar{width:30px;height:30px;border-radius:8px;display:flex;align-items:center;justify-content:center;color:#fff;font-weight:700;font-size:11.5px;flex:0 0 30px}.lead-avatar{background:#eef3ff;color:#4f6bff;border-radius:8px}.leads-table .cell-name{font-size:12.5px;font-weight:700;color:#161b33}.leads-table .cell-sub{font-size:11px;color:#99a1b3;margin-top:3px}.leads-table .mini-select,.leads-table .stage-select{height:29px;max-width:150px;border:1px solid var(--border);border-radius:7px;background:#fff;padding:5px 8px;font-size:11.5px;color:var(--text-700)}.leads-table .stage-select{max-width:118px}.leads-table .feedback-select{max-width:132px;font-weight:700;border-radius:999px}.feedback-select.badge-red{background:var(--red-50);color:var(--red-700);border-color:#f7d7d7}.feedback-select.badge-gray{background:#f1f2f6;color:var(--text-600)}.feedback-select.badge-amber{background:var(--amber-50);color:var(--amber-700);border-color:#f5dfaf}.feedback-select.badge-blue{background:var(--blue-50);color:var(--indigo-600);border-color:#dbe2ff}.feedback-select.badge-green{background:var(--green-50);color:var(--green-700);border-color:#caefdf}.feedback-select.badge-junk{background:#fee2e2;color:#991b1b;border-color:#fecaca}.leads-table .btn-soft{background:var(--indigo-100);color:var(--indigo-600);box-shadow:none}.leads-table .empty-state h4{margin:0 0 4px;color:var(--text-600);font-size:13px}.leads-table .empty-state p{margin:0;font-size:12px;color:var(--text-400)}.pill-tabs{display:flex;gap:4px;background:var(--bg);border:1px solid var(--border);border-radius:999px;padding:3px}.pill-tab{padding:7px 14px;border-radius:999px;font-size:12px;font-weight:600;color:var(--text-600);background:transparent;border:none}.pill-tab.active{background:#fff;color:var(--indigo-600);box-shadow:0 1px 3px rgba(16,20,40,.08)}.admissions-tabs{width:max-content;margin-bottom:16px}.admissions-card{border-radius:14px;overflow:hidden}.admissions-table{width:100%;min-width:980px;border-collapse:collapse}.admissions-table thead th{height:42px;padding:11px 16px;background:#fafbfd;color:#99a1b3;font-size:10.5px;letter-spacing:.4px;font-weight:700;white-space:nowrap;border-bottom:1px solid var(--border)}.admissions-table thead th:last-child{text-align:right}.admissions-table tbody td{height:70px;padding:12px 16px;color:#333a56;vertical-align:middle;border-bottom:1px solid var(--border-soft)}.admissions-table tbody tr:hover{background:#f8f9fd}.admissions-table th:nth-child(1),.admissions-table td:nth-child(1){width:24%;min-width:200px}.admissions-table th:nth-child(2),.admissions-table td:nth-child(2){width:10%;min-width:85px}.admissions-table th:nth-child(3),.admissions-table td:nth-child(3){width:12%;min-width:100px}.admissions-table th:nth-child(4),.admissions-table td:nth-child(4){width:13%;min-width:110px}.admissions-table th:nth-child(5),.admissions-table td:nth-child(5){width:11%;min-width:100px}.admissions-table th:nth-child(6),.admissions-table td:nth-child(6){width:12%;min-width:110px}.admissions-table th:nth-child(7),.admissions-table td:nth-child(7){width:18%;min-width:180px}.admissions-table th:nth-child(8),.admissions-table td:nth-child(8){width:8%;min-width:85px;text-align:right}.admissions-table .cell-name{font-size:12.5px;font-weight:700;color:#161b33}.admissions-table .cell-sub{font-size:11px;color:#99a1b3;margin-top:3px}.admission-batch-cell{display:grid;align-content:center;gap:5px;max-width:220px}.admissions-table .student-mini-select{width:100%;max-width:180px;height:32px}.admission-batch-hint{display:grid;gap:1px;max-width:220px;color:var(--text-400);margin-top:0}.admission-batch-hint b{color:var(--amber-700);font-size:10.5px;line-height:1.2;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}.admission-batch-hint span{font-size:10px;line-height:1.2;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}.admission-action-cell{text-align:right}.admission-action-cell .btn{height:32px;min-width:82px;justify-content:center}.mono{font-family:JetBrains Mono,monospace}.admissions-table .btn-primary{box-shadow:0 4px 10px rgba(79,107,255,.22)}.admissions-table .empty-state{padding:54px 20px;text-align:center}.admissions-table .empty-state h4{margin:0 0 6px;color:var(--text-600);font-size:14px;font-weight:700}.admissions-table .empty-state p{margin:0;font-size:12.5px;color:var(--text-400)}
+      .badge{display:inline-flex;align-items:center;gap:5px;padding:3px 9px;border-radius:20px;font-size:11px;font-weight:700;white-space:nowrap}.badge-gray{background:#f1f2f6;color:var(--text-600)}.badge-amber{background:var(--amber-50);color:var(--amber-700)}.badge-red{background:var(--red-50);color:var(--red-700)}.badge-green{background:var(--green-50);color:var(--green-700)}.badge-blue{background:var(--blue-50);color:var(--indigo-600)}.badge-purple{background:var(--purple-50);color:var(--purple-700)}.badge-junk{background:#fee2e2;color:#991b1b;border:1px solid #fecaca}.btn-green{background:var(--green-50);color:var(--green-700)}.leads-filter-bar{gap:10px;margin-bottom:14px}.leads-filter-bar .fbtn{height:34px}.leads-filter-bar .lead-search-input{width:200px}.leads-filter-bar .filter-spacer{flex:1}.leads-card{border-radius:14px;overflow:hidden}.leads-table-wrap{overflow-x:auto}.leads-table{min-width:1220px}.leads-table thead th{height:38px;padding:10px 12px;background:#fafbfd;color:#99a1b3;font-size:10.5px;letter-spacing:.4px}.leads-table tbody td{height:58px;padding:10px 12px;color:#333a56}.leads-table tbody tr:hover{background:#f8f9fd}.lead-name-cell{display:flex;align-items:center;gap:9px}.avatar{width:30px;height:30px;border-radius:8px;display:flex;align-items:center;justify-content:center;color:#fff;font-weight:700;font-size:11.5px;flex:0 0 30px}.lead-avatar{background:#eef3ff;color:#4f6bff;border-radius:8px}.leads-table .cell-name{font-size:12.5px;font-weight:700;color:#161b33}.leads-table .cell-sub{font-size:11px;color:#99a1b3;margin-top:3px}.leads-table .mini-select,.leads-table .stage-select{height:29px;max-width:150px;border:1px solid var(--border);border-radius:7px;background:#fff;padding:5px 8px;font-size:11.5px;color:var(--text-700)}.leads-table .stage-select{max-width:118px}.leads-table .feedback-select{max-width:132px;font-weight:700;border-radius:999px}.feedback-select.badge-red{background:var(--red-50);color:var(--red-700);border-color:#f7d7d7}.feedback-select.badge-gray{background:#f1f2f6;color:var(--text-600)}.feedback-select.badge-amber{background:var(--amber-50);color:var(--amber-700);border-color:#f5dfaf}.feedback-select.badge-blue{background:var(--blue-50);color:var(--indigo-600);border-color:#dbe2ff}.feedback-select.badge-green{background:var(--green-50);color:var(--green-700);border-color:#caefdf}.feedback-select.badge-purple{background:var(--purple-50);color:var(--purple-700);border-color:#ded2fb}.feedback-select.badge-junk{background:#fee2e2;color:#991b1b;border-color:#fecaca}.leads-table .btn-soft{background:var(--indigo-100);color:var(--indigo-600);box-shadow:none}.leads-table .empty-state h4{margin:0 0 4px;color:var(--text-600);font-size:13px}.leads-table .empty-state p{margin:0;font-size:12px;color:var(--text-400)}.pill-tabs{display:flex;gap:4px;background:var(--bg);border:1px solid var(--border);border-radius:999px;padding:3px}.pill-tab{padding:7px 14px;border-radius:999px;font-size:12px;font-weight:600;color:var(--text-600);background:transparent;border:none}.pill-tab.active{background:#fff;color:var(--indigo-600);box-shadow:0 1px 3px rgba(16,20,40,.08)}.admissions-tabs{width:max-content;margin-bottom:16px}.admissions-card{border-radius:14px;overflow:hidden}.admissions-table{width:100%;min-width:980px;border-collapse:collapse}.admissions-table thead th{height:42px;padding:11px 16px;background:#fafbfd;color:#99a1b3;font-size:10.5px;letter-spacing:.4px;font-weight:700;white-space:nowrap;border-bottom:1px solid var(--border)}.admissions-table thead th:last-child{text-align:right}.admissions-table tbody td{height:70px;padding:12px 16px;color:#333a56;vertical-align:middle;border-bottom:1px solid var(--border-soft)}.admissions-table tbody tr:hover{background:#f8f9fd}.admissions-table th:nth-child(1),.admissions-table td:nth-child(1){width:24%;min-width:200px}.admissions-table th:nth-child(2),.admissions-table td:nth-child(2){width:10%;min-width:85px}.admissions-table th:nth-child(3),.admissions-table td:nth-child(3){width:12%;min-width:100px}.admissions-table th:nth-child(4),.admissions-table td:nth-child(4){width:13%;min-width:110px}.admissions-table th:nth-child(5),.admissions-table td:nth-child(5){width:11%;min-width:100px}.admissions-table th:nth-child(6),.admissions-table td:nth-child(6){width:12%;min-width:110px}.admissions-table th:nth-child(7),.admissions-table td:nth-child(7){width:18%;min-width:180px}.admissions-table th:nth-child(8),.admissions-table td:nth-child(8){width:8%;min-width:85px;text-align:right}.admissions-table .cell-name{font-size:12.5px;font-weight:700;color:#161b33}.admissions-table .cell-sub{font-size:11px;color:#99a1b3;margin-top:3px}.admission-batch-cell{display:grid;align-content:center;gap:5px;max-width:220px}.admissions-table .student-mini-select{width:100%;max-width:180px;height:32px}.admission-batch-hint{display:grid;gap:1px;max-width:220px;color:var(--text-400);margin-top:0}.admission-batch-hint b{color:var(--amber-700);font-size:10.5px;line-height:1.2;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}.admission-batch-hint span{font-size:10px;line-height:1.2;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}.admission-action-cell{text-align:right}.admission-action-cell .btn{height:32px;min-width:82px;justify-content:center}.mono{font-family:JetBrains Mono,monospace}.admissions-table .btn-primary{box-shadow:0 4px 10px rgba(79,107,255,.22)}.admissions-table .empty-state{padding:54px 20px;text-align:center}.admissions-table .empty-state h4{margin:0 0 6px;color:var(--text-600);font-size:14px;font-weight:700}.admissions-table .empty-state p{margin:0;font-size:12.5px;color:var(--text-400)}
+      .leads-bulk-bar{display:flex;align-items:center;gap:12px;padding:10px 16px;background:linear-gradient(90deg,#eef3ff,#f8faff);border:1px solid #c7d7fe;border-radius:10px;margin-bottom:14px;box-shadow:0 2px 8px rgba(79,107,255,.08);flex-wrap:wrap}.leads-bulk-count{font-weight:700;color:var(--indigo-600);font-size:12.5px;display:inline-flex;align-items:center;gap:6px}.leads-bulk-actions{display:inline-flex;align-items:center;gap:8px;margin-left:auto;flex-wrap:wrap}.leads-table th.col-select,.leads-table td.col-select{width:42px;min-width:42px;text-align:center;padding:0 8px}.lead-checkbox{width:16px;height:16px;cursor:pointer;accent-color:var(--indigo-500);border-radius:4px;vertical-align:middle}.leads-table tbody tr.row-selected{background:#eef3ff!important}.leads-table tbody tr.row-selected:hover{background:#e4ebff!important}
       .drawer-overlay{position:fixed;inset:0;background:rgba(10,14,29,.45);display:none;z-index:200}.drawer-overlay.show{display:block}.drawer{position:fixed;top:0;right:0;height:100vh;width:520px;max-width:94vw;background:#fff;box-shadow:-14px 0 40px rgba(10,14,29,.25);transform:translateX(100%);transition:transform .22s ease;z-index:201;display:flex;flex-direction:column}.drawer.show{transform:translateX(0)}.drawer-head{padding:20px 22px;border-bottom:1px solid var(--border-soft);display:flex;align-items:flex-start;gap:14px}.drawer-avatar{width:44px;height:44px;font-size:14px;background:linear-gradient(135deg,var(--indigo-500),#8A6BFF)}.drawer-title{flex:1;min-width:0}.drawer-title h3{margin:0;font-size:15px;line-height:1.25;color:var(--text-900)}.drawer-title .cell-sub{display:flex;align-items:center;gap:6px;flex-wrap:wrap;margin-top:4px}.close-x{width:30px;height:30px;border-radius:8px;border:none;background:var(--bg);color:var(--text-600);font-size:15px}.drawer-body{flex:1;overflow-y:auto;padding:0 0 30px}.dtabs{display:flex;gap:2px;padding:0 22px;border-bottom:1px solid var(--border-soft)}.dtab{padding:12px 12px;font-size:12px;font-weight:700;color:var(--text-400);border:0;background:transparent;border-bottom:2px solid transparent}.dtab.active{color:var(--indigo-600);border-color:var(--indigo-500)}.dpane{display:none;padding:18px 22px}.dpane.active{display:block}.kv-row{display:flex;justify-content:space-between;gap:18px;padding:9px 0;border-bottom:1px solid var(--border-soft);font-size:12.5px}.kv-row .k{color:var(--text-400)}.kv-row .v{font-weight:600;color:var(--text-900);text-align:right;overflow-wrap:anywhere}.drawer-notes{margin-top:14px}.drawer-full-btn{width:100%;justify-content:center;margin-top:12px}.drawer-admit-btn{margin-top:8px}
       .batch-metrics{grid-template-columns:repeat(3,1fr);margin-bottom:18px}.batch-card-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:16px}.batch-select-card{border:1px solid var(--border);background:#fff;border-radius:14px;padding:18px;text-align:left;box-shadow:0 1px 2px rgba(16,20,40,.05);cursor:pointer;transition:transform .16s ease,box-shadow .16s ease,border-color .16s ease}.batch-select-card:hover{transform:translateY(-2px);border-color:#b9c5ff;box-shadow:0 14px 30px rgba(79,107,255,.12)}.batch-select-top{display:flex;align-items:center;justify-content:space-between;margin-bottom:18px}.batch-select-card h3{margin:0 0 6px;font-size:16px;color:#061633}.batch-select-stats{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-top:18px}.batch-select-stats span{border:1px solid var(--border-soft);border-radius:9px;padding:9px 8px;color:var(--text-400);font-size:11px}.batch-select-stats b{display:block;color:#061633;font-size:15px}.calendar-connect-card{display:flex;align-items:center;justify-content:space-between;gap:14px;padding:15px 18px;margin-bottom:16px}.calendar-connect-card h3{margin:0 0 4px;font-size:15px;color:#061633}.calendar-connect-card .sub{font-size:12px;color:var(--text-400)}.calendar-connect-actions{display:flex;align-items:center;gap:8px;flex-wrap:wrap;justify-content:flex-end}.teacher-batches-card{margin-bottom:16px}.teacher-batches-card .card-body{padding:16px 18px}.teacher-batch-grid{grid-template-columns:repeat(auto-fit,minmax(280px,340px));align-items:stretch}.teacher-batch-grid .batch-select-card{min-height:176px;display:flex;flex-direction:column}.teacher-batch-grid .batch-select-stats{margin-top:auto;padding-top:18px}.teacher-action-grid{align-items:stretch}.teacher-action-grid>.card{min-height:258px}.teacher-row-list .crow{display:grid;grid-template-columns:minmax(0,1fr) auto;align-items:center;gap:16px;min-height:72px}.teacher-row-list .who{min-width:0}.teacher-row-list .who>div{min-width:0}.teacher-row-list .nm,.teacher-row-list .mt{overflow:hidden;text-overflow:ellipsis;display:block}.teacher-row-list .nm{line-height:1.35}.teacher-row-list .mt{white-space:nowrap}.teacher-update-tag{min-width:78px;max-width:96px;justify-content:center;text-align:center;white-space:normal;line-height:1.2;padding:8px 10px}.selected-batch-head{margin-bottom:16px}.batch-grid{grid-template-columns:1.2fr .9fr;gap:16px}.batch-grid-single{display:grid;grid-template-columns:1fr;gap:16px}.batch-card{border-radius:14px;overflow:hidden}.batch-card .card-head{min-height:64px}.batch-table,.batch-roster-table{min-width:100%}.batch-table thead th,.batch-roster-table thead th{height:38px;padding:10px 12px;background:#fafbfd;color:#99a1b3;font-size:10.5px;letter-spacing:.4px}.batch-table tbody td,.batch-roster-table tbody td{height:56px;padding:11px 12px;color:#333a56}.batch-table tbody tr:hover,.batch-roster-table tbody tr:hover{background:#f8f9fd}.batch-table .selected-row{background:#f8f9fd}.batch-table .cell-name{font-weight:700;color:#161b33}.batch-roster-table .cell-name{font-size:12.5px;font-weight:700;color:#161b33}.batch-roster-table .cell-sub{font-size:11px;color:#99a1b3;margin-top:3px}
       .academic-shell{display:grid;gap:16px}.academic-selected-head{display:flex;align-items:center;justify-content:space-between;gap:14px;background:#fff;border:1px solid var(--border);border-radius:14px;padding:15px 18px;box-shadow:0 1px 2px rgba(16,20,40,.04)}.academic-selected-head h3{margin:0;font-size:17px;color:#061633}.academic-tabs{display:flex;gap:6px;width:max-content;max-width:100%;overflow-x:auto;background:#fff;border:1px solid var(--border);border-radius:10px;padding:4px;box-shadow:0 1px 2px rgba(16,20,40,.04)}.academic-tab{border:0;background:transparent;color:var(--text-600);border-radius:8px;padding:8px 13px;font-size:12.5px;font-weight:700;white-space:nowrap}.academic-tab.active{background:var(--indigo-500);color:#fff;box-shadow:0 4px 12px rgba(79,107,255,.25)}.academic-tab:disabled{opacity:.38;cursor:not-allowed}.batch-switch{display:flex;gap:8px;overflow-x:auto;padding-bottom:2px}.batch-pill{flex:0 0 178px;background:#fff;border:1px solid var(--border);border-radius:10px;padding:11px 14px;text-align:left;cursor:pointer;box-shadow:0 1px 2px rgba(16,20,40,.04)}.batch-pill.selected{border-color:var(--indigo-500);box-shadow:0 0 0 1px var(--indigo-500) inset}.batch-pill span{display:block}.batch-pill .course{font-size:10.5px;color:var(--indigo-600);font-weight:800;text-transform:uppercase;letter-spacing:.04em}.batch-pill .nm{font-weight:800;color:#061633;font-size:13.5px;margin:3px 0}.batch-pill .meta{font-size:11px;color:var(--text-400)}.academic-card{border-radius:14px;overflow:hidden}.academic-overview-grid{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:12px}.class-list{padding:0 18px 4px}.class-list-item{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:13px 0;border-bottom:1px solid var(--border-soft)}.class-list-item:last-child{border-bottom:0}.class-list-item .badge+.badge{margin-left:6px}.class-list-meta{margin-left:8px;color:var(--text-600);font-size:12px}.class-faculty{color:var(--text-400);font-size:12px;font-weight:700;white-space:nowrap}.academic-banner{display:flex;align-items:center;justify-content:space-between;gap:14px;background:var(--indigo-100);border:1px solid #cfd7ff;border-radius:12px;padding:13px 16px;color:var(--indigo-600);font-weight:700}.academic-banner-copy{display:grid;gap:8px}.class-color-legend{display:flex;align-items:center;gap:12px;flex-wrap:wrap}.class-color-legend span{display:inline-flex;align-items:center;gap:6px;color:var(--text-600);font-size:11.5px;font-weight:800}.class-color-legend i{width:12px;height:12px;border-radius:4px;border:1px solid var(--indigo-500);background:var(--indigo-100);box-shadow:0 1px 2px rgba(16,20,40,.05)}.class-color-legend i.practical{border-color:#f2bd62;background:var(--amber-50)}.academic-banner-actions,.academic-head-actions{display:flex;align-items:center;gap:8px;flex-wrap:wrap}.academic-banner .fbtn{height:34px;background:#fff}.academic-log-shell{display:grid;gap:12px}.academic-log-head{display:flex;align-items:center;justify-content:space-between}.academic-log-head h3{margin:0;font-size:15px;color:#061633}.academic-log-head .sub{font-size:12px;color:var(--text-400);margin-top:3px}.academic-roster-table{min-width:920px;width:100%;border-collapse:collapse}.academic-roster-table th{height:38px;padding:10px 8px;background:#fafbfd;color:#99a1b3;font-size:10.5px;letter-spacing:.4px;text-align:left}.academic-roster-table td{vertical-align:top;min-width:112px;padding:8px;border-bottom:1px solid var(--border-soft);color:#333a56}.academic-roster-table td:first-child{min-width:150px}.roster-slot{display:block;width:100%;border:1px solid var(--indigo-500);background:var(--indigo-100);color:var(--text-700);border-radius:9px;padding:7px 8px;text-align:left;margin-bottom:5px;font-size:11px}.roster-slot.practical{border-color:#f2bd62;background:var(--amber-50)}.roster-slot.selected{box-shadow:0 0 0 2px rgba(79,107,255,.22)}.roster-slot.preview{border-style:dashed;opacity:.55;filter:saturate(.6);pointer-events:none}.roster-slot strong,.roster-slot span,.roster-slot em{display:block}.roster-slot strong{font-size:11.5px;color:#061633}.roster-slot.preview strong{color:var(--text-600)}.roster-slot span{color:var(--text-600);margin-top:2px}.roster-slot em{font-style:normal;color:var(--text-400);font-size:10.5px;margin-top:3px}.roster-empty{color:var(--text-400);font-size:12px}.academic-topic-form{display:grid;grid-template-columns:1fr 1.2fr auto;gap:12px;align-items:end;padding:16px 18px;border-top:1px solid var(--border-soft);background:#fbfcff}.academic-topic-form .field{margin:0}.academic-tracker-list{padding:6px 18px 14px}.academic-tracker-row{display:grid;grid-template-columns:minmax(0,1fr) 172px 78px;align-items:center;gap:12px;padding:13px 0;border-bottom:1px solid var(--border-soft)}.academic-tracker-row:last-child{border-bottom:0}.tracker-select{height:36px;border:1px solid var(--border);border-radius:9px;background:#fff;padding:0 10px;color:#061633;font-size:12px;font-weight:800}.tracker-covered,.tracker-completed{background:var(--teal-50);border-color:#b8eee7;color:var(--teal-700)}.tracker-in-progress,.tracker-needs-repeat{background:var(--amber-50);border-color:#f5dfaf;color:var(--amber-700)}.tracker-not-started,.tracker-pending{background:#f8f9fd;color:var(--text-600)}.topic-edit-modal{width:600px;max-width:calc(100vw - 24px);overflow:hidden}.topic-edit-body{grid-template-columns:repeat(2,minmax(0,1fr));padding:20px 22px 10px}.topic-edit-body .field:last-child{grid-column:1 / 2}.topic-edit-actions{display:flex;justify-content:flex-end;gap:10px;padding:12px 22px 22px}.topic-edit-actions .btn{min-width:104px;justify-content:center}.practical-table{min-width:860px;width:100%;border-collapse:collapse}.practical-table th{height:38px;padding:10px 14px;background:#fafbfd;color:#99a1b3;font-size:10.5px;letter-spacing:.4px;text-align:left}.practical-table td{padding:12px 14px;border-bottom:1px solid var(--border-soft);vertical-align:middle}.compact-row-button{border:0;background:transparent;padding:0;text-align:left}.compact-row-button span span{display:block}.practical-note{width:100%;height:34px}.academic-modal{width:650px;max-width:calc(100vw - 24px);overflow:hidden;background:#f8f9fd}.academic-modal .modal-head{position:static;padding:18px 22px;background:#fff}.academic-modal .modal-body{padding:18px 22px 20px;background:#f8f9fd}.academic-modal .modal-foot{padding:16px 22px;background:#fff}.class-context{display:flex;align-items:center;gap:11px;background:#fff;border:1px solid var(--border);border-radius:12px;padding:12px 14px;margin-bottom:14px;box-shadow:0 1px 2px rgba(16,20,40,.04)}.class-context strong,.class-context em{display:block}.class-context strong{font-size:13.5px;color:#061633;font-weight:900}.class-context em{font-style:normal;color:var(--text-400);font-size:11.5px;margin-top:2px}.academic-steps{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px;margin:0 0 20px}.academic-steps button{position:relative;display:flex;align-items:center;gap:8px;border:1px solid var(--border);background:#fff;border-radius:10px;padding:9px 10px;text-align:left;color:var(--text-400);font-weight:800;cursor:default}.academic-steps button.done{cursor:pointer}.academic-steps button span{width:22px;height:22px;border-radius:999px;display:grid;place-items:center;background:#eef1f8;color:#6c7487;font-size:11px}.academic-steps button em{font-style:normal;font-size:12px}.academic-steps button.active{border-color:var(--indigo-500);color:var(--indigo-600);box-shadow:0 0 0 1px rgba(79,107,255,.15) inset}.academic-steps button.active span,.academic-steps button.done span{background:var(--indigo-500);color:#fff}.academic-steps button.done{color:#061633}.academic-modal .field{margin-bottom:18px}.academic-modal .field label{margin-bottom:9px}.academic-choice-section{display:grid;gap:20px}.mini-label{font-size:11px;font-weight:900;color:var(--text-400);text-transform:uppercase;letter-spacing:.04em;margin-bottom:9px}.academic-choice-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px}.academic-choice{position:relative;display:grid;grid-template-columns:auto 1fr;align-items:start;gap:12px;min-height:112px;border:1px solid var(--border);background:#fff;border-radius:14px;padding:15px 42px 36px 15px;text-align:left;color:#061633;box-shadow:0 2px 7px rgba(16,20,40,.04);cursor:pointer;transition:border-color .18s ease,box-shadow .18s ease,transform .18s ease,background .18s ease}.academic-choice:hover{border-color:#bdc8ff;box-shadow:0 12px 28px rgba(79,107,255,.13);transform:translateY(-2px)}.academic-choice.active{border-color:var(--indigo-500);background:linear-gradient(180deg,#fff,#f4f6ff);box-shadow:0 0 0 1px rgba(79,107,255,.22) inset,0 14px 32px rgba(79,107,255,.16)}.academic-choice.active:before{content:"";position:absolute;left:0;top:14px;bottom:14px;width:4px;border-radius:0 999px 999px 0;background:var(--indigo-500)}.choice-icon{width:40px;height:40px;border-radius:12px;display:grid;place-items:center;background:var(--indigo-100);color:var(--indigo-600)}.academic-choice.active .choice-icon{background:var(--indigo-500);color:#fff}.academic-choice strong,.academic-choice em{display:block}.academic-choice strong{font-size:14px;font-weight:900}.academic-choice em{font-style:normal;color:var(--text-400);font-size:11.5px;line-height:1.4;margin-top:5px}.academic-choice small{position:absolute;left:15px;bottom:12px;display:inline-flex;align-items:center;height:22px;border-radius:999px;background:#f2f4fb;color:var(--text-600);font-size:10.5px;font-weight:900;padding:0 9px}.academic-choice.active small{background:#e8fff5;color:var(--teal-700)}.choice-check{position:absolute;right:13px;top:13px;color:#c3c9d8}.academic-choice.active .choice-check{color:var(--teal-600)}.academic-seg{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px}.academic-chip,.academic-day{border:1px solid var(--border);background:#fff;color:var(--text-600);border-radius:999px;padding:10px 12px;font-size:12px;font-weight:800;cursor:pointer;min-height:36px}.academic-chip.on,.academic-day.on{border-color:var(--indigo-500);background:var(--indigo-100);color:var(--indigo-600)}.academic-day{width:42px;padding:8px 0}.academic-review{border:1px dashed var(--border);border-radius:10px;padding:14px;text-align:left;background:#fff}@media (max-width:1100px){.academic-overview-grid{grid-template-columns:repeat(2,minmax(0,1fr))}}@media (max-width:900px){.academic-topic-form{grid-template-columns:1fr 1fr}.academic-topic-form .btn{height:38px}}@media (max-width:640px){.academic-selected-head{align-items:flex-start;flex-direction:column}.academic-banner{align-items:flex-start;flex-direction:column}.academic-choice-grid,.academic-overview-grid{grid-template-columns:1fr}.academic-topic-form,.topic-edit-body{grid-template-columns:1fr}.topic-edit-body .field:last-child{grid-column:auto}.topic-edit-actions{padding:10px 16px 18px}.academic-tracker-row{grid-template-columns:1fr}.academic-modal{width:calc(100vw - 18px)}.academic-steps button{padding:8px 7px}.academic-steps button em{font-size:11px}}

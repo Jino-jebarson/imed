@@ -1,3 +1,5 @@
+import { trackPixelContact } from "../../shared/metaPixel";
+
 export default function FloatingWhatsApp() {
   return (
     <a
@@ -7,6 +9,7 @@ export default function FloatingWhatsApp() {
       rel="noopener noreferrer"
       target="_blank"
       title="+91 92667 90357"
+      onClick={() => trackPixelContact({ channel: "Floating WhatsApp" })}
       style={{
         height: "44px",
         gap: "8px",
