@@ -18,7 +18,12 @@ type ApplyFormContextType = {
   setQualification: (val: string) => void;
   canAttend: "Yes" | "Not sure yet";
   setCanAttend: (val: "Yes" | "Not sure yet") => void;
+  honeypot: string;
+  setHoneypot: (val: string) => void;
   isSubmitting: boolean;
+  isSubmitted: boolean;
+  submittedInfo: { name: string; phone: string } | null;
+  handleResetForm: () => void;
   handleSubmit: (e: FormEvent) => void;
   scrollToForm: () => void;
 };
@@ -80,11 +85,12 @@ function Container3() {
 }
 
 function Container5() {
-  const { fullName } = useApplyForm();
+  const { fullName, submittedInfo } = useApplyForm();
+  const displayName = fullName.trim() || submittedInfo?.name || "Your name";
   return (
     <div className="content-stretch flex flex-col h-[26.456px] items-start overflow-clip relative shrink-0 w-full" data-name="Container">
-      <p className={`[word-break:break-word] font-['Inter:Semi_Bold',sans-serif] font-semibold leading-[26.498px] not-italic relative shrink-0 text-[23.042px] whitespace-nowrap transition-colors ${fullName.trim() ? "text-[#0d9488]" : "text-[#98a8b8]"}`}>
-        {fullName.trim() || "Your name"}
+      <p className={`[word-break:break-word] font-['Inter:Semi_Bold',sans-serif] font-semibold leading-[26.498px] not-italic relative shrink-0 text-[23.042px] whitespace-nowrap transition-colors ${displayName !== "Your name" ? "text-[#0d9488]" : "text-[#98a8b8]"}`}>
+        {displayName}
       </p>
     </div>
   );
@@ -186,7 +192,7 @@ function TextInput() {
       name="fullName"
       placeholder="e.g. Rahul Sharma"
       value={fullName}
-      onChange={(e) => setFullName(e.target.value)}
+      onChange={(e) => setFullName(e.target.value.replace(/[^a-zA-Z\s.'-]/g, "").replace(/^\s+/, ""))}
       className="absolute border-solid h-[42.671px] left-0 rounded-[8.534px] top-[0.17px] w-[324.297px] px-[12px] text-[13px] font-['Instrument_Sans:Regular',sans-serif] outline-none bg-[#fafcfb] border-[#d3dedc] border-[0.683px] text-[#0a1f3d] focus:border-[#0d9488] focus:ring-1 focus:ring-[#0d9488] transition-colors"
       data-name="Text Input"
     />
@@ -281,7 +287,7 @@ function TextInput1() {
       name="city"
       placeholder="e.g. Kochi"
       value={city}
-      onChange={(e) => setCity(e.target.value)}
+      onChange={(e) => setCity(e.target.value.replace(/[^a-zA-Z\s.-]/g, "").replace(/^\s+/, ""))}
       className="absolute border-solid h-[42.671px] left-0 rounded-[8.534px] top-[0.17px] w-[156.175px] px-[10px] text-[12px] font-['Instrument_Sans:Regular',sans-serif] outline-none bg-[#fafcfb] border-[#d3dedc] border-[0.683px] text-[#0a1f3d] focus:border-[#0d9488] focus:ring-1 focus:ring-[#0d9488] transition-colors"
       data-name="Text Input"
     />
@@ -495,9 +501,75 @@ function Paragraph1() {
 }
 
 function Form() {
-  const { handleSubmit } = useApplyForm();
+  const { handleSubmit, isSubmitted, submittedInfo, handleResetForm, honeypot, setHoneypot } = useApplyForm();
+
+  if (isSubmitted) {
+    return (
+      <div id="apply-form" className="content-stretch flex flex-col items-center justify-center text-center pb-[28px] pt-[24px] px-[22px] relative shrink-0 w-[375.502px]">
+        <div className="w-[54px] h-[54px] rounded-full bg-[#e3f4f0] border-2 border-[#0d9488]/30 flex items-center justify-center text-[#0d9488] mb-3 shadow-inner">
+          <svg className="w-7 h-7" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.8}>
+            <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
+          </svg>
+        </div>
+
+        <h3 className="font-['Instrument_Sans:Bold',sans-serif] font-bold text-[20px] text-[#0a1f3d] mb-1.5">
+          Application Received!
+        </h3>
+
+        <p className="font-['Instrument_Sans:Regular',sans-serif] text-[13px] text-[#4e6178] mb-3.5 leading-[19px]">
+          Thank you, <strong className="text-[#0d9488]">{submittedInfo?.name || "there"}</strong>! We have registered your enquiry.
+        </p>
+
+        <div className="w-full bg-[#f4fbf9] border border-[#c5e6de] rounded-[10px] p-3 text-left mb-3.5 shadow-sm">
+          <div className="flex items-center gap-2 mb-1">
+            <span className="flex h-2 w-2 relative">
+              <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-[#0d9488] opacity-75"></span>
+              <span className="relative inline-flex rounded-full h-2 w-2 bg-[#0d9488]"></span>
+            </span>
+            <span className="font-['Instrument_Sans:SemiBold',sans-serif] text-[12px] text-[#0b7a66] font-semibold">
+              Next Steps:
+            </span>
+          </div>
+          <p className="font-['Instrument_Sans:Regular',sans-serif] text-[11.5px] text-[#334155] leading-[17px]">
+            Our academic counsellor will connect with you on WhatsApp at <strong className="text-[#0a1f3d]">+91 {submittedInfo?.phone}</strong> with the syllabus, fee structure & next batch dates.
+          </p>
+        </div>
+
+        <a
+          href={`https://wa.me/919266790357?text=${encodeURIComponent(`Hi iMED Academy, I submitted my application for ${submittedInfo?.name || "admissions"} (${submittedInfo?.phone || ""}). Could you please share the syllabus and batch details?`)}`}
+          target="_blank"
+          rel="noopener noreferrer"
+          className="w-full h-[42px] rounded-[10px] bg-[#25D366] hover:bg-[#20bd5a] active:scale-[0.99] text-white text-[13px] font-['Instrument_Sans:SemiBold',sans-serif] font-semibold flex items-center justify-center gap-2 shadow-sm transition-all mb-3"
+        >
+          <svg className="w-4 h-4 fill-white" viewBox="0 0 24 24">
+            <path d="M12.031 6.172c-3.181 0-5.767 2.586-5.768 5.766-.001 1.298.38 2.27 1.019 3.287l-.582 2.128 2.182-.573c.978.58 1.911.928 3.145.929 3.178 0 5.767-2.587 5.768-5.766.001-3.187-2.575-5.771-5.764-5.771zm3.392 8.244c-.144.405-.837.774-1.17.824-.312.045-.693.074-1.115-.062-.27-.087-.624-.22-1.077-.417-1.924-.836-3.178-2.784-3.274-2.912-.096-.128-.779-1.036-.779-1.975 0-.938.492-1.401.667-1.593.175-.192.383-.24.511-.24.128 0 .256.002.368.007.118.005.277-.045.433.33.16.384.544 1.328.592 1.425.048.096.08.209.016.336-.064.128-.096.208-.192.32-.096.112-.202.25-.289.336-.096.096-.197.2-.085.392.112.192.498.822 1.069 1.33.734.653 1.353.855 1.545.951.192.096.304.08.416-.048.112-.128.48-.56.608-.752.128-.192.256-.16.432-.096.176.064 1.12.528 1.312.624.192.096.32.144.368.224.048.08.048.464-.096.869z" />
+          </svg>
+          <span>Chat with Admissions on WhatsApp</span>
+        </a>
+
+        <button
+          type="button"
+          onClick={handleResetForm}
+          className="text-[11.5px] text-[#64748b] hover:text-[#0d9488] underline transition-colors cursor-pointer"
+        >
+          Submit another response
+        </button>
+      </div>
+    );
+  }
+
   return (
     <form onSubmit={handleSubmit} id="apply-form" className="content-stretch flex flex-col items-start pb-[25.602px] pt-[20.482px] px-[25.602px] relative shrink-0 w-[375.502px]" data-name="Form">
+      <input
+        type="text"
+        name="website_url"
+        value={honeypot}
+        onChange={(e) => setHoneypot(e.target.value)}
+        tabIndex={-1}
+        autoComplete="off"
+        aria-hidden="true"
+        style={{ display: "none", position: "absolute", left: "-9999px" }}
+      />
       <Heading1 />
       <Paragraph />
       <Container8 />
@@ -3748,6 +3820,9 @@ function MobileApplyNow({
     canAttend,
     setCanAttend,
     isSubmitting,
+    isSubmitted,
+    submittedInfo,
+    handleResetForm,
     handleSubmit,
     scrollToForm,
   } = useApplyForm();
@@ -3931,8 +4006,8 @@ function MobileApplyNow({
                   <Group2 />
                 </div>
                 <div className="flex-1 min-w-0 flex flex-col items-start">
-                  <p className={`font-['Inter:Semi_Bold',sans-serif] font-semibold text-[20px] sm:text-[23.042px] leading-[26.5px] truncate w-full transition-colors ${fullName.trim() ? "text-[#0d9488]" : "text-[#98a8b8]"}`}>
-                    {fullName.trim() || "Your name"}
+                  <p className={`font-['Inter:Semi_Bold',sans-serif] font-semibold text-[20px] sm:text-[23.042px] leading-[26.5px] truncate w-full transition-colors ${(fullName.trim() || submittedInfo?.name) ? "text-[#0d9488]" : "text-[#98a8b8]"}`}>
+                    {fullName.trim() || submittedInfo?.name || "Your name"}
                   </p>
                   <p className="font-['Instrument_Sans:Regular',sans-serif] font-normal leading-[17.922px] text-[#4e6178] text-[12.801px] pt-[3.414px]">
                     Healthcare Administration trainee
@@ -3949,152 +4024,215 @@ function MobileApplyNow({
               </div>
 
               {/* Counsellor Request Form matching desktop Form */}
-              <form onSubmit={handleSubmit} id="apply-form" className="flex flex-col items-start pb-[25.602px] pt-[20.482px] px-[20px] sm:px-[25.602px] w-full">
-                <div className="flex flex-col items-start w-full">
-                  <p className="font-['Instrument_Sans:SemiBold',sans-serif] font-semibold leading-[25.944px] text-[#0a1f3d] text-[16.215px]">
-                    Request a call from a counsellor
-                  </p>
-                  <p className="font-['Instrument_Sans:Regular',sans-serif] font-normal leading-[20.482px] text-[#4e6178] text-[12.801px] pt-[3.414px]">
-                    Get the syllabus, fees and next batch date.
-                  </p>
-                </div>
-
-                {/* Full Name */}
-                <div className="flex flex-col items-start pt-[17.068px] w-full">
-                  <div className="flex justify-between items-center w-full pb-[5.12px]">
-                    <label className="font-['Instrument_Sans:SemiBold',sans-serif] font-semibold leading-[19.116px] text-[#1c3556] text-[11.948px]">
-                      Full name
-                    </label>
+              {isSubmitted ? (
+                <div id="apply-form" className="flex flex-col items-center justify-center text-center pb-[28px] pt-[24px] px-[20px] sm:px-[25.602px] w-full">
+                  <div className="w-[54px] h-[54px] rounded-full bg-[#e3f4f0] border-2 border-[#0d9488]/30 flex items-center justify-center text-[#0d9488] mb-3 shadow-inner">
+                    <svg className="w-7 h-7" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.8}>
+                      <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
+                    </svg>
                   </div>
-                  <input
-                    type="text"
-                    name="fullName"
-                    placeholder="e.g. Rahul Sharma"
-                    value={fullName}
-                    onChange={(e) => setFullName(e.target.value)}
-                    className="w-full border-solid h-[42.671px] rounded-[8.534px] px-[12px] text-[13px] font-['Instrument_Sans:Regular',sans-serif] outline-none bg-[#fafcfb] border-[#d3dedc] border-[0.683px] text-[#0a1f3d] focus:border-[#0d9488] focus:ring-1 focus:ring-[#0d9488] transition-colors"
-                  />
-                </div>
 
-                {/* WhatsApp Number */}
-                <div className="flex flex-col items-start pt-[13.655px] w-full">
-                  <div className="flex justify-between items-center w-full pb-[5.12px]">
-                    <label className="font-['Instrument_Sans:SemiBold',sans-serif] font-semibold leading-[19.116px] text-[#1c3556] text-[11.948px]">
-                      WhatsApp number
-                    </label>
-                  </div>
-                  <div className="flex h-[42.671px] w-full rounded-[8.534px] overflow-hidden border-solid border-[#d3dedc] border-[0.683px] bg-[#fafcfb]">
-                    <div className="border-r border-solid flex items-center justify-center px-[10.241px] shrink-0 w-[40.964px] bg-[#edf2f1] border-[#d3dedc]">
-                      <span className="font-['Instrument_Sans:SemiBold',sans-serif] font-semibold leading-[20.482px] text-[#1c3556] text-[12.801px]">
-                        +91
+                  <h3 className="font-['Instrument_Sans:Bold',sans-serif] font-bold text-[20px] text-[#0a1f3d] mb-1.5">
+                    Application Received!
+                  </h3>
+
+                  <p className="font-['Instrument_Sans:Regular',sans-serif] text-[13px] text-[#4e6178] mb-3.5 leading-[19px]">
+                    Thank you, <strong className="text-[#0d9488]">{submittedInfo?.name || "there"}</strong>! We have registered your enquiry.
+                  </p>
+
+                  <div className="w-full bg-[#f4fbf9] border border-[#c5e6de] rounded-[10px] p-3.5 text-left mb-3.5 shadow-sm">
+                    <div className="flex items-center gap-2 mb-1">
+                      <span className="flex h-2 w-2 relative">
+                        <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-[#0d9488] opacity-75"></span>
+                        <span className="relative inline-flex rounded-full h-2 w-2 bg-[#0d9488]"></span>
+                      </span>
+                      <span className="font-['Instrument_Sans:SemiBold',sans-serif] text-[12px] text-[#0b7a66] font-semibold">
+                        Next Steps:
                       </span>
                     </div>
-                    <input
-                      type="tel"
-                      name="phone"
-                      placeholder="98765 43210"
-                      value={phone}
-                      onChange={(e) => setPhone(e.target.value.replace(/[^0-9]/g, "").slice(0, 10))}
-                      className="flex-1 h-full px-[12px] bg-transparent text-[13px] text-[#0a1f3d] font-['Instrument_Sans:Regular',sans-serif] outline-none focus:ring-1 focus:ring-[#0d9488] transition-colors"
-                    />
+                    <p className="font-['Instrument_Sans:Regular',sans-serif] text-[11.5px] text-[#334155] leading-[17px]">
+                      Our academic counsellor will connect with you on WhatsApp at <strong className="text-[#0a1f3d]">+91 {submittedInfo?.phone}</strong> with the syllabus, fee structure & next batch dates.
+                    </p>
                   </div>
-                </div>
 
-                {/* City & Highest Qualification */}
-                <div className="grid grid-cols-2 gap-[11.95px] pt-[13.655px] w-full">
-                  <div className="flex flex-col items-start">
+                  <a
+                    href={`https://wa.me/919266790357?text=${encodeURIComponent(`Hi iMED Academy, I submitted my application for ${submittedInfo?.name || "admissions"} (${submittedInfo?.phone || ""}). Could you please share the syllabus and batch details?`)}`}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="w-full h-[44px] rounded-[10px] bg-[#25D366] hover:bg-[#20bd5a] active:scale-[0.99] text-white text-[13.5px] font-['Instrument_Sans:SemiBold',sans-serif] font-semibold flex items-center justify-center gap-2 shadow-sm transition-all mb-3"
+                  >
+                    <svg className="w-4 h-4 fill-white" viewBox="0 0 24 24">
+                      <path d="M12.031 6.172c-3.181 0-5.767 2.586-5.768 5.766-.001 1.298.38 2.27 1.019 3.287l-.582 2.128 2.182-.573c.978.58 1.911.928 3.145.929 3.178 0 5.767-2.587 5.768-5.766.001-3.187-2.575-5.771-5.764-5.771zm3.392 8.244c-.144.405-.837.774-1.17.824-.312.045-.693.074-1.115-.062-.27-.087-.624-.22-1.077-.417-1.924-.836-3.178-2.784-3.274-2.912-.096-.128-.779-1.036-.779-1.975 0-.938.492-1.401.667-1.593.175-.192.383-.24.511-.24.128 0 .256.002.368.007.118.005.277-.045.433.33.16.384.544 1.328.592 1.425.048.096.08.209.016.336-.064.128-.096.208-.192.32-.096.112-.202.25-.289.336-.096.096-.197.2-.085.392.112.192.498.822 1.069 1.33.734.653 1.353.855 1.545.951.192.096.304.08.416-.048.112-.128.48-.56.608-.752.128-.192.256-.16.432-.096.176.064 1.12.528 1.312.624.192.096.32.144.368.224.048.08.048.464-.096.869z" />
+                    </svg>
+                    <span>Chat with Admissions on WhatsApp</span>
+                  </a>
+
+                  <button
+                    type="button"
+                    onClick={handleResetForm}
+                    className="text-[11.5px] text-[#64748b] hover:text-[#0d9488] underline transition-colors cursor-pointer"
+                  >
+                    Submit another response
+                  </button>
+                </div>
+              ) : (
+                <form onSubmit={handleSubmit} id="apply-form" className="flex flex-col items-start pb-[25.602px] pt-[20.482px] px-[20px] sm:px-[25.602px] w-full">
+                  <input
+                    type="text"
+                    name="website_url"
+                    value={honeypot}
+                    onChange={(e) => setHoneypot(e.target.value)}
+                    tabIndex={-1}
+                    autoComplete="off"
+                    aria-hidden="true"
+                    style={{ display: "none", position: "absolute", left: "-9999px" }}
+                  />
+                  <div className="flex flex-col items-start w-full">
+                    <p className="font-['Instrument_Sans:SemiBold',sans-serif] font-semibold leading-[25.944px] text-[#0a1f3d] text-[16.215px]">
+                      Request a call from a counsellor
+                    </p>
+                    <p className="font-['Instrument_Sans:Regular',sans-serif] font-normal leading-[20.482px] text-[#4e6178] text-[12.801px] pt-[3.414px]">
+                      Get the syllabus, fees and next batch date.
+                    </p>
+                  </div>
+
+                  {/* Full Name */}
+                  <div className="flex flex-col items-start pt-[17.068px] w-full">
                     <div className="flex justify-between items-center w-full pb-[5.12px]">
                       <label className="font-['Instrument_Sans:SemiBold',sans-serif] font-semibold leading-[19.116px] text-[#1c3556] text-[11.948px]">
-                        City
+                        Full name
                       </label>
                     </div>
                     <input
                       type="text"
-                      name="city"
-                      placeholder="e.g. Kochi"
-                      value={city}
-                      onChange={(e) => setCity(e.target.value)}
-                      className="w-full border-solid h-[42.671px] rounded-[8.534px] px-[10px] text-[12px] font-['Instrument_Sans:Regular',sans-serif] outline-none bg-[#fafcfb] border-[#d3dedc] border-[0.683px] text-[#0a1f3d] focus:border-[#0d9488] focus:ring-1 focus:ring-[#0d9488] transition-colors"
+                      name="fullName"
+                      placeholder="e.g. Rahul Sharma"
+                      value={fullName}
+                      onChange={(e) => setFullName(e.target.value.replace(/[^a-zA-Z\s.'-]/g, "").replace(/^\s+/, ""))}
+                      className="w-full border-solid h-[42.671px] rounded-[8.534px] px-[12px] text-[13px] font-['Instrument_Sans:Regular',sans-serif] outline-none bg-[#fafcfb] border-[#d3dedc] border-[0.683px] text-[#0a1f3d] focus:border-[#0d9488] focus:ring-1 focus:ring-[#0d9488] transition-colors"
                     />
                   </div>
-                  <div className="flex flex-col items-start">
+
+                  {/* WhatsApp Number */}
+                  <div className="flex flex-col items-start pt-[13.655px] w-full">
                     <div className="flex justify-between items-center w-full pb-[5.12px]">
                       <label className="font-['Instrument_Sans:SemiBold',sans-serif] font-semibold leading-[19.116px] text-[#1c3556] text-[11.948px]">
-                        Highest qualification
+                        WhatsApp number
                       </label>
                     </div>
-                    <select
-                      name="qualification"
-                      value={qualification}
-                      onChange={(e) => setQualification(e.target.value)}
-                      className="w-full border-solid h-[42.671px] rounded-[8.534px] px-[8px] text-[11px] font-['Instrument_Sans:Regular',sans-serif] outline-none cursor-pointer bg-[#fafcfb] border-[#d3dedc] border-[0.683px] text-[#0a1f3d] focus:border-[#0d9488] focus:ring-1 focus:ring-[#0d9488] transition-colors"
-                    >
-                      <option value="">Qualification</option>
-                      <option value="12th">12th</option>
-                      <option value="Any Degree / Graduate">Any Degree / Graduate</option>
-                      <option value="Diploma">Diploma</option>
-                      <option value="B.Sc / Allied Health">B.Sc / Allied Health</option>
-                      <option value="Other">Other</option>
-                    </select>
+                    <div className="flex h-[42.671px] w-full rounded-[8.534px] overflow-hidden border-solid border-[#d3dedc] border-[0.683px] bg-[#fafcfb]">
+                      <div className="border-r border-solid flex items-center justify-center px-[10.241px] shrink-0 w-[40.964px] bg-[#edf2f1] border-[#d3dedc]">
+                        <span className="font-['Instrument_Sans:SemiBold',sans-serif] font-semibold leading-[20.482px] text-[#1c3556] text-[12.801px]">
+                          +91
+                        </span>
+                      </div>
+                      <input
+                        type="tel"
+                        name="phone"
+                        placeholder="98765 43210"
+                        value={phone}
+                        onChange={(e) => setPhone(e.target.value.replace(/[^0-9]/g, "").slice(0, 10))}
+                        className="flex-1 h-full px-[12px] bg-transparent text-[13px] text-[#0a1f3d] font-['Instrument_Sans:Regular',sans-serif] outline-none focus:ring-1 focus:ring-[#0d9488] transition-colors"
+                      />
+                    </div>
                   </div>
-                </div>
 
-                {/* Attend classes in Kochi question */}
-                <div className="flex flex-col items-start pt-[13.655px] pb-[13.655px] w-full">
-                  <div className="flex justify-between items-center w-full pb-[5.12px]">
-                    <legend className="font-['Instrument_Sans:SemiBold',sans-serif] font-semibold leading-[19.116px] text-[#1c3556] text-[11.948px]">
-                      Can you attend classes in Kochi for six months?
-                    </legend>
+                  {/* City & Highest Qualification */}
+                  <div className="grid grid-cols-2 gap-[11.95px] pt-[13.655px] w-full">
+                    <div className="flex flex-col items-start">
+                      <div className="flex justify-between items-center w-full pb-[5.12px]">
+                        <label className="font-['Instrument_Sans:SemiBold',sans-serif] font-semibold leading-[19.116px] text-[#1c3556] text-[11.948px]">
+                          City
+                        </label>
+                      </div>
+                      <input
+                        type="text"
+                        name="city"
+                        placeholder="e.g. Kochi"
+                        value={city}
+                        onChange={(e) => setCity(e.target.value.replace(/[^a-zA-Z\s.-]/g, "").replace(/^\s+/, ""))}
+                        className="w-full border-solid h-[42.671px] rounded-[8.534px] px-[10px] text-[12px] font-['Instrument_Sans:Regular',sans-serif] outline-none bg-[#fafcfb] border-[#d3dedc] border-[0.683px] text-[#0a1f3d] focus:border-[#0d9488] focus:ring-1 focus:ring-[#0d9488] transition-colors"
+                      />
+                    </div>
+                    <div className="flex flex-col items-start">
+                      <div className="flex justify-between items-center w-full pb-[5.12px]">
+                        <label className="font-['Instrument_Sans:SemiBold',sans-serif] font-semibold leading-[19.116px] text-[#1c3556] text-[11.948px]">
+                          Highest qualification
+                        </label>
+                      </div>
+                      <select
+                        name="qualification"
+                        value={qualification}
+                        onChange={(e) => setQualification(e.target.value)}
+                        className="w-full border-solid h-[42.671px] rounded-[8.534px] px-[8px] text-[11px] font-['Instrument_Sans:Regular',sans-serif] outline-none cursor-pointer bg-[#fafcfb] border-[#d3dedc] border-[0.683px] text-[#0a1f3d] focus:border-[#0d9488] focus:ring-1 focus:ring-[#0d9488] transition-colors"
+                      >
+                        <option value="">Qualification</option>
+                        <option value="12th">12th</option>
+                        <option value="Any Degree / Graduate">Any Degree / Graduate</option>
+                        <option value="Diploma">Diploma</option>
+                        <option value="B.Sc / Allied Health">B.Sc / Allied Health</option>
+                        <option value="Other">Other</option>
+                      </select>
+                    </div>
                   </div>
-                  <div className="grid grid-cols-2 gap-[8.534px] w-full">
-                    <button
-                      type="button"
-                      onClick={() => setCanAttend("Yes")}
-                      className={`border-[0.683px] border-solid flex h-[39.257px] items-center justify-center rounded-[8.534px] cursor-pointer transition-all ${canAttend === "Yes"
-                        ? "bg-[#e3f4f0] border-[#0d9488] text-[#0b7a66] font-semibold ring-1 ring-[#0d9488]"
-                        : "bg-[#fafcfb] border-[#d3dedc] text-[#0a1f3d] hover:bg-slate-50"
-                        }`}
-                    >
-                      <span className="font-['Instrument_Sans:SemiBold',sans-serif] font-semibold leading-[20.482px] text-[12.801px]">
-                        Yes
-                      </span>
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => setCanAttend("Not sure yet")}
-                      className={`border-[0.683px] border-solid flex h-[39.257px] items-center justify-center rounded-[8.534px] cursor-pointer transition-all ${canAttend === "Not sure yet"
-                        ? "bg-[#e3f4f0] border-[#0d9488] text-[#0b7a66] font-semibold ring-1 ring-[#0d9488]"
-                        : "bg-[#fafcfb] border-[#d3dedc] text-[#0a1f3d] hover:bg-slate-50"
-                        }`}
-                    >
-                      <span className="font-['Instrument_Sans:SemiBold',sans-serif] font-semibold leading-[20.482px] text-[12.801px]">
-                        Not sure yet
-                      </span>
-                    </button>
-                  </div>
-                </div>
 
-                {/* Submit button matching desktop Button */}
-                <div className="pt-[5.29px] w-full">
-                  <button
-                    type="submit"
-                    disabled={isSubmitting}
-                    className="w-full border-[0.683px] border-[rgba(0,0,0,0)] border-solid flex h-[47.791px] items-center justify-center px-[20.482px] rounded-[10.241px] cursor-pointer hover:opacity-95 active:scale-[0.99] transition-all disabled:opacity-60 shadow-sm"
-                    style={{ backgroundImage: "linear-gradient(171.6167513454805deg, rgb(13, 148, 136) 0%, rgb(45, 212, 191) 100%)" }}
-                  >
-                    <p className="font-['Instrument_Sans:SemiBold',sans-serif] font-semibold leading-[27.2px] text-[17px] text-center text-white whitespace-nowrap">
-                      {isSubmitting ? "Submitting..." : "Submit"}
+                  {/* Attend classes in Kochi question */}
+                  <div className="flex flex-col items-start pt-[13.655px] pb-[13.655px] w-full">
+                    <div className="flex justify-between items-center w-full pb-[5.12px]">
+                      <legend className="font-['Instrument_Sans:SemiBold',sans-serif] font-semibold leading-[19.116px] text-[#1c3556] text-[11.948px]">
+                        Can you attend classes in Kochi for six months?
+                      </legend>
+                    </div>
+                    <div className="grid grid-cols-2 gap-[8.534px] w-full">
+                      <button
+                        type="button"
+                        onClick={() => setCanAttend("Yes")}
+                        className={`border-[0.683px] border-solid flex h-[39.257px] items-center justify-center rounded-[8.534px] cursor-pointer transition-all ${canAttend === "Yes"
+                          ? "bg-[#e3f4f0] border-[#0d9488] text-[#0b7a66] font-semibold ring-1 ring-[#0d9488]"
+                          : "bg-[#fafcfb] border-[#d3dedc] text-[#0a1f3d] hover:bg-slate-50"
+                          }`}
+                      >
+                        <span className="font-['Instrument_Sans:SemiBold',sans-serif] font-semibold leading-[20.482px] text-[12.801px]">
+                          Yes
+                        </span>
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => setCanAttend("Not sure yet")}
+                        className={`border-[0.683px] border-solid flex h-[39.257px] items-center justify-center rounded-[8.534px] cursor-pointer transition-all ${canAttend === "Not sure yet"
+                          ? "bg-[#e3f4f0] border-[#0d9488] text-[#0b7a66] font-semibold ring-1 ring-[#0d9488]"
+                          : "bg-[#fafcfb] border-[#d3dedc] text-[#0a1f3d] hover:bg-slate-50"
+                          }`}
+                      >
+                        <span className="font-['Instrument_Sans:SemiBold',sans-serif] font-semibold leading-[20.482px] text-[12.801px]">
+                          Not sure yet
+                        </span>
+                      </button>
+                    </div>
+                  </div>
+
+                  {/* Submit button matching desktop Button */}
+                  <div className="pt-[5.29px] w-full">
+                    <button
+                      type="submit"
+                      disabled={isSubmitting}
+                      className="w-full border-[0.683px] border-[rgba(0,0,0,0)] border-solid flex h-[47.791px] items-center justify-center px-[20.482px] rounded-[10.241px] cursor-pointer hover:opacity-95 active:scale-[0.99] transition-all disabled:opacity-60 shadow-sm"
+                      style={{ backgroundImage: "linear-gradient(171.6167513454805deg, rgb(13, 148, 136) 0%, rgb(45, 212, 191) 100%)" }}
+                    >
+                      <p className="font-['Instrument_Sans:SemiBold',sans-serif] font-semibold leading-[27.2px] text-[17px] text-center text-white whitespace-nowrap">
+                        {isSubmitting ? "Submitting..." : "Submit"}
+                      </p>
+                    </button>
+                  </div>
+
+                  {/* Disclaimer */}
+                  <div className="flex flex-col items-center pt-[10.241px] w-full">
+                    <p className="font-['Instrument_Sans:Regular',sans-serif] font-normal leading-[17.751px] text-[#4e6178] text-[11.094px] text-center">
+                      {`We'll contact you by call or WhatsApp about admissions.`}
                     </p>
-                  </button>
-                </div>
-
-                {/* Disclaimer */}
-                <div className="flex flex-col items-center pt-[10.241px] w-full">
-                  <p className="font-['Instrument_Sans:Regular',sans-serif] font-normal leading-[17.751px] text-[#4e6178] text-[11.094px] text-center">
-                    {`We'll contact you by call or WhatsApp about admissions.`}
-                  </p>
-                </div>
-              </form>
+                  </div>
+                </form>
+              )}
             </div>
           </div>
         </div>
@@ -4409,7 +4547,23 @@ export default function ApplyNow() {
   const [city, setCity] = useState("");
   const [qualification, setQualification] = useState("");
   const [canAttend, setCanAttend] = useState<"Yes" | "Not sure yet">("Yes");
+  const [honeypot, setHoneypot] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [isSubmitted, setIsSubmitted] = useState(false);
+  const [submittedInfo, setSubmittedInfo] = useState<{ name: string; phone: string } | null>(null);
+
+  useLayoutEffect(() => {
+    try {
+      const saved = sessionStorage.getItem("imed_apply_submitted");
+      if (saved) {
+        const parsed = JSON.parse(saved);
+        if (Date.now() - (parsed.timestamp || 0) < 30 * 60 * 1000) {
+          setIsSubmitted(true);
+          setSubmittedInfo({ name: parsed.name, phone: parsed.phone });
+        }
+      }
+    } catch {}
+  }, []);
 
   useLayoutEffect(() => {
     const updateScale = () => {
@@ -4456,8 +4610,12 @@ export default function ApplyNow() {
       toast.error("Please enter a valid full name (at least 2 characters).");
       return;
     }
+    if (/[\u{1F300}-\u{1F9FF}\u{2600}-\u{26FF}\u{2700}-\u{27BF}\u{1F1E6}-\u{1F1FF}\u{1F600}-\u{1F64F}\u{1F680}-\u{1F6FF}\u{1FA70}-\u{1FAFF}\p{Extended_Pictographic}]/u.test(trimmedName)) {
+      toast.error("Emojis are not allowed in the full name.");
+      return;
+    }
     if (!/^[a-zA-Z\s.'-]+$/.test(trimmedName)) {
-      toast.error("Please enter a valid full name using letters only.");
+      toast.error("Please enter a valid full name using letters only (no emojis or numbers).");
       return;
     }
 
@@ -4481,7 +4639,15 @@ export default function ApplyNow() {
       return;
     }
     if (trimmedCity.length < 2) {
-      toast.error("Please enter a valid city name.");
+      toast.error("Please enter a valid city name (at least 2 characters).");
+      return;
+    }
+    if (/[\u{1F300}-\u{1F9FF}\u{2600}-\u{26FF}\u{2700}-\u{27BF}\u{1F1E6}-\u{1F1FF}\u{1F600}-\u{1F64F}\u{1F680}-\u{1F6FF}\u{1FA70}-\u{1FAFF}\p{Extended_Pictographic}]/u.test(trimmedCity)) {
+      toast.error("Emojis are not allowed in the city name.");
+      return;
+    }
+    if (!/^[a-zA-Z\s.-]+$/.test(trimmedCity)) {
+      toast.error("Please enter a valid city name using letters only (no emojis or numbers).");
       return;
     }
 
@@ -4516,9 +4682,16 @@ export default function ApplyNow() {
           city: trimmedCity,
           qualification: qualification,
           canAttend: canAttend,
+          website_url: honeypot,
           message: `City: ${trimmedCity || "Not provided"}, Qualification: ${qualification || "Not provided"}, Can attend 6-month Kochi classes: ${canAttend}`,
         }),
       });
+
+      if (res.status === 429) {
+        const errorData = await res.json().catch(() => ({}));
+        toast.error(errorData.message || "Too many applications received from your network. Please contact our admissions team on WhatsApp.");
+        return;
+      }
 
       if (!res.ok) {
         throw new Error("Failed to submit");
@@ -4530,11 +4703,18 @@ export default function ApplyNow() {
       });
 
       toast.success("Thank you! Your enquiry has been received. Our counsellor will contact you shortly.");
+      const submittedData = { name: trimmedName, phone: cleanPhone };
+      setSubmittedInfo(submittedData);
+      setIsSubmitted(true);
+      try {
+        sessionStorage.setItem("imed_apply_submitted", JSON.stringify({ ...submittedData, timestamp: Date.now() }));
+      } catch {}
       setFullName("");
       setPhone("");
       setCity("");
       setQualification("");
       setCanAttend("Yes");
+      setHoneypot("");
     } catch {
       toast.error("Failed to submit enquiry. Please try again or reach out on WhatsApp.");
     } finally {
@@ -4542,18 +4722,45 @@ export default function ApplyNow() {
     }
   };
 
+  const handleResetForm = () => {
+    setIsSubmitted(false);
+    setSubmittedInfo(null);
+    setFullName("");
+    setPhone("");
+    setCity("");
+    setQualification("");
+    setCanAttend("Yes");
+    setHoneypot("");
+    try {
+      sessionStorage.removeItem("imed_apply_submitted");
+    } catch {}
+  };
+
+  const handleFullNameChange = (val: string) => {
+    setFullName(val.replace(/[^a-zA-Z\s.'-]/g, "").replace(/^\s+/, ""));
+  };
+
+  const handleCityChange = (val: string) => {
+    setCity(val.replace(/[^a-zA-Z\s.-]/g, "").replace(/^\s+/, ""));
+  };
+
   const contextValue: ApplyFormContextType = {
     fullName,
-    setFullName,
+    setFullName: handleFullNameChange,
     phone,
     setPhone,
     city,
-    setCity,
+    setCity: handleCityChange,
     qualification,
     setQualification,
     canAttend,
     setCanAttend,
+    honeypot,
+    setHoneypot,
     isSubmitting,
+    isSubmitted,
+    submittedInfo,
+    handleResetForm,
     handleSubmit,
     scrollToForm,
   };

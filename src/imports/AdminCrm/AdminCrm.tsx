@@ -19,6 +19,7 @@ import {
   ChevronDown,
   ChevronUp,
   ClipboardList,
+  Copy,
   CreditCard,
   Download,
   Eye,
@@ -96,7 +97,6 @@ const alumniPlacementStatuses = ["Not Placed", "Interview Scheduled", "Placed", 
 const referralStatuses = ["New", "Contacted", "Converted", "Lost"];
 const fallbackCentres = ["Delhi", "Kochi", "Bangalore"];
 const fallbackCourses = ["HA", "EMT", "GDA", "OCHA", "AHAP"];
-const kochiCourseOptions = ["AHAP", "GCA"];
 const leadPriorityOptions = ["P0", "P1", "P2", "P3"];
 const leadPriorityLabels: Record<string, string> = { P0: "P0 - Hot", P1: "P1 - High", P2: "P2 - Warm", P3: "P3 - Cold" };
 const defaultPageSize = 25;
@@ -123,7 +123,7 @@ type GoogleCalendarStatus = { configured: boolean; connected: boolean; email?: s
 type DocumentFile = { originalName?: string; storedName?: string; mimeType?: string; size?: number; uploadedAt?: string };
 type LeadFollowUp = { type?: string; status?: string; scheduledAt?: string; note?: string; by?: string; createdAt?: string };
 type LeadActivity = { type: string; message: string; by?: string; at?: string };
-type Lead = { _id: string; fullName: string; phone: string; parentMobile?: string; email?: string; governmentProof?: DocumentFile; highestQualificationCertificate?: DocumentFile; source?: string; centre?: string; franchiseId?: string; course?: string; counsellor?: string; stage: string; priority?: string; leadFeedback?: string; city?: string; studentLocation?: string; expectedFee?: number; nextFollowUp?: string; followUps?: LeadFollowUp[]; notes?: string; activities?: LeadActivity[]; assignedAt?: string; assignedBy?: string; createdAt?: string; updatedAt?: string };
+type Lead = { _id: string; fullName: string; phone: string; parentMobile?: string; email?: string; governmentProof?: DocumentFile; highestQualificationCertificate?: DocumentFile; source?: string; centre?: string; franchiseId?: string; course?: string; counsellor?: string; stage: string; priority?: string; leadFeedback?: string; city?: string; studentLocation?: string; expectedFee?: number; nextFollowUp?: string; followUps?: LeadFollowUp[]; notes?: string; activities?: LeadActivity[]; ipAddress?: string; userAgent?: string; isSuspectedConsultancy?: boolean; consultancyFlagReason?: string; assignedAt?: string; assignedBy?: string; createdAt?: string; updatedAt?: string };
 type CashDeposit = { amount?: number; bank?: string; referenceNumber?: string; note?: string; proof?: DocumentFile; depositedBy?: string; by?: string; depositedAt?: string; createdAt?: string };
 type PaymentRecord = { amount?: number; mode?: string; paymentPurpose?: string; transactionId?: string; emiReference?: string; loanProviderName?: string; note?: string; proof?: DocumentFile; cashDeposits?: CashDeposit[]; by?: string; paidAt?: string };
 type StudentFeedback = { type?: string; status?: string; note?: string; nextFollowUpDate?: string; by?: string; at?: string };
@@ -362,6 +362,17 @@ function formatDate(value?: string) {
   return new Intl.DateTimeFormat("en-IN", { day: "2-digit", month: "short", year: "numeric" }).format(new Date(value));
 }
 
+function formatLongDate(value?: string | Date) {
+  if (!value) return "-";
+  try {
+    const d = new Date(value);
+    if (isNaN(d.getTime())) return "-";
+    return new Intl.DateTimeFormat("en-IN", { day: "numeric", month: "long", year: "numeric" }).format(d);
+  } catch {
+    return "-";
+  }
+}
+
 function formatDateTime(value?: string) {
   if (!value) return "-";
   return new Intl.DateTimeFormat("en-IN", { day: "2-digit", month: "short", year: "numeric", hour: "2-digit", minute: "2-digit" }).format(new Date(value));
@@ -461,7 +472,7 @@ function whatsappLeadUrl(phone = "", name = "", message?: string) {
   const digits = phone.replace(/\D/g, "").replace(/^0+/, "");
   const waNumber = digits.length === 10 ? `91${digits}` : digits;
   const text = encodeURIComponent(message || `Hi ${name || "there"}, this is IMED Healthcare Academy.`);
-  return waNumber ? `https://wa.me/${waNumber}?text=${text}` : "";
+  return waNumber ? `https://api.whatsapp.com/send/?phone=${waNumber}&text=${text}` : "";
 }
 
 function openLeadPamphlet(lead: Lead, pamphlet: LeadPamphletKey) {
@@ -496,7 +507,7 @@ function courseShortCode(course = "") {
 function certificateCourseName(course = "") {
   const normalized = course.trim().toUpperCase();
   const courseNames: Record<string, string> = {
-    GDA: "General Duty Assistance (GDA)",
+    GDA: "General Duty Assistant (GDA)",
     EMT: "Emergency Medical Technician (EMT)",
     HA: "Hospital Administration (HA)",
     OCHA: "Online Certificate in Hospital Administration (OCHA)",
@@ -529,7 +540,7 @@ function uniqueOptions(options: string[]) {
 }
 
 function courseOptionsForCentre(centre = "", options: string[] = fallbackCourses, isSuperAdmin = false) {
-  return !isSuperAdmin && isKochiCentre(centre) ? kochiCourseOptions : uniqueOptions(options);
+  return uniqueOptions(options);
 }
 
 function feeWithGst(baseFee = 0) {
@@ -697,25 +708,36 @@ function studentEmiBreakdown(student: Student) {
   };
 }
 
+function emiReminderMessage(student: Student): string {
+  const breakdown = studentEmiBreakdown(student);
+  const courseName = certificateCourseName(student.course);
+  const dueDate = student.nextEmiDate ? formatLongDate(student.nextEmiDate) : "-";
+  return [
+    `Hi ${student.fullName},`,
+    "",
+    "This is a friendly EMI reminder from *iMED Healthcare Academy*.",
+    "",
+    `📚 *Course:* ${courseName}`,
+    `💳 *Monthly EMI:* ${formatCurrency(breakdown.baseEmi)}`,
+    ...(breakdown.shortfall > 0 ? [`⚠️ *Previous Shortfall (Arrears):* ${formatCurrency(breakdown.shortfall)}`] : []),
+    `💰 *Amount Due:* ${formatCurrency(breakdown.currentDue)}`,
+    `📅 *Due Date:* ${dueDate}`,
+    `📌 *Total Pending Course Fee:* ${formatCurrency(breakdown.totalDue)}`,
+    "",
+    "Kindly clear the EMI on or before the due date to ensure uninterrupted access to your training and course services.",
+    "",
+    "If you have already made the payment, please ignore this message.",
+    "",
+    "Regards,",
+    "*iMED Healthcare Academy*",
+  ].join("\n");
+}
+
 function emiReminderWhatsAppUrl(student: Student) {
   const phone = studentWhatsAppNumber(student.phone);
-  const breakdown = studentEmiBreakdown(student);
-  const message = [
-    `Hi ${student.fullName}, this is an EMI reminder from iMED Healthcare Academy.`,
-    "",
-    `Course: ${certificateCourseName(student.course)}`,
-    `Scheduled Monthly EMI: ${formatCurrency(breakdown.baseEmi)}`,
-    breakdown.shortfall > 0 ? `Previous Shortfall (Arrears): ${formatCurrency(breakdown.shortfall)}` : "",
-    `Total Amount Due This Cycle: ${formatCurrency(breakdown.currentDue)}`,
-    student.nextEmiDate ? `Due Date: ${formatDate(student.nextEmiDate)}` : "",
-    `Total Pending Course Due: ${formatCurrency(breakdown.totalDue)}`,
-    "",
-    "Kindly clear your installment on time to keep your training access active.",
-    "Regards,",
-    "iMED Academy",
-  ].filter(Boolean).join("\n");
+  const message = emiReminderMessage(student);
   const encoded = encodeURIComponent(message);
-  return phone ? `https://wa.me/${phone}?text=${encoded}` : `https://wa.me/?text=${encoded}`;
+  return phone ? `https://api.whatsapp.com/send/?phone=${phone}&text=${encoded}` : `https://api.whatsapp.com/send/?text=${encoded}`;
 }
 
 function paymentReferenceLabel(mode = "Cash") {
@@ -1021,6 +1043,7 @@ export default function AdminCrm() {
   const [stockInModalOpen, setStockInModalOpen] = useState(false);
   const [issueKitModalOpen, setIssueKitModalOpen] = useState(false);
   const [issueKitTargetStudent, setIssueKitTargetStudent] = useState<Student | null>(null);
+  const [issueKitTargetTablet, setIssueKitTargetTablet] = useState<TabletAsset | null>(null);
   const [tabletSearchQuery, setTabletSearchQuery] = useState("");
   const [selectedClassSessionId, setSelectedClassSessionId] = useState("");
   const [classWeek, setClassWeek] = useState(dateInputValue(new Date()));
@@ -1607,6 +1630,7 @@ export default function AdminCrm() {
       toast.success(res.message || "Kit issued to candidate");
       setIssueKitModalOpen(false);
       setIssueKitTargetStudent(null);
+      setIssueKitTargetTablet(null);
       await Promise.all([refreshInventory(), loadStudents(studentPage)]);
       if (profile?.type === "student" && res.data && profile.data._id === res.data._id) {
         setProfile({ type: "student", data: res.data });
@@ -1887,7 +1911,8 @@ export default function AdminCrm() {
       }
     }
     const course = String(formData.get("course") || "");
-    const courseFee = courses.find((item) => [item.code, item.name].includes(course))?.fee || 25000;
+    const courseObj = courses.find((item) => [item.code, item.name].map(s => String(s || "").toLowerCase()).includes(course.toLowerCase()));
+    const courseFee = courseObj?.fee || 0;
     formData.set("expectedFee", String(feeWithGst(courseFee)));
     formData.set("stage", "New Lead");
     formData.set("priority", "P2");
@@ -2050,7 +2075,9 @@ export default function AdminCrm() {
 
   const convertLead = async (lead: Lead, batch = "") => {
     try {
-      await api<Student>(`/api/admin/leads/${lead._id}/convert`, { method: "POST", headers: authedHeaders, body: JSON.stringify({ totalFee: lead.expectedFee || feeWithGst(25000), batch }) });
+      const courseObj = courses.find((item) => [item.code, item.name].map(s => String(s || "").toLowerCase()).includes(String(lead.course || "").toLowerCase()));
+      const dynamicCourseFee = courseObj ? feeWithGst(courseObj.fee || 0) : 0;
+      await api<Student>(`/api/admin/leads/${lead._id}/convert`, { method: "POST", headers: authedHeaders, body: JSON.stringify({ totalFee: lead.expectedFee || dynamicCourseFee, batch }) });
       toast.success("Lead enrolled and assigned to batch");
       setPanel("allstudents");
       await refreshAll();
@@ -3135,7 +3162,7 @@ export default function AdminCrm() {
           <section className="content">
             {panel === "dashboard" && (isCounsellorAccount ? <SalesCounsellorDashboardPanel leads={leads} students={visibleStudents} onOpenLead={openLeadDrawer} onGoLeads={() => setPanel("leads")} onGoAddLead={() => setPanel("addlead")} onGoAdmissions={() => setPanel("admissions")} onOpenStudent={(student) => openProfile({ type: "student", data: student }, "dashboard")} /> : isTeacherAccount ? <TeacherDashboardPanel batches={batches} students={visibleStudents} sessions={classSessions} schedules={classSchedulesState} topicProgress={topicProgress} practicalRecords={practicalRecords} user={user} googleCalendarStatus={googleCalendarStatus} calendarSyncing={calendarSyncing} onConnectCalendar={connectGoogleCalendar} onDisconnectCalendar={disconnectGoogleCalendar} onSyncCalendar={syncGoogleCalendar} onOpenStudent={(student) => openProfile({ type: "student", data: student }, "dashboard")} onOpenBatch={(batchId, sessionId) => { setSelectedBatchId(batchId); setSelectedClassSessionId(sessionId || ""); setPanel("batch"); }} /> : isOperationsAccount ? <OperationsDashboardPanel students={students} batches={batches} onOpenStudent={(student) => openProfile({ type: "student", data: student }, "dashboard")} onGoStudents={() => setPanel("allstudents")} onGoFinance={() => setPanel("finance")} onGoEmi={() => setPanel("emi")} onGoCert={() => setPanel("cert")} onGoInternship={() => setPanel("internship")} onGoInventory={() => setPanel("inventory")} inventorySummary={inventorySummary} /> : <DashboardPanel summary={summary} funnel={funnel} centreStats={centreStats} students={students} leads={leads} onOpenLead={openLeadDrawer} />)}
             {panel === "leads" && <LeadsPanel leads={leads} students={students} batches={batches} meta={leadMeta} filters={filters} setFilters={setFilters} centres={centreOptions} courses={courseOptions} canAssign={canAssignCounsellors} canDelete={canDeleteRecords} counsellors={counsellors} onSearch={() => loadLeads(1)} onPage={setLeadPage} onPatch={patchLead} onDelete={deleteLead} onEdit={(lead) => openProfile({ type: "lead", data: lead, mode: "edit" }, "leads")} onAddLead={() => setPanel("addlead")} onImportExcel={importLeadExcel} onOpen={openLeadDrawer} onBulkAssignCentre={bulkAssignLeadCentre} onBulkDelete={bulkDeleteLeads} />}
-            {panel === "addlead" && <AddLeadPanel centres={centreOptions} courses={courseOptions} onSubmit={addLead} isSuperAdmin={isHeadSuperAdmin} />}
+            {panel === "addlead" && <AddLeadPanel centres={centreOptions} courses={courseOptions} allCourses={courses} onSubmit={addLead} isSuperAdmin={isHeadSuperAdmin} />}
             {panel === "admissions" && <AdmissionsPanel leads={leads.filter((lead) => lead.stage === "Admission" && !students.some((student) => String(student.leadId || "") === String(lead._id)))} batches={batches} canAssign={canAssignCounsellors} counsellors={counsellors} centres={centreOptions} onPatch={patchLead} onConvert={convertLead} onOpen={openLeadDrawer} />}
             {panel === "batch" && <BatchPanel batches={batches} students={students} schedules={classSchedulesState} sessions={classSessions} topicProgress={topicProgress} practicalRecords={practicalRecords} studyNotes={studyNotes} npsDashboard={npsDashboard} teachers={teachers} user={user} classWeek={classWeek} setClassWeek={setClassWeek} selectedBatchId={selectedBatchId} setSelectedBatchId={setSelectedBatchId} selectedSessionId={selectedClassSessionId} setSelectedSessionId={setSelectedClassSessionId} initialTab={batchResumeTab} classesGenerating={classesGenerating} attendanceDraft={classAttendanceDraft} setAttendanceDraft={setClassAttendanceDraft} attendanceLogs={attendanceSummaries} selectedAttendanceSummary={selectedAttendanceSummary} attendanceDetailLogs={attendanceDetailLogs} attendanceDetailFilters={attendanceDetailFilters} setAttendanceDetailFilters={setAttendanceDetailFilters} onSelectAttendanceSummary={setSelectedAttendanceSummary} onCreateSchedule={createClassSchedule} onGenerateWeek={generateWeeklyRoster} onSaveAttendance={saveClassAttendance} onResetAttendance={resetClassAttendance} onEditSession={patchClassSession} onTopicProgress={updateTopicProgress} onDeleteTopic={deleteTopicProgress} onCreateBatchPractical={createBatchPractical} onPracticalRecord={updatePracticalRecord} onUploadStudyNote={uploadStudyNote} onDownloadStudyNote={downloadStudyNote} onDeleteStudyNote={deleteStudyNote} onOpen={(student) => { setBatchResumeTab("students"); openProfile({ type: "student", data: student }, "batch"); }} />}
             {panel === "mystudents" && <StudentsPanel title="My candidates" students={visibleStudents} meta={studentMeta} batches={batches} canAssign={canAssignTeachers} canDelete={canDeleteRecords} teachers={teachers} onPage={setStudentPage} onPatch={patchStudent} onDelete={deleteStudent} onEdit={(student) => openProfile({ type: "student", data: student, mode: "edit" }, "mystudents")} onOpen={(student) => openProfile({ type: "student", data: student }, "mystudents")} />}
@@ -3163,15 +3190,16 @@ export default function AdminCrm() {
                 tabletSearch={tabletSearchQuery}
                 setTabletSearch={setTabletSearchQuery}
                 onStockInClick={() => setStockInModalOpen(true)}
-                onIssueKitClick={(student) => {
+                onIssueKitClick={(student, tablet) => {
                   setIssueKitTargetStudent(student || null);
+                  setIssueKitTargetTablet(tablet || null);
                   setIssueKitModalOpen(true);
                 }}
                 onReturnTablet={handleReturnTablet}
                 onOpenStudent={(student) => openProfile({ type: "student", data: student }, "inventory")}
               />
             )}
-            {panel === "profile" && <ProfilePanel profile={profile} user={user} accessCount={visibleNavGroups.reduce((sum, group) => sum + group.items.length, 0)} canManageFees={canManageFees} canManageSettings={canManageSettings} canAssignTeachers={canAssignTeachers} canManageCertificates={canManageCertificates} canManageInternships={canManageInternships} canManageInventory={canManageInventory} onIssueKit={(st) => { setIssueKitTargetStudent(st); setIssueKitModalOpen(true); }} centres={centreOptions} courses={courseOptions} batches={batches} teachers={teachers} onBack={closeProfile} onGoSettings={() => setPanel("settings")} onLeadPatch={patchLead} onStudentPatch={patchStudent} onGenerateStudentLmsAccess={generateStudentLmsAccess} onInternshipSave={saveStudentInternship} onInternshipDelete={deleteStudentInternship} onPayment={addPayment} onDownloadPaymentProof={downloadPaymentProof} onFeedback={addStudentFeedback} onIssue={issueCertificate} onPreviewDocument={openDocumentPreview} onPreviewInternshipPhoto={openInternshipPhotoPreview} />}
+            {panel === "profile" && <ProfilePanel profile={profile} user={user} accessCount={visibleNavGroups.reduce((sum, group) => sum + group.items.length, 0)} canManageFees={canManageFees} canManageSettings={canManageSettings} canAssignTeachers={canAssignTeachers} canManageCertificates={canManageCertificates} canManageInternships={canManageInternships} canManageInventory={canManageInventory} onIssueKit={(st) => { setIssueKitTargetStudent(st); setIssueKitTargetTablet(null); setIssueKitModalOpen(true); }} centres={centreOptions} courses={courseOptions} allCourses={courses} batches={batches} teachers={teachers} onBack={closeProfile} onGoSettings={() => setPanel("settings")} onLeadPatch={patchLead} onStudentPatch={patchStudent} onGenerateStudentLmsAccess={generateStudentLmsAccess} onInternshipSave={saveStudentInternship} onInternshipDelete={deleteStudentInternship} onPayment={addPayment} onDownloadPaymentProof={downloadPaymentProof} onFeedback={addStudentFeedback} onIssue={issueCertificate} onPreviewDocument={openDocumentPreview} onPreviewInternshipPhoto={openInternshipPhotoPreview} />}
           </section>
         </div>
       </div>
@@ -3181,6 +3209,7 @@ export default function AdminCrm() {
         setTab={setLeadDrawerTab}
         canAssign={canAssignCounsellors}
         centres={centreOptions}
+        courses={courses}
         counsellors={counsellors}
         onClose={closeLeadDrawer}
         onPatch={patchLead}
@@ -3219,11 +3248,13 @@ export default function AdminCrm() {
         open={issueKitModalOpen}
         students={students}
         targetStudent={issueKitTargetStudent}
+        targetTablet={issueKitTargetTablet}
         tablets={tablets}
         summary={inventorySummary}
         onClose={() => {
           setIssueKitModalOpen(false);
           setIssueKitTargetStudent(null);
+          setIssueKitTargetTablet(null);
         }}
         onSubmit={handleIssueKit}
       />
@@ -4316,7 +4347,7 @@ function LeadTable({
                   onChange={() => onToggleSelect && onToggleSelect(lead._id)}
                 />
               </td>
-              <td><div className="lead-name-cell"><span className="avatar lead-avatar">{initials(lead.fullName)}</span><div><div className="cell-name">{lead.fullName}</div><div className="cell-sub">{lead._id.slice(-8).toUpperCase()}</div></div></div></td>
+              <td><div className="lead-name-cell"><span className="avatar lead-avatar">{initials(lead.fullName)}</span><div><div className="cell-name">{lead.fullName}{lead.isSuspectedConsultancy && <span title={lead.consultancyFlagReason || "Suspected Consultancy / Bulk Upload from same IP"} style={{ background: "#fee2e2", color: "#dc2626", border: "1px solid #f87171", fontSize: "10px", fontWeight: "bold", padding: "1px 5px", borderRadius: "4px", marginLeft: "6px", display: "inline-block", verticalAlign: "middle" }}>⚠️ Suspected Consultancy</span>}</div><div className="cell-sub">{lead._id.slice(-8).toUpperCase()}</div></div></div></td>
               <td>{lead.phone}<div className="cell-sub">{lead.studentLocation || lead.city || lead.email || "-"}</div></td>
               <td>{courseShortCode(lead.course)}</td>
               <td><span className="badge badge-gray">{lead.source || "-"}</span></td>
@@ -4343,10 +4374,12 @@ function LeadTable({
   );
 }
 
-function AddLeadPanel({ centres, courses, onSubmit, isSuperAdmin = false }: { centres: string[]; courses: string[]; onSubmit: (event: FormEvent<HTMLFormElement>) => void; isSuperAdmin?: boolean }) {
+function AddLeadPanel({ centres, courses, allCourses = [], onSubmit, isSuperAdmin = false }: { centres: string[]; courses: string[]; allCourses?: Course[]; onSubmit: (event: FormEvent<HTMLFormElement>) => void; isSuperAdmin?: boolean }) {
   const [centreDraft, setCentreDraft] = useState("");
   const [courseDraft, setCourseDraft] = useState("");
   const availableCourses = courseOptionsForCentre(centreDraft, courses, isSuperAdmin);
+  const selectedCourseObj = allCourses.find((c) => [c.code, c.name].map((s) => String(s || "").toLowerCase()).includes(courseDraft.toLowerCase()));
+  const selectedCoursePayable = selectedCourseObj ? feeWithGst(selectedCourseObj.fee || 0) : 0;
   return (
     <div className="card">
       <div className="card-head"><div><h3>Add new lead</h3><div className="sub">Create a prospective student record</div></div></div>
@@ -4359,7 +4392,18 @@ function AddLeadPanel({ centres, courses, onSubmit, isSuperAdmin = false }: { ce
         <div className="field"><RequiredLabel required>Source</RequiredLabel><select name="source" required defaultValue=""><option value="" disabled>Select source</option>{sources.map((source) => <option key={source}>{source}</option>)}</select></div>
         <SelectField name="leadFeedback" label="Status" options={leadFeedbackOptions} defaultValue="New" />
         <div className="field"><RequiredLabel required>Centre / franchise</RequiredLabel><select name="centre" required value={centreDraft} onChange={(event) => { setCentreDraft(event.target.value); setCourseDraft(""); }}><option value="" disabled>Select centre</option>{centres.map((centre) => <option key={centre}>{centre}</option>)}</select></div>
-        <div className="field"><RequiredLabel>Course</RequiredLabel><select name="course" value={courseDraft} onChange={(event) => setCourseDraft(event.target.value)}><option value="">Select course</option>{availableCourses.map((course) => <option key={course}>{course}</option>)}</select></div>
+        <div className="field">
+          <RequiredLabel>Course</RequiredLabel>
+          <select name="course" value={courseDraft} onChange={(event) => setCourseDraft(event.target.value)}>
+            <option value="">Select course</option>
+            {availableCourses.map((course) => <option key={course}>{course}</option>)}
+          </select>
+          {selectedCoursePayable > 0 && (
+            <span className="field-help" style={{ color: "var(--primary, #4F6BFF)", fontWeight: 600 }}>
+              Course fee: {formatCurrency(selectedCoursePayable)} ({formatCurrency(selectedCourseObj?.fee || 0)} base + 18% GST)
+            </span>
+          )}
+        </div>
         <Field name="city" label="City" />
         <div className="field"><RequiredLabel>Any government proof</RequiredLabel><input name="governmentProof" type="file" accept={leadDocumentAccept} /><span className="field-help">{leadDocumentHelpText}</span></div>
         <div className="field"><RequiredLabel>Highest educational qualification</RequiredLabel><input name="highestQualificationCertificate" type="file" accept={leadDocumentAccept} /><span className="field-help">{leadDocumentHelpText}</span></div>
@@ -5662,11 +5706,21 @@ function EmiPanel({ students, meta, onPage, onOpen }: { students: Student[]; met
                     {overdue ? <span className="tag red">Overdue</span> : breakdown.shortfall > 0 ? <span className="tag amber">Shortfall carried</span> : <span className="tag blue">Upcoming</span>}
                   </td>
                   <td onClick={(event) => event.stopPropagation()}>
-                    <button className="btn btn-sm btn-green" onClick={() => {
-                      const url = emiReminderWhatsAppUrl(student);
-                      if (url) window.open(url, "_blank", "noopener,noreferrer");
-                      else toast.error("Student phone number missing");
-                    }}><MessageCircle size={14} /> WhatsApp reminder</button>
+                    <div style={{ display: "inline-flex", gap: "6px", alignItems: "center" }}>
+                      <button className="btn btn-sm btn-green" onClick={() => {
+                        const url = emiReminderWhatsAppUrl(student);
+                        if (url) window.open(url, "_blank", "noopener,noreferrer");
+                        else toast.error("Student phone number missing");
+                      }}><MessageCircle size={14} /> WhatsApp reminder</button>
+                      <button className="btn btn-sm btn-ghost" title="Copy reminder text" onClick={async () => {
+                        try {
+                          await navigator.clipboard.writeText(emiReminderMessage(student));
+                          toast.success("EMI reminder copied with emojis!");
+                        } catch {
+                          toast.error("Failed to copy reminder");
+                        }
+                      }}><Copy size={14} /></button>
+                    </div>
                   </td>
                 </tr>
               ))}
@@ -5745,7 +5799,7 @@ function InventoryPanel({
   tabletSearch: string;
   setTabletSearch: (q: string) => void;
   onStockInClick: () => void;
-  onIssueKitClick: (student?: Student | null) => void;
+  onIssueKitClick: (student?: Student | null, tablet?: TabletAsset | null) => void;
   onReturnTablet: (tablet: TabletAsset) => void;
   onOpenStudent: (student: Student) => void;
 }) {
@@ -6186,7 +6240,7 @@ function InventoryPanel({
                       ) : t.status === "In Stock" ? (
                         <button
                           className="btn btn-sm btn-soft"
-                          onClick={() => onIssueKitClick(null)}
+                          onClick={() => onIssueKitClick(null, t)}
                         >
                           Assign
                         </button>
@@ -6638,6 +6692,7 @@ function IssueKitModal({
   open,
   students,
   targetStudent,
+  targetTablet,
   tablets,
   summary,
   onClose,
@@ -6646,6 +6701,7 @@ function IssueKitModal({
   open: boolean;
   students: Student[];
   targetStudent: Student | null;
+  targetTablet?: TabletAsset | null;
   tablets: TabletAsset[];
   summary: InventorySummary | null;
   onClose: () => void;
@@ -6692,10 +6748,19 @@ function IssueKitModal({
       setSelectedStudentId(students[0]._id);
       setIdCardNumber(students[0].admissionNumber || "");
     }
-    if (availableTablets.length && !selectedTabletId) {
-      setSelectedTabletId(availableTablets[0]._id);
+
+    if (targetTablet && targetTablet.status === "In Stock") {
+      setSelectedTabletId(targetTablet._id);
+      setIssueTablet(true);
+    } else if (availableTablets.length) {
+      const isValid = availableTablets.some((t) => t._id === selectedTabletId);
+      if (!isValid) {
+        setSelectedTabletId(availableTablets[0]._id);
+      }
+    } else {
+      setSelectedTabletId("");
     }
-  }, [targetStudent, students.length]);
+  }, [targetStudent, targetTablet, students.length, availableTablets.length]);
 
   if (!open) return null;
 
@@ -6740,7 +6805,11 @@ function IssueKitModal({
     if (!issueIdCard && !issueTshirt && !issueBag && !issueTablet) {
       return toast.error("Select at least one item to issue");
     }
-    if (issueTablet && !selectedTabletId) {
+    const finalTabletId = availableTablets.some((t) => t._id === selectedTabletId)
+      ? selectedTabletId
+      : (availableTablets[0]?._id || selectedTabletId);
+
+    if (issueTablet && !finalTabletId) {
       return toast.error("Select an available tablet to assign");
     }
     if (issueTshirt) {
@@ -6770,7 +6839,7 @@ function IssueKitModal({
       tshirts: tshirtSelections,
       issueBag,
       issueTablet,
-      tabletId: selectedTabletId,
+      tabletId: finalTabletId,
       notes,
     });
     setSubmitting(false);
@@ -7017,7 +7086,7 @@ function IssueKitModal({
                       <select
                         className="fbtn inventory-item-input"
                         style={{ width: "100%", height: 32, fontSize: 11.5 }}
-                        value={selectedTabletId}
+                        value={availableTablets.some((tb) => tb._id === selectedTabletId) ? selectedTabletId : (availableTablets[0]?._id || "")}
                         onChange={(e) => setSelectedTabletId(e.target.value)}
                         required
                       >
@@ -7425,6 +7494,7 @@ function LeadDrawer({
   setTab,
   canAssign = false,
   centres = [],
+  courses = [],
   counsellors = [],
   onClose,
   onPatch,
@@ -7439,6 +7509,7 @@ function LeadDrawer({
   setTab: (tab: "info" | "follow" | "docs" | "act") => void;
   canAssign?: boolean;
   centres?: string[];
+  courses?: Course[];
   counsellors?: Counsellor[];
   onClose: () => void;
   onPatch: (id: string, updates: Partial<Lead>) => void;
@@ -7450,6 +7521,8 @@ function LeadDrawer({
 }) {
   const followUps = lead?.followUps || [];
   const activities = lead?.activities || [];
+  const leadCourseObj = courses.find((c) => [c.code, c.name].map((s) => String(s || "").toLowerCase()).includes(String(lead?.course || "").toLowerCase()));
+  const dynamicLeadFee = leadCourseObj ? feeWithGst(leadCourseObj.fee || 0) : 0;
   const [formStatus, setFormStatus] = useState("Scheduled");
   const [newNote, setNewNote] = useState("");
   const [addingNote, setAddingNote] = useState(false);
@@ -7539,10 +7612,28 @@ function LeadDrawer({
                     )}
                   </span>
                 </div>
+                {lead.isSuspectedConsultancy && (
+                  <div style={{ background: "#fef2f2", border: "1px solid #f87171", borderRadius: "8px", padding: "10px 12px", margin: "10px 0", color: "#991b1b" }}>
+                    <div style={{ fontWeight: "700", fontSize: "13px", display: "flex", alignItems: "center", gap: "6px" }}>
+                      <span>⚠️ Suspected Consultancy / Bulk Upload</span>
+                    </div>
+                    <div style={{ fontSize: "12px", marginTop: "4px", lineHeight: "1.4", color: "#7f1d1d" }}>
+                      {lead.consultancyFlagReason || "Multiple applications detected from the same IP address in a short time."}
+                    </div>
+                    {lead.ipAddress && (
+                      <div style={{ fontSize: "11px", marginTop: "6px", color: "#b91c1c", fontWeight: "600" }}>
+                        Submitter IP: {lead.ipAddress}
+                      </div>
+                    )}
+                  </div>
+                )}
                 <div className="kv-row"><span className="k">Status</span><span className="v"><span className={`badge ${leadFeedbackBadgeClass(lead.leadFeedback)}`}>{normalizeLeadFeedbackStatus(lead.leadFeedback)}</span></span></div>
                 <div className="kv-row"><span className="k">Student location</span><span className="v">{lead.studentLocation || "-"}</span></div>
                 <div className="kv-row"><span className="k">City</span><span className="v">{lead.city || "-"}</span></div>
-                <div className="kv-row"><span className="k">Expected fee</span><span className="v">{formatCurrency(lead.expectedFee || 0)}</span></div>
+                {lead.ipAddress && (
+                  <div className="kv-row"><span className="k">Submitter IP</span><span className="v" style={{ fontFamily: "monospace", fontSize: "12px" }}>{lead.ipAddress}</span></div>
+                )}
+                <div className="kv-row"><span className="k">Expected fee</span><span className="v">{formatCurrency(lead.expectedFee || dynamicLeadFee || 0)}{leadCourseObj && !lead.expectedFee ? <span className="cell-sub"> (Dynamic from course)</span> : ""}</span></div>
                 <div className="kv-row">
                   <span className="k">Next follow-up</span>
                   <span className="v">
@@ -7888,7 +7979,7 @@ function SettingsPanel({ isHeadSuperAdmin, isHeadBranchAdmin, isFranchiseSuperAd
           <form onSubmit={async (event) => { const saved = await onUpdateBatch(event, editingBatch._id); if (saved) setEditingBatch(null); }}>
             <div className="modal-body field-grid">
               <Field name="name" label="Batch name" defaultValue={editingBatch.name} required />
-              <div className="field"><label>Centre</label><select name="centre" value={editingBatchCentreDraft} onChange={(event) => { const centre = event.target.value; setEditingBatchCentreDraft(centre); if (!isHeadSuperAdmin && isKochiCentre(centre) && !kochiCourseOptions.includes(editingBatchCourseDraft)) setEditingBatchCourseDraft(kochiCourseOptions[0]); }}><option value="">Unassigned</option>{centreOptions.map((centre) => <option key={centre}>{centre}</option>)}</select></div>
+              <div className="field"><label>Centre</label><select name="centre" value={editingBatchCentreDraft} onChange={(event) => { const centre = event.target.value; setEditingBatchCentreDraft(centre); }}><option value="">Unassigned</option>{centreOptions.map((centre) => <option key={centre}>{centre}</option>)}</select></div>
               <div className="field"><label>Course</label><select name="course" value={editingBatchCourseDraft} onChange={(event) => setEditingBatchCourseDraft(event.target.value)}><option value="">Unassigned</option>{editingBatchCourseOptions.map((course) => <option key={course}>{course}</option>)}</select></div>
               <Field name="commenceDate" label="Commence date" type="date" defaultValue={dateInputValue(editingBatch.commenceDate)} required />
               <div className="field full"><RequiredLabel required>Assigned faculty</RequiredLabel><select name="assignedFaculty" multiple required size={Math.min(Math.max(teachers.length, 2), 5)} defaultValue={editingBatch.assignedFaculty || []}>{teachers.map((teacher) => <option key={teacher.email} value={teacher.name}>{teacher.name}</option>)}</select><span className="field-help">Hold Ctrl to select more than one teacher.</span></div>
@@ -7901,8 +7992,13 @@ function SettingsPanel({ isHeadSuperAdmin, isHeadBranchAdmin, isFranchiseSuperAd
   );
 }
 
-function ProfilePanel({ profile, user, accessCount, canManageFees, canManageSettings, canAssignTeachers, canManageCertificates, canManageInternships, canManageInventory, onIssueKit, centres, courses, batches, teachers, onBack, onGoSettings, onLeadPatch, onStudentPatch, onGenerateStudentLmsAccess, onInternshipSave, onInternshipDelete, onPayment, onDownloadPaymentProof, onFeedback, onIssue, onPreviewDocument, onPreviewInternshipPhoto }: { profile: ProfileTarget; user: AdminUser | null; accessCount: number; canManageFees: boolean; canManageSettings: boolean; canAssignTeachers: boolean; canManageCertificates: boolean; canManageInternships: boolean; canManageInventory?: boolean; onIssueKit?: (student: Student) => void; centres: string[]; courses: string[]; batches: Batch[]; teachers: Counsellor[]; onBack: () => void; onGoSettings: () => void; onLeadPatch: (id: string, updates: Partial<Lead>) => void; onStudentPatch: (id: string, updates: Partial<Student>) => void; onGenerateStudentLmsAccess: (student: Student) => void; onInternshipSave: (event: FormEvent<HTMLFormElement>, student: Student) => void; onInternshipDelete: (student: Student) => void; onPayment: (event: FormEvent<HTMLFormElement>, student: Student) => void; onDownloadPaymentProof: (student: Student, payment: PaymentRecord, index: number) => void; onFeedback: (event: FormEvent<HTMLFormElement>, student: Student) => void; onIssue: (student: Student) => void; onPreviewDocument: (request: DocumentPreviewRequest) => void; onPreviewInternshipPhoto: (student: Student, log: InternshipLog, photoType: "login" | "logout") => void }) {
+function ProfilePanel({ profile, user, accessCount, canManageFees, canManageSettings, canAssignTeachers, canManageCertificates, canManageInternships, canManageInventory, onIssueKit, centres, courses, allCourses = [], batches, teachers, onBack, onGoSettings, onLeadPatch, onStudentPatch, onGenerateStudentLmsAccess, onInternshipSave, onInternshipDelete, onPayment, onDownloadPaymentProof, onFeedback, onIssue, onPreviewDocument, onPreviewInternshipPhoto }: { profile: ProfileTarget; user: AdminUser | null; accessCount: number; canManageFees: boolean; canManageSettings: boolean; canAssignTeachers: boolean; canManageCertificates: boolean; canManageInternships: boolean; canManageInventory?: boolean; onIssueKit?: (student: Student) => void; centres: string[]; courses: string[]; allCourses?: Course[]; batches: Batch[]; teachers: Counsellor[]; onBack: () => void; onGoSettings: () => void; onLeadPatch: (id: string, updates: Partial<Lead>) => void; onStudentPatch: (id: string, updates: Partial<Student>) => void; onGenerateStudentLmsAccess: (student: Student) => void; onInternshipSave: (event: FormEvent<HTMLFormElement>, student: Student) => void; onInternshipDelete: (student: Student) => void; onPayment: (event: FormEvent<HTMLFormElement>, student: Student) => void; onDownloadPaymentProof: (student: Student, payment: PaymentRecord, index: number) => void; onFeedback: (event: FormEvent<HTMLFormElement>, student: Student) => void; onIssue: (student: Student) => void; onPreviewDocument: (request: DocumentPreviewRequest) => void; onPreviewInternshipPhoto: (student: Student, log: InternshipLog, photoType: "login" | "logout") => void }) {
   const isSuperAdmin = user?.role === "superadmin";
+  const currentCourse = profile?.type === "student" ? (profile.data.course || "") : (profile?.type === "lead" ? (profile.data.course || "") : "");
+  const studentCourseObj = allCourses.find((c) =>
+    [c.code, c.name].map((s) => String(s || "").toLowerCase()).includes(String(currentCourse || "").toLowerCase())
+  );
+  const dynamicCoursePayable = studentCourseObj ? feeWithGst(studentCourseObj.fee || 0) : 0;
   const [studentTab, setStudentTab] = useState<"sum" | "journey" | "admission" | "pay" | "emi" | "internship" | "feedback" | "cert">("sum");
   const [leadTab, setLeadTab] = useState<"info" | "docs" | "act">("info");
   const [editMode, setEditMode] = useState(profile?.mode === "edit");
@@ -7923,6 +8019,8 @@ function ProfilePanel({ profile, user, accessCount, canManageFees, canManageSett
   const [editCourseDraft, setEditCourseDraft] = useState("");
   const [editCentreDraft, setEditCentreDraft] = useState("");
   const [editBatchDraft, setEditBatchDraft] = useState("");
+  const [editTotalFeeDraft, setEditTotalFeeDraft] = useState("0");
+  const [editExpectedFeeDraft, setEditExpectedFeeDraft] = useState("0");
   const [internshipStartDraft, setInternshipStartDraft] = useState(dateInputValue());
   const [internshipEndDraft, setInternshipEndDraft] = useState(dateInputValueFromDuration(dateInputValue(), 3, "months"));
   const [internshipDurationDraft, setInternshipDurationDraft] = useState("3");
@@ -7932,40 +8030,48 @@ function ProfilePanel({ profile, user, accessCount, canManageFees, canManageSett
     setStudentTab("sum");
     setLeadTab("info");
     setEditMode(profile?.mode === "edit");
-    setEditCourseDraft(profile ? profile.data.course || "" : "");
+    const initCourse = profile ? profile.data.course || "" : "";
+    setEditCourseDraft(initCourse);
     setEditCentreDraft(profile ? profile.data.centre || "" : "");
     setEditBatchDraft(profile?.type === "student" ? profile.data.batch || "" : "");
+    const initCourseObj = allCourses.find((c) => [c.code, c.name].map((s) => String(s || "").toLowerCase()).includes(initCourse.toLowerCase()));
+    const initCourseFee = initCourseObj ? feeWithGst(initCourseObj.fee || 0) : 0;
+    setEditTotalFeeDraft(String(profile?.type === "student" ? (profile.data.totalFee || initCourseFee || 0) : 0));
+    setEditExpectedFeeDraft(String(profile?.type === "lead" ? (profile.data.expectedFee || initCourseFee || 0) : 0));
     setPaymentModeDraft("Cash");
     setPaymentPurposeDraft("Fees Installment");
   }, [profileId, profile?.mode]);
   useEffect(() => {
     if (!profileStudent) return;
-    const courseDurationMonths = getCourseDurationMonths(profileStudent.course, courses);
-    const months = Math.max(1, profileStudent.emiMonths || courseDurationMonths);
+    const courseDurationMonths = Math.max(1, getCourseDurationMonths(profileStudent.course, courses));
+    const months = Math.max(1, (profileStudent.emiMonths && profileStudent.emiMonths > 0) ? profileStudent.emiMonths : courseDurationMonths);
     const baseAmount = profileDue || profileNetFee || 0;
     setEmiMonthsDraft(String(months));
-    setEmiAmountDraft(String(profileStudent.emiAmount || Math.floor(baseAmount / months)));
+    setEmiAmountDraft(String(profileStudent.emiAmount && profileStudent.emiAmount <= baseAmount ? profileStudent.emiAmount : (months > 0 ? Math.floor(baseAmount / months) : 0)));
     setPaymentPurposeDraft(Number(profileStudent.paidAmount || 0) <= 0 ? "Seat Booking Amount" : "Fees Installment");
-  }, [profileId, profileStudent?.admissionPaymentMode, profileStudent?.admissionUpfrontAmount, profileStudent?.paidAmount, profileStudent?.emiEnabled, profileStudent?.emiMonths, profileStudent?.emiAmount, profileDue, profileNetFee, profileStudent?.course, courses]);
+  }, [profileId]);
   useEffect(() => {
     if (!profileStudent) return;
     const savedMode = normalizeAdmissionPaymentMode(profileStudent.admissionPaymentMode || "");
     const mode = admissionPaymentModes.includes(savedMode) ? savedMode || "Full Payment" : profileStudent.emiEnabled ? "EMI" : "Full Payment";
     // Auto-calculate months from course duration (locked — not editable by user)
-    const courseDurationMonths = getCourseDurationMonths(profileStudent.course, courses);
-    const months = Math.max(1, profileStudent.emiMonths || courseDurationMonths);
+    const courseDurationMonths = Math.max(1, getCourseDurationMonths(profileStudent.course, courses));
+    const months = Math.max(1, (profileStudent.emiMonths && profileStudent.emiMonths > 0) ? profileStudent.emiMonths : courseDurationMonths);
     const upfront = isPartialEmiPaymentMode(mode) ? Math.max(0, profileStudent.admissionUpfrontAmount || 0) : 0;
-    const net = Math.max(0, (profileStudent.totalFee || 0) - (profileStudent.discountAmount || 0));
+    const initialTotal = profileStudent.totalFee || dynamicCoursePayable || 0;
+    const initialDiscount = profileStudent.discountAmount || 0;
+    const net = Math.max(0, initialTotal - initialDiscount);
     const emiBalance = isPartialEmiPaymentMode(mode) ? Math.max(0, net - Math.max(profileStudent.paidAmount || 0, upfront)) : (profileDue || profileNetFee || 0);
     const calculatedEmi = months > 0 ? Math.floor(emiBalance / months) : 0;
+    const isEmi = mode === "EMI" || isPartialEmiPaymentMode(mode);
     setAdmissionPaymentModeDraft(mode);
-    setAdmissionTotalFeeDraft(String(profileStudent.totalFee || 0));
-    setAdmissionDiscountDraft(String(profileStudent.discountAmount || 0));
+    setAdmissionTotalFeeDraft(String(initialTotal));
+    setAdmissionDiscountDraft(String(initialDiscount));
     setAdmissionUpfrontDraft(String(profileStudent.admissionUpfrontAmount || 0));
     setAdmissionEmiMonthsDraft(String(months));
-    setAdmissionEmiAmountDraft(String(profileStudent.emiAmount || calculatedEmi));
+    setAdmissionEmiAmountDraft(isEmi ? String(calculatedEmi) : "0");
     setAdmissionNextEmiDateDraft(profileStudent.nextEmiDate ? dateInputValue(profileStudent.nextEmiDate) : dateInputValueFromOffset(12));
-  }, [profileId, profileStudent?.admissionPaymentMode, profileStudent?.admissionUpfrontAmount, profileStudent?.totalFee, profileStudent?.discountAmount, profileStudent?.emiEnabled, profileStudent?.emiMonths, profileStudent?.emiAmount, profileStudent?.nextEmiDate, profileDue, profileNetFee, profileStudent?.course, courses]);
+  }, [profileId]);
   useEffect(() => {
     if (!profileStudent) return;
     const assignment = profileStudent.internshipAssignment;
@@ -7976,7 +8082,7 @@ function ProfilePanel({ profile, user, accessCount, canManageFees, canManageSett
     setInternshipDurationDraft(duration);
     setInternshipDurationUnitDraft(unit);
     setInternshipEndDraft(assignment?.expectedEndDate ? dateInputValue(assignment.expectedEndDate) : (dateInputValueFromDuration(start, duration, unit) || dateInputValueFromOffset(90)));
-  }, [profileId, profileStudent?.internshipAssignment?.startDate, profileStudent?.internshipAssignment?.expectedEndDate, profileStudent?.internshipAssignment?.durationValue, profileStudent?.internshipAssignment?.durationUnit]);
+  }, [profileId]);
 
   if (!profile) {
     return (
@@ -8001,7 +8107,6 @@ function ProfilePanel({ profile, user, accessCount, canManageFees, canManageSett
     const saveLeadEdit = (event: FormEvent<HTMLFormElement>) => {
       event.preventDefault();
       const form = Object.fromEntries(new FormData(event.currentTarget).entries());
-      if (!isSuperAdmin && isKochiCentre(String(form.centre || "")) && !kochiCourseOptions.includes(courseShortCode(String(form.course || "")))) return toast.error("Kochi centre allows only AHAP and GCA courses");
       const updates: Partial<Lead> = {
         fullName: String(form.fullName || ""),
         phone: String(form.phone || ""),
@@ -8035,15 +8140,22 @@ function ProfilePanel({ profile, user, accessCount, canManageFees, canManageSett
           <EditField name="parentMobile" label="Parent mobile" defaultValue={lead.parentMobile} />
           <EditField name="email" label="Email" type="email" defaultValue={lead.email} />
           <EditField name="source" label="Source" defaultValue={lead.source} />
-          <div className="field"><label>Centre</label><select name="centre" value={editCentreDraft} onChange={(event) => { const centre = event.target.value; setEditCentreDraft(centre); if (!isSuperAdmin && isKochiCentre(centre) && !kochiCourseOptions.includes(editCourseDraft)) setEditCourseDraft(kochiCourseOptions[0]); }}><option value="">Unassigned</option>{centres.map((centre) => <option key={centre}>{centre}</option>)}</select></div>
-          <div className="field"><label>Course</label><select name="course" value={editCourseDraft} onChange={(event) => setEditCourseDraft(event.target.value)}><option value="">Unassigned</option>{leadCourseOptions.map((course) => <option key={course}>{course}</option>)}</select></div>
+          <div className="field"><label>Centre</label><select name="centre" value={editCentreDraft} onChange={(event) => { const centre = event.target.value; setEditCentreDraft(centre); }}><option value="">Unassigned</option>{centres.map((centre) => <option key={centre}>{centre}</option>)}</select></div>
+          <div className="field"><label>Course</label><select name="course" value={editCourseDraft} onChange={(event) => {
+            const nextCourse = event.target.value;
+            setEditCourseDraft(nextCourse);
+            const matched = allCourses.find((c) => [c.code, c.name].map((s) => String(s || "").toLowerCase()).includes(nextCourse.toLowerCase()));
+            if (matched?.fee) {
+              setEditExpectedFeeDraft(String(feeWithGst(matched.fee)));
+            }
+          }}><option value="">Unassigned</option>{leadCourseOptions.map((course) => <option key={course}>{course}</option>)}</select></div>
           {canManageSettings && <EditField name="counsellor" label="Counsellor" defaultValue={lead.counsellor} />}
           <div className="field"><label>Stage</label><select name="stage" defaultValue={lead.stage}>{stages.map((stage) => <option key={stage}>{stage}</option>)}</select></div>
           <div className="field"><label>Priority</label><select name="priority" defaultValue={normalizeLeadPriority(lead.priority)}>{leadPriorityOptions.map((priority) => <option key={priority} value={priority}>{leadPriorityLabel(priority)}</option>)}</select><span className="field-help">P0 is hottest, P3 is lowest.</span></div>
           <div className="field"><label>Status</label><select name="leadFeedback" defaultValue={normalizeLeadFeedbackStatus(lead.leadFeedback)}>{leadFeedbackOptions.map((feedback) => <option key={feedback}>{feedback}</option>)}</select></div>
           <EditField name="studentLocation" label="Student location" defaultValue={lead.studentLocation} />
           <EditField name="city" label="City" defaultValue={lead.city} />
-          {canManageFees && <EditField name="expectedFee" label="Expected fee" type="number" defaultValue={String(lead.expectedFee || 0)} />}
+          {canManageFees && <EditField name="expectedFee" label="Expected fee" type="number" value={editExpectedFeeDraft} onChange={(e) => setEditExpectedFeeDraft((e.target as HTMLInputElement).value)} />}
           <div className="field full"><label>Notes</label><textarea name="notes" defaultValue={lead.notes || ""} /></div>
           <div className="profile-edit-actions"><button type="button" className="btn btn-ghost" onClick={() => setEditMode(false)}>Cancel</button><button className="btn btn-primary"><Pencil size={15} /> Save update</button></div>
         </form>
@@ -8181,12 +8293,21 @@ function ProfilePanel({ profile, user, accessCount, canManageFees, canManageSett
     newTotal = admissionTotalFeeDraft,
     newDiscount = admissionDiscountDraft,
     newUpfront = admissionUpfrontDraft,
-    newMode = admissionPaymentModeDraft
+    newMode = admissionPaymentModeDraft,
+    newMonths = admissionEmiMonthsDraft
   ) => {
     const isPartial = isPartialEmiPaymentMode(newMode);
     const isEmi = newMode === "EMI" || isPartial;
-    if (!isEmi) return;
-    const months = Math.max(1, Number(admissionEmiMonthsDraft || 0));
+    if (!isEmi) {
+      setAdmissionEmiAmountDraft("0");
+      return;
+    }
+    const resolvedCourseMonths = Math.max(1, getCourseDurationMonths(student.course, courses));
+    const parsedMonths = Number(newMonths || admissionEmiMonthsDraft || 0);
+    const months = parsedMonths > 0 ? parsedMonths : resolvedCourseMonths;
+    if (!admissionEmiMonthsDraft || Number(admissionEmiMonthsDraft) <= 0 || admissionEmiMonthsDraft !== String(months)) {
+      setAdmissionEmiMonthsDraft(String(months));
+    }
     const total = Math.max(0, Number(newTotal || 0));
     const disc = Math.max(0, Number(newDiscount || 0));
     const net = Math.max(0, total - disc);
@@ -8197,7 +8318,10 @@ function ProfilePanel({ profile, user, accessCount, canManageFees, canManageSett
   };
   const recalcEmiOnModeChange = (newMode: string) => {
     setAdmissionPaymentModeDraft(newMode);
-    updateAdmissionEmi(admissionTotalFeeDraft, admissionDiscountDraft, admissionUpfrontDraft, newMode);
+    const resolvedCourseMonths = Math.max(1, getCourseDurationMonths(student.course, courses));
+    const currentMonths = Number(admissionEmiMonthsDraft || 0) || resolvedCourseMonths;
+    setAdmissionEmiMonthsDraft(String(currentMonths));
+    updateAdmissionEmi(admissionTotalFeeDraft, admissionDiscountDraft, admissionUpfrontDraft, newMode, String(currentMonths));
   };
   const updateInternshipDuration = (start: string, duration: string, unit: string) => {
     const nextEndDate = dateInputValueFromDuration(start, duration, unit);
@@ -8224,20 +8348,27 @@ function ProfilePanel({ profile, user, accessCount, canManageFees, canManageSett
     const totalFee = Number(admissionTotalFeeDraft || 0);
     const discountAmount = Number(admissionDiscountDraft || 0);
     const paymentMode = normalizeAdmissionPaymentMode(admissionPaymentModeDraft || "Full Payment");
-    const upfrontAmount = isPartialEmiPaymentMode(paymentMode) ? Number(admissionUpfrontDraft || 0) : 0;
-    const months = Number(admissionEmiMonthsDraft || 0);
-    const amount = Number(admissionEmiAmountDraft || 0);
+    const isPartial = isPartialEmiPaymentMode(paymentMode);
+    const isEmi = paymentMode === "EMI" || isPartial;
+    const upfrontAmount = isPartial ? Number(admissionUpfrontDraft || 0) : 0;
+    const resolvedCourseMonths = Math.max(1, getCourseDurationMonths(student.course, courses));
+    const months = Math.max(1, Number(admissionEmiMonthsDraft || 0) || resolvedCourseMonths);
+    const netFee = Math.max(0, totalFee - discountAmount);
+    const emiBalance = isPartial
+      ? Math.max(0, netFee - Math.max(student.paidAmount || 0, upfrontAmount))
+      : Math.max(0, netFee - (student.paidAmount || 0));
+    const calculatedMonthlyEmi = months > 0 ? Math.floor(emiBalance / months) : 0;
+    const amount = isEmi ? (Number(admissionEmiAmountDraft || 0) || calculatedMonthlyEmi) : 0;
     if (totalFee <= 0) return toast.error("Final fee is required");
     if (discountAmount < 0) return toast.error("Discount cannot be negative");
     if (discountAmount > totalFee) return toast.error("Discount cannot exceed final fee");
     if (!admissionPaymentModes.includes(paymentMode)) return toast.error("Choose a valid admission payment plan");
     if (student.paidAmount && student.paidAmount > totalFee - discountAmount) return toast.error("Paid amount cannot exceed final payable fee");
-    if (isPartialEmiPaymentMode(paymentMode)) {
+    if (isPartial) {
       if (upfrontAmount <= 0) return toast.error("Partial amount is required");
       if (upfrontAmount >= totalFee - discountAmount) return toast.error("Partial amount must be less than final payable fee");
     }
-    if (isAdmissionEmiPlan) {
-      const emiBalance = isPartialEmiPaymentMode(paymentMode) ? Math.max(0, (totalFee - discountAmount) - Math.max(student.paidAmount || 0, upfrontAmount)) : admissionDue;
+    if (isEmi) {
       if (emiBalance <= 0) return toast.error("Cannot enable EMI when there is no pending EMI balance");
       if (months < 1 || months > 60) return toast.error("EMI months must be between 1 and 60");
       if (amount <= 0) return toast.error("Monthly EMI amount is required");
@@ -8249,10 +8380,10 @@ function ProfilePanel({ profile, user, accessCount, canManageFees, canManageSett
       discountAmount,
       admissionPaymentMode: paymentMode,
       admissionUpfrontAmount: upfrontAmount,
-      emiEnabled: isAdmissionEmiPlan,
-      emiMonths: isAdmissionEmiPlan ? months : 0,
-      emiAmount: isAdmissionEmiPlan ? amount : 0,
-      nextEmiDate: isAdmissionEmiPlan ? admissionNextEmiDateDraft : "",
+      emiEnabled: isEmi,
+      emiMonths: isEmi ? months : 0,
+      emiAmount: isEmi ? amount : 0,
+      nextEmiDate: isEmi ? admissionNextEmiDateDraft : "",
       status: ["Enrolled", "Admission Completed", "Admission"].includes(student.status) ? "Fees Decided" : normalizeStudentStatus(student.status),
     });
   };
@@ -8294,7 +8425,6 @@ function ProfilePanel({ profile, user, accessCount, canManageFees, canManageSett
       const editDue = Math.max(0, totalFee - discountAmount - paidAmount);
       const emiEnabled = form.emiEnabled === "true";
       const emiAmount = Number(form.emiAmount || 0);
-      if (!isSuperAdmin && isKochiCentre(String(form.centre || "")) && !kochiCourseOptions.includes(courseShortCode(String(form.course || "")))) return toast.error("Kochi centre allows only AHAP and GCA courses");
       if (canManageFees) {
         if (paidAmount > Math.max(0, totalFee - discountAmount)) return toast.error("Paid amount cannot exceed net course fee");
         if (emiEnabled && editDue <= 0) return toast.error("Cannot enable EMI when fee is fully paid");
@@ -8318,12 +8448,14 @@ function ProfilePanel({ profile, user, accessCount, canManageFees, canManageSett
         ...(canManageSettings ? { counsellor: String(form.counsellor || "") } : {}),
         ...(canAssignTeachers ? { teacher: String(form.teacher || "") } : {}),
       };
+      const editCourseMonths = Math.max(1, getCourseDurationMonths(String(form.course || student.course), courses));
+      const editEmiMonths = emiEnabled ? Math.max(1, Number(form.emiMonths || 0) || editCourseMonths) : 0;
       if (canManageFees) Object.assign(updates, {
         totalFee,
         discountAmount,
         paidAmount,
         emiEnabled,
-        emiMonths: Number(form.emiMonths || 0),
+        emiMonths: editEmiMonths,
         emiAmount,
         nextEmiDate: String(form.nextEmiDate || ""),
       });
@@ -8344,19 +8476,26 @@ function ProfilePanel({ profile, user, accessCount, canManageFees, canManageSett
           <EditField name="email" label="Email" type="email" defaultValue={student.email} />
           <EditField name="studentLocation" label="Student location" defaultValue={student.studentLocation} />
           <EditField name="admissionNumber" label="Admission no." defaultValue={student.admissionNumber} />
-          <div className="field"><label>Course</label><select name="course" value={editCourseDraft} onChange={(event) => setEditCourseDraft(event.target.value)}><option value="">Unassigned</option>{studentCourseOptions.map((course) => <option key={course}>{course}</option>)}</select></div>
-          <div className="field"><label>Centre</label><select name="centre" value={editCentreDraft} onChange={(event) => { const centre = event.target.value; setEditCentreDraft(centre); if (!isSuperAdmin && isKochiCentre(centre) && !kochiCourseOptions.includes(editCourseDraft)) setEditCourseDraft(kochiCourseOptions[0]); }}><option value="">Unassigned</option>{centres.map((centre) => <option key={centre}>{centre}</option>)}</select></div>
+          <div className="field"><label>Course</label><select name="course" value={editCourseDraft} onChange={(event) => {
+            const nextCourse = event.target.value;
+            setEditCourseDraft(nextCourse);
+            const matched = allCourses.find((c) => [c.code, c.name].map((s) => String(s || "").toLowerCase()).includes(nextCourse.toLowerCase()));
+            if (matched?.fee) {
+              setEditTotalFeeDraft(String(feeWithGst(matched.fee)));
+            }
+          }}><option value="">Unassigned</option>{studentCourseOptions.map((course) => <option key={course}>{course}</option>)}</select></div>
+          <div className="field"><label>Centre</label><select name="centre" value={editCentreDraft} onChange={(event) => { const centre = event.target.value; setEditCentreDraft(centre); }}><option value="">Unassigned</option>{centres.map((centre) => <option key={centre}>{centre}</option>)}</select></div>
           <div className="field"><label>Batch</label><select name="batch" value={editBatchDraft} onChange={(event) => setEditBatchDraft(event.target.value)}><option value="">Unassigned</option>{editBatchDraft && !batchOptions.some((batch) => batch.name === editBatchDraft) && <option value={editBatchDraft}>{editBatchDraft} - current</option>}{batchOptions.map((batch) => <option key={batch._id} value={batch.name}>{batch.name} - {courseShortCode(batch.course)}{batch.centre ? ` - ${batch.centre}` : ""}</option>)}</select>{!batchOptions.length && <span className="field-help">No matching batch. Create one in Settings - Batches.</span>}</div>
           <EditField name="batchCommenceDate" label="Batch start date" type="date" defaultValue={dateInputValue(batchOptions.find((b) => b.name === (editBatchDraft || student.batch))?.commenceDate || student.batchCommenceDate || "")} />
           {canManageSettings && <EditField name="counsellor" label="Counsellor" defaultValue={student.counsellor} />}
           {canAssignTeachers && <div className="field"><label>Teacher</label><select name="teacher" defaultValue={student.teacher || ""}><option value="">Unassigned</option>{teachers.map((teacher) => <option key={teacher.email}>{teacher.name}</option>)}</select></div>}
           <div className="field"><label>Status</label><select name="status" defaultValue={normalizeStudentStatus(student.status)}>{studentStatuses.map((status) => <option key={status} value={status}>{studentStatusLabel(status)}</option>)}</select><span className="field-help">Alumni is available only after fee clearance and certificate issue.</span></div>
           {canManageFees && <>
-            <EditField name="totalFee" label="Total fee" type="number" defaultValue={String(student.totalFee || 0)} />
+            <EditField name="totalFee" label="Total fee" type="number" value={editTotalFeeDraft} onChange={(e) => setEditTotalFeeDraft((e.target as HTMLInputElement).value)} />
             <EditField name="discountAmount" label="Discount" type="number" defaultValue={String(student.discountAmount || 0)} />
             <EditField name="paidAmount" label="Paid amount" type="number" defaultValue={String(student.paidAmount || 0)} />
             <div className="field"><label>EMI enabled</label><select name="emiEnabled" defaultValue={student.emiEnabled ? "true" : ""}><option value="">No</option><option value="true">Yes</option></select></div>
-            <EditField name="emiMonths" label="EMI months" type="number" defaultValue={String(student.emiMonths || 0)} />
+            <EditField name="emiMonths" label="EMI months" type="number" defaultValue={String(student.emiMonths || courseDurationMonths)} />
             <EditField name="emiAmount" label="Monthly EMI" type="number" defaultValue={String(student.emiAmount || 0)} />
             <EditField name="nextEmiDate" label="Next EMI date" type="date" defaultValue={student.nextEmiDate ? dateInputValue(new Date(student.nextEmiDate)) : ""} />
           </>}
@@ -8376,9 +8515,17 @@ function ProfilePanel({ profile, user, accessCount, canManageFees, canManageSett
       <div className="dtabs profile-tabs">{tabs.map((tab) => <button type="button" key={tab.key} className={`dtab ${activeStudentTab === tab.key ? "active" : ""}`} onClick={() => setStudentTab(tab.key)}>{tab.label}</button>)}</div>
       <div className="drawer-body profile-drawer-body">
         {activeStudentTab === "sum" && <div className="dpane active">
-          <div className="grid-metrics profile-metrics"><MetricCard label="Total fee" value={formatCurrency(student.totalFee || 0)} dot="#4F6BFF" delta="" /><MetricCard label="Paid" value={formatCurrency(student.paidAmount || 0)} dot="#17A673" delta="" /></div>
+          <div className="grid-metrics profile-metrics">
+            <MetricCard
+              label="Total fee"
+              value={formatCurrency(student.totalFee || dynamicCoursePayable || 0)}
+              dot="#4F6BFF"
+              delta={student.totalFee && dynamicCoursePayable && student.totalFee !== dynamicCoursePayable ? `Standard: ${formatCurrency(dynamicCoursePayable)}` : (studentCourseObj ? `Base: ${formatCurrency(studentCourseObj.fee || 0)} + 18% GST` : "")}
+            />
+            <MetricCard label="Paid" value={formatCurrency(student.paidAmount || 0)} dot="#17A673" delta="" />
+          </div>
           <div className="kv-row"><span className="k">Progress</span><span className="v"><span className="progress-track profile-progress"><span className="progress-fill" style={{ width: `${paidPct}%` }} /></span> {paidPct}%</span></div>
-          <div className="kv-row"><span className="k">Due</span><span className="v">{formatCurrency(due)}</span></div>
+          <div className="kv-row"><span className="k">Due</span><span className="v">{formatCurrency(due || Math.max(0, (student.totalFee || dynamicCoursePayable || 0) - (student.discountAmount || 0) - (student.paidAmount || 0)))}</span></div>
           <div className="kv-row"><span className="k">Discount</span><span className="v">{formatCurrency(student.discountAmount || 0)}</span></div>
           <div className="kv-row"><span className="k">Course</span><span className="v">{courseShortCode(student.course)}</span></div>
           <div className="kv-row"><span className="k">Centre</span><span className="v">{student.centre || "-"}</span></div>
@@ -8451,7 +8598,46 @@ function ProfilePanel({ profile, user, accessCount, canManageFees, canManageSett
             <MetricCard label={isAdmissionPartialEmiPlan ? "EMI balance" : "Pending due"} value={formatCurrency(isAdmissionPartialEmiPlan ? admissionEmiBalance : admissionDue)} dot="#EF4444" delta={isAdmissionPartialEmiPlan ? `partial ${formatCurrency(admissionUpfrontAmount)}` : `paid ${formatCurrency(student.paidAmount || 0)}`} />
           </div>
           <form className="field-grid feedback-form emi-plan-form" onSubmit={saveAdmissionPlan}>
-            <div className="field"><RequiredLabel required>Final fee</RequiredLabel><input name="totalFee" type="number" min="1" step="1" required disabled={!canDecideFees} value={admissionTotalFeeDraft} onChange={(event) => { const val = event.target.value; setAdmissionTotalFeeDraft(val); updateAdmissionEmi(val, admissionDiscountDraft, admissionUpfrontDraft, admissionPaymentModeDraft); }} /></div>
+            <div className="field">
+              <RequiredLabel required>Final fee</RequiredLabel>
+              <div style={{ display: "flex", gap: "8px", alignItems: "center" }}>
+                <input
+                  name="totalFee"
+                  type="number"
+                  min="1"
+                  step="1"
+                  required
+                  disabled={!canDecideFees}
+                  value={admissionTotalFeeDraft}
+                  onChange={(event) => {
+                    const val = event.target.value;
+                    setAdmissionTotalFeeDraft(val);
+                    updateAdmissionEmi(val, admissionDiscountDraft, admissionUpfrontDraft, admissionPaymentModeDraft);
+                  }}
+                  style={{ flex: 1 }}
+                />
+                {dynamicCoursePayable > 0 && canDecideFees && (
+                  <button
+                    type="button"
+                    className="btn btn-sm btn-soft"
+                    style={{ whiteSpace: "nowrap" }}
+                    title="Set to standard course fee"
+                    onClick={() => {
+                      const val = String(dynamicCoursePayable);
+                      setAdmissionTotalFeeDraft(val);
+                      updateAdmissionEmi(val, admissionDiscountDraft, admissionUpfrontDraft, admissionPaymentModeDraft);
+                    }}
+                  >
+                    Reset ({formatCurrency(dynamicCoursePayable)})
+                  </button>
+                )}
+              </div>
+              {studentCourseObj && (
+                <span className="field-help">
+                  Standard course fee: {formatCurrency(studentCourseObj.fee || 0)} base + 18% GST = {formatCurrency(dynamicCoursePayable)}
+                </span>
+              )}
+            </div>
             <div className="field"><RequiredLabel>Discount</RequiredLabel><input name="discountAmount" type="number" min="0" max={admissionTotalFee || undefined} step="1" disabled={!canDecideFees} value={admissionDiscountDraft} onChange={(event) => { const val = event.target.value; setAdmissionDiscountDraft(val); updateAdmissionEmi(admissionTotalFeeDraft, val, admissionUpfrontDraft, admissionPaymentModeDraft); }} /></div>
             <div className="field"><RequiredLabel required>Fee payment plan</RequiredLabel><select name="admissionPaymentMode" required disabled={!canDecideFees} value={admissionPaymentModeDraft} onChange={(event) => recalcEmiOnModeChange(event.target.value)}>{admissionPaymentModes.map((mode) => <option key={mode}>{mode}</option>)}</select></div>
             {isAdmissionPartialEmiPlan && <div className="field"><RequiredLabel required>Upfront / partial amount</RequiredLabel><input name="admissionUpfrontAmount" type="number" min="1" max={admissionNetFee ? admissionNetFee - 1 : undefined} required disabled={!canDecideFees} value={admissionUpfrontDraft} onChange={(event) => { const value = event.target.value; setAdmissionUpfrontDraft(value); updateAdmissionEmi(admissionTotalFeeDraft, admissionDiscountDraft, value, admissionPaymentModeDraft); }} /><span className="field-help">Record this actual payment from the Payments tab after saving admission.</span></div>}
@@ -8501,6 +8687,34 @@ function ProfilePanel({ profile, user, accessCount, canManageFees, canManageSett
             {emiBreakdown.shortfall > 0 && <div className="kv-row"><span className="k">Previous shortfall (arrears)</span><span className="v"><span className="badge badge-red">{formatCurrency(emiBreakdown.shortfall)}</span></span></div>}
             <div className="kv-row"><span className="k">Total due this cycle</span><span className="v"><strong>{formatCurrency(emiBreakdown.currentDue)}</strong></span></div>
             <div className="kv-row"><span className="k">Next EMI date</span><span className="v">{formatDate(student.nextEmiDate)}</span></div>
+            <div style={{ marginTop: "10px", marginBottom: "14px", display: "flex", gap: "8px", alignItems: "center" }}>
+              <button
+                type="button"
+                className="btn btn-sm btn-green"
+                onClick={() => {
+                  const url = emiReminderWhatsAppUrl(student);
+                  if (url) window.open(url, "_blank", "noopener,noreferrer");
+                  else toast.error("Student phone number missing");
+                }}
+              >
+                <MessageCircle size={14} /> Send WhatsApp reminder
+              </button>
+              <button
+                type="button"
+                className="btn btn-sm btn-ghost"
+                title="Copy reminder text"
+                onClick={async () => {
+                  try {
+                    await navigator.clipboard.writeText(emiReminderMessage(student));
+                    toast.success("EMI reminder copied with emojis!");
+                  } catch {
+                    toast.error("Failed to copy reminder");
+                  }
+                }}
+              >
+                <Copy size={14} /> Copy reminder
+              </button>
+            </div>
           </>}
           {canManageFees ? (!admissionPlanReady ? <div className="empty-state"><h4>Complete admission first</h4><p>EMI terms must be decided in the Admission tab before updating EMI reminders.</p><button type="button" className="btn btn-primary" onClick={() => setStudentTab("admission")}>Open admission</button></div> : due <= 0 ? <div className="empty-state paid-empty"><h4>Fully paid</h4><p>EMI plan is not needed because there is no pending due.</p>{hasEmi && <button type="button" className="btn btn-ghost" onClick={closeEmiPlan}>Close EMI plan</button>}</div> : <form className="field-grid feedback-form emi-plan-form" onSubmit={saveEmiPlan}>
             <div className="field"><RequiredLabel required>EMI months</RequiredLabel><input name="emiMonths" type="number" required readOnly disabled value={emiMonthsDraft} style={{ background: "var(--surface-2, #f3f4f6)", cursor: "not-allowed" }} /><span className="field-help">Auto-set from course duration ({emiMonthsDraft} months) — not editable</span></div>
@@ -8564,8 +8778,8 @@ function Field({ name, label, type = "text", required = false, defaultValue = ""
   return <div className="field"><RequiredLabel required={required}>{label}</RequiredLabel><input name={name} type={type} required={required} defaultValue={defaultValue} /></div>;
 }
 
-function EditField({ name, label, type = "text", defaultValue = "", required = false }: { name: string; label: string; type?: string; defaultValue?: string | number; required?: boolean }) {
-  return <div className="field"><RequiredLabel required={required}>{label}</RequiredLabel><input name={name} type={type} defaultValue={defaultValue || ""} required={required} /></div>;
+function EditField({ name, label, type = "text", defaultValue = "", value, onChange, required = false }: { name: string; label: string; type?: string; defaultValue?: string | number; value?: string | number; onChange?: (e: ChangeEvent<HTMLInputElement>) => void; required?: boolean }) {
+  return <div className="field"><RequiredLabel required={required}>{label}</RequiredLabel><input name={name} type={type} {...(value !== undefined ? { value, onChange } : { defaultValue: defaultValue || "" })} required={required} /></div>;
 }
 
 function SelectField({ name, label, options, defaultValue = "" }: { name: string; label: string; options: string[]; defaultValue?: string }) {

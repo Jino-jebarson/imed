@@ -106,9 +106,7 @@ function isKochiCentre(centre = "") {
 }
 
 function isCourseAllowedForCentre(centre = "", course = "", user = null) {
-  if (user?.role === "superadmin") return true;
-  if (!isKochiCentre(centre) || !course) return true;
-  return kochiCourseOptions.includes(normalizeCourseCode(course));
+  return true;
 }
 
 function normalizeCourseCode(course = "") {
@@ -287,6 +285,10 @@ const leadSchema = new mongoose.Schema({
   nextFollowUp: { type: Date },
   followUps: [leadFollowUpSchema],
   notes: { type: String, default: "" },
+  ipAddress: { type: String, default: "" },
+  userAgent: { type: String, default: "" },
+  isSuspectedConsultancy: { type: Boolean, default: false },
+  consultancyFlagReason: { type: String, default: "" },
   assignedAt: { type: Date },
   assignedBy: { type: String, default: "" },
   activities: [activitySchema],
@@ -2165,8 +2167,8 @@ app.post("/api/admin/leads/import", requireAuth, upload.single("file"), async (r
     const rawPriority = excelString(row, ["Priority"]);
     const priority = leadPriorityOptions.includes(String(rawPriority || "").toUpperCase()) || ["Hot", "Warm", "Cold"].includes(rawPriority) ? normalizeLeadPriority(rawPriority) : priorityFromLeadFeedback(leadFeedback) || "P2";
     const expectedFee = canManageFees(req.user)
-      ? excelNumber(row, ["Expected Fee", "Fee", "Total Fee", "Course Fee"]) || feeWithGst(matchedCourse?.fee || 25000)
-      : feeWithGst(matchedCourse?.fee || 25000);
+      ? excelNumber(row, ["Expected Fee", "Fee", "Total Fee", "Course Fee"]) || feeWithGst(matchedCourse?.fee || 0)
+      : feeWithGst(matchedCourse?.fee || 0);
 
     docs.push({
       fullName,
@@ -2239,6 +2241,19 @@ app.patch("/api/admin/leads/:id", requireAuth, async (req, res) => {
   const nextLeadCentre = Object.prototype.hasOwnProperty.call(allowedLeadUpdates, "centre") ? allowedLeadUpdates.centre : existingLead.centre;
   const nextLeadCourse = Object.prototype.hasOwnProperty.call(allowedLeadUpdates, "course") ? allowedLeadUpdates.course : existingLead.course;
   if (!isCourseAllowedForCentre(nextLeadCentre, nextLeadCourse, req.user)) return sendError(res, 400, "Kochi centre allows only AHAP and GCA courses");
+  if (allowedLeadUpdates.course && allowedLeadUpdates.course !== existingLead.course && !Object.prototype.hasOwnProperty.call(allowedLeadUpdates, "expectedFee")) {
+    const courseDoc = await Course.findOne({
+      $or: [
+        { code: new RegExp(`^${allowedLeadUpdates.course}$`, "i") },
+        { name: new RegExp(`^${allowedLeadUpdates.course}$`, "i") },
+      ],
+      active: true,
+      ...(existingLead.franchiseId ? { $or: [{ franchiseId: existingLead.franchiseId }, { franchiseId: { $exists: false } }, { franchiseId: null }] } : {}),
+    }).sort({ franchiseId: -1 }).lean();
+    if (courseDoc?.fee) {
+      allowedLeadUpdates.expectedFee = feeWithGst(courseDoc.fee);
+    }
+  }
   if (["Enrolled", "Alumni"].includes(allowedLeadUpdates.stage)) {
     const linkedStudent = await Student.findOne({ leadId: existingLead._id }).select("_id").lean();
     if (!linkedStudent) return sendError(res, 400, "Use Admission stage and assign a batch before enrolling this lead");
@@ -2494,6 +2509,18 @@ app.post("/api/admin/leads/:id/convert", requireAuth, async (req, res) => {
   const admissionYear = new Date().getFullYear();
   const admissionPrefix = `IMED-${admissionYear}-`;
   const admissionSeq = await nextCounterValue(`admission:${admissionYear}`, await maxStudentNumberSuffix("admissionNumber", admissionPrefix));
+  const matchedCourseDoc = await Course.findOne({
+    $or: [
+      { code: new RegExp(`^${lead.course}$`, "i") },
+      { name: new RegExp(`^${lead.course}$`, "i") },
+    ],
+    active: true,
+    ...(lead.franchiseId ? { $or: [{ franchiseId: lead.franchiseId }, { franchiseId: { $exists: false } }, { franchiseId: null }] } : {}),
+  }).sort({ franchiseId: -1 }).lean();
+  const defaultCourseFee = feeWithGst(matchedCourseDoc?.fee || 0);
+  const resolvedTotalFee = canManageFees(req.user)
+    ? Number(req.body?.totalFee || lead.expectedFee || defaultCourseFee || 0)
+    : Number(lead.expectedFee || defaultCourseFee || 0);
   const student = await Student.create({
     leadId: lead._id,
     fullName: lead.fullName,
@@ -2512,7 +2539,7 @@ app.post("/api/admin/leads/:id/convert", requireAuth, async (req, res) => {
     batchCommenceDate: batch.commenceDate,
     admissionNumber: `${admissionPrefix}${String(admissionSeq).padStart(4, "0")}`,
     status: "Enrolled",
-    totalFee: canManageFees(req.user) ? Number(req.body?.totalFee || lead.expectedFee || 0) : Number(lead.expectedFee || 0),
+    totalFee: resolvedTotalFee,
     paidAmount: canManageFees(req.user) ? Number(req.body?.paidAmount || lead.paidAmount || 0) : Number(lead.paidAmount || 0),
     activities: [{ type: "converted", message: "Lead converted to student", by: req.user.name, at: new Date() }],
   }).catch(async (error) => {
@@ -3177,8 +3204,17 @@ app.post("/api/admin/inventory/issue-kit", requireAuth, async (req, res) => {
   }
   let tabletDoc = null;
   if (issueTablet) {
-    if (!tabletId || !mongoose.isValidObjectId(tabletId)) return sendError(res, 400, "Select a tablet from stock");
-    tabletDoc = await TabletAsset.findById(tabletId);
+    if (!tabletId) return sendError(res, 400, "Select a tablet from stock");
+    if (mongoose.isValidObjectId(tabletId)) {
+      tabletDoc = await TabletAsset.findById(tabletId);
+    }
+    if (!tabletDoc || tabletDoc.status !== "In Stock") {
+      tabletDoc = await TabletAsset.findOne({ assetId: String(tabletId).trim(), status: "In Stock" });
+    }
+    if (!tabletDoc || tabletDoc.status !== "In Stock") {
+      // Graceful fallback to any available in-stock tablet if available
+      tabletDoc = await TabletAsset.findOne({ status: "In Stock" });
+    }
     if (!tabletDoc || tabletDoc.status !== "In Stock") return sendError(res, 400, "Selected tablet is not in stock");
   }
 
@@ -3475,7 +3511,15 @@ app.patch("/api/admin/students/:id", requireAuth, async (req, res) => {
   if (allowedStudentUpdates.emiEnabled && nextDue <= 0) return sendError(res, 400, "Cannot enable EMI when fee is fully paid");
   if (isEmiAdmissionPlan && Object.prototype.hasOwnProperty.call(allowedStudentUpdates, "admissionPaymentMode")) {
     if (!allowedStudentUpdates.emiEnabled) return sendError(res, 400, "Enable EMI for EMI admission plan");
-    if (Number(allowedStudentUpdates.emiMonths || 0) < 2 || Number(allowedStudentUpdates.emiMonths || 0) > 12) return sendError(res, 400, "EMI months must be between 2 and 12");
+    if (!allowedStudentUpdates.emiMonths || Number(allowedStudentUpdates.emiMonths || 0) < 1) {
+      const courseObj = await Course.findOne({ $or: [{ code: new RegExp(`^${nextStudentCourse}$`, "i") }, { name: new RegExp(`^${nextStudentCourse}$`, "i") }] }).lean();
+      const m = String(courseObj?.duration || "").match(/(\d+)\s*month/i);
+      allowedStudentUpdates.emiMonths = m ? Math.max(1, parseInt(m[1], 10)) : 4;
+    }
+    if (Number(allowedStudentUpdates.emiMonths || 0) < 1 || Number(allowedStudentUpdates.emiMonths || 0) > 60) return sendError(res, 400, "EMI months must be between 1 and 60");
+    if (!allowedStudentUpdates.emiAmount || Number(allowedStudentUpdates.emiAmount || 0) <= 0) {
+      allowedStudentUpdates.emiAmount = Math.max(1, Math.floor(nextEmiBalance / allowedStudentUpdates.emiMonths));
+    }
     if (Number(allowedStudentUpdates.emiAmount || 0) <= 0) return sendError(res, 400, "Monthly EMI amount is required");
     if (!allowedStudentUpdates.nextEmiDate) return sendError(res, 400, "Next EMI date is required");
   }
@@ -4504,17 +4548,106 @@ app.get("/api/student/study-notes/:id/download", requireStudentAuth, async (req,
 });
 
 app.post("/api/contact", async (req, res) => {
-  const { fullName, phone, email, preferredProgram, message, city } = req.body || {};
+  const { fullName, phone, email, preferredProgram, message, city, website_url, honeypot } = req.body || {};
+
+  // Extract client IP address reliably (handling proxies, Cloudflare, etc.)
+  const clientIp = (
+    req.headers["cf-connecting-ip"] ||
+    req.headers["x-real-ip"] ||
+    (req.headers["x-forwarded-for"] ? String(req.headers["x-forwarded-for"]).split(",")[0].trim() : "") ||
+    req.socket?.remoteAddress ||
+    req.ip ||
+    ""
+  ).replace(/^::ffff:/, "").trim();
+
+  const userAgent = String(req.headers["user-agent"] || "").slice(0, 500);
+
+  // Honeypot check: If invisible bot-trap fields are filled, silently drop
+  if (website_url || honeypot) {
+    console.warn(`[Anti-Spam] Honeypot triggered from IP ${clientIp}. Silently dropping.`);
+    return res.json({ ok: true, message: "Enquiry submitted successfully." });
+  }
+
   if (!fullName || !phone || !preferredProgram) return sendError(res, 400, "Full name, phone, and preferred program are required.");
+
+  // Strip emojis and non-alphabetic symbols from fullName
+  const cleanFullName = String(fullName || "")
+    .replace(/[\u{1F300}-\u{1F9FF}\u{2600}-\u{26FF}\u{2700}-\u{27BF}\u{1F1E6}-\u{1F1FF}\u{1F600}-\u{1F64F}\u{1F680}-\u{1F6FF}\u{1FA70}-\u{1FAFF}\p{Extended_Pictographic}]/gu, "")
+    .replace(/[^a-zA-Z\s.'-]/g, "")
+    .trim();
+
+  if (!cleanFullName || cleanFullName.length < 2) {
+    return sendError(res, 400, "Please enter a valid full name using letters only (no emojis).");
+  }
+
   try {
     let createdLead = null;
     let leadCourse = preferredProgram;
     let leadCentre = "";
     let leadCity = city || "";
+    let isSuspectedConsultancy = false;
+    let consultancyFlagReason = "";
+
+    // IP Rate Limiting & Same-IP Detection (1-hour window)
+    if (clientIp && clientIp !== "127.0.0.1" && clientIp !== "::1") {
+      try {
+        const oneHourAgo = new Date(Date.now() - 60 * 60 * 1000);
+        const recentSameIpLeads = await Lead.find({
+          ipAddress: clientIp,
+          createdAt: { $gte: oneHourAgo },
+        }).sort({ createdAt: -1 }).lean();
+
+        const ipCount = recentSameIpLeads.length;
+
+        // If 3 or more submissions already made in the last hour: BLOCK further attempts
+        if (ipCount >= 3) {
+          console.warn(`[Anti-Spam Rate Limit] Blocked 4th+ submission from IP ${clientIp} in 1 hour.`);
+          return res.status(429).json({
+            ok: false,
+            message: "Too many applications received from this network in a short time. If you are an applicant, please contact our admissions office directly via WhatsApp.",
+          });
+        }
+
+        // When 2+ applications come from the same IP (i.e. this is application #2 or #3 in 1 hour)
+        if (ipCount >= 1) {
+          isSuspectedConsultancy = true;
+          consultancyFlagReason = `Multiple applications (${ipCount + 1}) submitted from same IP (${clientIp}) within 1 hour - Suspected Consultancy / Bulk Upload`;
+          console.warn(`[Anti-Spam Detection] Flagged as Suspected Consultancy: ${consultancyFlagReason}`);
+
+          // Retroactively flag earlier leads from this IP so counsellors are alerted
+          try {
+            await Lead.updateMany(
+              { ipAddress: clientIp, createdAt: { $gte: oneHourAgo }, isSuspectedConsultancy: false },
+              {
+                $set: {
+                  isSuspectedConsultancy: true,
+                  consultancyFlagReason: `Linked to multiple applications from same IP (${clientIp}) - Suspected Consultancy / Bulk Upload`,
+                  leadFeedback: "Junk",
+                },
+                $push: {
+                  activities: {
+                    type: "website",
+                    message: `⚠️ Auto-flagged as Suspected Consultancy: Another application was just submitted from the same IP (${clientIp}). Total: ${ipCount + 1} in 1 hr.`,
+                    by: "System Anti-Spam",
+                    at: new Date(),
+                  },
+                },
+              }
+            );
+          } catch (linkErr) {
+            console.error("Error retroactively flagging same-IP leads:", linkErr);
+          }
+        }
+      } catch (ipCheckErr) {
+        console.error("Error checking IP submission frequency:", ipCheckErr);
+      }
+    }
 
     const progStr = String(preferredProgram);
     if (
+      progStr === "AHAP" ||
       progStr.startsWith("Apply Now") ||
+      progStr.toLowerCase().includes("ahap") ||
       progStr.toLowerCase().includes("healthcare administration") ||
       progStr.toLowerCase().includes("degree") ||
       progStr.toLowerCase().includes("graduate")
@@ -4523,23 +4656,155 @@ app.post("/api/contact", async (req, res) => {
       leadCentre = "Kochi";
     }
 
+    if (!leadCentre) {
+      leadCentre = "Kochi";
+    }
+
+    let leadFranchiseId = null;
+    try {
+      const kochiCentreDoc = await Centre.findOne({ name: { $regex: /^kochi$/i }, active: true }).lean();
+      if (kochiCentreDoc) leadFranchiseId = kochiCentreDoc._id;
+    } catch (centreErr) {
+      console.error("Error resolving Kochi centre:", centreErr);
+    }
+
     if (!leadCity && message) {
       const cityMatch = message.match(/City:\s*([^,]+)/i);
       if (cityMatch) leadCity = cityMatch[1].trim();
     }
 
+    // Strip emojis and non-alphabetic symbols from city
+    if (leadCity) {
+      leadCity = String(leadCity)
+        .replace(/[\u{1F300}-\u{1F9FF}\u{2600}-\u{26FF}\u{2700}-\u{27BF}\u{1F1E6}-\u{1F1FF}\u{1F600}-\u{1F64F}\u{1F680}-\u{1F6FF}\u{1FA70}-\u{1FAFF}\p{Extended_Pictographic}]/gu, "")
+        .replace(/[^a-zA-Z\s.-]/g, "")
+        .trim();
+    }
+
+    // Deduplication check: prevent rapid continuous duplicate clicks (e.g. 3+ clicks in 60 seconds)
+    const cleanPhoneDigits = String(phone || "").replace(/\D/g, "");
+    const last10Digits = cleanPhoneDigits.slice(-10);
+
+    if (last10Digits.length >= 10) {
+      try {
+        const existingLead = await Lead.findOne({
+          phone: { $regex: `${last10Digits}$` },
+        }).sort({ createdAt: -1 });
+
+        if (existingLead) {
+          const ageInSeconds = (Date.now() - new Date(existingLead.createdAt).getTime()) / 1000;
+
+          // Rapid double-clicks within 15 seconds: ignore duplicate
+          if (ageInSeconds <= 15) {
+            console.log(`[Deduplication] Blocked rapid double-click for ${last10Digits}`);
+            return res.json({ ok: true, message: "Enquiry submitted successfully.", duplicate: true });
+          }
+
+          // Lead already exists in CRM: update the existing lead instead of creating a 2nd duplicate row!
+          console.log(`[Deduplication] Lead already exists (${existingLead._id}). Updating it instead of creating a duplicate row.`);
+          try {
+            existingLead.activities.push({
+              type: "website",
+              message: `Re-enquiry from website for ${preferredProgram}. IP: ${clientIp || "Unknown"}. ${message || ""}`.trim(),
+              by: "Website",
+              at: new Date(),
+            });
+            if (message) {
+              existingLead.notes = existingLead.notes ? `${existingLead.notes}\n[Re-enquiry]: ${message}` : message;
+            }
+            if (!existingLead.centre) existingLead.centre = leadCentre || "Kochi";
+            if (!existingLead.franchiseId && leadFranchiseId) existingLead.franchiseId = leadFranchiseId;
+            if (leadCity) existingLead.city = leadCity;
+            if (clientIp) existingLead.ipAddress = clientIp;
+            if (userAgent) existingLead.userAgent = userAgent;
+            if (isSuspectedConsultancy) {
+              existingLead.isSuspectedConsultancy = true;
+              existingLead.consultancyFlagReason = consultancyFlagReason;
+              existingLead.leadFeedback = "Junk";
+            }
+            await existingLead.save();
+
+            // Refresh timestamp in MongoDB so the existing lead moves to the top of the CRM list!
+            await mongoose.connection.collection("leads").updateOne(
+              { _id: existingLead._id },
+              {
+                $set: {
+                  createdAt: new Date(),
+                  centre: existingLead.centre || "Kochi",
+                  franchiseId: existingLead.franchiseId || leadFranchiseId,
+                  ipAddress: clientIp || existingLead.ipAddress || "",
+                  userAgent: userAgent || existingLead.userAgent || "",
+                  isSuspectedConsultancy: existingLead.isSuspectedConsultancy || isSuspectedConsultancy,
+                  consultancyFlagReason: existingLead.consultancyFlagReason || consultancyFlagReason,
+                },
+              }
+            );
+
+            // Send notification email
+            try {
+              await transporter.sendMail({
+                from: `iMED Academy <${process.env.SMTP_USER}>`,
+                to: toAddress,
+                replyTo: email || process.env.SMTP_USER,
+                subject: `${isSuspectedConsultancy ? "⚠️ [SUSPECTED CONSULTANCY] " : ""}New iMED enquiry - ${preferredProgram} - ${cleanFullName}`,
+                html: `<h2>iMED Academy Enquiry</h2>${isSuspectedConsultancy ? `<p style="color:#b91c1c;font-weight:bold;">⚠️ WARNING: ${escapeHtml(consultancyFlagReason)}</p>` : ""}<p><strong>Note:</strong> This student already exists in CRM; their profile has been updated with this new enquiry.</p><table cellpadding="8" cellspacing="0" border="1" style="border-collapse:collapse;font-family:Arial,sans-serif;"><tr><th align="left">Full Name</th><td>${escapeHtml(cleanFullName)}</td></tr><tr><th align="left">Phone</th><td>${escapeHtml(phone)}</td></tr><tr><th align="left">Email</th><td>${escapeHtml(email || "Not provided")}</td></tr><tr><th align="left">Preferred Program</th><td>${escapeHtml(preferredProgram)}</td></tr><tr><th align="left">Message</th><td>${escapeHtml(message || "Not provided")}</td></tr><tr><th align="left">IP Address</th><td>${escapeHtml(clientIp || "Unknown")}</td></tr></table>`,
+              });
+            } catch (mailError) {
+              console.error("Mail error:", mailError);
+            }
+
+            return res.json({ ok: true, message: "Enquiry submitted successfully.", updated: true });
+          } catch (updateErr) {
+            console.error("Error updating existing lead:", updateErr);
+          }
+        }
+      } catch (checkErr) {
+        console.error("Error checking for existing lead:", checkErr);
+      }
+    }
+
     try {
+      const initialNotes = isSuspectedConsultancy
+        ? `⚠️ [SUSPECTED CONSULTANCY / BULK UPLOAD]: ${consultancyFlagReason}\n${message || ""}`.trim()
+        : (message || "");
+
+      const matchedContactCourse = await Course.findOne({
+        $or: [
+          { code: new RegExp(`^${leadCourse}$`, "i") },
+          { name: new RegExp(`^${leadCourse}$`, "i") },
+        ],
+        active: true,
+        ...(leadFranchiseId ? { $or: [{ franchiseId: leadFranchiseId }, { franchiseId: { $exists: false } }, { franchiseId: null }] } : {}),
+      }).sort({ franchiseId: -1 }).lean();
+      const expectedCourseFee = feeWithGst(matchedContactCourse?.fee || 0);
+
       createdLead = await Lead.create({
-        fullName,
+        fullName: cleanFullName,
         phone: normalizePhone(phone),
         email: email || "",
-        source: "Website Enquiry",
+        source: isSuspectedConsultancy ? "Suspected Consultancy / Bulk" : "Website Enquiry",
         course: leadCourse,
+        expectedFee: expectedCourseFee,
         centre: leadCentre,
+        franchiseId: leadFranchiseId,
         studentLocation: leadCity,
         city: leadCity,
-        notes: message || "",
-        activities: [{ type: "website", message: "Created from website enquiry", by: "Website", at: new Date() }],
+        notes: initialNotes,
+        ipAddress: clientIp,
+        userAgent: userAgent,
+        isSuspectedConsultancy: isSuspectedConsultancy,
+        consultancyFlagReason: consultancyFlagReason,
+        leadFeedback: isSuspectedConsultancy ? "Junk" : "New",
+        activities: [
+          {
+            type: "website",
+            message: isSuspectedConsultancy
+              ? `⚠️ Application auto-flagged as Suspected Consultancy (${consultancyFlagReason}). IP: ${clientIp}`
+              : `Created from website enquiry (IP: ${clientIp || "Unknown"})`,
+            by: "Website",
+            at: new Date(),
+          },
+        ],
       });
     } catch (dbError) {
       console.error("Contact form DB create error:", dbError);
@@ -4550,8 +4815,8 @@ app.post("/api/contact", async (req, res) => {
         from: `iMED Academy <${process.env.SMTP_USER}>`,
         to: toAddress,
         replyTo: email || process.env.SMTP_USER,
-        subject: `New iMED enquiry - ${preferredProgram}`,
-        html: `<h2>New iMED Academy Enquiry</h2><table cellpadding="8" cellspacing="0" border="1" style="border-collapse:collapse;font-family:Arial,sans-serif;"><tr><th align="left">Full Name</th><td>${escapeHtml(fullName)}</td></tr><tr><th align="left">Phone</th><td>${escapeHtml(phone)}</td></tr><tr><th align="left">Email</th><td>${escapeHtml(email || "Not provided")}</td></tr><tr><th align="left">Preferred Program</th><td>${escapeHtml(preferredProgram)}</td></tr><tr><th align="left">Message</th><td>${escapeHtml(message || "Not provided")}</td></tr></table>`,
+        subject: `${isSuspectedConsultancy ? "⚠️ [SUSPECTED CONSULTANCY] " : ""}New iMED enquiry - ${preferredProgram}`,
+        html: `<h2>New iMED Academy Enquiry</h2>${isSuspectedConsultancy ? `<p style="color:#b91c1c;font-weight:bold;">⚠️ WARNING: ${escapeHtml(consultancyFlagReason)}</p>` : ""}<table cellpadding="8" cellspacing="0" border="1" style="border-collapse:collapse;font-family:Arial,sans-serif;"><tr><th align="left">Full Name</th><td>${escapeHtml(cleanFullName)}</td></tr><tr><th align="left">Phone</th><td>${escapeHtml(phone)}</td></tr><tr><th align="left">Email</th><td>${escapeHtml(email || "Not provided")}</td></tr><tr><th align="left">Preferred Program</th><td>${escapeHtml(preferredProgram)}</td></tr><tr><th align="left">Message</th><td>${escapeHtml(message || "Not provided")}</td></tr><tr><th align="left">IP Address</th><td>${escapeHtml(clientIp || "Unknown")}</td></tr></table>`,
       });
     } catch (mailError) {
       console.error("Contact form mail delivery error (lead was recorded if DB connected):", mailError);
