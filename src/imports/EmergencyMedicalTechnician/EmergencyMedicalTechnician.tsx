@@ -969,7 +969,7 @@ function Frame97() {
 
 function About2() {
   return (
-    <div id="career-path" data-nav="career-path" className="-translate-x-1/2 absolute bg-white content-stretch flex flex-col gap-[70px] items-center left-1/2 px-[32px] py-[60px] top-[3695px] w-[1440px]" data-name="About">
+    <div id="career-path" data-nav="career-path" className="-translate-x-1/2 absolute bg-white content-stretch flex flex-col gap-[70px] items-center left-1/2 px-[32px] py-[60px] top-[4095px] w-[1440px]" data-name="About">
       <Frame46 />
       <Frame97 />
     </div>
@@ -1636,7 +1636,7 @@ function Heading11() {
 function Paragraph() {
   return (
     <div className="absolute h-[20px] left-0 top-[95.99px] w-[573.6px]" data-name="Paragraph">
-      <p className="absolute font-['Inter:Regular',sans-serif] font-normal leading-[20px] left-0 not-italic text-[#bedbff] text-[14px] top-[-0.2px] whitespace-nowrap">Tier 1 - Metro · Multi-speciality · 2 yrs exp · Day Shift</p>
+      <p className="absolute font-['Inter:Regular',sans-serif] font-normal leading-[20px] left-0 not-italic text-[#bedbff] text-[14px] top-[-0.2px] whitespace-nowrap">Tier 1 - Metro Â· Multi-speciality Â· 2 yrs exp Â· Day Shift</p>
     </div>
   );
 }
@@ -3590,7 +3590,8 @@ export default function EmergencyMedicalTechnician() {
       setPageScale(nextScale);
 
       if (pageRef.current) {
-        setScaledHeight(Math.ceil(pageRef.current.offsetHeight * nextScale));
+        const rawHeight = pageRef.current.scrollHeight || pageRef.current.offsetHeight;
+        setScaledHeight(Math.ceil(rawHeight * nextScale));
       }
     };
 
@@ -3629,15 +3630,14 @@ export default function EmergencyMedicalTechnician() {
           <Frame15 />
           <About />
           <About1 />
-          <About2 />
           <About3 />
           <About4 />
+          <About2 />
           <About5 />
           <About6 />
           <About7 />
           <Container41 />
           <Frame16 />
-
         </div>
       </div>
     </div>

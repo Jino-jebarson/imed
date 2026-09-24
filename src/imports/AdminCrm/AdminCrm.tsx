@@ -4,6 +4,7 @@ import { jsPDF } from "jspdf";
 import { Toaster, toast } from "sonner";
 import IMedCertificate from "./IMedCertificate";
 import {
+  AlertCircle,
   AlertTriangle,
   ArrowRight,
   Award,
@@ -123,7 +124,7 @@ type GoogleCalendarStatus = { configured: boolean; connected: boolean; email?: s
 type DocumentFile = { originalName?: string; storedName?: string; mimeType?: string; size?: number; uploadedAt?: string };
 type LeadFollowUp = { type?: string; status?: string; scheduledAt?: string; note?: string; by?: string; createdAt?: string };
 type LeadActivity = { type: string; message: string; by?: string; at?: string };
-type Lead = { _id: string; fullName: string; phone: string; parentMobile?: string; email?: string; governmentProof?: DocumentFile; highestQualificationCertificate?: DocumentFile; source?: string; centre?: string; franchiseId?: string; course?: string; counsellor?: string; stage: string; priority?: string; leadFeedback?: string; city?: string; studentLocation?: string; expectedFee?: number; nextFollowUp?: string; followUps?: LeadFollowUp[]; notes?: string; activities?: LeadActivity[]; ipAddress?: string; userAgent?: string; isSuspectedConsultancy?: boolean; consultancyFlagReason?: string; assignedAt?: string; assignedBy?: string; createdAt?: string; updatedAt?: string };
+type Lead = { _id: string; fullName: string; phone: string; parentMobile?: string; email?: string; governmentProof?: DocumentFile; highestQualificationCertificate?: DocumentFile; source?: string; counsellorName?: string; scholarName?: string; refereeName?: string; referralAmount?: number; centre?: string; franchiseId?: string; course?: string; counsellor?: string; stage: string; priority?: string; leadFeedback?: string; city?: string; studentLocation?: string; expectedFee?: number; nextFollowUp?: string; followUps?: LeadFollowUp[]; notes?: string; activities?: LeadActivity[]; ipAddress?: string; userAgent?: string; isSuspectedConsultancy?: boolean; consultancyFlagReason?: string; assignedAt?: string; assignedBy?: string; createdAt?: string; updatedAt?: string };
 type CashDeposit = { amount?: number; bank?: string; referenceNumber?: string; note?: string; proof?: DocumentFile; depositedBy?: string; by?: string; depositedAt?: string; createdAt?: string };
 type PaymentRecord = { amount?: number; mode?: string; paymentPurpose?: string; transactionId?: string; emiReference?: string; loanProviderName?: string; note?: string; proof?: DocumentFile; cashDeposits?: CashDeposit[]; by?: string; paidAt?: string };
 type StudentFeedback = { type?: string; status?: string; note?: string; nextFollowUpDate?: string; by?: string; at?: string };
@@ -148,8 +149,8 @@ type KitDistribution = {
   issuedBy?: string;
   notes?: string;
 };
-type Student = { _id: string; leadId?: string; fullName: string; phone: string; parentMobile?: string; email?: string; studentLocation?: string; centre?: string; franchiseId?: string; course?: string; counsellor?: string; teacher?: string; batch?: string; batchCommenceDate?: string; status: string; totalFee?: number; paidAmount?: number; admissionNumber?: string; lmsAccessEnabled?: boolean; lmsAccessGeneratedAt?: string; lmsAccessGeneratedBy?: string; admissionPaymentMode?: string; admissionUpfrontAmount?: number; admissionFinalizedAt?: string; admissionFinalizedBy?: string; discountAmount?: number; emiEnabled?: boolean; emiMonths?: number; emiAmount?: number; nextEmiDate?: string; certificateNumber?: string; certificateIssuedAt?: string; certificateStatus?: string; placementStatus?: string; placementCompany?: string; placementRole?: string; placementJoiningDate?: string; placementSalary?: number; placementHrContact?: string; placementOfferLetterUrl?: string; placementRemarks?: string; testimonialText?: string; testimonialVideoUrl?: string; testimonialRating?: number; testimonialApproved?: boolean; referralName?: string; referralPhone?: string; referralStatus?: string; payments?: PaymentRecord[]; feedbacks?: StudentFeedback[]; internshipAssignment?: InternshipAssignment | null; internshipLogs?: InternshipLog[]; logbookEntries?: LogbookEntry[]; kitDistribution?: KitDistribution; createdAt?: string; updatedAt?: string };
-type Centre = { _id: string; name: string; type?: "branch" | "franchise"; city?: string; billingLegalName?: string; billingAddress?: string; billingGstin?: string; billingStateName?: string; billingStateCode?: string; billingEmail?: string; billingPhone?: string; bankAccountName?: string; bankName?: string; bankAccountNumber?: string; bankIfsc?: string; bankBranch?: string };
+type Student = { _id: string; leadId?: string; fullName: string; phone: string; parentMobile?: string; email?: string; studentLocation?: string; centre?: string; franchiseId?: string; course?: string; counsellor?: string; counsellorName?: string; callerName?: string; teacher?: string; batch?: string; batchCommenceDate?: string; status: string; totalFee?: number; paidAmount?: number; admissionNumber?: string; lmsAccessEnabled?: boolean; lmsAccessGeneratedAt?: string; lmsAccessGeneratedBy?: string; admissionPaymentMode?: string; admissionUpfrontAmount?: number; admissionFinalizedAt?: string; admissionFinalizedBy?: string; discountAmount?: number; emiEnabled?: boolean; emiMonths?: number; emiAmount?: number; nextEmiDate?: string; certificateNumber?: string; certificateIssuedAt?: string; certificateStatus?: string; placementStatus?: string; placementCompany?: string; placementRole?: string; placementJoiningDate?: string; placementSalary?: number; placementHrContact?: string; placementOfferLetterUrl?: string; placementRemarks?: string; testimonialText?: string; testimonialVideoUrl?: string; testimonialRating?: number; testimonialApproved?: boolean; referralName?: string; referralPhone?: string; referralStatus?: string; payments?: PaymentRecord[]; feedbacks?: StudentFeedback[]; internshipAssignment?: InternshipAssignment | null; internshipLogs?: InternshipLog[]; logbookEntries?: LogbookEntry[]; kitDistribution?: KitDistribution; createdAt?: string; updatedAt?: string };
+type Centre = { _id: string; name: string; type?: "branch" | "franchise"; parentCentreId?: string; city?: string; billingLegalName?: string; billingAddress?: string; billingGstin?: string; billingStateName?: string; billingStateCode?: string; billingEmail?: string; billingPhone?: string; bankAccountName?: string; bankName?: string; bankAccountNumber?: string; bankIfsc?: string; bankBranch?: string };
 type Course = { _id: string; name: string; code?: string; fee?: number; duration?: string; franchiseId?: string };
 type Counsellor = { _id?: string; name: string; email: string; role: string; franchiseId?: string };
 type Batch = { _id: string; name: string; centre?: string; franchiseId?: string; course?: string; assignedFaculty?: string[]; commenceDate: string };
@@ -485,7 +486,7 @@ function openLeadPamphlet(lead: Lead, pamphlet: LeadPamphletKey) {
 }
 
 function roleLabel(role = "") {
-  return role === "superadmin" ? "Super Admin" : role === "admin" ? "Center Admin" : role === "operations_executive" ? "Operations Executive" : role === "franchise_operations_executive" ? "Franchise Operations Executive" : role === "teacher" ? "Teacher" : role === "franchise_superadmin" ? "Franchise Super Admin" : role === "franchise_counsellor" ? "Franchise Counsellor" : role === "franchise_teacher" ? "Franchise Teacher" : "Counsellor";
+  return role === "superadmin" ? "Super Admin" : role === "center_admin" ? "Center Admin" : role === "admin" ? "Branch Admin" : role === "operations_executive" ? "Operations Executive" : role === "franchise_operations_executive" ? "Franchise Operations Executive" : role === "teacher" ? "Teacher" : role === "franchise_superadmin" ? "Franchise Super Admin" : role === "franchise_counsellor" ? "Franchise Counsellor" : role === "franchise_teacher" ? "Franchise Teacher" : "Counsellor";
 }
 
 function attendanceStatusLabel(status: AttendanceStatus) {
@@ -1095,7 +1096,8 @@ export default function AdminCrm() {
   const notifRef = useRef<HTMLDivElement>(null);
 
   const isHeadSuperAdmin = user?.role === "superadmin";
-  const isHeadAdmin = user?.role === "superadmin" || user?.role === "admin";
+  const isCenterAdmin = user?.role === "center_admin";
+  const isHeadAdmin = user?.role === "superadmin" || user?.role === "center_admin" || user?.role === "admin";
   const isHeadBranchAdmin = user?.role === "admin";
   const isOperationsAccount = user?.role === "operations_executive" || user?.role === "franchise_operations_executive";
   const isFranchiseSuperAdmin = user?.role === "franchise_superadmin";
@@ -1116,9 +1118,10 @@ export default function AdminCrm() {
   const canManageNps = isHeadAdmin || isFranchiseSuperAdmin || isOperationsAccount;
   const canManageInventory = isHeadAdmin || isFranchiseSuperAdmin || isOperationsAccount;
   const canDeleteRecords = isHeadAdmin || isFranchiseSuperAdmin;
+  // Only global superadmin can use the scope filter across all centres
   const canUseScopeFilter = isHeadSuperAdmin;
   const selectedFranchise = canUseScopeFilter && roleScope !== "all" ? centres.find((centre) => centre._id === roleScope) : undefined;
-  const scopedFranchiseId = isFranchiseUser ? user?.franchiseId || "" : canUseScopeFilter ? selectedFranchise?._id || "" : "";
+  const scopedFranchiseId = user?.franchiseId || (canUseScopeFilter ? selectedFranchise?._id || "" : "");
   const authedHeaders = { Authorization: `Bearer ${token}`, "Content-Type": "application/json" };
   const centreOptions = centres.length ? centres.map((centre) => centre.name) : fallbackCentres;
   const courseOptions = courses.length ? courses.map((course) => course.code || course.name) : fallbackCourses;
@@ -1591,12 +1594,13 @@ export default function AdminCrm() {
     await Promise.all([loadInventorySummary(), loadInventoryItems(), loadTablets(), loadInventoryTransactions()]);
   };
 
-  const handleStockIn = async (payload: { itemType: string; size?: string; quantity?: number; vendorChallan?: string; notes?: string; tablets?: { assetId: string; serialNumber: string; brandModel: string; remarks?: string }[] }) => {
+  const handleStockIn = async (payload: { itemType: string; size?: string; quantity?: number; vendorChallan?: string; notes?: string; franchiseId?: string; tablets?: { assetId: string; serialNumber: string; brandModel: string; remarks?: string }[] }) => {
     try {
+      const targetFranchise = payload.franchiseId || scopedFranchiseId;
       const res = await api<{ message?: string }>("/api/admin/inventory/stock-in", {
         method: "POST",
         headers: authedHeaders,
-        body: JSON.stringify({ ...payload, franchiseId: scopedFranchiseId }),
+        body: JSON.stringify({ ...payload, franchiseId: targetFranchise }),
       });
       toast.success(res.message || "Stock added");
       setStockInModalOpen(false);
@@ -1893,6 +1897,12 @@ export default function AdminCrm() {
     for (const [field, label] of requiredTextFields) {
       if (!String(formData.get(field) || "").trim()) {
         toast.error(`${label} is required`);
+        return;
+      }
+    }
+    if (String(formData.get("source") || "").trim().toLowerCase() === "referral") {
+      if (!String(formData.get("refereeName") || "").trim()) {
+        toast.error("Referee name is required for Referral leads");
         return;
       }
     }
@@ -2685,6 +2695,26 @@ export default function AdminCrm() {
     }
   };
 
+  const updateCounsellor = async (event: FormEvent<HTMLFormElement>, staffId: string) => {
+    event.preventDefault();
+    const form = event.currentTarget;
+    try {
+      const payload = Object.fromEntries(new FormData(form).entries());
+      await api<Counsellor>(`/api/admin/counsellors/${staffId}`, {
+        method: "PATCH",
+        headers: authedHeaders,
+        body: JSON.stringify(payload),
+      });
+      toast.success("Staff account updated");
+      await loadCounsellors();
+      await loadTeachers();
+      return true;
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : "Unable to update staff");
+      return false;
+    }
+  };
+
   const addCentreOrCourse = async (event: FormEvent<HTMLFormElement>, type: "centres" | "courses") => {
     event.preventDefault();
     const form = event.currentTarget;
@@ -3162,7 +3192,7 @@ export default function AdminCrm() {
           <section className="content">
             {panel === "dashboard" && (isCounsellorAccount ? <SalesCounsellorDashboardPanel leads={leads} students={visibleStudents} onOpenLead={openLeadDrawer} onGoLeads={() => setPanel("leads")} onGoAddLead={() => setPanel("addlead")} onGoAdmissions={() => setPanel("admissions")} onOpenStudent={(student) => openProfile({ type: "student", data: student }, "dashboard")} /> : isTeacherAccount ? <TeacherDashboardPanel batches={batches} students={visibleStudents} sessions={classSessions} schedules={classSchedulesState} topicProgress={topicProgress} practicalRecords={practicalRecords} user={user} googleCalendarStatus={googleCalendarStatus} calendarSyncing={calendarSyncing} onConnectCalendar={connectGoogleCalendar} onDisconnectCalendar={disconnectGoogleCalendar} onSyncCalendar={syncGoogleCalendar} onOpenStudent={(student) => openProfile({ type: "student", data: student }, "dashboard")} onOpenBatch={(batchId, sessionId) => { setSelectedBatchId(batchId); setSelectedClassSessionId(sessionId || ""); setPanel("batch"); }} /> : isOperationsAccount ? <OperationsDashboardPanel students={students} batches={batches} onOpenStudent={(student) => openProfile({ type: "student", data: student }, "dashboard")} onGoStudents={() => setPanel("allstudents")} onGoFinance={() => setPanel("finance")} onGoEmi={() => setPanel("emi")} onGoCert={() => setPanel("cert")} onGoInternship={() => setPanel("internship")} onGoInventory={() => setPanel("inventory")} inventorySummary={inventorySummary} /> : <DashboardPanel summary={summary} funnel={funnel} centreStats={centreStats} students={students} leads={leads} onOpenLead={openLeadDrawer} />)}
             {panel === "leads" && <LeadsPanel leads={leads} students={students} batches={batches} meta={leadMeta} filters={filters} setFilters={setFilters} centres={centreOptions} courses={courseOptions} canAssign={canAssignCounsellors} canDelete={canDeleteRecords} counsellors={counsellors} onSearch={() => loadLeads(1)} onPage={setLeadPage} onPatch={patchLead} onDelete={deleteLead} onEdit={(lead) => openProfile({ type: "lead", data: lead, mode: "edit" }, "leads")} onAddLead={() => setPanel("addlead")} onImportExcel={importLeadExcel} onOpen={openLeadDrawer} onBulkAssignCentre={bulkAssignLeadCentre} onBulkDelete={bulkDeleteLeads} />}
-            {panel === "addlead" && <AddLeadPanel centres={centreOptions} courses={courseOptions} allCourses={courses} onSubmit={addLead} isSuperAdmin={isHeadSuperAdmin} />}
+            {panel === "addlead" && <AddLeadPanel centres={centreOptions} courses={courseOptions} allCourses={courses} counsellors={counsellors} onSubmit={addLead} isSuperAdmin={isHeadSuperAdmin} />}
             {panel === "admissions" && <AdmissionsPanel leads={leads.filter((lead) => lead.stage === "Admission" && !students.some((student) => String(student.leadId || "") === String(lead._id)))} batches={batches} canAssign={canAssignCounsellors} counsellors={counsellors} centres={centreOptions} onPatch={patchLead} onConvert={convertLead} onOpen={openLeadDrawer} />}
             {panel === "batch" && <BatchPanel batches={batches} students={students} schedules={classSchedulesState} sessions={classSessions} topicProgress={topicProgress} practicalRecords={practicalRecords} studyNotes={studyNotes} npsDashboard={npsDashboard} teachers={teachers} user={user} classWeek={classWeek} setClassWeek={setClassWeek} selectedBatchId={selectedBatchId} setSelectedBatchId={setSelectedBatchId} selectedSessionId={selectedClassSessionId} setSelectedSessionId={setSelectedClassSessionId} initialTab={batchResumeTab} classesGenerating={classesGenerating} attendanceDraft={classAttendanceDraft} setAttendanceDraft={setClassAttendanceDraft} attendanceLogs={attendanceSummaries} selectedAttendanceSummary={selectedAttendanceSummary} attendanceDetailLogs={attendanceDetailLogs} attendanceDetailFilters={attendanceDetailFilters} setAttendanceDetailFilters={setAttendanceDetailFilters} onSelectAttendanceSummary={setSelectedAttendanceSummary} onCreateSchedule={createClassSchedule} onGenerateWeek={generateWeeklyRoster} onSaveAttendance={saveClassAttendance} onResetAttendance={resetClassAttendance} onEditSession={patchClassSession} onTopicProgress={updateTopicProgress} onDeleteTopic={deleteTopicProgress} onCreateBatchPractical={createBatchPractical} onPracticalRecord={updatePracticalRecord} onUploadStudyNote={uploadStudyNote} onDownloadStudyNote={downloadStudyNote} onDeleteStudyNote={deleteStudyNote} onOpen={(student) => { setBatchResumeTab("students"); openProfile({ type: "student", data: student }, "batch"); }} />}
             {panel === "mystudents" && <StudentsPanel title="My candidates" students={visibleStudents} meta={studentMeta} batches={batches} canAssign={canAssignTeachers} canDelete={canDeleteRecords} teachers={teachers} onPage={setStudentPage} onPatch={patchStudent} onDelete={deleteStudent} onEdit={(student) => openProfile({ type: "student", data: student, mode: "edit" }, "mystudents")} onOpen={(student) => openProfile({ type: "student", data: student }, "mystudents")} />}
@@ -3177,7 +3207,7 @@ export default function AdminCrm() {
             {panel === "emi" && <EmiPanel students={students} meta={studentMeta} onPage={setStudentPage} onOpen={(student) => openProfile({ type: "student", data: student }, "emi")} />}
             {panel === "receipts" && canManageFees && <ReceiptsPanel students={visibleStudents} meta={studentMeta} onPage={setStudentPage} onOpen={(student) => { setReceiptStudent(student); setReceiptSelection({ type: "invoice" }); }} />}
             {panel === "cert" && canManageCertificates && <CertificatePanel students={students} meta={studentMeta} onPage={setStudentPage} onIssue={issueCertificate} onOpen={(student) => openProfile({ type: "student", data: student }, "cert")} />}
-            {panel === "settings" && canManageSettings && <SettingsPanel isHeadSuperAdmin={isHeadSuperAdmin} isHeadBranchAdmin={isHeadBranchAdmin} isFranchiseSuperAdmin={isFranchiseSuperAdmin} centres={centres} courses={courses} batches={batches} counsellors={counsellors} teachers={teachers} user={user} centreOptions={centreOptions} courseOptions={courseOptions} onAddStaff={addCounsellor} onAddCentre={(event) => addCentreOrCourse(event, "centres")} onUpdateCentreBilling={updateCentreBilling} onAddCourse={(event) => addCentreOrCourse(event, "courses")} onUpdateCourse={updateCourse} onDeleteCourse={deleteCourse} onAddBatch={addBatch} onUpdateBatch={updateBatch} onDeleteBatch={deleteBatch} onUpdatePassword={updatePassword} />}
+            {panel === "settings" && canManageSettings && <SettingsPanel isHeadSuperAdmin={isHeadSuperAdmin} isCenterAdmin={isCenterAdmin} isHeadBranchAdmin={isHeadBranchAdmin} isFranchiseSuperAdmin={isFranchiseSuperAdmin} centres={centres} courses={courses} batches={batches} counsellors={counsellors} teachers={teachers} user={user} centreOptions={centreOptions} courseOptions={courseOptions} onAddStaff={addCounsellor} onUpdateStaff={updateCounsellor} onAddCentre={(event) => addCentreOrCourse(event, "centres")} onUpdateCentreBilling={updateCentreBilling} onAddCourse={(event) => addCentreOrCourse(event, "courses")} onUpdateCourse={updateCourse} onDeleteCourse={deleteCourse} onAddBatch={addBatch} onUpdateBatch={updateBatch} onDeleteBatch={deleteBatch} onUpdatePassword={updatePassword} />}
             {panel === "inventory" && canManageInventory && (
               <InventoryPanel
                 summary={inventorySummary}
@@ -3199,7 +3229,7 @@ export default function AdminCrm() {
                 onOpenStudent={(student) => openProfile({ type: "student", data: student }, "inventory")}
               />
             )}
-            {panel === "profile" && <ProfilePanel profile={profile} user={user} accessCount={visibleNavGroups.reduce((sum, group) => sum + group.items.length, 0)} canManageFees={canManageFees} canManageSettings={canManageSettings} canAssignTeachers={canAssignTeachers} canManageCertificates={canManageCertificates} canManageInternships={canManageInternships} canManageInventory={canManageInventory} onIssueKit={(st) => { setIssueKitTargetStudent(st); setIssueKitTargetTablet(null); setIssueKitModalOpen(true); }} centres={centreOptions} courses={courseOptions} allCourses={courses} batches={batches} teachers={teachers} onBack={closeProfile} onGoSettings={() => setPanel("settings")} onLeadPatch={patchLead} onStudentPatch={patchStudent} onGenerateStudentLmsAccess={generateStudentLmsAccess} onInternshipSave={saveStudentInternship} onInternshipDelete={deleteStudentInternship} onPayment={addPayment} onDownloadPaymentProof={downloadPaymentProof} onFeedback={addStudentFeedback} onIssue={issueCertificate} onPreviewDocument={openDocumentPreview} onPreviewInternshipPhoto={openInternshipPhotoPreview} />}
+            {panel === "profile" && <ProfilePanel profile={profile} user={user} accessCount={visibleNavGroups.reduce((sum, group) => sum + group.items.length, 0)} canManageFees={canManageFees} canManageSettings={canManageSettings} canAssignTeachers={canAssignTeachers} canManageCertificates={canManageCertificates} canManageInternships={canManageInternships} canManageInventory={canManageInventory} onIssueKit={(st) => { setIssueKitTargetStudent(st); setIssueKitTargetTablet(null); setIssueKitModalOpen(true); }} centres={centreOptions} courses={courseOptions} allCourses={courses} batches={batches} teachers={teachers} counsellors={counsellors} onBack={closeProfile} onGoSettings={() => setPanel("settings")} onLeadPatch={patchLead} onStudentPatch={patchStudent} onGenerateStudentLmsAccess={generateStudentLmsAccess} onInternshipSave={saveStudentInternship} onInternshipDelete={deleteStudentInternship} onPayment={addPayment} onDownloadPaymentProof={downloadPaymentProof} onFeedback={addStudentFeedback} onIssue={issueCertificate} onPreviewDocument={openDocumentPreview} onPreviewInternshipPhoto={openInternshipPhotoPreview} />}
           </section>
         </div>
       </div>
@@ -3241,6 +3271,8 @@ export default function AdminCrm() {
       />
       <StockInModal
         open={stockInModalOpen}
+        centres={centres}
+        defaultFranchiseId={scopedFranchiseId}
         onClose={() => setStockInModalOpen(false)}
         onSubmit={handleStockIn}
       />
@@ -3919,7 +3951,7 @@ function InternshipPanel({ students, user, onPreviewPhoto, onReviewLogbook }: { 
     const text = `${student.fullName} ${student.admissionNumber || ""} ${student.batch || ""} ${entry.departmentArea || ""}`.toLowerCase();
     return (!query || text.includes(query.toLowerCase())) && (logbookStatus === "all" || (logbookStatus === "pending" ? !entry.verified : Boolean(entry.verified)));
   });
-  const scopeCopy = user?.role?.includes("teacher") ? "assigned students only" : user?.role === "superadmin" ? "all centres" : "current centre scope";
+  const scopeCopy = user?.role?.includes("teacher") ? "assigned students only" : user?.role === "superadmin" ? "all centres" : user?.role === "center_admin" ? "all branches in centre" : "current centre scope";
 
   return (
     <div className="internship-panel">
@@ -4118,7 +4150,7 @@ function LeadsPanel(props: {
           {counsellorNames.map((name) => <option key={name} value={name}>{name}</option>)}
         </select>
         <div className="filter-spacer" />
-        <button className="btn btn-ghost" onClick={() => downloadExcelFile(["Lead", "Contact", "Course", "Source", "Centre", "Counsellor", "Stage", "Priority", "Next follow-up"], filteredLeads.map((lead) => [lead.fullName, lead.phone, lead.course, lead.source, lead.centre, leadOwnerForDisplay(lead, props.students, props.batches) || "Unassigned", lead.stage, leadPriorityLabel(lead.priority), formatDate(lead.updatedAt || lead.createdAt)]), "imed-leads")}><Download size={15} /> Download Excel</button>
+        <button className="btn btn-ghost" onClick={() => downloadExcelFile(["Lead", "Contact", "Course", "Source", "Referee", "Referral Amount", "BTL Counsellor", "Scholar", "Centre", "Counsellor", "Stage", "Priority", "Next follow-up"], filteredLeads.map((lead) => [lead.fullName, lead.phone, lead.course, lead.source, lead.refereeName || "-", lead.referralAmount ? String(lead.referralAmount) : "-", lead.counsellorName || "-", lead.scholarName || "-", lead.centre, leadOwnerForDisplay(lead, props.students, props.batches) || "Unassigned", lead.stage, leadPriorityLabel(lead.priority), formatDate(lead.updatedAt || lead.createdAt)]), "imed-leads")}><Download size={15} /> Download Excel</button>
         <label className="btn btn-ghost file-upload-btn">Upload Excel<input type="file" accept=".xlsx,.xls,.csv" onChange={props.onImportExcel} /></label>
         <button className="btn btn-primary" onClick={props.onAddLead}><Plus size={15} /> Add lead</button>
       </div>
@@ -4350,7 +4382,21 @@ function LeadTable({
               <td><div className="lead-name-cell"><span className="avatar lead-avatar">{initials(lead.fullName)}</span><div><div className="cell-name">{lead.fullName}{lead.isSuspectedConsultancy && <span title={lead.consultancyFlagReason || "Suspected Consultancy / Bulk Upload from same IP"} style={{ background: "#fee2e2", color: "#dc2626", border: "1px solid #f87171", fontSize: "10px", fontWeight: "bold", padding: "1px 5px", borderRadius: "4px", marginLeft: "6px", display: "inline-block", verticalAlign: "middle" }}>⚠️ Suspected Consultancy</span>}</div><div className="cell-sub">{lead._id.slice(-8).toUpperCase()}</div></div></div></td>
               <td>{lead.phone}<div className="cell-sub">{lead.studentLocation || lead.city || lead.email || "-"}</div></td>
               <td>{courseShortCode(lead.course)}</td>
-              <td><span className="badge badge-gray">{lead.source || "-"}</span></td>
+              <td>
+                <span className="badge badge-gray">{lead.source || "-"}</span>
+                {lead.source === "BTL" && (lead.counsellorName || lead.scholarName) && (
+                  <div className="cell-sub" style={{ fontSize: "10.5px", marginTop: "2px" }}>
+                    {lead.counsellorName && <div>C: {lead.counsellorName}</div>}
+                    {lead.scholarName && <div>S: {lead.scholarName}</div>}
+                  </div>
+                )}
+                {String(lead.source || "").trim().toLowerCase() === "referral" && (lead.refereeName || (lead.referralAmount !== undefined && lead.referralAmount > 0)) && (
+                  <div className="cell-sub" style={{ fontSize: "10.5px", marginTop: "2px" }}>
+                    {lead.refereeName && <div>Ref: {lead.refereeName}</div>}
+                    {Boolean(lead.referralAmount) && <div>Amt: {formatCurrency(lead.referralAmount || 0)}</div>}
+                  </div>
+                )}
+              </td>
               <td>{canAssign ? <select className="mini-select" value={lead.centre || ""} onClick={(e) => e.stopPropagation()} onChange={(event) => onPatch(lead._id, { centre: event.target.value })}><option value="">Assign centre</option>{centres.map((centre) => <option key={centre}>{centre}</option>)}</select> : lead.centre || "-"}</td>
               <td>{canAssign ? <select className="mini-select" value={displayOwner} onClick={(e) => e.stopPropagation()} onChange={(event) => onPatch(lead._id, { counsellor: event.target.value })}><option value="">Unassigned</option>{!hasCounsellorOption && <option value={displayOwner}>{displayOwner}</option>}{counsellors.map((counsellor) => <option key={counsellor.email}>{counsellor.name}</option>)}</select> : displayOwner || "-"}</td>
               <td onClick={(event) => event.stopPropagation()}><select className="fbtn stage-select" value={leadStages.includes(lead.stage) ? lead.stage : "New Lead"} onChange={(event) => onPatch(lead._id, { stage: event.target.value })}>{leadStages.map((stage) => <option key={stage}>{stage}</option>)}</select></td>
@@ -4374,12 +4420,15 @@ function LeadTable({
   );
 }
 
-function AddLeadPanel({ centres, courses, allCourses = [], onSubmit, isSuperAdmin = false }: { centres: string[]; courses: string[]; allCourses?: Course[]; onSubmit: (event: FormEvent<HTMLFormElement>) => void; isSuperAdmin?: boolean }) {
+function AddLeadPanel({ centres, courses, allCourses = [], counsellors = [], onSubmit, isSuperAdmin = false }: { centres: string[]; courses: string[]; allCourses?: Course[]; counsellors?: Counsellor[]; onSubmit: (event: FormEvent<HTMLFormElement>) => void; isSuperAdmin?: boolean }) {
   const [centreDraft, setCentreDraft] = useState("");
   const [courseDraft, setCourseDraft] = useState("");
+  const [sourceDraft, setSourceDraft] = useState("");
   const availableCourses = courseOptionsForCentre(centreDraft, courses, isSuperAdmin);
   const selectedCourseObj = allCourses.find((c) => [c.code, c.name].map((s) => String(s || "").toLowerCase()).includes(courseDraft.toLowerCase()));
   const selectedCoursePayable = selectedCourseObj ? feeWithGst(selectedCourseObj.fee || 0) : 0;
+  const isReferralSource = sourceDraft.trim().toLowerCase() === "referral";
+
   return (
     <div className="card">
       <div className="card-head"><div><h3>Add new lead</h3><div className="sub">Create a prospective student record</div></div></div>
@@ -4389,7 +4438,44 @@ function AddLeadPanel({ centres, courses, allCourses = [], onSubmit, isSuperAdmi
         <div className="field"><RequiredLabel>Parent mobile no.</RequiredLabel><input name="parentMobile" inputMode="tel" pattern="[0-9+()\\-\\s]{8,15}" title="Enter a valid parent mobile number" /></div>
         <Field name="email" label="Email" type="email" />
         <Field name="studentLocation" label="Student location" required />
-        <div className="field"><RequiredLabel required>Source</RequiredLabel><select name="source" required defaultValue=""><option value="" disabled>Select source</option>{sources.map((source) => <option key={source}>{source}</option>)}</select></div>
+        <div className="field">
+          <RequiredLabel required>Source</RequiredLabel>
+          <select
+            name="source"
+            required
+            value={sourceDraft}
+            onChange={(e) => setSourceDraft(e.target.value)}
+          >
+            <option value="" disabled>Select source</option>
+            {sources.map((source) => <option key={source} value={source}>{source}</option>)}
+          </select>
+        </div>
+
+        {isReferralSource && (
+          <>
+            <div className="field">
+              <RequiredLabel required>Referee name</RequiredLabel>
+              <input
+                name="refereeName"
+                required
+                placeholder="Enter referee name"
+                autoComplete="off"
+              />
+            </div>
+            <div className="field">
+              <label>Referral amount (₹) <span style={{ fontSize: "11px", color: "var(--muted, #64748B)", fontWeight: 400 }}>(Optional)</span></label>
+              <input
+                name="referralAmount"
+                type="number"
+                min="0"
+                step="any"
+                placeholder="Enter referral amount"
+                autoComplete="off"
+              />
+            </div>
+          </>
+        )}
+
         <SelectField name="leadFeedback" label="Status" options={leadFeedbackOptions} defaultValue="New" />
         <div className="field"><RequiredLabel required>Centre / franchise</RequiredLabel><select name="centre" required value={centreDraft} onChange={(event) => { setCentreDraft(event.target.value); setCourseDraft(""); }}><option value="" disabled>Select centre</option>{centres.map((centre) => <option key={centre}>{centre}</option>)}</select></div>
         <div className="field">
@@ -4430,7 +4516,7 @@ function StudentsPanel({ title, students, meta, batches = [], canAssign = false,
         <input className="fbtn" value={search} onChange={(event) => setSearch(event.target.value)} placeholder={title === "My candidates" ? "Search my candidates..." : "Search all candidates..."} />
         {canAssign && <select className="fbtn" value={statusFilter} onChange={(event) => setStatusFilter(event.target.value)}><option value="">All statuses</option>{studentStatuses.map((status) => <option key={status} value={status}>{studentStatusLabel(status)}</option>)}</select>}
         <div className="filter-spacer" />
-        <button className="btn btn-ghost" onClick={() => downloadExcelFile(["Candidate", "Course", "Centre", "Batch", "Counsellor", "Teacher", "Fee", "Paid", "Status"], filteredStudents.map((student) => [student.fullName, student.course, student.centre, student.batch, student.counsellor, batchFacultyForStudent(student, batches) || "Unassigned", student.totalFee, student.paidAmount, studentStatusLabel(student.status)]), "imed-candidates")}><Download size={15} /> Download Excel</button>
+        <button className="btn btn-ghost" onClick={() => downloadExcelFile(["Candidate", "Course", "Centre", "Batch", "Counsellor", "Caller", "Teacher", "Fee", "Paid", "Status"], filteredStudents.map((student) => [student.fullName, student.course, student.centre, student.batch, student.counsellorName || student.counsellor || "-", student.callerName || "-", batchFacultyForStudent(student, batches) || "Unassigned", student.totalFee, student.paidAmount, studentStatusLabel(student.status)]), "imed-candidates")}><Download size={15} /> Download Excel</button>
       </div>
       <div className="card students-card">
         <div className="card-body students-table-body">
@@ -6456,11 +6542,16 @@ function StockInModal({
   open,
   onClose,
   onSubmit,
+  centres = [],
+  defaultFranchiseId = "",
 }: {
   open: boolean;
   onClose: () => void;
   onSubmit: (payload: any) => Promise<boolean>;
+  centres?: Centre[];
+  defaultFranchiseId?: string;
 }) {
+  const [selectedFranchiseId, setSelectedFranchiseId] = useState(defaultFranchiseId);
   const [itemType, setItemType] = useState<"id_card" | "tshirt" | "bag" | "tablet">("tshirt");
   const [tshirtSize, setTshirtSize] = useState<"S" | "M" | "L" | "XL" | "XXL">("L");
   const [quantity, setQuantity] = useState("10");
@@ -6471,6 +6562,10 @@ function StockInModal({
   const [brandModel, setBrandModel] = useState("Samsung Galaxy Tab A9");
   const [challanError, setChallanError] = useState("");
   const [submitting, setSubmitting] = useState(false);
+
+  useEffect(() => {
+    setSelectedFranchiseId(defaultFranchiseId || (centres?.[0]?._id || ""));
+  }, [defaultFranchiseId, open, centres]);
 
   if (!open) return null;
 
@@ -6484,9 +6579,11 @@ function StockInModal({
     setChallanError("");
     setSubmitting(true);
     let ok = false;
+    const chosenFranchise = selectedFranchiseId || defaultFranchiseId;
     if (itemType === "tablet") {
       ok = await onSubmit({
         itemType: "tablet",
+        franchiseId: chosenFranchise,
         tablets: [{ assetId: assetId.trim(), serialNumber: serialNumber.trim(), brandModel: brandModel.trim(), remarks: notes.trim() }],
         vendorChallan: cleanChallan,
         notes: notes.trim(),
@@ -6498,6 +6595,7 @@ function StockInModal({
         quantity: Number(quantity) || 1,
         vendorChallan: cleanChallan,
         notes: notes.trim(),
+        franchiseId: chosenFranchise,
       });
     }
     setSubmitting(false);
@@ -6534,6 +6632,24 @@ function StockInModal({
               flex: "1 1 auto",
             }}
           >
+            {centres.length > 0 && (
+              <div className="field" style={{ margin: 0 }}>
+                <label style={{ marginBottom: 4, fontSize: 12, fontWeight: 700 }}>Target Centre / Branch</label>
+                <select
+                  className="fbtn"
+                  style={{ height: 34 }}
+                  value={selectedFranchiseId}
+                  onChange={(e) => setSelectedFranchiseId(e.target.value)}
+                  disabled={Boolean(defaultFranchiseId)}
+                >
+                  {centres.map((c) => (
+                    <option key={c._id} value={c._id}>
+                      {c.name} {c.city ? `(${c.city})` : ""}
+                    </option>
+                  ))}
+                </select>
+              </div>
+            )}
             <div className="field" style={{ margin: 0 }}>
               <label style={{ marginBottom: 4, fontSize: 12, fontWeight: 700 }}>Select Item to Receive</label>
               <div className="inventory-type-grid">
@@ -7574,6 +7690,18 @@ function LeadDrawer({
                 <div className="kv-row"><span className="k">Parent mobile</span><span className="v">{lead.parentMobile || "-"}</span></div>
                 <div className="kv-row"><span className="k">Email</span><span className="v">{lead.email || "-"}</span></div>
                 <div className="kv-row"><span className="k">Source</span><span className="v">{lead.source || "-"}</span></div>
+                {lead.source === "BTL" && (lead.counsellorName || lead.scholarName) ? (
+                  <>
+                    {lead.counsellorName && <div className="kv-row"><span className="k">BTL Counsellor</span><span className="v">{lead.counsellorName}</span></div>}
+                    {lead.scholarName && <div className="kv-row"><span className="k">Scholar</span><span className="v">{lead.scholarName}</span></div>}
+                  </>
+                ) : null}
+                {String(lead.source || "").trim().toLowerCase() === "referral" && (
+                  <>
+                    <div className="kv-row"><span className="k">Referee</span><span className="v">{lead.refereeName || "-"}</span></div>
+                    <div className="kv-row"><span className="k">Referral amount</span><span className="v">{lead.referralAmount ? formatCurrency(lead.referralAmount) : "-"}</span></div>
+                  </>
+                )}
                 <div className="kv-row">
                   <span className="k">Centre</span>
                   <span className="v">
@@ -7819,9 +7947,10 @@ function LeadDrawer({
   );
 }
 
-function SettingsPanel({ isHeadSuperAdmin, isHeadBranchAdmin, isFranchiseSuperAdmin, centres, courses, batches, counsellors, teachers, user, centreOptions, courseOptions, onAddStaff, onAddCentre, onUpdateCentreBilling, onAddCourse, onUpdateCourse, onDeleteCourse, onAddBatch, onUpdateBatch, onDeleteBatch, onUpdatePassword }: { isHeadSuperAdmin: boolean; isHeadBranchAdmin: boolean; isFranchiseSuperAdmin: boolean; centres: Centre[]; courses: Course[]; batches: Batch[]; counsellors: Counsellor[]; teachers: Counsellor[]; user: AdminUser | null; centreOptions: string[]; courseOptions: string[]; onAddStaff: (event: FormEvent<HTMLFormElement>) => Promise<boolean>; onAddCentre: (event: FormEvent<HTMLFormElement>) => void; onUpdateCentreBilling: (event: FormEvent<HTMLFormElement>, centreId: string) => void; onAddCourse: (event: FormEvent<HTMLFormElement>) => void; onUpdateCourse: (event: FormEvent<HTMLFormElement>, courseId: string) => Promise<boolean>; onDeleteCourse: (course: Course) => void; onAddBatch: (event: FormEvent<HTMLFormElement>) => void; onUpdateBatch: (event: FormEvent<HTMLFormElement>, batchId: string) => Promise<boolean>; onDeleteBatch: (batch: Batch) => void; onUpdatePassword: (event: FormEvent<HTMLFormElement>) => void }) {
+function SettingsPanel({ isHeadSuperAdmin, isCenterAdmin = false, isHeadBranchAdmin, isFranchiseSuperAdmin, centres, courses, batches, counsellors, teachers, user, centreOptions, courseOptions, onAddStaff, onUpdateStaff, onAddCentre, onUpdateCentreBilling, onAddCourse, onUpdateCourse, onDeleteCourse, onAddBatch, onUpdateBatch, onDeleteBatch, onUpdatePassword }: { isHeadSuperAdmin: boolean; isCenterAdmin?: boolean; isHeadBranchAdmin: boolean; isFranchiseSuperAdmin: boolean; centres: Centre[]; courses: Course[]; batches: Batch[]; counsellors: Counsellor[]; teachers: Counsellor[]; user: AdminUser | null; centreOptions: string[]; courseOptions: string[]; onAddStaff: (event: FormEvent<HTMLFormElement>) => Promise<boolean>; onUpdateStaff?: (event: FormEvent<HTMLFormElement>, staffId: string) => Promise<boolean>; onAddCentre: (event: FormEvent<HTMLFormElement>) => void; onUpdateCentreBilling: (event: FormEvent<HTMLFormElement>, centreId: string) => void; onAddCourse: (event: FormEvent<HTMLFormElement>) => void; onUpdateCourse: (event: FormEvent<HTMLFormElement>, courseId: string) => Promise<boolean>; onDeleteCourse: (course: Course) => void; onAddBatch: (event: FormEvent<HTMLFormElement>) => void; onUpdateBatch: (event: FormEvent<HTMLFormElement>, batchId: string) => Promise<boolean>; onDeleteBatch: (batch: Batch) => void; onUpdatePassword: (event: FormEvent<HTMLFormElement>) => void }) {
   const [active, setActive] = useState<"staff" | "billing" | "fees" | "batches" | "security">("staff");
   const [showStaffModal, setShowStaffModal] = useState(false);
+  const [editingStaff, setEditingStaff] = useState<Counsellor | null>(null);
   const [showAddLocation, setShowAddLocation] = useState(false);
   const [showAddCourse, setShowAddCourse] = useState(false);
   const [showAddBatch, setShowAddBatch] = useState(false);
@@ -7836,8 +7965,9 @@ function SettingsPanel({ isHeadSuperAdmin, isHeadBranchAdmin, isFranchiseSuperAd
   const franchiseOptions = centres.filter((centre) => centre.type !== "branch");
   const staffRoleOptions = [
     ...(isHeadSuperAdmin ? [{ value: "superadmin", label: "Head super admin" }] : []),
-    ...(isHeadSuperAdmin || isHeadBranchAdmin ? [
-      { value: "admin", label: "Center admin" },
+    ...(isHeadSuperAdmin ? [{ value: "center_admin", label: "Center admin (multi-branch)" }] : []),
+    ...(isHeadSuperAdmin || isHeadBranchAdmin || isCenterAdmin ? [
+      { value: "admin", label: "Branch admin" },
       { value: "operations_executive", label: "Operations Executive" },
       { value: "counsellor", label: "Counsellor" },
       { value: "teacher", label: "Teacher" },
@@ -7853,9 +7983,10 @@ function SettingsPanel({ isHeadSuperAdmin, isHeadBranchAdmin, isFranchiseSuperAd
   useEffect(() => {
     if (!staffRoleOptions.some((role) => role.value === staffRole)) setStaffRole(staffRoleOptions[0]?.value || "counsellor");
   }, [staffRole, staffRoleOptions]);
-  const staffNeedsLocation = ["admin", "counsellor", "teacher", "operations_executive", "franchise_superadmin", "franchise_counsellor", "franchise_teacher", "franchise_operations_executive"].includes(staffRole);
-  const staffLocationOptions = ["admin", "counsellor", "teacher", "operations_executive"].includes(staffRole) ? branchOptions : franchiseOptions;
-  const staffLocationLabel = ["admin", "counsellor", "teacher", "operations_executive"].includes(staffRole) ? "Branch" : "Franchise";
+  const staffNeedsLocation = ["center_admin", "admin", "counsellor", "teacher", "operations_executive", "franchise_superadmin", "franchise_counsellor", "franchise_teacher", "franchise_operations_executive"].includes(staffRole);
+  // center_admin is assigned to a parent centre (any centre in the list)
+  const staffLocationOptions = staffRole === "center_admin" ? centres : ["admin", "counsellor", "teacher", "operations_executive"].includes(staffRole) ? branchOptions : franchiseOptions;
+  const staffLocationLabel = staffRole === "center_admin" ? "Parent centre" : ["admin", "counsellor", "teacher", "operations_executive"].includes(staffRole) ? "Branch" : "Franchise";
   useEffect(() => {
     setEditingBatchCentreDraft(editingBatch?.centre || "");
     setEditingBatchCourseDraft(editingBatch?.course || "");
@@ -7878,13 +8009,28 @@ function SettingsPanel({ isHeadSuperAdmin, isHeadBranchAdmin, isFranchiseSuperAd
         {active === "staff" && <div className="spane active">
           <div className="card settings-card">
             <div className="card-head"><div><h3>Staff directory</h3><div className="sub">{counsellors.length} accounts</div></div><button className="btn btn-primary btn-sm" onClick={() => setShowStaffModal(true)}><Plus size={14} /> Add staff</button></div>
-            <div className="table-wrap settings-table-wrap"><table className="settings-table"><thead><tr><th>Name</th><th>Email</th><th>Role</th><th>Branch / franchise</th></tr></thead><tbody>{counsellors.map((staff) => <tr key={staff.email}><td><div className="lead-name-cell"><span className="avatar lead-avatar">{initials(staff.name)}</span><div><div className="cell-name">{staff.name}</div><div className="cell-sub">{staff.email}</div></div></div></td><td>{staff.email}</td><td><span className="tag blue">{roleLabel(staff.role)}</span></td><td>{centres.find((centre) => centre._id === staff.franchiseId)?.name || (staff.franchiseId || "Head office")}</td></tr>)}{!counsellors.length && <tr><td colSpan={4}><div className="empty-state"><h4>No staff accounts</h4></div></td></tr>}</tbody></table></div>
+            <div className="table-wrap settings-table-wrap"><table className="settings-table"><thead><tr><th>Name</th><th>Email</th><th>Role</th><th>Branch / franchise</th>{(isHeadSuperAdmin || isCenterAdmin) && <th style={{ width: 80 }} />}</tr></thead><tbody>{counsellors.map((staff) => <tr key={staff.email}><td><div className="lead-name-cell"><span className="avatar lead-avatar">{initials(staff.name)}</span><div><div className="cell-name">{staff.name}</div><div className="cell-sub">{staff.email}</div></div></div></td><td>{staff.email}</td><td><span className="tag blue">{roleLabel(staff.role)}</span></td><td>{centres.find((centre) => centre._id === staff.franchiseId)?.name || (staff.franchiseId || "Head office")}</td>{(isHeadSuperAdmin || isCenterAdmin) && <td><button className="btn btn-sm btn-soft" onClick={() => setEditingStaff(staff)}>Edit</button></td>}</tr>)}{!counsellors.length && <tr><td colSpan={5}><div className="empty-state"><h4>No staff accounts</h4></div></td></tr>}</tbody></table></div>
           </div>
         </div>}
         {active === "billing" && <div className="spane active">
           <div className="card settings-card">
             <div className="card-head"><div><h3>Branch / franchise billing entities</h3><div className="sub">Saved billing details reflect in invoices and receipts</div></div><button className="btn btn-primary btn-sm" onClick={() => setShowAddLocation((value) => !value)}><Plus size={14} /> Add location</button></div>
-            {showAddLocation && <form className="card-body field-grid settings-add-form" onSubmit={onAddCentre}><Field name="name" label="Name" required /><Field name="city" label="City" /><SelectField name="type" label="Type" options={["branch", "franchise"]} /><Field name="billingLegalName" label="Billing legal name" /><Field name="billingGstin" label="GST No." /><Field name="billingEmail" label="Billing email" type="email" /><Field name="billingPhone" label="Mobile no." /><Field name="bankAccountName" label="Account holder name" /><Field name="bankName" label="Bank name" /><Field name="bankAccountNumber" label="Account no." /><Field name="bankIfsc" label="IFSC" /><div className="field full"><label>Billing address</label><textarea name="billingAddress" /></div><button className="btn btn-primary">Add location</button></form>}
+            {showAddLocation && <form className="card-body field-grid settings-add-form" onSubmit={onAddCentre}>
+              <Field name="name" label="Name" required />
+              <Field name="city" label="City" />
+              <div className="field"><label>Type</label><select name="type" id="add-location-type"><option value="franchise">Franchise</option><option value="branch">Branch</option></select></div>
+              <Field name="billingLegalName" label="Billing legal name" />
+              <Field name="billingGstin" label="GST No." />
+              <Field name="billingEmail" label="Billing email" type="email" />
+              <Field name="billingPhone" label="Mobile no." />
+              <Field name="bankAccountName" label="Account holder name" />
+              <Field name="bankName" label="Bank name" />
+              <Field name="bankAccountNumber" label="Account no." />
+              <Field name="bankIfsc" label="IFSC" />
+              {isHeadSuperAdmin && <div className="field"><label>Parent centre (for center admin grouping)</label><select name="parentCentreId"><option value="">None (standalone)</option>{centres.map((c) => <option key={c._id} value={c._id}>{c.name}</option>)}</select><span className="field-help">Link this branch to a parent centre so a center admin can manage it.</span></div>}
+              <div className="field full"><label>Billing address</label><textarea name="billingAddress" /></div>
+              <button className="btn btn-primary">Add location</button>
+            </form>}
             <div className="card-body settings-search-body"><input className="fbtn" placeholder="Search location..." /></div>
             <div className="table-wrap settings-table-wrap"><table className="settings-table"><thead><tr><th>Location</th><th>Type</th><th>City</th><th>Email / Mobile</th><th>GSTIN</th><th>Bank</th><th /></tr></thead><tbody>{centres.map((centre) => <tr key={centre._id}><td className="cell-name">{centre.name}<div className="cell-sub">{centre.billingLegalName || defaultBillingEntity.legalName}</div></td><td><span className={`tag ${centre.type === "franchise" ? "green" : "blue"}`}>{centreKindLabel(centre)}</span></td><td>{centre.city || "-"}</td><td>{centre.billingEmail || defaultBillingEntity.email}<div className="cell-sub">{centre.billingPhone || defaultBillingEntity.phone || "-"}</div></td><td className="mono">{centre.billingGstin || "- (default)"}</td><td className="mono">{centre.bankAccountNumber || "-"}<div className="cell-sub">{centre.bankIfsc || "-"}</div></td><td><button className="btn btn-sm btn-soft" onClick={() => setBillingCentre(centre)}>Edit</button></td></tr>)}{!centres.length && <tr><td colSpan={7}><div className="empty-state"><h4>No locations</h4></div></td></tr>}</tbody></table></div>
           </div>
@@ -7913,13 +8059,40 @@ function SettingsPanel({ isHeadSuperAdmin, isHeadBranchAdmin, isFranchiseSuperAd
               <Field name="name" label="Name" required />
               <Field name="email" label="Email" type="email" required />
               <div className="field"><RequiredLabel required>Role</RequiredLabel><select name="role" value={staffRole} onChange={(event) => setStaffRole(event.target.value)}>{staffRoleOptions.map((role) => <option key={role.value} value={role.value}>{role.label}</option>)}</select></div>
-              {isHeadSuperAdmin ? <div className="field"><RequiredLabel required={staffNeedsLocation}>Branch / franchise</RequiredLabel>{staffNeedsLocation ? <select key={staffRole} name="franchiseId" required defaultValue=""><option value="" disabled>Select {staffLocationLabel.toLowerCase()}</option>{staffLocationOptions.length ? staffLocationOptions.map((centre) => <option key={centre._id} value={centre._id}>{centre.name}</option>) : <option value="" disabled>No {staffLocationLabel.toLowerCase()} found</option>}</select> : <><select disabled><option>All branches / franchises</option></select><input type="hidden" name="franchiseId" value="" /></>}</div> : staffNeedsLocation ? <input type="hidden" name="franchiseId" value={user?.franchiseId || ""} /> : <input type="hidden" name="franchiseId" value="" />}
+              {isHeadSuperAdmin || isCenterAdmin ? <div className="field"><RequiredLabel required={staffNeedsLocation}>{staffRole === "center_admin" ? "Parent centre" : isCenterAdmin ? "Branch" : `${staffLocationLabel} / franchise`}</RequiredLabel>{staffNeedsLocation ? <select key={staffRole} name="franchiseId" required defaultValue=""><option value="" disabled>Select {isCenterAdmin ? "branch" : staffLocationLabel.toLowerCase()}</option>{staffLocationOptions.length ? staffLocationOptions.map((centre) => <option key={centre._id} value={centre._id}>{centre.name}</option>) : <option value="" disabled>No {isCenterAdmin ? "branches" : staffLocationLabel.toLowerCase()} found</option>}</select> : <><select disabled><option>All branches / franchises</option></select><input type="hidden" name="franchiseId" value="" /></>}</div> : staffNeedsLocation ? <input type="hidden" name="franchiseId" value={user?.franchiseId || ""} /> : <input type="hidden" name="franchiseId" value="" />}
               <Field name="password" label="Password" type="password" required />
-              <div className="field full staff-role-note"><label>Access scope</label><div>{staffNeedsLocation ? `${roleLabel(staffRole)} will be limited to the selected ${staffLocationLabel.toLowerCase()}.` : "Super admin gets head-office access across all branches and franchises."}</div></div>
+              <div className="field full staff-role-note"><label>Access scope</label><div>{staffRole === "center_admin" ? `Center admin will be able to see data across all branches linked to the selected parent centre.` : staffNeedsLocation ? `${roleLabel(staffRole)} will be limited to the selected ${staffLocationLabel.toLowerCase()}.` : "Super admin gets head-office access across all branches and franchises."}</div></div>
             </div>
             <div className="modal-foot"><button type="button" className="btn btn-ghost" onClick={() => setShowStaffModal(false)}>Cancel</button><button className="btn btn-primary">Add staff</button></div>
           </form>
         </div>
+      </div>
+      <div className={`modal-overlay ${editingStaff ? "show" : ""}`} onClick={() => setEditingStaff(null)}>
+        {editingStaff && (
+          <div className="modal" onClick={(event) => event.stopPropagation()}>
+            <div className="modal-head"><h3>Edit staff</h3><button className="close-x" onClick={() => setEditingStaff(null)}>x</button></div>
+            <form onSubmit={async (event) => { if (!editingStaff._id || !onUpdateStaff) return; const saved = await onUpdateStaff(event, editingStaff._id); if (saved) setEditingStaff(null); }}>
+              <div className="modal-body field-grid">
+                <Field name="name" label="Name" defaultValue={editingStaff.name} required />
+                <div className="field"><label>Email</label><input value={editingStaff.email} disabled /></div>
+                <div className="field"><RequiredLabel required>Role</RequiredLabel><select name="role" defaultValue={editingStaff.role}>{staffRoleOptions.map((role) => <option key={role.value} value={role.value}>{role.label}</option>)}</select></div>
+                {(isHeadSuperAdmin || isCenterAdmin) && (
+                  <div className="field">
+                    <RequiredLabel required>{isCenterAdmin ? "Branch" : "Branch / franchise"}</RequiredLabel>
+                    <select name="franchiseId" defaultValue={editingStaff.franchiseId || ""}>
+                      <option value="" disabled>Select {isCenterAdmin ? "branch" : "branch / franchise"}</option>
+                      {staffLocationOptions.map((centre) => (
+                        <option key={centre._id} value={centre._id}>{centre.name}</option>
+                      ))}
+                    </select>
+                  </div>
+                )}
+                <Field name="password" label="New password (leave blank to keep current)" type="password" />
+              </div>
+              <div className="modal-foot"><button type="button" className="btn btn-ghost" onClick={() => setEditingStaff(null)}>Cancel</button><button className="btn btn-primary">Save changes</button></div>
+            </form>
+          </div>
+        )}
       </div>
       <div className={`modal-overlay ${billingCentre ? "show" : ""}`} onClick={() => setBillingCentre(null)}>
         {billingCentre && <div className="modal billing-modal" onClick={(event) => event.stopPropagation()}>
@@ -7992,7 +8165,7 @@ function SettingsPanel({ isHeadSuperAdmin, isHeadBranchAdmin, isFranchiseSuperAd
   );
 }
 
-function ProfilePanel({ profile, user, accessCount, canManageFees, canManageSettings, canAssignTeachers, canManageCertificates, canManageInternships, canManageInventory, onIssueKit, centres, courses, allCourses = [], batches, teachers, onBack, onGoSettings, onLeadPatch, onStudentPatch, onGenerateStudentLmsAccess, onInternshipSave, onInternshipDelete, onPayment, onDownloadPaymentProof, onFeedback, onIssue, onPreviewDocument, onPreviewInternshipPhoto }: { profile: ProfileTarget; user: AdminUser | null; accessCount: number; canManageFees: boolean; canManageSettings: boolean; canAssignTeachers: boolean; canManageCertificates: boolean; canManageInternships: boolean; canManageInventory?: boolean; onIssueKit?: (student: Student) => void; centres: string[]; courses: string[]; allCourses?: Course[]; batches: Batch[]; teachers: Counsellor[]; onBack: () => void; onGoSettings: () => void; onLeadPatch: (id: string, updates: Partial<Lead>) => void; onStudentPatch: (id: string, updates: Partial<Student>) => void; onGenerateStudentLmsAccess: (student: Student) => void; onInternshipSave: (event: FormEvent<HTMLFormElement>, student: Student) => void; onInternshipDelete: (student: Student) => void; onPayment: (event: FormEvent<HTMLFormElement>, student: Student) => void; onDownloadPaymentProof: (student: Student, payment: PaymentRecord, index: number) => void; onFeedback: (event: FormEvent<HTMLFormElement>, student: Student) => void; onIssue: (student: Student) => void; onPreviewDocument: (request: DocumentPreviewRequest) => void; onPreviewInternshipPhoto: (student: Student, log: InternshipLog, photoType: "login" | "logout") => void }) {
+function ProfilePanel({ profile, user, accessCount, canManageFees, canManageSettings, canAssignTeachers, canManageCertificates, canManageInternships, canManageInventory, onIssueKit, centres, courses, allCourses = [], batches, teachers, counsellors = [], onBack, onGoSettings, onLeadPatch, onStudentPatch, onGenerateStudentLmsAccess, onInternshipSave, onInternshipDelete, onPayment, onDownloadPaymentProof, onFeedback, onIssue, onPreviewDocument, onPreviewInternshipPhoto }: { profile: ProfileTarget; user: AdminUser | null; accessCount: number; canManageFees: boolean; canManageSettings: boolean; canAssignTeachers: boolean; canManageCertificates: boolean; canManageInternships: boolean; canManageInventory?: boolean; onIssueKit?: (student: Student) => void; centres: string[]; courses: string[]; allCourses?: Course[]; batches: Batch[]; teachers: Counsellor[]; counsellors?: Counsellor[]; onBack: () => void; onGoSettings: () => void; onLeadPatch: (id: string, updates: Partial<Lead>) => void; onStudentPatch: (id: string, updates: Partial<Student>) => void; onGenerateStudentLmsAccess: (student: Student) => void; onInternshipSave: (event: FormEvent<HTMLFormElement>, student: Student) => void; onInternshipDelete: (student: Student) => void; onPayment: (event: FormEvent<HTMLFormElement>, student: Student) => void; onDownloadPaymentProof: (student: Student, payment: PaymentRecord, index: number) => void; onFeedback: (event: FormEvent<HTMLFormElement>, student: Student) => void; onIssue: (student: Student) => void; onPreviewDocument: (request: DocumentPreviewRequest) => void; onPreviewInternshipPhoto: (student: Student, log: InternshipLog, photoType: "login" | "logout") => void }) {
   const isSuperAdmin = user?.role === "superadmin";
   const currentCourse = profile?.type === "student" ? (profile.data.course || "") : (profile?.type === "lead" ? (profile.data.course || "") : "");
   const studentCourseObj = allCourses.find((c) =>
@@ -8014,10 +8187,13 @@ function ProfilePanel({ profile, user, accessCount, canManageFees, canManageSett
   const [admissionEmiMonthsDraft, setAdmissionEmiMonthsDraft] = useState("6");
   const [admissionEmiAmountDraft, setAdmissionEmiAmountDraft] = useState("0");
   const [admissionNextEmiDateDraft, setAdmissionNextEmiDateDraft] = useState("");
+  const [admissionCounsellorDraft, setAdmissionCounsellorDraft] = useState("");
+  const [admissionCallerDraft, setAdmissionCallerDraft] = useState("");
   const [emiMonthsDraft, setEmiMonthsDraft] = useState("6");
   const [emiAmountDraft, setEmiAmountDraft] = useState("0");
   const [editCourseDraft, setEditCourseDraft] = useState("");
   const [editCentreDraft, setEditCentreDraft] = useState("");
+  const [editSourceDraft, setEditSourceDraft] = useState("");
   const [editBatchDraft, setEditBatchDraft] = useState("");
   const [editTotalFeeDraft, setEditTotalFeeDraft] = useState("0");
   const [editExpectedFeeDraft, setEditExpectedFeeDraft] = useState("0");
@@ -8033,11 +8209,14 @@ function ProfilePanel({ profile, user, accessCount, canManageFees, canManageSett
     const initCourse = profile ? profile.data.course || "" : "";
     setEditCourseDraft(initCourse);
     setEditCentreDraft(profile ? profile.data.centre || "" : "");
+    setEditSourceDraft(profile?.type === "lead" ? (profile.data.source || "") : "");
     setEditBatchDraft(profile?.type === "student" ? profile.data.batch || "" : "");
     const initCourseObj = allCourses.find((c) => [c.code, c.name].map((s) => String(s || "").toLowerCase()).includes(initCourse.toLowerCase()));
     const initCourseFee = initCourseObj ? feeWithGst(initCourseObj.fee || 0) : 0;
     setEditTotalFeeDraft(String(profile?.type === "student" ? (profile.data.totalFee || initCourseFee || 0) : 0));
     setEditExpectedFeeDraft(String(profile?.type === "lead" ? (profile.data.expectedFee || initCourseFee || 0) : 0));
+    setAdmissionCounsellorDraft(profile?.type === "student" ? (profile.data.counsellorName || (profile.data.counsellor && profile.data.counsellor !== "Unassigned" ? profile.data.counsellor : "")) : "");
+    setAdmissionCallerDraft(profile?.type === "student" ? (profile.data.callerName || "") : "");
     setPaymentModeDraft("Cash");
     setPaymentPurposeDraft("Fees Installment");
   }, [profileId, profile?.mode]);
@@ -8113,6 +8292,10 @@ function ProfilePanel({ profile, user, accessCount, canManageFees, canManageSett
         parentMobile: String(form.parentMobile || ""),
         email: String(form.email || ""),
         source: String(form.source || ""),
+        counsellorName: form.counsellorName !== undefined ? String(form.counsellorName || "").trim() : String(lead.counsellorName || "").trim(),
+        scholarName: form.scholarName !== undefined ? String(form.scholarName || "").trim() : String(lead.scholarName || "").trim(),
+        refereeName: form.refereeName !== undefined ? String(form.refereeName || "").trim() : String(lead.refereeName || "").trim(),
+        referralAmount: form.referralAmount !== undefined ? Number(form.referralAmount || 0) : Number(lead.referralAmount || 0),
         centre: String(form.centre || ""),
         course: String(form.course || ""),
         stage: String(form.stage || lead.stage),
@@ -8127,6 +8310,7 @@ function ProfilePanel({ profile, user, accessCount, canManageFees, canManageSett
       onLeadPatch(lead._id, updates);
       setEditMode(false);
     };
+
     return (
       <div className="card profile-shell">
         <div className="profile-head">
@@ -8139,7 +8323,37 @@ function ProfilePanel({ profile, user, accessCount, canManageFees, canManageSett
           <EditField name="phone" label="Phone" defaultValue={lead.phone} required />
           <EditField name="parentMobile" label="Parent mobile" defaultValue={lead.parentMobile} />
           <EditField name="email" label="Email" type="email" defaultValue={lead.email} />
-          <EditField name="source" label="Source" defaultValue={lead.source} />
+          <div className="field">
+            <label>Source</label>
+            <select
+              name="source"
+              value={editSourceDraft}
+              onChange={(e) => setEditSourceDraft(e.target.value)}
+            >
+              {sources.map((s) => (
+                <option key={s} value={s}>{s}</option>
+              ))}
+              {!sources.includes(editSourceDraft) && editSourceDraft && (
+                <option value={editSourceDraft}>{editSourceDraft}</option>
+              )}
+            </select>
+          </div>
+          {editSourceDraft.trim().toLowerCase() === "referral" && (
+            <>
+              <EditField
+                name="refereeName"
+                label="Referee name"
+                defaultValue={lead.refereeName || ""}
+                required
+              />
+              <EditField
+                name="referralAmount"
+                label="Referral amount (₹)"
+                type="number"
+                defaultValue={lead.referralAmount ? String(lead.referralAmount) : ""}
+              />
+            </>
+          )}
           <div className="field"><label>Centre</label><select name="centre" value={editCentreDraft} onChange={(event) => { const centre = event.target.value; setEditCentreDraft(centre); }}><option value="">Unassigned</option>{centres.map((centre) => <option key={centre}>{centre}</option>)}</select></div>
           <div className="field"><label>Course</label><select name="course" value={editCourseDraft} onChange={(event) => {
             const nextCourse = event.target.value;
@@ -8180,6 +8394,18 @@ function ProfilePanel({ profile, user, accessCount, canManageFees, canManageSett
             <div className="kv-row"><span className="k">Parent mobile</span><span className="v">{lead.parentMobile || "-"}</span></div>
             <div className="kv-row"><span className="k">Email</span><span className="v">{lead.email || "-"}</span></div>
             <div className="kv-row"><span className="k">Source</span><span className="v">{lead.source || "-"}</span></div>
+            {lead.source === "BTL" && (lead.counsellorName || lead.scholarName) ? (
+              <>
+                {lead.counsellorName && <div className="kv-row"><span className="k">BTL Counsellor</span><span className="v">{lead.counsellorName}</span></div>}
+                {lead.scholarName && <div className="kv-row"><span className="k">Scholar</span><span className="v">{lead.scholarName}</span></div>}
+              </>
+            ) : null}
+            {String(lead.source || "").trim().toLowerCase() === "referral" && (
+              <>
+                <div className="kv-row"><span className="k">Referee</span><span className="v">{lead.refereeName || "-"}</span></div>
+                <div className="kv-row"><span className="k">Referral amount</span><span className="v">{lead.referralAmount ? formatCurrency(lead.referralAmount) : "-"}</span></div>
+              </>
+            )}
             <div className="kv-row"><span className="k">Centre</span><span className="v">{lead.centre || "-"}</span></div>
             <div className="kv-row"><span className="k">Counsellor</span><span className="v">{lead.counsellor || "-"}</span></div>
             <div className="kv-row"><span className="k">Status</span><span className="v"><span className={`badge ${leadFeedbackBadgeClass(lead.leadFeedback)}`}>{normalizeLeadFeedbackStatus(lead.leadFeedback)}</span></span></div>
@@ -8388,7 +8614,15 @@ function ProfilePanel({ profile, user, accessCount, canManageFees, canManageSett
     });
   };
   const completeAdmission = () => {
-    onStudentPatch(student._id, { status: "Admission Completed" });
+    const cName = admissionCounsellorDraft.trim();
+    const clrName = admissionCallerDraft.trim();
+    onStudentPatch(student._id, {
+      status: "Admission Completed",
+      counsellorName: cName,
+      callerName: clrName,
+      ...(cName ? { counsellor: cName } : {}),
+    });
+    toast.success("Admission marked as completed");
   };
   const saveEmiPlan = (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
@@ -8535,7 +8769,8 @@ function ProfilePanel({ profile, user, accessCount, canManageFees, canManageSett
           <div className="kv-row"><span className="k">Batch</span><span className="v">{student.batch || "Unassigned"}</span></div>
           <div className="kv-row"><span className="k">Batch start date</span><span className="v mono">{batchStartDate ? formatDate(batchStartDate) : "Not set"}</span></div>
           <div className="kv-row"><span className="k">Batch end date</span><span className="v mono">{batchEndDate ? <>{formatDate(batchEndDate)} <span className="cell-sub">({courseDurationMonths} months duration)</span></> : "Not set"}</span></div>
-          <div className="kv-row"><span className="k">Counsellor</span><span className="v">{student.counsellor || "-"}</span></div>
+          <div className="kv-row"><span className="k">Counsellor</span><span className="v">{student.counsellorName || student.counsellor || "-"}</span></div>
+          {student.callerName && <div className="kv-row"><span className="k">Caller</span><span className="v">{student.callerName}</span></div>}
           <div className="kv-row"><span className="k">Teacher</span><span className="v">{student.teacher || "Unassigned"}</span></div>
           <div className="kv-row"><span className="k">LMS access</span><span className="v">{student.lmsAccessEnabled ? <span className="badge badge-green">Enabled</span> : <span className="badge badge-gray">Not generated</span>}</span></div>
           <div className="field drawer-notes"><label>Status</label><select value={normalizedStatus} onChange={(event) => { const reason = studentStatusBlockReason(student, event.target.value); if (reason) { toast.error(reason); return; } onStudentPatch(student._id, { status: event.target.value }); }}>{studentStatuses.map((status) => <option key={status} value={status}>{studentStatusLabel(status)}</option>)}</select></div>
@@ -8592,7 +8827,113 @@ function ProfilePanel({ profile, user, accessCount, canManageFees, canManageSett
           return <div className="kv-row" key={stage}><span className="k">{studentStatusLabel(stage)}</span><span className="v">{done ? <span className="badge badge-green">Done</span> : <span className="badge badge-gray">Awaiting</span>}</span></div>;
         })}</div>}
         {activeStudentTab === "admission" && <div className="dpane active">
-          {normalizedStatus === "Enrolled" && <div className="empty-state paid-empty"><h4>Admission not completed</h4><p>Complete admission details first, then decide fees.</p><button type="button" className="btn btn-primary" onClick={completeAdmission}><CheckCircle2 size={15} /> Mark admission completed</button></div>}
+          {normalizedStatus === "Enrolled" && (
+            <div className="card" style={{ marginBottom: 16, border: "1px solid var(--border)", background: "linear-gradient(180deg, var(--surface-2, #F8FAFC) 0%, var(--surface, #FFFFFF) 100%)", borderRadius: 12, padding: "16px 20px" }}>
+              <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 6 }}>
+                <span style={{ display: "inline-flex", padding: 6, borderRadius: "50%", background: "#FEF3C7", color: "#D97706" }}>
+                  <AlertCircle size={16} />
+                </span>
+                <h4 style={{ margin: 0, fontSize: 15, fontWeight: 600 }}>Admission not completed</h4>
+              </div>
+              <p style={{ margin: "0 0 14px 0", fontSize: 13, color: "var(--muted, #64748B)" }}>
+                You can record the counsellor and caller details before marking admission as complete. (Not mandatory)
+              </p>
+              <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12, marginBottom: 16 }}>
+                <div className="field" style={{ margin: 0 }}>
+                  <label style={{ fontSize: 12, fontWeight: 500 }}>
+                    Counsellor name <span style={{ fontSize: 11, color: "var(--muted, #64748B)", fontWeight: 400 }}>(Optional)</span>
+                  </label>
+                  <input
+                    value={admissionCounsellorDraft}
+                    onChange={(e) => setAdmissionCounsellorDraft(e.target.value)}
+                    list="admission-counsellors-list"
+                    placeholder="Enter or select counsellor"
+                    autoComplete="off"
+                  />
+                  <datalist id="admission-counsellors-list">
+                    {counsellors.map((c) => (
+                      <option key={c._id || c.email} value={c.name} />
+                    ))}
+                  </datalist>
+                </div>
+                <div className="field" style={{ margin: 0 }}>
+                  <label style={{ fontSize: 12, fontWeight: 500 }}>
+                    Caller name <span style={{ fontSize: 11, color: "var(--muted, #64748B)", fontWeight: 400 }}>(Optional)</span>
+                  </label>
+                  <input
+                    value={admissionCallerDraft}
+                    onChange={(e) => setAdmissionCallerDraft(e.target.value)}
+                    placeholder="Enter caller name"
+                    autoComplete="off"
+                  />
+                </div>
+              </div>
+              <button type="button" className="btn btn-primary" onClick={completeAdmission}>
+                <CheckCircle2 size={15} /> Mark admission completed
+              </button>
+            </div>
+          )}
+
+          {normalizedStatus !== "Enrolled" && (
+            <div className="card" style={{ marginBottom: 16, border: "1px solid var(--border)", background: "var(--surface-2, #F8FAFC)", borderRadius: 10, padding: "12px 16px" }}>
+              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 10 }}>
+                <div style={{ fontWeight: 600, fontSize: 13, color: "var(--text-strong)", display: "flex", alignItems: "center", gap: 6 }}>
+                  <CheckCircle2 size={14} color="#16A34A" /> Admission Coordination
+                </div>
+                <span className="badge badge-green" style={{ fontSize: 11 }}>Admission Completed</span>
+              </div>
+              <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 }}>
+                <div className="field" style={{ margin: 0 }}>
+                  <label style={{ fontSize: 12, fontWeight: 500 }}>
+                    Counsellor name <span style={{ fontSize: 11, color: "var(--muted, #64748B)", fontWeight: 400 }}>(Optional)</span>
+                  </label>
+                  <input
+                    value={admissionCounsellorDraft}
+                    onChange={(e) => setAdmissionCounsellorDraft(e.target.value)}
+                    list="admission-counsellors-list"
+                    placeholder="Enter or select counsellor"
+                    autoComplete="off"
+                  />
+                  <datalist id="admission-counsellors-list">
+                    {counsellors.map((c) => (
+                      <option key={c._id || c.email} value={c.name} />
+                    ))}
+                  </datalist>
+                </div>
+                <div className="field" style={{ margin: 0 }}>
+                  <label style={{ fontSize: 12, fontWeight: 500 }}>
+                    Caller name <span style={{ fontSize: 11, color: "var(--muted, #64748B)", fontWeight: 400 }}>(Optional)</span>
+                  </label>
+                  <input
+                    value={admissionCallerDraft}
+                    onChange={(e) => setAdmissionCallerDraft(e.target.value)}
+                    placeholder="Enter caller name"
+                    autoComplete="off"
+                  />
+                </div>
+              </div>
+              {(admissionCounsellorDraft.trim() !== (student.counsellorName || (student.counsellor !== "Unassigned" ? student.counsellor : "")) || admissionCallerDraft.trim() !== (student.callerName || "")) && (
+                <div style={{ marginTop: 10, textAlign: "right" }}>
+                  <button
+                    type="button"
+                    className="btn btn-sm btn-ghost"
+                    onClick={() => {
+                      const cVal = admissionCounsellorDraft.trim();
+                      const clrVal = admissionCallerDraft.trim();
+                      onStudentPatch(student._id, {
+                        counsellorName: cVal,
+                        callerName: clrVal,
+                        ...(cVal ? { counsellor: cVal } : {}),
+                      });
+                      toast.success("Saved coordination details");
+                    }}
+                  >
+                    Save coordination changes
+                  </button>
+                </div>
+              )}
+            </div>
+          )}
           <div className="grid-metrics profile-metrics">
             <MetricCard label="Final payable" value={formatCurrency(admissionNetFee)} dot="#4F6BFF" delta={`discount ${formatCurrency(admissionDiscount)}`} />
             <MetricCard label={isAdmissionPartialEmiPlan ? "EMI balance" : "Pending due"} value={formatCurrency(isAdmissionPartialEmiPlan ? admissionEmiBalance : admissionDue)} dot="#EF4444" delta={isAdmissionPartialEmiPlan ? `partial ${formatCurrency(admissionUpfrontAmount)}` : `paid ${formatCurrency(student.paidAmount || 0)}`} />

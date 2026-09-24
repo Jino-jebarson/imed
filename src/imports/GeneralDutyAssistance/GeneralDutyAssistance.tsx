@@ -1311,7 +1311,7 @@ function About2() {
     <div
       id="career-path"
       data-nav="career-path"
-      className="-translate-x-1/2 absolute bg-white content-stretch flex flex-col gap-[70px] items-center left-1/2 px-[32px] py-[60px] top-[3695px] w-[1440px]"
+      className="-translate-x-1/2 absolute bg-white content-stretch flex flex-col gap-[70px] items-center left-1/2 px-[32px] py-[60px] top-[4095px] w-[1440px]"
       data-name="About"
     >
       <Frame46 />
@@ -2267,7 +2267,7 @@ function Paragraph() {
       data-name="Paragraph"
     >
       <p className="absolute font-['Inter:Regular',sans-serif] font-normal leading-[20px] left-0 not-italic text-[#bedbff] text-[14px] top-[-0.2px] whitespace-nowrap">
-        Tier 1 - Metro · Multi-speciality · 2 yrs exp · Day Shift
+        Tier 1 - Metro Â· Multi-speciality Â· 2 yrs exp Â· Day Shift
       </p>
     </div>
   );
@@ -5397,7 +5397,8 @@ export default function GeneralDutyAssistance() {
       setPageScale(nextScale);
 
       if (pageRef.current) {
-        setScaledHeight(Math.ceil(pageRef.current.offsetHeight * nextScale));
+        const rawHeight = pageRef.current.scrollHeight || pageRef.current.offsetHeight;
+        setScaledHeight(Math.ceil(rawHeight * nextScale));
       }
     };
 
@@ -5436,9 +5437,9 @@ export default function GeneralDutyAssistance() {
           <Frame15 />
           <About />
           <About1 />
-          <About2 />
           <About3 />
           <About4 />
+          <About2 />
           <About5 />
           <About6 />
           <About7 />

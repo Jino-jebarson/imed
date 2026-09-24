@@ -3819,6 +3819,8 @@ function MobileApplyNow({
     setQualification,
     canAttend,
     setCanAttend,
+    honeypot,
+    setHoneypot,
     isSubmitting,
     isSubmitted,
     submittedInfo,

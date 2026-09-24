@@ -3637,7 +3637,8 @@ export default function Radiology() {
       setPageScale(nextScale);
 
       if (pageRef.current) {
-        setScaledHeight(Math.ceil(pageRef.current.offsetHeight * nextScale));
+        const rawHeight = pageRef.current.scrollHeight || pageRef.current.offsetHeight;
+        setScaledHeight(Math.ceil(rawHeight * nextScale));
       }
     };
 
@@ -3665,9 +3666,9 @@ export default function Radiology() {
           <Frame15 />
           <About />
           <About1 />
-          <About2 />
           <About3 />
           <About4 />
+          <About2 />
           <About5 />
           <About6 />
           <About7 />

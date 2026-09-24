@@ -1729,7 +1729,7 @@ function Heading11() {
 function Paragraph() {
   return (
     <div className="absolute h-[20px] left-0 top-[95.99px] w-[573.6px]" data-name="Paragraph">
-      <p className="[word-break:break-word] absolute font-['Inter:Regular',sans-serif] font-normal leading-[20px] left-0 not-italic text-[#bedbff] text-[14px] top-[-0.2px] whitespace-nowrap">Tier 1 - Metro � Multi-speciality � 2 yrs exp � Day Shift</p>
+      <p className="[word-break:break-word] absolute font-['Inter:Regular',sans-serif] font-normal leading-[20px] left-0 not-italic text-[#bedbff] text-[14px] top-[-0.2px] whitespace-nowrap">Tier 1 - Metro · Multi-speciality · 2 yrs exp · Day Shift</p>
     </div>
   );
 }
@@ -3590,7 +3590,7 @@ function Frame() {
       <div aria-hidden="true" className="absolute bg-[#1f3471] inset-0 pointer-events-none" />
       <div className="flex flex-row items-center size-full">
         <div className="[word-break:break-word] content-stretch flex font-['Inter:Regular',sans-serif] font-normal items-center justify-between leading-[normal] not-italic px-[70px] py-[16px] relative size-full text-[14px] text-white whitespace-nowrap">
-          <p className="relative shrink-0">� 2026 iMED Academy. All rights reserved. � NSDC Authorised Training Partner � MSME Registered</p>
+          <p className="relative shrink-0">© 2026 iMED Academy. All rights reserved. · NSDC Authorised Training Partner · MSME Registered</p>
           <Frame35 />
         </div>
       </div>
@@ -3621,7 +3621,8 @@ export default function GeriatricCareAssistance() {
       setPageScale(nextScale);
 
       if (pageRef.current) {
-        setScaledHeight(Math.ceil(pageRef.current.offsetHeight * nextScale));
+        const rawHeight = pageRef.current.scrollHeight || pageRef.current.offsetHeight;
+        setScaledHeight(Math.ceil(rawHeight * nextScale));
       }
     };
 
@@ -3660,9 +3661,9 @@ export default function GeriatricCareAssistance() {
           <Frame15 />
           <About />
           <About1 />
-          <About2 />
           <About3 />
           <About4 />
+          <About2 />
           <About5 />
           <About6 />
           <About7 />

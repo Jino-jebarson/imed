@@ -182,7 +182,7 @@ const adminUserSchema = new mongoose.Schema({
   name: { type: String, required: true, trim: true },
   email: { type: String, required: true, unique: true, lowercase: true, trim: true },
   passwordHash: { type: String, required: true },
-  role: { type: String, enum: ["superadmin", "admin", "counsellor", "teacher", "operations_executive", "franchise_superadmin", "franchise_counsellor", "franchise_teacher", "franchise_operations_executive"], default: "admin" },
+  role: { type: String, enum: ["superadmin", "center_admin", "admin", "counsellor", "teacher", "operations_executive", "franchise_superadmin", "franchise_counsellor", "franchise_teacher", "franchise_operations_executive"], default: "admin" },
   franchiseId: { type: mongoose.Schema.Types.ObjectId, ref: "Centre" },
   passwordResetTokenHash: { type: String, default: "" },
   passwordResetExpiresAt: { type: Date },
@@ -199,6 +199,7 @@ const counterSchema = new mongoose.Schema({
 const centreSchema = new mongoose.Schema({
   name: { type: String, required: true, trim: true },
   type: { type: String, enum: ["branch", "franchise"], default: "franchise" },
+  parentCentreId: { type: mongoose.Schema.Types.ObjectId, ref: "Centre", default: null },
   city: { type: String, default: "" },
   manager: { type: String, default: "" },
   billingLegalName: { type: String, default: "" },
@@ -268,6 +269,10 @@ const leadSchema = new mongoose.Schema({
   highestQualificationCertificate: { type: documentFileSchema, default: undefined },
   studentLocation: { type: String, default: "", trim: true },
   source: { type: String, default: "Website" },
+  counsellorName: { type: String, default: "", trim: true },
+  scholarName: { type: String, default: "", trim: true },
+  refereeName: { type: String, default: "", trim: true },
+  referralAmount: { type: Number, default: 0 },
   centre: { type: String, default: "" },
   franchiseId: { type: mongoose.Schema.Types.ObjectId, ref: "Centre" },
   course: { type: String, default: "" },
@@ -342,6 +347,8 @@ const studentSchema = new mongoose.Schema({
   franchiseId: { type: mongoose.Schema.Types.ObjectId, ref: "Centre" },
   course: { type: String, default: "" },
   counsellor: { type: String, default: "Unassigned" },
+  counsellorName: { type: String, default: "", trim: true },
+  callerName: { type: String, default: "", trim: true },
   teacher: { type: String, default: "Unassigned" },
   batch: { type: String, default: "" },
   batchCommenceDate: { type: Date },
@@ -897,11 +904,15 @@ function isOperationsAccount(user) {
 }
 
 function isHeadAdmin(user) {
-  return ["superadmin", "admin"].includes(user?.role);
+  return ["superadmin", "center_admin", "admin"].includes(user?.role);
 }
 
 function isHeadSuperAdmin(user) {
   return user?.role === "superadmin";
+}
+
+function isCenterAdmin(user) {
+  return user?.role === "center_admin";
 }
 
 function isHeadBranchAdmin(user) {
@@ -926,6 +937,26 @@ function isTeacherAccount(user) {
 
 function isStudentStaffAccount(user) {
   return isCounsellorAccount(user) || isTeacherAccount(user) || isOperationsAccount(user);
+}
+
+// Returns the branch IDs under a center_admin's parent centre (including child branches and parent centre)
+async function centerAdminBranchIds(user) {
+  if (!isCenterAdmin(user) || !user?.franchiseId) return [];
+  const branches = await Centre.find({
+    $or: [{ parentCentreId: user.franchiseId }, { _id: user.franchiseId }],
+    active: true,
+  }).select("_id").lean();
+  return branches.map((b) => b._id);
+}
+
+// Returns branch IDs + names for a center_admin
+async function centerAdminBranchScope(user) {
+  if (!isCenterAdmin(user) || !user?.franchiseId) return { ids: [], names: [] };
+  const branches = await Centre.find({
+    $or: [{ parentCentreId: user.franchiseId }, { _id: user.franchiseId }],
+    active: true,
+  }).select("_id name").lean();
+  return { ids: branches.map((b) => b._id), names: branches.map((b) => b.name) };
 }
 
 function canManageFees(user) {
@@ -1137,6 +1168,16 @@ async function scopedDataFilter(req, query = {}) {
     } else {
       filter.franchiseId = req.user.franchiseId;
     }
+  } else if (isCenterAdmin(req.user)) {
+    // center_admin sees all branches under their parent centre
+    const branchScope = await centerAdminBranchScope(req.user);
+    if (!branchScope.ids.length) return { ...filter, franchiseId: emptyObjectId };
+    const regexNames = branchScope.names.map((name) => new RegExp(`^${escapeRegex(name)}$`, "i"));
+    filter.$or = [
+      { franchiseId: { $in: branchScope.ids } },
+      { centre: { $in: branchScope.names } },
+      ...(regexNames.length ? [{ centre: { $in: regexNames } }] : []),
+    ];
   } else if (isHeadBranchScoped(req.user)) {
     const branchScope = await headOfficeBranchScope(req.user);
     const regexNames = branchScope.names.map((name) => new RegExp(`^${escapeRegex(name)}$`, "i"));
@@ -1170,6 +1211,14 @@ async function canAccessRecord(req, record) {
       return teacherScope.batchNames.includes(recordBatchName);
     }
     return true;
+  }
+  if (isCenterAdmin(req.user)) {
+    // center_admin can access records from any branch under their parent centre
+    const branchScope = await centerAdminBranchScope(req.user);
+    const recordFranchiseId = record?.franchiseId ? String(record.franchiseId) : "";
+    const inScope = branchScope.ids.some((id) => String(id) === recordFranchiseId) ||
+      branchScope.names.some((name) => String(name).toLowerCase() === String(record?.centre || "").toLowerCase());
+    return inScope;
   }
   if (isHeadBranchScoped(req.user)) {
     const branchScope = await headOfficeBranchScope(req.user);
@@ -1212,6 +1261,7 @@ async function resolveFranchiseFromRequest(req, centreName = "") {
 
 function staffResponse(user) {
   return {
+    _id: user._id?.toString() || "",
     name: user.name,
     email: user.email,
     role: user.role,
@@ -1836,10 +1886,12 @@ app.get("/api/centres", async (_req, res) => {
 app.get("/api/admin/counsellors", requireAuth, requireFranchiseManager, async (req, res) => {
   const filter = isFranchiseSuperAdmin(req.user)
     ? { role: { $in: ["franchise_counsellor", "franchise_teacher", "franchise_operations_executive"] }, franchiseId: req.user.franchiseId || emptyObjectId }
-    : isHeadBranchAdmin(req.user)
-      ? { role: { $in: ["admin", "counsellor", "teacher", "operations_executive"] }, ...(req.user.franchiseId ? { franchiseId: req.user.franchiseId } : {}) }
-      : { role: { $in: ["superadmin", "admin", "counsellor", "teacher", "operations_executive", "franchise_superadmin", "franchise_counsellor", "franchise_teacher", "franchise_operations_executive"] } };
-  const counsellors = await AdminUser.find(filter).select("name email role franchiseId").sort({ name: 1 }).lean();
+    : isCenterAdmin(req.user)
+      ? { role: { $in: ["admin", "counsellor", "teacher", "operations_executive"] }, franchiseId: { $in: (await centerAdminBranchIds(req.user)) } }
+      : isHeadBranchAdmin(req.user)
+        ? { role: { $in: ["admin", "counsellor", "teacher", "operations_executive"] }, ...(req.user.franchiseId ? { franchiseId: req.user.franchiseId } : {}) }
+        : { role: { $in: ["superadmin", "center_admin", "admin", "counsellor", "teacher", "operations_executive", "franchise_superadmin", "franchise_counsellor", "franchise_teacher", "franchise_operations_executive"] } };
+  const counsellors = await AdminUser.find(filter).select("_id name email role franchiseId").sort({ name: 1 }).lean();
   res.json({ ok: true, data: counsellors });
 });
 
@@ -1848,10 +1900,13 @@ app.get("/api/admin/teachers", requireAuth, async (req, res) => {
   let filter = { role: { $in: ["teacher", "franchise_teacher"] } };
   if (isFranchiseUser(req.user)) {
     filter = { ...filter, franchiseId: req.user.franchiseId || emptyObjectId };
+  } else if (isCenterAdmin(req.user)) {
+    const branchIds = await centerAdminBranchIds(req.user);
+    filter = { ...filter, franchiseId: { $in: branchIds } };
   } else if (isHeadBranchScoped(req.user)) {
     filter = { ...filter, franchiseId: req.user.franchiseId || emptyObjectId };
   }
-  const teachers = await AdminUser.find(filter).select("name email role franchiseId").sort({ name: 1 }).lean();
+  const teachers = await AdminUser.find(filter).select("_id name email role franchiseId").sort({ name: 1 }).lean();
   res.json({ ok: true, data: teachers });
 });
 
@@ -1859,18 +1914,31 @@ app.post("/api/admin/counsellors", requireAuth, requireFranchiseManager, async (
   const { name, email, password, role = "counsellor", franchiseId = "" } = req.body || {};
   if (!name || !email || !password) return sendError(res, 400, "Name, email, and password are required");
   if (String(password).length < 8) return sendError(res, 400, "Password must be at least 8 characters");
-  if (!["superadmin", "admin", "counsellor", "teacher", "operations_executive", "franchise_superadmin", "franchise_counsellor", "franchise_teacher", "franchise_operations_executive"].includes(role)) return sendError(res, 400, "Invalid staff role");
+  if (!["superadmin", "center_admin", "admin", "counsellor", "teacher", "operations_executive", "franchise_superadmin", "franchise_counsellor", "franchise_teacher", "franchise_operations_executive"].includes(role)) return sendError(res, 400, "Invalid staff role");
   if (isFranchiseSuperAdmin(req.user) && !["franchise_counsellor", "franchise_teacher", "franchise_operations_executive"].includes(role)) return sendError(res, 403, "Franchise super admin can create only franchise staff");
   if (isHeadBranchAdmin(req.user) && !["admin", "counsellor", "teacher", "operations_executive"].includes(role)) return sendError(res, 403, "Head admin can create only head office staff");
+  if (isCenterAdmin(req.user) && !["admin", "counsellor", "teacher", "operations_executive"].includes(role)) return sendError(res, 403, "Center admin can create only branch staff");
   if (role === "superadmin" && !isHeadSuperAdmin(req.user)) return sendError(res, 403, "Head super admin access required");
-  if (!isHeadAdmin(req.user) && ["superadmin", "admin", "counsellor", "teacher", "operations_executive", "franchise_superadmin"].includes(role)) return sendError(res, 403, "Head admin access required");
+  if (role === "center_admin" && !isHeadSuperAdmin(req.user)) return sendError(res, 403, "Only super admin can create center admin accounts");
+  if (!isHeadAdmin(req.user) && ["superadmin", "center_admin", "admin", "counsellor", "teacher", "operations_executive", "franchise_superadmin"].includes(role)) return sendError(res, 403, "Head admin access required");
   const assignedFranchiseId = isFranchiseSuperAdmin(req.user) || isHeadBranchAdmin(req.user) ? req.user.franchiseId : franchiseId;
-  const needsAssignedCentre = ["admin", "counsellor", "teacher", "operations_executive", "franchise_superadmin", "franchise_counsellor", "franchise_teacher", "franchise_operations_executive"].includes(role);
-  if (needsAssignedCentre && !mongoose.isValidObjectId(String(assignedFranchiseId || ""))) return sendError(res, 400, ["admin", "counsellor", "teacher", "operations_executive"].includes(role) ? "Branch is required" : "Franchise is required");
-  if (needsAssignedCentre) {
+  // center_admin needs a parent centre (type not restricted — could be any Centre record acting as parent)
+  const needsAssignedCentre = ["center_admin", "admin", "counsellor", "teacher", "operations_executive", "franchise_superadmin", "franchise_counsellor", "franchise_teacher", "franchise_operations_executive"].includes(role);
+  if (needsAssignedCentre && !mongoose.isValidObjectId(String(assignedFranchiseId || ""))) return sendError(res, 400, ["admin", "counsellor", "teacher", "operations_executive"].includes(role) ? "Branch is required" : role === "center_admin" ? "Parent centre is required" : "Franchise is required");
+  if (needsAssignedCentre && !["center_admin"].includes(role)) {
     const expectedType = ["admin", "counsellor", "teacher", "operations_executive"].includes(role) ? "branch" : "franchise";
     const centre = await Centre.findOne({ _id: assignedFranchiseId, type: expectedType }).lean();
     if (!centre) return sendError(res, 404, expectedType === "branch" ? "Branch not found" : "Franchise not found");
+  }
+  if (needsAssignedCentre && role === "center_admin") {
+    const centre = await Centre.findById(assignedFranchiseId).lean();
+    if (!centre) return sendError(res, 404, "Parent centre not found");
+  }
+  if (isCenterAdmin(req.user)) {
+    const branchIds = await centerAdminBranchIds(req.user);
+    if (!branchIds.some((id) => String(id) === String(assignedFranchiseId))) {
+      return sendError(res, 403, "Center admin can only assign staff to branches within their center");
+    }
   }
   const existing = await AdminUser.findOne({ email: String(email).toLowerCase().trim() });
   if (existing) return sendError(res, 409, "Staff account already exists");
@@ -1883,6 +1951,56 @@ app.post("/api/admin/counsellors", requireAuth, requireFranchiseManager, async (
     franchiseId: needsAssignedCentre ? assignedFranchiseId : undefined,
   });
   res.status(201).json({ ok: true, data: staffResponse(counsellor) });
+});
+
+app.patch("/api/admin/counsellors/:id", requireAuth, requireFranchiseManager, async (req, res) => {
+  const { id } = req.params;
+  if (!mongoose.isValidObjectId(id)) return sendError(res, 400, "Invalid staff ID");
+  const staff = await AdminUser.findById(id);
+  if (!staff) return sendError(res, 404, "Staff account not found");
+
+  if (isCenterAdmin(req.user)) {
+    const branchIds = await centerAdminBranchIds(req.user);
+    const staffFranchise = String(staff.franchiseId || "");
+    const inScope = branchIds.some((bId) => String(bId) === staffFranchise) || String(staff._id) === String(req.user._id);
+    if (!inScope && !isHeadSuperAdmin(req.user)) {
+      return sendError(res, 403, "Access denied to staff outside your center");
+    }
+  }
+
+  const { name, role, franchiseId, password } = req.body || {};
+  if (name && String(name).trim()) staff.name = String(name).trim();
+
+  if (role) {
+    if (!["superadmin", "center_admin", "admin", "counsellor", "teacher", "operations_executive", "franchise_superadmin", "franchise_counsellor", "franchise_teacher", "franchise_operations_executive"].includes(role)) {
+      return sendError(res, 400, "Invalid staff role");
+    }
+    if (isCenterAdmin(req.user) && !["admin", "counsellor", "teacher", "operations_executive"].includes(role)) {
+      return sendError(res, 403, "Center admin can create or update only branch staff");
+    }
+    staff.role = role;
+  }
+
+  if (franchiseId !== undefined) {
+    if (franchiseId && mongoose.isValidObjectId(franchiseId)) {
+      if (isCenterAdmin(req.user)) {
+        const branchIds = await centerAdminBranchIds(req.user);
+        if (!branchIds.some((bId) => String(bId) === String(franchiseId))) {
+          return sendError(res, 403, "Cannot assign to branch outside your center");
+        }
+      }
+      staff.franchiseId = franchiseId;
+    } else if (!franchiseId && isHeadSuperAdmin(req.user)) {
+      staff.franchiseId = undefined;
+    }
+  }
+
+  if (password && String(password).length >= 8) {
+    staff.passwordHash = await bcrypt.hash(String(password), 10);
+  }
+
+  await staff.save();
+  res.json({ ok: true, data: staffResponse(staff) });
 });
 
 app.patch("/api/admin/me/password", requireAuth, async (req, res) => {
@@ -2093,6 +2211,10 @@ app.post("/api/admin/leads", requireAuth, leadDocumentUpload.fields([
     highestQualificationCertificate: saveLeadDocument(files.highestQualificationCertificate?.[0]),
     studentLocation: body.studentLocation || "",
     source: body.source || "Website",
+    counsellorName: body.counsellorName ? String(body.counsellorName).trim() : "",
+    scholarName: body.scholarName ? String(body.scholarName).trim() : "",
+    refereeName: body.refereeName ? String(body.refereeName).trim() : "",
+    referralAmount: body.referralAmount ? Number(body.referralAmount) || 0 : 0,
     centre: centreName,
     franchiseId: franchise?._id,
     course: body.course || "",
@@ -2177,6 +2299,10 @@ app.post("/api/admin/leads/import", requireAuth, upload.single("file"), async (r
       email: excelString(row, ["Email", "Email Id"]),
       studentLocation: excelString(row, ["Student Location", "Student Place", "Address"]),
       source: excelString(row, ["Source", "Lead Source"]) || "Excel import",
+      counsellorName: excelString(row, ["BTL Counsellor", "BTL Counsellor Name", "Counsellor Name", "Counsellor"]),
+      scholarName: excelString(row, ["Scholar Name", "Scholar", "BTL Scholar", "Student Scholar"]),
+      refereeName: excelString(row, ["Referee Name", "Referee", "Referral Name", "Referred By"]),
+      referralAmount: excelNumber(row, ["Referral Amount", "Referee Amount", "Referral Fee"]) || 0,
       centre: centreName,
       franchiseId: franchise?._id,
       course: courseValue,
@@ -2202,7 +2328,7 @@ app.post("/api/admin/leads/import", requireAuth, upload.single("file"), async (r
 
 app.patch("/api/admin/leads/:id", requireAuth, async (req, res) => {
   if (!canUseLeads(req.user)) return sendError(res, 403, "Lead updates are restricted to counsellor and admin accounts");
-  const allowedLeadUpdates = (({ fullName, phone, parentMobile, email, governmentProof, highestQualificationCertificate, studentLocation, source, centre, course, counsellor, leadFeedback, stage, priority, city, expectedFee, nextFollowUp, notes }) => ({ fullName, phone, parentMobile, email, governmentProof, highestQualificationCertificate, studentLocation, source, centre, course, counsellor, leadFeedback, stage, priority, city, expectedFee, nextFollowUp, notes }))(req.body || {});
+  const allowedLeadUpdates = (({ fullName, phone, parentMobile, email, governmentProof, highestQualificationCertificate, studentLocation, source, counsellorName, scholarName, refereeName, referralAmount, centre, course, counsellor, leadFeedback, stage, priority, city, expectedFee, nextFollowUp, notes }) => ({ fullName, phone, parentMobile, email, governmentProof, highestQualificationCertificate, studentLocation, source, counsellorName, scholarName, refereeName, referralAmount, centre, course, counsellor, leadFeedback, stage, priority, city, expectedFee, nextFollowUp, notes }))(req.body || {});
   Object.keys(allowedLeadUpdates).forEach((key) => allowedLeadUpdates[key] === undefined && delete allowedLeadUpdates[key]);
   if (!canManageFees(req.user) && Object.prototype.hasOwnProperty.call(allowedLeadUpdates, "expectedFee")) {
     return sendError(res, 403, "Fee updates are restricted to admin accounts");
@@ -2534,6 +2660,8 @@ app.post("/api/admin/leads/:id/convert", requireAuth, async (req, res) => {
     franchiseId: lead.franchiseId,
     course: lead.course,
     counsellor: assignedCounsellor || "Unassigned",
+    counsellorName: lead.counsellorName || assignedCounsellor || "",
+    callerName: "",
     teacher: assignedTeacher || "Unassigned",
     batch: batch.name,
     batchCommenceDate: batch.commenceDate,
@@ -2882,8 +3010,9 @@ app.get("/api/nps/export", requireAuth, async (req, res) => {
 
 async function getInventoryScope(req) {
   const filter = {};
-  if (isFranchiseUser(req.user)) {
-    if (req.user.franchiseId) filter.franchiseId = req.user.franchiseId;
+  const userFranchiseId = req.user?.franchiseId;
+  if (userFranchiseId) {
+    filter.franchiseId = userFranchiseId;
   } else if (req.query.franchiseId && mongoose.isValidObjectId(String(req.query.franchiseId))) {
     filter.franchiseId = new mongoose.Types.ObjectId(String(req.query.franchiseId));
   } else if (req.query.centre) {
@@ -2921,16 +3050,20 @@ app.get("/api/admin/inventory/summary", requireAuth, async (req, res) => {
     InventoryTransaction.find(scope).sort({ date: -1 }).limit(6).lean(),
   ]);
 
-  const idCardItem = items.find((i) => i.itemType === "id_card");
-  const bagItem = items.find((i) => i.itemType === "bag");
+  const idCardsTotal = items
+    .filter((i) => i.itemType === "id_card")
+    .reduce((sum, i) => sum + (i.quantity || 0), 0);
+  const bagsTotal = items
+    .filter((i) => i.itemType === "bag")
+    .reduce((sum, i) => sum + (i.quantity || 0), 0);
   const tshirtItems = items.filter((i) => i.itemType === "tshirt");
 
   const tshirtBySize = {
-    S: tshirtItems.find((i) => i.size === "S")?.quantity || 0,
-    M: tshirtItems.find((i) => i.size === "M")?.quantity || 0,
-    L: tshirtItems.find((i) => i.size === "L")?.quantity || 0,
-    XL: tshirtItems.find((i) => i.size === "XL")?.quantity || 0,
-    XXL: tshirtItems.find((i) => i.size === "XXL")?.quantity || 0,
+    S: tshirtItems.filter((i) => i.size === "S").reduce((sum, i) => sum + (i.quantity || 0), 0),
+    M: tshirtItems.filter((i) => i.size === "M").reduce((sum, i) => sum + (i.quantity || 0), 0),
+    L: tshirtItems.filter((i) => i.size === "L").reduce((sum, i) => sum + (i.quantity || 0), 0),
+    XL: tshirtItems.filter((i) => i.size === "XL").reduce((sum, i) => sum + (i.quantity || 0), 0),
+    XXL: tshirtItems.filter((i) => i.size === "XXL").reduce((sum, i) => sum + (i.quantity || 0), 0),
   };
   const totalTshirts = Object.values(tshirtBySize).reduce((sum, q) => sum + q, 0);
 
@@ -2942,23 +3075,30 @@ app.get("/api/admin/inventory/summary", requireAuth, async (req, res) => {
   };
 
   const lowStockAlerts = [];
-  if (idCardItem && idCardItem.quantity <= (idCardItem.minThreshold || 5)) {
-    lowStockAlerts.push({ item: "ID Cards", current: idCardItem.quantity, threshold: idCardItem.minThreshold || 5 });
+  const idCardItem = items.find((i) => i.itemType === "id_card");
+  const bagItem = items.find((i) => i.itemType === "bag");
+  const idCardThreshold = idCardItem?.minThreshold || 10;
+  if (idCardsTotal <= idCardThreshold) {
+    lowStockAlerts.push({ item: "ID Cards", current: idCardsTotal, threshold: idCardThreshold });
   }
-  if (bagItem && bagItem.quantity <= (bagItem.minThreshold || 5)) {
-    lowStockAlerts.push({ item: "Bags", current: bagItem.quantity, threshold: bagItem.minThreshold || 5 });
+  const bagThreshold = bagItem?.minThreshold || 5;
+  if (bagsTotal <= bagThreshold) {
+    lowStockAlerts.push({ item: "Bags", current: bagsTotal, threshold: bagThreshold });
   }
-  tshirtItems.forEach((t) => {
-    if (t.quantity <= (t.minThreshold || 5)) {
-      lowStockAlerts.push({ item: `T-Shirt (${t.size})`, current: t.quantity, threshold: t.minThreshold || 5 });
+  (["S", "M", "L", "XL", "XXL"]).forEach((sz) => {
+    const qty = tshirtBySize[sz] || 0;
+    const item = tshirtItems.find((i) => i.size === sz);
+    const thresh = item?.minThreshold || 5;
+    if (qty <= thresh) {
+      lowStockAlerts.push({ item: `T-Shirt (${sz})`, current: qty, threshold: thresh });
     }
   });
 
   res.json({
     ok: true,
     data: {
-      idCards: idCardItem?.quantity || 0,
-      bags: bagItem?.quantity || 0,
+      idCards: idCardsTotal,
+      bags: bagsTotal,
       tshirts: {
         total: totalTshirts,
         bySize: tshirtBySize,
@@ -3014,7 +3154,7 @@ app.post("/api/admin/inventory/stock-in", requireAuth, async (req, res) => {
   }
   const notes = String(req.body?.notes || "").trim();
 
-  let targetFranchiseId = isFranchiseUser(req.user) ? req.user.franchiseId : req.body?.franchiseId;
+  let targetFranchiseId = req.user?.franchiseId || req.body?.franchiseId;
   let targetCentre = "";
   if (targetFranchiseId && mongoose.isValidObjectId(String(targetFranchiseId))) {
     const c = await Centre.findById(targetFranchiseId).lean();
@@ -3116,7 +3256,7 @@ app.post("/api/admin/inventory/stock-out", requireAuth, async (req, res) => {
   const notes = String(req.body?.notes || "").trim();
   const size = itemType === "tshirt" ? String(req.body?.size || "M").toUpperCase().trim() : "NA";
 
-  let targetFranchiseId = isFranchiseUser(req.user) ? req.user.franchiseId : req.body?.franchiseId;
+  let targetFranchiseId = req.user?.franchiseId || req.body?.franchiseId;
   const item = await InventoryItem.findOne({ itemType, size, franchiseId: targetFranchiseId });
   if (!item || item.quantity < quantity) {
     return sendError(res, 400, `Insufficient stock. Available: ${item?.quantity || 0}`);
@@ -3179,7 +3319,7 @@ app.post("/api/admin/inventory/issue-kit", requireAuth, async (req, res) => {
     return sendError(res, 400, "Select at least one item to issue");
   }
 
-  const targetFranchiseId = student.franchiseId || (isFranchiseUser(req.user) ? req.user.franchiseId : null);
+  const targetFranchiseId = student.franchiseId || req.user?.franchiseId || null;
   const targetCentre = student.centre || "";
 
   if (issueIdCard) {
@@ -3416,7 +3556,7 @@ app.post("/api/admin/attendance", requireAuth, async (req, res) => {
 });
 
 app.patch("/api/admin/students/:id", requireAuth, async (req, res) => {
-  const allowedStudentUpdates = (({ fullName, phone, parentMobile, email, governmentProof, highestQualificationCertificate, studentLocation, centre, course, counsellor, teacher, batch, batchCommenceDate, admissionNumber, admissionPaymentMode, admissionUpfrontAmount, discountAmount, status, totalFee, paidAmount, emiEnabled, emiMonths, emiAmount, nextEmiDate, placementStatus, placementCompany, placementRole, placementJoiningDate, placementSalary, placementHrContact, placementOfferLetterUrl, placementRemarks, testimonialText, testimonialVideoUrl, testimonialRating, testimonialApproved, referralName, referralPhone, referralStatus, certificateNumber, certificateIssuedAt, certificateStatus }) => ({ fullName, phone, parentMobile, email, governmentProof, highestQualificationCertificate, studentLocation, centre, course, counsellor, teacher, batch, batchCommenceDate, admissionNumber, admissionPaymentMode, admissionUpfrontAmount, discountAmount, status, totalFee, paidAmount, emiEnabled, emiMonths, emiAmount, nextEmiDate, placementStatus, placementCompany, placementRole, placementJoiningDate, placementSalary, placementHrContact, placementOfferLetterUrl, placementRemarks, testimonialText, testimonialVideoUrl, testimonialRating, testimonialApproved, referralName, referralPhone, referralStatus, certificateNumber, certificateIssuedAt, certificateStatus }))(req.body || {});
+  const allowedStudentUpdates = (({ fullName, phone, parentMobile, email, governmentProof, highestQualificationCertificate, studentLocation, centre, course, counsellor, counsellorName, callerName, teacher, batch, batchCommenceDate, admissionNumber, admissionPaymentMode, admissionUpfrontAmount, discountAmount, status, totalFee, paidAmount, emiEnabled, emiMonths, emiAmount, nextEmiDate, placementStatus, placementCompany, placementRole, placementJoiningDate, placementSalary, placementHrContact, placementOfferLetterUrl, placementRemarks, testimonialText, testimonialVideoUrl, testimonialRating, testimonialApproved, referralName, referralPhone, referralStatus, certificateNumber, certificateIssuedAt, certificateStatus }) => ({ fullName, phone, parentMobile, email, governmentProof, highestQualificationCertificate, studentLocation, centre, course, counsellor, counsellorName, callerName, teacher, batch, batchCommenceDate, admissionNumber, admissionPaymentMode, admissionUpfrontAmount, discountAmount, status, totalFee, paidAmount, emiEnabled, emiMonths, emiAmount, nextEmiDate, placementStatus, placementCompany, placementRole, placementJoiningDate, placementSalary, placementHrContact, placementOfferLetterUrl, placementRemarks, testimonialText, testimonialVideoUrl, testimonialRating, testimonialApproved, referralName, referralPhone, referralStatus, certificateNumber, certificateIssuedAt, certificateStatus }))(req.body || {});
   Object.keys(allowedStudentUpdates).forEach((key) => allowedStudentUpdates[key] === undefined && delete allowedStudentUpdates[key]);
   const feeFields = ["admissionPaymentMode", "admissionUpfrontAmount", "discountAmount", "totalFee", "paidAmount", "emiEnabled", "emiMonths", "emiAmount", "nextEmiDate"];
   if (!canManageFees(req.user) && feeFields.some((field) => Object.prototype.hasOwnProperty.call(allowedStudentUpdates, field))) {
@@ -3890,9 +4030,11 @@ app.get("/api/admin/centres", requireAuth, async (req, res) => {
   const branchScope = isHeadBranchScoped(req.user) ? await headOfficeBranchScope(req.user) : null;
   const filter = isFranchiseUser(req.user)
     ? { active: true, _id: req.user.franchiseId || emptyObjectId }
-    : isHeadBranchScoped(req.user)
-      ? { active: true, type: "branch", _id: { $in: branchScope.ids } }
-      : { active: true };
+    : isCenterAdmin(req.user)
+      ? { active: true, $or: [{ parentCentreId: req.user.franchiseId || emptyObjectId }, { _id: req.user.franchiseId || emptyObjectId }] }
+      : isHeadBranchScoped(req.user)
+        ? { active: true, type: "branch", _id: { $in: branchScope.ids } }
+        : { active: true };
   const centres = await Centre.find(filter).sort({ name: 1 }).lean();
   res.json({ ok: true, data: centres });
 });
@@ -3900,11 +4042,17 @@ app.get("/api/admin/centres", requireAuth, async (req, res) => {
 app.post("/api/admin/centres", requireAuth, requireHeadAdmin, async (req, res) => {
   const name = String(req.body?.name || "").trim();
   if (!name) return sendError(res, 400, "Centre name is required");
-  const type = isHeadBranchAdmin(req.user) ? "branch" : req.body?.type === "branch" ? "branch" : "franchise";
+  const type = isHeadBranchAdmin(req.user) || isCenterAdmin(req.user) ? "branch" : req.body?.type === "branch" ? "branch" : "franchise";
   const existing = await Centre.findOne({ name }).lean();
   if (existing) return sendError(res, 409, "Branch or franchise already exists with this name");
+  // Allow superadmin to set parentCentreId to group branches under a center admin
+  const parentCentreId = isHeadSuperAdmin(req.user) && mongoose.isValidObjectId(String(req.body?.parentCentreId || ""))
+    ? req.body.parentCentreId
+    : isCenterAdmin(req.user)
+      ? req.user.franchiseId  // center_admin's new branches always link to their parent centre
+      : undefined;
   try {
-    const centre = await Centre.create({ ...req.body, name, type });
+    const centre = await Centre.create({ ...req.body, name, type, ...(parentCentreId ? { parentCentreId } : { parentCentreId: null }) });
     res.status(201).json({ ok: true, data: centre });
   } catch (error) {
     if (error?.code === 11000) return sendError(res, 409, "Branch or franchise already exists with this name");
@@ -3917,9 +4065,10 @@ app.patch("/api/admin/centres/:id", requireAuth, requireFranchiseManager, async 
   if (isFranchiseSuperAdmin(req.user) && String(req.params.id) !== String(req.user.franchiseId || "")) return sendError(res, 403, "You can update only your franchise billing details");
   const existingCentre = await Centre.findById(req.params.id).lean();
   if (!existingCentre) return sendError(res, 404, "Centre not found");
-  const allowedCentreUpdates = (({ name, type, city, manager, billingLegalName, billingAddress, billingGstin, billingStateName, billingStateCode, billingEmail, billingPhone, bankAccountName, bankName, bankAccountNumber, bankIfsc, bankBranch }) => ({ name, type, city, manager, billingLegalName, billingAddress, billingGstin, billingStateName, billingStateCode, billingEmail, billingPhone, bankAccountName, bankName, bankAccountNumber, bankIfsc, bankBranch }))(req.body || {});
+  const allowedCentreUpdates = (({ name, type, city, manager, parentCentreId, billingLegalName, billingAddress, billingGstin, billingStateName, billingStateCode, billingEmail, billingPhone, bankAccountName, bankName, bankAccountNumber, bankIfsc, bankBranch }) => ({ name, type, city, manager, parentCentreId, billingLegalName, billingAddress, billingGstin, billingStateName, billingStateCode, billingEmail, billingPhone, bankAccountName, bankName, bankAccountNumber, bankIfsc, bankBranch }))(req.body || {});
   Object.keys(allowedCentreUpdates).forEach((key) => allowedCentreUpdates[key] === undefined && delete allowedCentreUpdates[key]);
   if (!isHeadAdmin(req.user)) delete allowedCentreUpdates.name;
+  if (!isHeadSuperAdmin(req.user)) delete allowedCentreUpdates.parentCentreId;
   if (allowedCentreUpdates.name !== undefined) {
     allowedCentreUpdates.name = String(allowedCentreUpdates.name || "").trim();
     if (!allowedCentreUpdates.name) return sendError(res, 400, "Centre name is required");

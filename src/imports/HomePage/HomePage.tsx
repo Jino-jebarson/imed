@@ -2,6 +2,7 @@ import { useEffect, useLayoutEffect, useRef, useState } from "react";
 import { trackPixelLead } from "../../shared/metaPixel";
 import svgPaths from "./svg-xnb1grkepi";
 import imgImage1712 from "./imedLogoTMTag.svg";
+import { ImedLogo } from "./ImedLogo";
 import imgImage1740 from "./image1740.webp";
 import imgImage1736 from "./image1736.webp";
 import imgImage1744 from "./image1744.png";
@@ -12,7 +13,7 @@ import imgImage1730 from "./image1730.png";
 import imgAlphonsaLogo768X2001 from "./alphonsa-logo768-x2001.png";
 import imgMedideskLogo from "./medidesk-logo.svg";
 import imgImage1732 from "./image1732.png";
-import imgKmcims1 from "./kmcims1.png"; 
+import imgKmcims1 from "./kmcims1.png";
 import imgDownload22 from "./download22.png";
 import imgDmhLogo1 from "./dmh-logo1.png";
 import imgLogo11 from "./logo11.png";
@@ -75,7 +76,7 @@ const faqItems = [
   },
   {
     question: "Can Arts & Commerce students build a career in the healthcare field?",
-    answer:"Yes. Healthcare isn't only for science students. Roles like hospital administration, billing, and patient coordination are open to Arts & Commerce students with the right training."
+    answer: "Yes. Healthcare isn't only for science students. Roles like hospital administration, billing, and patient coordination are open to Arts & Commerce students with the right training."
   },
 ];
 
@@ -198,12 +199,8 @@ function computeSalaryBreakdown(selection: ScopeDemandSelections): SalaryBreakdo
 
 function Group34() {
   return (
-    <div className="grid-cols-[max-content] grid-rows-[max-content] inline-grid place-items-start relative shrink-0">
-      <div className="col-1 h-[38px] ml-0 mt-0 relative row-1 w-[203px]" data-name="image 1712">
-        <div className="absolute inset-0 overflow-hidden pointer-events-none">
-          <img loading="lazy" decoding="async" alt="" className="absolute inset-0 h-full w-full max-w-none object-contain" src={imgImage1712} />
-        </div>
-      </div>
+    <div className="h-[38px] w-[203px] relative shrink-0 flex items-center" data-name="image 1712">
+      <ImedLogo className="h-full w-full object-contain pointer-events-none select-none" />
     </div>
   );
 }
@@ -343,7 +340,7 @@ function Frame23() {
       <Frame21 />
       <Frame22 />
       <FrameSkillbridge />
-    </div>  
+    </div>
   );
 }
 
@@ -1431,7 +1428,7 @@ function Frame73() {
 
 function About1() {
   return (
-    <div className="absolute bg-white content-stretch flex flex-col gap-[39px] items-center left-0 px-[32px] py-[60px] top-[7783.76px] w-[1440px]" data-name="About">
+    <div className="absolute bg-white content-stretch flex flex-col gap-[39px] items-center left-0 px-[32px] py-[60px] top-[7100.76px] w-[1440px]" data-name="About">
       <Container12 />
       <Frame73 />
     </div>
@@ -2377,10 +2374,10 @@ function Frame61Gca() {
       <div className="content-stretch flex gap-[15px] items-center relative shrink-0">
         <div className="content-stretch flex gap-[8px] items-center relative shrink-0">
           <MingcuteTimeLine2 />
-          <p className="font-['Inter:Semi_Bold',sans-serif] font-semibold leading-[normal] not-italic relative shrink-0 text-[#333] text-[18px] whitespace-nowrap">6 Months</p>
+          <p className="font-['Inter:Semi_Bold',sans-serif] font-semibold leading-[normal] not-italic relative shrink-0 text-[#333] text-[18px] whitespace-nowrap">4 Months</p>
         </div>
       </div>
-      <p className="font-['Inter:Regular',sans-serif] font-normal leading-[27px] not-italic relative shrink-0 text-[#333] text-[14px] w-full">{`4 Months Classroom & Practical Training + 2 Months field Internship`}</p>
+      <p className="font-['Inter:Regular',sans-serif] font-normal leading-[27px] not-italic relative shrink-0 text-[#333] text-[14px] w-full">{`2.5 Months Classroom & Practical Training + 1.5 Months field Internship`}</p>
       <div className="content-stretch flex flex-col gap-[10px] items-start relative shrink-0 w-full">
         <p className="font-['Inter:Semi_Bold',sans-serif] font-semibold leading-[27px] min-w-full not-italic relative shrink-0 text-[#25a88d] text-[14px] w-[min-content]">Program Highlights</p>
         <div className="content-stretch flex flex-col gap-[5px] items-start relative shrink-0 w-[271px]">
@@ -2477,7 +2474,7 @@ function ProgramCard({
           <div className="absolute content-stretch flex gap-[4px] items-center left-[41px] top-[26px]">
             <svg aria-hidden="true" className="size-[16px] shrink-0" fill="none" viewBox="0 0 24 24">
               <path d="M12 21s7-4.57 7-11a7 7 0 1 0-14 0c0 6.43 7 11 7 11Z" fill="white" />
-              <path d="M12 12.25a2.25 2.25 0 1 0 0-4.5 2.25 2.25 0 0 0 0 4.5Z" fill={gradient.includes("0, 104, 142") ? "#008ed0" : "#25a88d"} />
+              <path d="M12 12.25a2.25 2.25 0 1 0 0-4.5 2.25 2.25 0 0 0 0 4.5Z" fill={gradient.includes("0, 104, 142") ? "#008ed0" : gradient.includes("59, 28, 102") ? "#6a3093" : "#25a88d"} />
             </svg>
             <p className="font-['Inter:Extra_Bold',sans-serif] font-extrabold leading-[17px] not-italic text-[11.5px] text-white whitespace-nowrap">{availableIn}</p>
           </div>
@@ -2577,11 +2574,12 @@ function Frame47() {
     },
     {
       badge: "HIGH DEMAND",
+      availableIn: "KOCHI",
       title: "GCA Program",
       subtitle: "Certification in Geriatric Care Assistance",
-      duration: "6 Months",
+      duration: "4 Months",
       roleLabel: "Care Roles",
-      description: "4 Months Classroom & Practical Training + 2 Months field Internship",
+      description: "2.5 Months Classroom & Practical Training + 1.5 Months field Internship",
       highlights: [
         "NSDC + HSSC-aligned curriculum",
         "Practical elderly care training",
@@ -2870,9 +2868,8 @@ function StudentStoryCard({
 }) {
   return (
     <div
-      className={`bg-[rgba(37,168,141,0.27)] overflow-clip relative rounded-[20px] shrink-0 transition-all duration-300 ease-out ${
-        isActive ? "h-[360px] w-[545px]" : "h-[264px] w-[399.667px]"
-      }`}
+      className={`bg-[rgba(37,168,141,0.27)] overflow-clip relative rounded-[20px] shrink-0 transition-all duration-300 ease-out ${isActive ? "h-[360px] w-[545px]" : "h-[264px] w-[399.667px]"
+        }`}
       data-story-card="true"
     >
       <div className="absolute inset-[10.56%_87.58%_83.01%_7.52%]">
@@ -2886,11 +2883,10 @@ function StudentStoryCard({
         </svg>
       </div>
       <p
-        className={`absolute font-['Inter:Regular',sans-serif] font-normal not-italic text-white ${
-          isActive
+        className={`absolute font-['Inter:Regular',sans-serif] font-normal not-italic text-white ${isActive
             ? "bottom-[40%] leading-[30px] left-[calc(50%-222.5px)] text-[20px] top-[26.67%] w-[445px]"
             : "bottom-[40%] leading-[22px] left-[calc(50%-163.17px)] text-[14.667px] top-[26.67%] w-[326.333px]"
-        }`}
+          }`}
       >{`"${quote}"`}</p>
       <div className={`absolute content-stretch flex items-center ${isActive ? "gap-[21px] left-[41px] top-[262px]" : "gap-[15.4px] left-[30.07px] top-[192.13px]"}`}>
         <div className={`relative shrink-0 ${isActive ? "size-[60px]" : "size-[44px]"}`}>
@@ -2932,13 +2928,13 @@ function Frame72() {
     },
     {
       quote:
-      "I had no idea what to do after 12th. iMED gave me direction, real skills, and a job at a private hospital within 5 months. Life changed completely.",
+        "I had no idea what to do after 12th. iMED gave me direction, real skills, and a job at a private hospital within 5 months. Life changed completely.",
       name: "Priya Sharma",
       role: "Front Desk Executive",
       image: imgEllipse5,
     },
     {
-      quote:"As a parent I was nervous. But monthly progress reports, personal calls from the placement team ? they kept us involved every step. iMED delivered on every promise.",
+      quote: "As a parent I was nervous. But monthly progress reports, personal calls from the placement team ? they kept us involved every step. iMED delivered on every promise.",
       name: "Sunita Gupta",
       role: "Parent of iMED Graduate",
       image: imgEllipse7,
@@ -3033,7 +3029,7 @@ function Frame72() {
 
 function About3() {
   return (
-    <div className="-translate-x-1/2 absolute content-stretch flex flex-col gap-[162px] h-[789px] items-center left-1/2 px-[32px] py-[60px] top-[6994.76px] w-[1440px]" style={{ backgroundImage: "linear-gradient(151.281deg, rgb(15, 23, 43) 0%, rgb(28, 57, 142) 50%, rgb(15, 23, 43) 100%), linear-gradient(105.348deg, rgb(53, 80, 159) 6.5327%, rgb(26, 56, 144) 53.048%, rgb(59, 99, 215) 99.563%), linear-gradient(90deg, rgb(31, 52, 113) 0%, rgb(31, 52, 113) 100%)" }} data-name="About">
+    <div className="-translate-x-1/2 absolute content-stretch flex flex-col gap-[162px] h-[789px] items-center left-1/2 px-[32px] py-[60px] top-[6311.76px] w-[1440px]" style={{ backgroundImage: "linear-gradient(151.281deg, rgb(15, 23, 43) 0%, rgb(28, 57, 142) 50%, rgb(15, 23, 43) 100%), linear-gradient(105.348deg, rgb(53, 80, 159) 6.5327%, rgb(26, 56, 144) 53.048%, rgb(59, 99, 215) 99.563%), linear-gradient(90deg, rgb(31, 52, 113) 0%, rgb(31, 52, 113) 100%)" }} data-name="About">
       <Container20 />
       <Frame72 />
     </div>
@@ -3086,7 +3082,7 @@ function Frame27() {
 
 function Container21() {
   return (
-    <div className="-translate-x-1/2 absolute content-stretch flex flex-col gap-[23px] h-[293px] items-center justify-center left-[calc(50%-0.5px)] px-[52px] py-[60px] shadow-[0px_25px_50px_0px_rgba(0,0,0,0.25)] top-[8585.76px] w-[1459px]" style={{ backgroundImage: "linear-gradient(168.645deg, rgb(15, 23, 43) 0%, rgb(28, 57, 142) 50%, rgb(15, 23, 43) 100%), linear-gradient(126.829deg, rgb(53, 80, 159) 6.5327%, rgb(26, 56, 144) 53.048%, rgb(59, 99, 215) 99.563%), linear-gradient(90deg, rgb(31, 52, 113) 0%, rgb(31, 52, 113) 100%)" }} data-name="Container">
+    <div className="-translate-x-1/2 absolute content-stretch flex flex-col gap-[23px] h-[293px] items-center justify-center left-[calc(50%-0.5px)] px-[52px] py-[60px] shadow-[0px_25px_50px_0px_rgba(0,0,0,0.25)] top-[7902.76px] w-[1459px]" style={{ backgroundImage: "linear-gradient(168.645deg, rgb(15, 23, 43) 0%, rgb(28, 57, 142) 50%, rgb(15, 23, 43) 100%), linear-gradient(126.829deg, rgb(53, 80, 159) 6.5327%, rgb(26, 56, 144) 53.048%, rgb(59, 99, 215) 99.563%), linear-gradient(90deg, rgb(31, 52, 113) 0%, rgb(31, 52, 113) 100%)" }} data-name="Container">
       <Heading9 />
       <Paragraph11 />
       <Frame27 />
@@ -3346,13 +3342,11 @@ function Frame67() {
   const l3 = lineState(3);
 
   const stepClass = (state: { active: boolean; visible: boolean }) =>
-    `absolute transition-all duration-500 ${
-      state.visible ? "opacity-100 scale-100" : "opacity-0 scale-95"
+    `absolute transition-all duration-500 ${state.visible ? "opacity-100 scale-100" : "opacity-0 scale-95"
     } ${state.active ? "drop-shadow-[0_0_12px_rgba(37,168,141,0.35)]" : ""}`;
 
   const lineFillClass = (state: { filled: boolean; animating: boolean }) =>
-    `absolute left-0 top-1/2 h-[2px] -translate-y-1/2 rounded-full bg-[#25a88d] ${
-      state.animating ? "transition-all duration-700" : "transition-all duration-300"
+    `absolute left-0 top-1/2 h-[2px] -translate-y-1/2 rounded-full bg-[#25a88d] ${state.animating ? "transition-all duration-700" : "transition-all duration-300"
     } ${state.filled || state.animating ? "w-full" : "w-0"}`;
 
   return (
@@ -3388,7 +3382,7 @@ function Frame67() {
 
 function WhyChooseUs() {
   return (
-    <div className="-translate-x-1/2 absolute bg-[#f5f7fb] h-[582px] left-1/2 overflow-clip top-[8878.76px] w-[1440px]" data-name="why choose us">
+    <div className="-translate-x-1/2 absolute bg-[#f5f7fb] h-[582px] left-1/2 overflow-clip top-[8195.76px] w-[1440px]" data-name="why choose us">
       <Frame101 />
       <div className="absolute h-[697px] left-[760px] top-[20px] w-[656px]" data-name="image 1679" />
       <Group37 />
@@ -3915,7 +3909,7 @@ function Container22() {
 
 function Contact() {
   return (
-    <div id="contact-us" className="absolute bg-white content-stretch flex flex-col h-[947px] items-start left-0 py-[60px] top-[9460.76px] w-[1440px]" data-name="Contact">
+    <div id="contact-us" className="absolute bg-white content-stretch flex flex-col h-[947px] items-start left-0 py-[60px] top-[8777.76px] w-[1440px]" data-name="Contact">
       <Container22 />
     </div>
   );
@@ -3985,139 +3979,139 @@ function Frame121() {
         aria-label="Get it on Google Play"
       >
         <div className="h-[37.242px] overflow-clip relative shrink-0 w-[125.692px]" data-name="Badge">
-        <svg className="absolute block inset-0 size-full" fill="none" preserveAspectRatio="none" viewBox="0 0 135 40">
-          <path d={svgPaths.p11d0cb00} fill="var(--fill-0, white)" id="Vector" />
-        </svg>
-        <svg className="absolute block inset-0 size-full" fill="none" preserveAspectRatio="none" viewBox="0 0 135 40">
-          <path d={svgPaths.p17d06a00} fill="var(--fill-0, black)" id="Vector" />
-        </svg>
-        <div className="absolute inset-[17.15%_64.87%_67.19%_30.63%]" data-name="Vector">
-          <div className="absolute inset-[-1.6%_-1.65%]">
-            <svg className="block size-full" fill="none" preserveAspectRatio="none" viewBox="0 0 6.27167 6.46222">
-              <path d={svgPaths.p26930900} fill="var(--fill-0, black)" id="Vector" stroke="var(--stroke-0, black)" strokeMiterlimit="10" strokeWidth="0.2" />
+          <svg className="absolute block inset-0 size-full" fill="none" preserveAspectRatio="none" viewBox="0 0 135 40">
+            <path d={svgPaths.p11d0cb00} fill="var(--fill-0, white)" id="Vector" />
+          </svg>
+          <svg className="absolute block inset-0 size-full" fill="none" preserveAspectRatio="none" viewBox="0 0 135 40">
+            <path d={svgPaths.p17d06a00} fill="var(--fill-0, black)" id="Vector" />
+          </svg>
+          <div className="absolute inset-[17.15%_64.87%_67.19%_30.63%]" data-name="Vector">
+            <div className="absolute inset-[-1.6%_-1.65%]">
+              <svg className="block size-full" fill="none" preserveAspectRatio="none" viewBox="0 0 6.27167 6.46222">
+                <path d={svgPaths.p26930900} fill="var(--fill-0, black)" id="Vector" stroke="var(--stroke-0, black)" strokeMiterlimit="10" strokeWidth="0.2" />
+              </svg>
+            </div>
+          </div>
+          <div className="absolute inset-[17.5%_61.48%_67.5%_35.94%]" data-name="Vector">
+            <div className="absolute inset-[-1.67%_-2.87%]">
+              <svg className="block size-full" fill="none" preserveAspectRatio="none" viewBox="0 0 3.68 6.2">
+                <path d={svgPaths.p10664380} fill="var(--fill-0, black)" id="Vector" stroke="var(--stroke-0, black)" strokeMiterlimit="10" strokeWidth="0.2" />
+              </svg>
+            </div>
+          </div>
+          <div className="absolute inset-[17.5%_57.78%_67.5%_39.13%]" data-name="Vector">
+            <div className="absolute inset-[-1.67%_-2.4%]">
+              <svg className="block size-full" fill="none" preserveAspectRatio="none" viewBox="0 0 4.37 6.2">
+                <path d={svgPaths.p2516e240} fill="var(--fill-0, black)" id="Vector" stroke="var(--stroke-0, black)" strokeMiterlimit="10" strokeWidth="0.2" />
+              </svg>
+            </div>
+          </div>
+          <div className="absolute inset-[17.5%_55.03%_67.5%_44.4%]" data-name="Vector">
+            <div className="absolute inset-[-1.67%_-12.99%]">
+              <svg className="block size-full" fill="none" preserveAspectRatio="none" viewBox="0 0 0.969997 6.2">
+                <path d={svgPaths.p27482200} fill="var(--fill-0, black)" id="Vector" stroke="var(--stroke-0, black)" strokeMiterlimit="10" strokeWidth="0.2" />
+              </svg>
+            </div>
+          </div>
+          <div className="absolute inset-[17.5%_51.26%_67.5%_45.69%]" data-name="Vector">
+            <div className="absolute inset-[-1.67%_-2.43%]">
+              <svg className="block size-full" fill="none" preserveAspectRatio="none" viewBox="0 0 4.32 6.2">
+                <path d={svgPaths.p26d8d670} fill="var(--fill-0, black)" id="Vector" stroke="var(--stroke-0, black)" strokeMiterlimit="10" strokeWidth="0.2" />
+              </svg>
+            </div>
+          </div>
+          <div className="absolute inset-[17.17%_44.82%_67.17%_50.61%]" data-name="Vector">
+            <div className="absolute inset-[-1.6%_-1.62%]">
+              <svg className="block size-full" fill="none" preserveAspectRatio="none" viewBox="0 0 6.36161 6.4628">
+                <path d={svgPaths.p18b75740} fill="var(--fill-0, black)" id="Vector" stroke="var(--stroke-0, black)" strokeMiterlimit="10" strokeWidth="0.2" />
+              </svg>
+            </div>
+          </div>
+          <div className="absolute inset-[17.5%_40.59%_67.5%_55.99%]" data-name="Vector">
+            <div className="absolute inset-[-1.67%_-2.16%]">
+              <svg className="block size-full" fill="none" preserveAspectRatio="none" viewBox="0 0 4.81999 6.2">
+                <path d={svgPaths.p1b2ff200} fill="var(--fill-0, black)" id="Vector" stroke="var(--stroke-0, black)" strokeMiterlimit="10" strokeWidth="0.2" />
+              </svg>
+            </div>
+          </div>
+          <div className="absolute inset-[42.61%_6.8%_15%_30.28%]" data-name="Vector">
+            <svg className="absolute block inset-0 size-full" fill="none" preserveAspectRatio="none" viewBox="0 0 84.9471 16.9554">
+              <path d={svgPaths.p3bf69a00} fill="var(--fill-0, black)" id="Vector" />
             </svg>
           </div>
-        </div>
-        <div className="absolute inset-[17.5%_61.48%_67.5%_35.94%]" data-name="Vector">
-          <div className="absolute inset-[-1.67%_-2.87%]">
-            <svg className="block size-full" fill="none" preserveAspectRatio="none" viewBox="0 0 3.68 6.2">
-              <path d={svgPaths.p10664380} fill="var(--fill-0, black)" id="Vector" stroke="var(--stroke-0, black)" strokeMiterlimit="10" strokeWidth="0.2" />
+          <div className="absolute inset-[18.68%_83.04%_18.65%_7.38%]" data-name="Vector">
+            <svg className="absolute block inset-0 size-full" fill="none" preserveAspectRatio="none" viewBox="0 0 12.9343 25.07">
+              <path d={svgPaths.p318daf80} fill="url(#paint0_linear_1_38)" id="Vector" />
+              <defs>
+                <linearGradient gradientUnits="userSpaceOnUse" id="paint0_linear_1_38" x1="11.8343" x2="-4.9457" y1="1.24" y2="18.02">
+                  <stop stopColor="#00A0FF" />
+                  <stop offset="0.01" stopColor="#00A1FF" />
+                  <stop offset="0.26" stopColor="#00BEFF" />
+                  <stop offset="0.51" stopColor="#00D2FF" />
+                  <stop offset="0.76" stopColor="#00DFFF" />
+                  <stop offset="1" stopColor="#00E3FF" />
+                </linearGradient>
+              </defs>
             </svg>
           </div>
-        </div>
-        <div className="absolute inset-[17.5%_57.78%_67.5%_39.13%]" data-name="Vector">
-          <div className="absolute inset-[-1.67%_-2.4%]">
-            <svg className="block size-full" fill="none" preserveAspectRatio="none" viewBox="0 0 4.37 6.2">
-              <path d={svgPaths.p2516e240} fill="var(--fill-0, black)" id="Vector" stroke="var(--stroke-0, black)" strokeMiterlimit="10" strokeWidth="0.2" />
+          <div className="absolute inset-[39.3%_75.52%_39.3%_16.96%]" data-name="Vector">
+            <svg className="absolute block inset-0 size-full" fill="none" preserveAspectRatio="none" viewBox="0 0 10.15 8.56">
+              <path d={svgPaths.pd44b100} fill="url(#paint0_linear_1_36)" id="Vector" />
+              <defs>
+                <linearGradient gradientUnits="userSpaceOnUse" id="paint0_linear_1_36" x1="10.93" x2="-13.26" y1="4.28" y2="4.28">
+                  <stop stopColor="#FFE000" />
+                  <stop offset="0.41" stopColor="#FFBD00" />
+                  <stop offset="0.78" stopColor="#FFA500" />
+                  <stop offset="1" stopColor="#FF9C00" />
+                </linearGradient>
+              </defs>
             </svg>
           </div>
-        </div>
-        <div className="absolute inset-[17.5%_55.03%_67.5%_44.4%]" data-name="Vector">
-          <div className="absolute inset-[-1.67%_-12.99%]">
-            <svg className="block size-full" fill="none" preserveAspectRatio="none" viewBox="0 0 0.969997 6.2">
-              <path d={svgPaths.p27482200} fill="var(--fill-0, black)" id="Vector" stroke="var(--stroke-0, black)" strokeMiterlimit="10" strokeWidth="0.2" />
+          <div className="absolute bottom-[17.83%] left-[7.73%] right-[79.91%] top-1/2" data-name="Vector">
+            <svg className="absolute block inset-0 size-full" fill="none" preserveAspectRatio="none" viewBox="0 0 16.68 12.8699">
+              <path d={svgPaths.p22c5c100} fill="url(#paint0_linear_1_160)" id="Vector" />
+              <defs>
+                <linearGradient gradientUnits="userSpaceOnUse" id="paint0_linear_1_160" x1="14.39" x2="-8.37" y1="2.3" y2="25.05">
+                  <stop stopColor="#FF3A44" />
+                  <stop offset="1" stopColor="#C31162" />
+                </linearGradient>
+              </defs>
             </svg>
           </div>
-        </div>
-        <div className="absolute inset-[17.5%_51.26%_67.5%_45.69%]" data-name="Vector">
-          <div className="absolute inset-[-1.67%_-2.43%]">
-            <svg className="block size-full" fill="none" preserveAspectRatio="none" viewBox="0 0 4.32 6.2">
-              <path d={svgPaths.p26d8d670} fill="var(--fill-0, black)" id="Vector" stroke="var(--stroke-0, black)" strokeMiterlimit="10" strokeWidth="0.2" />
+          <div className="absolute bottom-1/2 left-[7.73%] right-[79.91%] top-[17.83%]" data-name="Vector">
+            <svg className="absolute block inset-0 size-full" fill="none" preserveAspectRatio="none" viewBox="0 0 16.68 12.8676">
+              <path d={svgPaths.p158a8800} fill="url(#paint0_linear_1_128)" id="Vector" />
+              <defs>
+                <linearGradient gradientUnits="userSpaceOnUse" id="paint0_linear_1_128" x1="-3.14" x2="7.02" y1="-6.95235" y2="3.20764">
+                  <stop stopColor="#32A071" />
+                  <stop offset="0.07" stopColor="#2DA771" />
+                  <stop offset="0.48" stopColor="#15CF74" />
+                  <stop offset="0.8" stopColor="#06E775" />
+                  <stop offset="1" stopColor="#00F076" />
+                </linearGradient>
+              </defs>
             </svg>
           </div>
-        </div>
-        <div className="absolute inset-[17.17%_44.82%_67.17%_50.61%]" data-name="Vector">
-          <div className="absolute inset-[-1.6%_-1.62%]">
-            <svg className="block size-full" fill="none" preserveAspectRatio="none" viewBox="0 0 6.36161 6.4628">
-              <path d={svgPaths.p18b75740} fill="var(--fill-0, black)" id="Vector" stroke="var(--stroke-0, black)" strokeMiterlimit="10" strokeWidth="0.2" />
+          <div className="absolute inset-[60.33%_79.91%_17.84%_7.73%]" data-name="Vector">
+            <svg className="absolute block inset-0 size-full" fill="none" preserveAspectRatio="none" viewBox="0 0 16.68 8.73501">
+              <path d={svgPaths.p1dcf4f00} fill="var(--fill-0, black)" id="Vector" opacity="0.2" />
             </svg>
           </div>
-        </div>
-        <div className="absolute inset-[17.5%_40.59%_67.5%_55.99%]" data-name="Vector">
-          <div className="absolute inset-[-1.67%_-2.16%]">
-            <svg className="block size-full" fill="none" preserveAspectRatio="none" viewBox="0 0 4.81999 6.2">
-              <path d={svgPaths.p1b2ff200} fill="var(--fill-0, black)" id="Vector" stroke="var(--stroke-0, black)" strokeMiterlimit="10" strokeWidth="0.2" />
+          <div className="absolute inset-[77.28%_92.19%_18.85%_7.4%]" data-name="Vector">
+            <svg className="absolute block inset-0 size-full" fill="none" preserveAspectRatio="none" viewBox="0 0 0.545738 1.55">
+              <path d={svgPaths.p2c0c5100} fill="var(--fill-0, black)" id="Vector" opacity="0.12" />
             </svg>
           </div>
-        </div>
-        <div className="absolute inset-[42.61%_6.8%_15%_30.28%]" data-name="Vector">
-          <svg className="absolute block inset-0 size-full" fill="none" preserveAspectRatio="none" viewBox="0 0 84.9471 16.9554">
-            <path d={svgPaths.p3bf69a00} fill="var(--fill-0, black)" id="Vector" />
-          </svg>
-        </div>
-        <div className="absolute inset-[18.68%_83.04%_18.65%_7.38%]" data-name="Vector">
-          <svg className="absolute block inset-0 size-full" fill="none" preserveAspectRatio="none" viewBox="0 0 12.9343 25.07">
-            <path d={svgPaths.p318daf80} fill="url(#paint0_linear_1_38)" id="Vector" />
-            <defs>
-              <linearGradient gradientUnits="userSpaceOnUse" id="paint0_linear_1_38" x1="11.8343" x2="-4.9457" y1="1.24" y2="18.02">
-                <stop stopColor="#00A0FF" />
-                <stop offset="0.01" stopColor="#00A1FF" />
-                <stop offset="0.26" stopColor="#00BEFF" />
-                <stop offset="0.51" stopColor="#00D2FF" />
-                <stop offset="0.76" stopColor="#00DFFF" />
-                <stop offset="1" stopColor="#00E3FF" />
-              </linearGradient>
-            </defs>
-          </svg>
-        </div>
-        <div className="absolute inset-[39.3%_75.52%_39.3%_16.96%]" data-name="Vector">
-          <svg className="absolute block inset-0 size-full" fill="none" preserveAspectRatio="none" viewBox="0 0 10.15 8.56">
-            <path d={svgPaths.pd44b100} fill="url(#paint0_linear_1_36)" id="Vector" />
-            <defs>
-              <linearGradient gradientUnits="userSpaceOnUse" id="paint0_linear_1_36" x1="10.93" x2="-13.26" y1="4.28" y2="4.28">
-                <stop stopColor="#FFE000" />
-                <stop offset="0.41" stopColor="#FFBD00" />
-                <stop offset="0.78" stopColor="#FFA500" />
-                <stop offset="1" stopColor="#FF9C00" />
-              </linearGradient>
-            </defs>
-          </svg>
-        </div>
-        <div className="absolute bottom-[17.83%] left-[7.73%] right-[79.91%] top-1/2" data-name="Vector">
-          <svg className="absolute block inset-0 size-full" fill="none" preserveAspectRatio="none" viewBox="0 0 16.68 12.8699">
-            <path d={svgPaths.p22c5c100} fill="url(#paint0_linear_1_160)" id="Vector" />
-            <defs>
-              <linearGradient gradientUnits="userSpaceOnUse" id="paint0_linear_1_160" x1="14.39" x2="-8.37" y1="2.3" y2="25.05">
-                <stop stopColor="#FF3A44" />
-                <stop offset="1" stopColor="#C31162" />
-              </linearGradient>
-            </defs>
-          </svg>
-        </div>
-        <div className="absolute bottom-1/2 left-[7.73%] right-[79.91%] top-[17.83%]" data-name="Vector">
-          <svg className="absolute block inset-0 size-full" fill="none" preserveAspectRatio="none" viewBox="0 0 16.68 12.8676">
-            <path d={svgPaths.p158a8800} fill="url(#paint0_linear_1_128)" id="Vector" />
-            <defs>
-              <linearGradient gradientUnits="userSpaceOnUse" id="paint0_linear_1_128" x1="-3.14" x2="7.02" y1="-6.95235" y2="3.20764">
-                <stop stopColor="#32A071" />
-                <stop offset="0.07" stopColor="#2DA771" />
-                <stop offset="0.48" stopColor="#15CF74" />
-                <stop offset="0.8" stopColor="#06E775" />
-                <stop offset="1" stopColor="#00F076" />
-              </linearGradient>
-            </defs>
-          </svg>
-        </div>
-        <div className="absolute inset-[60.33%_79.91%_17.84%_7.73%]" data-name="Vector">
-          <svg className="absolute block inset-0 size-full" fill="none" preserveAspectRatio="none" viewBox="0 0 16.68 8.73501">
-            <path d={svgPaths.p1dcf4f00} fill="var(--fill-0, black)" id="Vector" opacity="0.2" />
-          </svg>
-        </div>
-        <div className="absolute inset-[77.28%_92.19%_18.85%_7.4%]" data-name="Vector">
-          <svg className="absolute block inset-0 size-full" fill="none" preserveAspectRatio="none" viewBox="0 0 0.545738 1.55">
-            <path d={svgPaths.p2c0c5100} fill="var(--fill-0, black)" id="Vector" opacity="0.12" />
-          </svg>
-        </div>
-        <div className="absolute bottom-[39.45%] left-[20%] right-[75.51%] top-1/2" data-name="Vector">
-          <svg className="absolute block inset-0 size-full" fill="none" preserveAspectRatio="none" viewBox="0 0 6.06 4.22">
-            <path d={svgPaths.p394ffd00} fill="var(--fill-0, black)" id="Vector" opacity="0.12" />
-          </svg>
-        </div>
-        <div className="absolute bottom-1/2 left-[7.39%] right-[75.51%] top-[17.85%]" data-name="Vector">
-          <svg className="absolute block inset-0 size-full" fill="none" preserveAspectRatio="none" viewBox="0 0 23.09 12.8603">
-            <path d={svgPaths.p3f3cbd00} fill="var(--fill-0, white)" id="Vector" opacity="0.25" />
-          </svg>
-        </div>
+          <div className="absolute bottom-[39.45%] left-[20%] right-[75.51%] top-1/2" data-name="Vector">
+            <svg className="absolute block inset-0 size-full" fill="none" preserveAspectRatio="none" viewBox="0 0 6.06 4.22">
+              <path d={svgPaths.p394ffd00} fill="var(--fill-0, black)" id="Vector" opacity="0.12" />
+            </svg>
+          </div>
+          <div className="absolute bottom-1/2 left-[7.39%] right-[75.51%] top-[17.85%]" data-name="Vector">
+            <svg className="absolute block inset-0 size-full" fill="none" preserveAspectRatio="none" viewBox="0 0 23.09 12.8603">
+              <path d={svgPaths.p3f3cbd00} fill="var(--fill-0, white)" id="Vector" opacity="0.25" />
+            </svg>
+          </div>
         </div>
       </a>
       <a
@@ -4128,63 +4122,63 @@ function Frame121() {
         aria-label="Download on the App Store"
       >
         <div className="h-[37.242px] overflow-clip relative shrink-0 w-[111.727px]" data-name="Badge">
-        <div className="absolute contents inset-0" data-name="Group">
           <div className="absolute contents inset-0" data-name="Group">
-            <svg className="absolute block inset-0 size-full" fill="none" preserveAspectRatio="none" viewBox="0 0 120 40.0001">
-              <g id="Group">
-                <path d={svgPaths.pc62b700} fill="var(--fill-0, black)" id="Vector" />
-                <path d={svgPaths.p1a6e69a0} fill="var(--fill-0, white)" id="Vector_2" />
-              </g>
-            </svg>
-            <div className="absolute contents inset-[19.62%_8.5%_16.27%_8.03%]" data-name="<Group>">
-              <div className="absolute contents inset-[19.62%_76.57%_23.77%_8.03%]" data-name="<Group>">
-                <div className="absolute inset-[19.62%_76.57%_23.77%_8.03%]" data-name="<Group>">
-                  <svg className="absolute block inset-0 size-full" fill="none" preserveAspectRatio="none" viewBox="0 0 18.4751 22.6448">
-                    <g id="<Group>">
-                      <path d={svgPaths.p392c3ac0} fill="var(--fill-0, black)" id="<Path>" />
-                      <path d={svgPaths.p1cf4c200} fill="var(--fill-0, black)" id="<Path>_2" />
+            <div className="absolute contents inset-0" data-name="Group">
+              <svg className="absolute block inset-0 size-full" fill="none" preserveAspectRatio="none" viewBox="0 0 120 40.0001">
+                <g id="Group">
+                  <path d={svgPaths.pc62b700} fill="var(--fill-0, black)" id="Vector" />
+                  <path d={svgPaths.p1a6e69a0} fill="var(--fill-0, white)" id="Vector_2" />
+                </g>
+              </svg>
+              <div className="absolute contents inset-[19.62%_8.5%_16.27%_8.03%]" data-name="<Group>">
+                <div className="absolute contents inset-[19.62%_76.57%_23.77%_8.03%]" data-name="<Group>">
+                  <div className="absolute inset-[19.62%_76.57%_23.77%_8.03%]" data-name="<Group>">
+                    <svg className="absolute block inset-0 size-full" fill="none" preserveAspectRatio="none" viewBox="0 0 18.4751 22.6448">
+                      <g id="<Group>">
+                        <path d={svgPaths.p392c3ac0} fill="var(--fill-0, black)" id="<Path>" />
+                        <path d={svgPaths.p1cf4c200} fill="var(--fill-0, black)" id="<Path>_2" />
+                      </g>
+                    </svg>
+                  </div>
+                </div>
+                <div className="absolute inset-[44.68%_8.5%_16.27%_28.77%]" data-name="Group">
+                  <svg className="absolute block inset-0 size-full" fill="none" preserveAspectRatio="none" viewBox="0 0 75.2708 15.6202">
+                    <g id="Group">
+                      <path d={svgPaths.p2e5b4400} fill="var(--fill-0, black)" id="Vector" />
+                      <path d={svgPaths.pffac500} fill="var(--fill-0, black)" id="Vector_2" />
+                      <path d={svgPaths.p1a865440} fill="var(--fill-0, black)" id="Vector_3" />
+                      <path d={svgPaths.p330b1d00} fill="var(--fill-0, black)" id="Vector_4" />
+                      <path d={svgPaths.p1e303df2} fill="var(--fill-0, black)" id="Vector_5" />
+                      <path d={svgPaths.p20a15d00} fill="var(--fill-0, black)" id="Vector_6" />
+                      <path d={svgPaths.p23168600} fill="var(--fill-0, black)" id="Vector_7" />
+                      <path d={svgPaths.p49a4800} fill="var(--fill-0, black)" id="Vector_8" />
                     </g>
                   </svg>
                 </div>
               </div>
-              <div className="absolute inset-[44.68%_8.5%_16.27%_28.77%]" data-name="Group">
-                <svg className="absolute block inset-0 size-full" fill="none" preserveAspectRatio="none" viewBox="0 0 75.2708 15.6202">
+            </div>
+            <div className="absolute contents inset-[21.09%_12.41%_63.01%_29.81%]" data-name="<Group>">
+              <div className="absolute inset-[21.09%_12.41%_63.01%_29.81%]" data-name="Group">
+                <svg className="absolute block inset-0 size-full" fill="none" preserveAspectRatio="none" viewBox="0 0 69.3382 6.35832">
                   <g id="Group">
-                    <path d={svgPaths.p2e5b4400} fill="var(--fill-0, black)" id="Vector" />
-                    <path d={svgPaths.pffac500} fill="var(--fill-0, black)" id="Vector_2" />
-                    <path d={svgPaths.p1a865440} fill="var(--fill-0, black)" id="Vector_3" />
-                    <path d={svgPaths.p330b1d00} fill="var(--fill-0, black)" id="Vector_4" />
-                    <path d={svgPaths.p1e303df2} fill="var(--fill-0, black)" id="Vector_5" />
-                    <path d={svgPaths.p20a15d00} fill="var(--fill-0, black)" id="Vector_6" />
-                    <path d={svgPaths.p23168600} fill="var(--fill-0, black)" id="Vector_7" />
-                    <path d={svgPaths.p49a4800} fill="var(--fill-0, black)" id="Vector_8" />
+                    <path d={svgPaths.p2f79c980} fill="var(--fill-0, black)" id="Vector" />
+                    <path d={svgPaths.pd854800} fill="var(--fill-0, black)" id="Vector_2" />
+                    <path d={svgPaths.paec5800} fill="var(--fill-0, black)" id="Vector_3" />
+                    <path d={svgPaths.p38440080} fill="var(--fill-0, black)" id="Vector_4" />
+                    <path d={svgPaths.p37170580} fill="var(--fill-0, black)" id="Vector_5" />
+                    <path d={svgPaths.p68ff860} fill="var(--fill-0, black)" id="Vector_6" />
+                    <path d={svgPaths.pb1c1000} fill="var(--fill-0, black)" id="Vector_7" />
+                    <path d={svgPaths.p25555400} fill="var(--fill-0, black)" id="Vector_8" />
+                    <path d={svgPaths.p34969df0} fill="var(--fill-0, black)" id="Vector_9" />
+                    <path d={svgPaths.p15d93700} fill="var(--fill-0, black)" id="Vector_10" />
+                    <path d={svgPaths.p99de300} fill="var(--fill-0, black)" id="Vector_11" />
+                    <path d={svgPaths.p357aef00} fill="var(--fill-0, black)" id="Vector_12" />
+                    <path d={svgPaths.p22aff500} fill="var(--fill-0, black)" id="Vector_13" />
                   </g>
                 </svg>
               </div>
             </div>
           </div>
-          <div className="absolute contents inset-[21.09%_12.41%_63.01%_29.81%]" data-name="<Group>">
-            <div className="absolute inset-[21.09%_12.41%_63.01%_29.81%]" data-name="Group">
-              <svg className="absolute block inset-0 size-full" fill="none" preserveAspectRatio="none" viewBox="0 0 69.3382 6.35832">
-                <g id="Group">
-                  <path d={svgPaths.p2f79c980} fill="var(--fill-0, black)" id="Vector" />
-                  <path d={svgPaths.pd854800} fill="var(--fill-0, black)" id="Vector_2" />
-                  <path d={svgPaths.paec5800} fill="var(--fill-0, black)" id="Vector_3" />
-                  <path d={svgPaths.p38440080} fill="var(--fill-0, black)" id="Vector_4" />
-                  <path d={svgPaths.p37170580} fill="var(--fill-0, black)" id="Vector_5" />
-                  <path d={svgPaths.p68ff860} fill="var(--fill-0, black)" id="Vector_6" />
-                  <path d={svgPaths.pb1c1000} fill="var(--fill-0, black)" id="Vector_7" />
-                  <path d={svgPaths.p25555400} fill="var(--fill-0, black)" id="Vector_8" />
-                  <path d={svgPaths.p34969df0} fill="var(--fill-0, black)" id="Vector_9" />
-                  <path d={svgPaths.p15d93700} fill="var(--fill-0, black)" id="Vector_10" />
-                  <path d={svgPaths.p99de300} fill="var(--fill-0, black)" id="Vector_11" />
-                  <path d={svgPaths.p357aef00} fill="var(--fill-0, black)" id="Vector_12" />
-                  <path d={svgPaths.p22aff500} fill="var(--fill-0, black)" id="Vector_13" />
-                </g>
-              </svg>
-            </div>
-          </div>
-        </div>
         </div>
       </a>
     </div>
@@ -4640,7 +4634,7 @@ function Frame2() {
 
 function Frame17({ onOpenCareers }: { onOpenCareers: () => void }) {
   return (
-    <div className="absolute content-stretch flex flex-col items-center left-0 top-[10407.76px] w-[1440px]">
+    <div className="absolute content-stretch flex flex-col items-center left-0 top-[9724.76px] w-[1440px]">
       <Frame6 onOpenCareers={onOpenCareers} />
       <Frame2 />
     </div>
@@ -5225,10 +5219,10 @@ function Frame144() {
 function Frame30() {
 
   return (
-    <div onClick={()=>{
-  window.location.hash = "ocha";
-          window.scrollTo({ top: 0, behavior: "smooth" });
-    }}  className="bg-[#25a88d] content-stretch flex h-[50px] items-center justify-center overflow-clip px-[17px] py-[8px] relative rounded-[12px] shrink-0 w-[220px] cursor-pointer">
+    <div onClick={() => {
+      window.location.hash = "ocha";
+      window.scrollTo({ top: 0, behavior: "smooth" });
+    }} className="bg-[#25a88d] content-stretch flex h-[50px] items-center justify-center overflow-clip px-[17px] py-[8px] relative rounded-[12px] shrink-0 w-[220px] cursor-pointer">
       <p className="font-['Inter:Semi_Bold',sans-serif] font-semibold leading-[32.5px] not-italic relative shrink-0 text-[18px] text-white whitespace-nowrap">Explore Now</p>
     </div>
   );

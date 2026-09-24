@@ -709,7 +709,7 @@ function Frame107() {
   return (
     <div className="content-stretch flex flex-col items-start leading-[23px] not-italic relative shrink-0 text-[18px] w-[192px]">
       <p className="font-['Inter:Regular',sans-serif] font-normal min-w-full relative shrink-0 text-[#1f3471] w-[min-content]">Eligibility</p>
-      <p className="font-['Inter:Medium',sans-serif] font-medium relative shrink-0 text-[#333] text-center w-[216px]">12th Pass — Any Stream</p>
+      <p className="font-['Inter:Medium',sans-serif] font-medium relative shrink-0 text-[#333] text-center w-[216px]">12th Pass - Any Stream</p>
     </div>
   );
 }
@@ -871,7 +871,7 @@ function Frame119() {
   return (
     <div className="content-stretch flex gap-[15px] items-center relative shrink-0">
       <MdiTickCircleOutline10 />
-      <p className="font-['Inter:Medium',sans-serif] font-medium leading-[23px] not-italic relative shrink-0 text-[18px] text-center text-white whitespace-nowrap">Any stream eligible — Science, Commerce, or Arts</p>
+      <p className="font-['Inter:Medium',sans-serif] font-medium leading-[23px] not-italic relative shrink-0 text-[18px] text-center text-white whitespace-nowrap">Any stream eligible â€“ Science, Commerce, or Arts</p>
     </div>
   );
 }
@@ -966,7 +966,7 @@ function Frame97() {
 
 function About2() {
   return (
-    <div id="career-path" data-nav="career-path" className="-translate-x-1/2 absolute bg-white content-stretch flex flex-col gap-[70px] items-center left-1/2 px-[32px] py-[60px] top-[3695px] w-[1440px]" data-name="About">
+    <div id="career-path" data-nav="career-path" className="-translate-x-1/2 absolute bg-white content-stretch flex flex-col gap-[70px] items-center left-1/2 px-[32px] py-[60px] top-[4095px] w-[1440px]" data-name="About">
       <Frame46 />
       <Frame97 />
     </div>
@@ -1018,7 +1018,7 @@ function Frame123() {
   return (
     <div className="content-stretch flex flex-col gap-[10px] items-start not-italic relative shrink-0 text-white w-[198px]">
       <p className="font-['Inter:Medium',sans-serif] font-medium leading-[39px] relative shrink-0 text-[18px] w-full">Entry-Level (Fresher)</p>
-      <p className="font-['Inter:Semi_Bold',sans-serif] font-semibold leading-[normal] relative shrink-0 text-[25px] w-full">3 – 5 LPA</p>
+      <p className="font-['Inter:Semi_Bold',sans-serif] font-semibold leading-[normal] relative shrink-0 text-[25px] w-full">3 â€“ 5 LPA</p>
     </div>
   );
 }
@@ -1056,7 +1056,7 @@ function Frame125() {
   return (
     <div className="content-stretch flex flex-col gap-[10px] items-start not-italic relative shrink-0 text-white w-[198px]">
       <p className="font-['Inter:Medium',sans-serif] font-medium leading-[39px] relative shrink-0 text-[18px] w-full">Senior Administrator</p>
-      <p className="font-['Inter:Semi_Bold',sans-serif] font-semibold leading-[normal] relative shrink-0 text-[25px] w-full">12 – 20 LPA</p>
+      <p className="font-['Inter:Semi_Bold',sans-serif] font-semibold leading-[normal] relative shrink-0 text-[25px] w-full">12 â€“ 20 LPA</p>
     </div>
   );
 }
@@ -1102,8 +1102,8 @@ function Frame98() {
 function Frame128() {
   return (
     <div className="content-stretch flex flex-col gap-[10px] items-start not-italic relative shrink-0 text-white w-[198px]">
-      <p className="font-['Inter:Medium',sans-serif] font-medium leading-[39px] relative shrink-0 text-[18px] w-full">Mid-Level (3–5 yrs)</p>
-      <p className="font-['Inter:Semi_Bold',sans-serif] font-semibold leading-[normal] relative shrink-0 text-[25px] w-full">6 – 10 LPA</p>
+      <p className="font-['Inter:Medium',sans-serif] font-medium leading-[39px] relative shrink-0 text-[18px] w-full">Mid-Level (3â€“5 yrs)</p>
+      <p className="font-['Inter:Semi_Bold',sans-serif] font-semibold leading-[normal] relative shrink-0 text-[25px] w-full">6 â€“ 10 LPA</p>
     </div>
   );
 }
@@ -1383,7 +1383,7 @@ function Text2() {
   return (
     <div className="h-[24px] relative shrink-0 w-[104px]" data-name="Text">
       <div className="bg-clip-padding border-0 border-[transparent] border-solid relative size-full">
-        <p className="absolute font-['Inter:Medium',sans-serif] font-medium leading-[24px] left-0 not-italic text-[#101828] text-[16px] top-[-2.2px] whitespace-nowrap">Tier 1 “ Metro</p>
+        <p className="absolute font-['Inter:Medium',sans-serif] font-medium leading-[24px] left-0 not-italic text-[#101828] text-[16px] top-[-2.2px] whitespace-nowrap">Tier 1 â€“ Metro</p>
       </div>
     </div>
   );
@@ -1641,7 +1641,7 @@ function Heading11() {
 function Paragraph() {
   return (
     <div className="absolute h-[20px] left-0 top-[95.99px] w-[573.6px]" data-name="Paragraph">
-      <p className="absolute font-['Inter:Regular',sans-serif] font-normal leading-[20px] left-0 not-italic text-[#bedbff] text-[14px] top-[-0.2px] whitespace-nowrap">Tier 1 - Metro · Multi-speciality · 2 yrs exp · Day Shift</p>
+      <p className="absolute font-['Inter:Regular',sans-serif] font-normal leading-[20px] left-0 not-italic text-[#bedbff] text-[14px] top-[-0.2px] whitespace-nowrap">Tier 1 - Metro Â· Multi-speciality Â· 2 yrs exp Â· Day Shift</p>
     </div>
   );
 }
@@ -2905,7 +2905,7 @@ function Frame133() {
   return (
     <div className="content-stretch flex flex-col gap-[15px] items-start relative shrink-0 w-full">
       <Frame66 />
-      <p className="font-['Inter:Medium',sans-serif] font-medium leading-[normal] min-w-full not-italic relative shrink-0 text-[15px] text-white w-[min-content]">India’s Career Launchpad</p>
+      <p className="font-['Inter:Medium',sans-serif] font-medium leading-[normal] min-w-full not-italic relative shrink-0 text-[15px] text-white w-[min-content]">Indiaâ€™s Career Launchpad</p>
     </div>
   );
 }
@@ -3605,7 +3605,8 @@ export default function HospitalAdministration() {
       setPageScale(nextScale);
 
       if (pageRef.current) {
-        setScaledHeight(Math.ceil(pageRef.current.offsetHeight * nextScale));
+        const rawHeight = pageRef.current.scrollHeight || pageRef.current.offsetHeight;
+        setScaledHeight(Math.ceil(rawHeight * nextScale));
       }
     };
 
@@ -3644,15 +3645,14 @@ export default function HospitalAdministration() {
           <Frame15 />
           <About />
           <About1 />
-          <About2 />
           <About3 />
           <About4 />
+          <About2 />
           <About5 />
           <About6 />
           <About7 />
           <Container41 />
           <Frame16 />
-
         </div>
       </div>
     </div>
