@@ -68,7 +68,7 @@ const legacyPartialEmiPaymentMode = "Upfront + EMI";
 const admissionPaymentModes = ["Full Payment", "EMI", partialEmiPaymentMode, "Loan Provider"];
 const admissionPaymentModeValues = [...admissionPaymentModes, legacyPartialEmiPaymentMode];
 const paymentNoteMaxLength = 250;
-const paymentReferenceMaxLength = 80;
+const paymentReferenceMaxLength = 200;
 const kochiCourseOptions = ["AHAP", "GCA"];
 const leadFeedbackOptions = ["New", "Interested", "Qualified", "Follow-up", "RNR", "Not Interested", "Future Cohort", "On Hold", "Converted", "Lost", "Not Connected", "Busy Call later", "Invalid", "Junk"];
 const leadPriorityOptions = ["P0", "P1", "P2", "P3"];
@@ -320,6 +320,7 @@ const paymentSchema = new mongoose.Schema({
   loanProviderName: { type: String, default: "", trim: true },
   note: { type: String, default: "" },
   proof: { type: documentFileSchema, default: undefined },
+  proofs: [documentFileSchema],
   cashDeposits: [cashDepositSchema],
   by: { type: String, default: "" },
   paidAt: { type: Date, default: Date.now },
@@ -688,7 +689,7 @@ async function seedBaseData() {
     Student.updateMany({ course: "AAHP" }, { $set: { course: "AHAP" } }),
     Batch.updateMany({ course: "AAHP" }, { $set: { course: "AHAP" } }),
   ]);
-  await Course.updateMany({ code: "AHAP" }, { $set: { name: "Advanced Healthcare Administration Program", fee: 65000, duration: "6 months" } });
+  await Course.updateMany({ code: "AHAP" }, { $set: { name: "Advanced Healthcare Administration Program", duration: "6 months" }, $setOnInsert: { fee: 65000 } });
   await Promise.all(courses.map((course) => Course.updateOne({ code: course.code }, { $setOnInsert: course }, { upsert: true })));
   const ahapCourses = await Course.find({ code: "AHAP", $or: [{ franchiseId: { $exists: false } }, { franchiseId: null }] }).sort({ _id: 1 }).select("_id").lean();
   if (ahapCourses.length > 1) {
@@ -1172,6 +1173,9 @@ async function scopedDataFilter(req, query = {}) {
     // center_admin sees all branches under their parent centre
     const branchScope = await centerAdminBranchScope(req.user);
     if (!branchScope.ids.length) return { ...filter, franchiseId: emptyObjectId };
+    if (filter.franchiseId && String(filter.franchiseId) === String(req.user.franchiseId)) {
+      delete filter.franchiseId;
+    }
     const regexNames = branchScope.names.map((name) => new RegExp(`^${escapeRegex(name)}$`, "i"));
     filter.$or = [
       { franchiseId: { $in: branchScope.ids } },
@@ -3653,8 +3657,17 @@ app.patch("/api/admin/students/:id", requireAuth, async (req, res) => {
     if (!allowedStudentUpdates.emiEnabled) return sendError(res, 400, "Enable EMI for EMI admission plan");
     if (!allowedStudentUpdates.emiMonths || Number(allowedStudentUpdates.emiMonths || 0) < 1) {
       const courseObj = await Course.findOne({ $or: [{ code: new RegExp(`^${nextStudentCourse}$`, "i") }, { name: new RegExp(`^${nextStudentCourse}$`, "i") }] }).lean();
-      const m = String(courseObj?.duration || "").match(/(\d+)\s*month/i);
-      allowedStudentUpdates.emiMonths = m ? Math.max(1, parseInt(m[1], 10)) : 4;
+      const durStr = String(courseObj?.duration || "");
+      const m = durStr.match(/(\d+)\s*month/i);
+      const w = durStr.match(/(\d+)\s*week/i);
+      const d = durStr.match(/(\d+)\s*day/i);
+      allowedStudentUpdates.emiMonths = m
+        ? Math.max(1, parseInt(m[1], 10))
+        : w
+          ? Math.max(1, Math.round(parseInt(w[1], 10) / 4))
+          : d
+            ? Math.max(1, Math.round(parseInt(d[1], 10) / 20))
+            : 4;
     }
     if (Number(allowedStudentUpdates.emiMonths || 0) < 1 || Number(allowedStudentUpdates.emiMonths || 0) > 60) return sendError(res, 400, "EMI months must be between 1 and 60");
     if (!allowedStudentUpdates.emiAmount || Number(allowedStudentUpdates.emiAmount || 0) <= 0) {
@@ -3822,7 +3835,7 @@ app.post("/api/admin/students/:id/certificate", requireAuth, async (req, res) =>
   res.json({ ok: true, data: student });
 });
 
-app.post("/api/admin/students/:id/payments", requireAuth, leadDocumentUpload.single("paymentProof"), async (req, res) => {
+app.post("/api/admin/students/:id/payments", requireAuth, leadDocumentUpload.array("paymentProof", 10), async (req, res) => {
   if (!canManageFees(req.user)) return sendError(res, 403, "Fee and payment updates are restricted to admin accounts");
   const amount = Number(req.body?.amount || 0);
   const mode = String(req.body?.mode || "Cash").trim();
@@ -3835,8 +3848,8 @@ app.post("/api/admin/students/:id/payments", requireAuth, leadDocumentUpload.sin
   if (!paymentPurposes.includes(paymentPurpose)) return sendError(res, 400, "Choose what this payment is for");
   if (!paymentModes.includes(mode)) return sendError(res, 400, "Choose a valid payment mode");
   if (loanProviderName.length > 100) return sendError(res, 400, "Loan provider name cannot exceed 100 characters");
-  if (transactionId.length > paymentReferenceMaxLength) return sendError(res, 400, "Payment reference cannot exceed 80 characters");
-  if (transactionId && !/^[A-Za-z0-9][A-Za-z0-9 ._/@:-]*$/.test(transactionId)) return sendError(res, 400, "Payment reference has invalid characters");
+  if (transactionId.length > paymentReferenceMaxLength) return sendError(res, 400, `Payment reference cannot exceed ${paymentReferenceMaxLength} characters`);
+  if (transactionId && !/^[A-Za-z0-9][A-Za-z0-9 ._/@:;,-]*$/.test(transactionId)) return sendError(res, 400, "Payment reference has invalid characters");
   if (note.length > paymentNoteMaxLength) return sendError(res, 400, "Payment note cannot exceed 250 characters");
   if (mode === "Loan Provider" && !loanProviderName) return sendError(res, 400, "Loan provider name is required");
   const existingStudent = await Student.findById(req.params.id).lean();
@@ -3855,21 +3868,24 @@ app.post("/api/admin/students/:id/payments", requireAuth, leadDocumentUpload.sin
     emiReference = `EMI-${base}-${String(nextInstallment).padStart(3, "0")}`;
   }
   if (mode !== "Cash" && !transactionId) return sendError(res, 400, "Transaction/reference number is required for non-cash payments");
-  const proof = saveLeadDocument(req.file);
-  if (mode !== "Cash" && !proof?.storedName) return sendError(res, 400, "Payment proof is required for non-cash payments");
+  const uploadedFiles = Array.isArray(req.files) ? req.files : (req.file ? [req.file] : []);
+  const proofs = uploadedFiles.map((file) => saveLeadDocument(file)).filter(Boolean);
+  const proof = proofs[0] || undefined;
+  if (mode !== "Cash" && proofs.length === 0 && !proof?.storedName) return sendError(res, 400, "Payment proof is required for non-cash payments");
   const remainingAfterPayment = pendingDue - amount;
   const emiShortfall = paymentPurpose === "Fees Installment" && existingStudent.emiEnabled && existingStudent.emiAmount && amount < existingStudent.emiAmount
     ? Math.max(0, existingStudent.emiAmount - amount)
     : 0;
+  const proofMsg = proofs.length > 1 ? ` with ${proofs.length} proofs` : (proof ? " with proof" : "");
   const paymentUpdate = {
     $inc: { paidAmount: amount },
     $push: {
-      payments: { amount, paymentPurpose, mode, transactionId, emiReference, loanProviderName, note, proof, by: req.user.name },
+      payments: { amount, paymentPurpose, mode, transactionId, emiReference, loanProviderName, note, proof, proofs, by: req.user.name },
       activities: {
         type: "payment",
         message: emiShortfall > 0
-          ? `${paymentPurpose} received: ${amount}${proof ? " with proof" : ""}. Shortfall of ${emiShortfall} carried forward to next EMI.`
-          : `${paymentPurpose} received: ${amount}${proof ? " with proof" : ""}`,
+          ? `${paymentPurpose} received: ${amount}${proofMsg}. Shortfall of ${emiShortfall} carried forward to next EMI.`
+          : `${paymentPurpose} received: ${amount}${proofMsg}`,
         by: req.user.name,
       },
     },
@@ -3882,7 +3898,7 @@ app.post("/api/admin/students/:id/payments", requireAuth, leadDocumentUpload.sin
   }
   if (remainingAfterPayment <= 0 && normalizeStudentStatus(existingStudent.status) === "Fees Decided") {
     paymentUpdate.$set = { ...(paymentUpdate.$set || {}), status: "Fees Collected" };
-    paymentUpdate.$push.activities.message = `${paymentPurpose} received: ${amount}${proof ? " with proof" : ""}. Status moved to Fees Collected`;
+    paymentUpdate.$push.activities.message = `${paymentPurpose} received: ${amount}${proofMsg}. Status moved to Fees Collected`;
   }
   const student = await Student.findOneAndUpdate(
     {
@@ -3907,7 +3923,13 @@ app.get("/api/admin/students/:id/payments/:index/proof", requireAuth, async (req
   if (!(await canAccessRecord(req, existingStudent))) return sendError(res, 403, "You can access only permitted records");
   const index = Number(req.params.index);
   if (!Number.isInteger(index) || index < 0) return sendError(res, 400, "Invalid payment proof request");
-  const proof = existingStudent.payments?.[index]?.proof;
+  const payment = existingStudent.payments?.[index];
+  if (!payment) return sendError(res, 404, "Payment not found");
+  const proofIndexParam = req.query.proofIndex !== undefined ? Number(req.query.proofIndex) : 0;
+  const proofList = (Array.isArray(payment.proofs) && payment.proofs.length > 0)
+    ? payment.proofs
+    : (payment.proof?.storedName ? [payment.proof] : []);
+  const proof = proofList[proofIndexParam] || payment.proof;
   if (!proof?.storedName) return sendError(res, 404, "Payment proof not found");
   const filePath = path.join(leadDocumentDir, proof.storedName);
   if (!filePath.startsWith(leadDocumentDir) || !fs.existsSync(filePath)) return sendError(res, 404, "Payment proof not found");

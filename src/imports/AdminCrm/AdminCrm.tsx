@@ -74,7 +74,7 @@ const partialEmiPaymentMode = "Partial + EMI";
 const legacyPartialEmiPaymentMode = "Upfront + EMI";
 const admissionPaymentModes = ["Full Payment", "EMI", partialEmiPaymentMode, "Loan Provider"];
 const paymentNoteMaxLength = 250;
-const paymentReferenceMaxLength = 80;
+const paymentReferenceMaxLength = 200;
 const leadFeedbackOptions = ["New", "Interested", "Qualified", "Follow-up", "RNR", "Not Interested", "Future Cohort", "On Hold", "Converted", "Lost", "Not Connected", "Busy Call later", "Invalid", "Junk"];
 const leadPamphlets = [
   { key: "first-contact", label: "Course enquiry" },
@@ -126,7 +126,7 @@ type LeadFollowUp = { type?: string; status?: string; scheduledAt?: string; note
 type LeadActivity = { type: string; message: string; by?: string; at?: string };
 type Lead = { _id: string; fullName: string; phone: string; parentMobile?: string; email?: string; governmentProof?: DocumentFile; highestQualificationCertificate?: DocumentFile; source?: string; counsellorName?: string; scholarName?: string; refereeName?: string; referralAmount?: number; centre?: string; franchiseId?: string; course?: string; counsellor?: string; stage: string; priority?: string; leadFeedback?: string; city?: string; studentLocation?: string; expectedFee?: number; nextFollowUp?: string; followUps?: LeadFollowUp[]; notes?: string; activities?: LeadActivity[]; ipAddress?: string; userAgent?: string; isSuspectedConsultancy?: boolean; consultancyFlagReason?: string; assignedAt?: string; assignedBy?: string; createdAt?: string; updatedAt?: string };
 type CashDeposit = { amount?: number; bank?: string; referenceNumber?: string; note?: string; proof?: DocumentFile; depositedBy?: string; by?: string; depositedAt?: string; createdAt?: string };
-type PaymentRecord = { amount?: number; mode?: string; paymentPurpose?: string; transactionId?: string; emiReference?: string; loanProviderName?: string; note?: string; proof?: DocumentFile; cashDeposits?: CashDeposit[]; by?: string; paidAt?: string };
+type PaymentRecord = { amount?: number; mode?: string; paymentPurpose?: string; transactionId?: string; emiReference?: string; loanProviderName?: string; note?: string; proof?: DocumentFile; proofs?: DocumentFile[]; cashDeposits?: CashDeposit[]; by?: string; paidAt?: string };
 type StudentFeedback = { type?: string; status?: string; note?: string; nextFollowUpDate?: string; by?: string; at?: string };
 type InternshipAssignment = { _id?: string; facilityName?: string; facilityLocation?: string; supervisorName?: string; supervisorContact?: string; supervisorEmail?: string; facilityLatitude?: number; facilityLongitude?: number; allowedRadiusMeters?: number; startDate?: string; durationValue?: number; durationUnit?: string; expectedEndDate?: string; actualEndDate?: string; status?: string; departmentRotation?: string; assignedBy?: string; updatedAt?: string };
 type InternshipLog = { _id: string; date?: string; loginAt?: string; logoutAt?: string; loginPhoto?: DocumentFile; logoutPhoto?: DocumentFile; loginGps?: string; logoutGps?: string; hours?: number; flagged?: boolean; flagReason?: string };
@@ -335,10 +335,11 @@ function dateInputValueFromDuration(startValue: string, durationValue: string | 
 
 function getCourseDurationMonths(courseName: string | undefined, courses?: (Course | string)[]): number {
   if (!courseName) return 6;
+  const target = String(courseName).trim().toLowerCase();
   const match = (courses || []).find((c) => {
     if (!c) return false;
-    if (typeof c === "string") return c.toLowerCase() === String(courseName).toLowerCase();
-    return [c.name, c.code].some((v) => String(v || "").toLowerCase() === String(courseName || "").toLowerCase());
+    if (typeof c === "string") return c.trim().toLowerCase() === target;
+    return [c.name, c.code, courseShortCode(c.name)].some((v) => String(v || "").trim().toLowerCase() === target);
   });
   const duration = (typeof match === "object" && match?.duration) || courseDuration(courseName);
   // Parse strings like "6 months", "3 months", "4 months"
@@ -347,6 +348,9 @@ function getCourseDurationMonths(courseName: string | undefined, courses?: (Cour
   // Parse "X weeks" → convert to months roughly
   const w = String(duration).match(/(\d+)\s*week/i);
   if (w) return Math.max(1, Math.round(parseInt(w[1], 10) / 4));
+  // Parse "X days" → convert to months (20 days -> 1 month, 60 days -> 3 months)
+  const d = String(duration).match(/(\d+)\s*day/i);
+  if (d) return Math.max(1, Math.round(parseInt(d[1], 10) / 20));
   return 6; // default fallback
 }
 
@@ -1121,7 +1125,7 @@ export default function AdminCrm() {
   // Only global superadmin can use the scope filter across all centres
   const canUseScopeFilter = isHeadSuperAdmin;
   const selectedFranchise = canUseScopeFilter && roleScope !== "all" ? centres.find((centre) => centre._id === roleScope) : undefined;
-  const scopedFranchiseId = user?.franchiseId || (canUseScopeFilter ? selectedFranchise?._id || "" : "");
+  const scopedFranchiseId = isCenterAdmin ? "" : user?.franchiseId || (canUseScopeFilter ? selectedFranchise?._id || "" : "");
   const authedHeaders = { Authorization: `Bearer ${token}`, "Content-Type": "application/json" };
   const centreOptions = centres.length ? centres.map((centre) => centre.name) : fallbackCentres;
   const courseOptions = courses.length ? courses.map((course) => course.code || course.name) : fallbackCourses;
@@ -2254,20 +2258,19 @@ export default function AdminCrm() {
     });
   };
 
-  const addPayment = async (event: FormEvent<HTMLFormElement>, student: Student) => {
+  const addPayment = async (event: FormEvent<HTMLFormElement>, student: Student, selectedProofFiles?: File[]): Promise<boolean> => {
     event.preventDefault();
     const form = event.currentTarget;
     try {
+      const pendingDue = dueAmount(student);
       const formData = new FormData(form);
       const amount = Number(formData.get("amount") || 0);
-      const mode = String(formData.get("mode") || "Cash");
-      const paymentPurpose = normalizePaymentPurpose(String(formData.get("paymentPurpose") || "Fees Installment"), mode);
+      const paymentPurpose = normalizePaymentPurpose(String(formData.get("paymentPurpose") || "Fees Installment").trim(), String(formData.get("mode") || "Cash").trim());
+      const mode = String(formData.get("mode") || "Cash").trim();
       const transactionId = String(formData.get("transactionId") || "").trim();
       const emiReference = String(formData.get("emiReference") || "").trim();
       const loanProviderName = String(formData.get("loanProviderName") || "").trim();
       const note = String(formData.get("note") || "").trim();
-      const pendingDue = dueAmount(student);
-      if (pendingDue <= 0) throw new Error("Course fee is already fully paid");
       if (!Number.isFinite(amount) || amount <= 0) throw new Error("Enter a valid payment amount");
       if (amount > pendingDue) throw new Error(`Payment cannot exceed pending due of ${formatCurrency(pendingDue)}`);
       if (!paymentPurposes.includes(paymentPurpose)) throw new Error("Choose what this payment is for");
@@ -2275,13 +2278,24 @@ export default function AdminCrm() {
       if (mode === "Loan Provider" && !loanProviderName) throw new Error("Loan provider name is required");
       if (loanProviderName.length > 100) throw new Error("Loan provider name cannot exceed 100 characters");
       if (mode !== "Cash" && !transactionId) throw new Error(`${paymentReferenceLabel(mode)} is required`);
-      if (transactionId && transactionId.length > paymentReferenceMaxLength) throw new Error("Payment reference cannot exceed 80 characters");
-      if (transactionId && !/^[A-Za-z0-9][A-Za-z0-9 ._/@:-]*$/.test(transactionId)) throw new Error("Payment reference has invalid characters");
+      if (transactionId && transactionId.length > paymentReferenceMaxLength) throw new Error(`Payment reference cannot exceed ${paymentReferenceMaxLength} characters`);
+      if (transactionId && !/^[A-Za-z0-9][A-Za-z0-9 ._/@:;,-]*$/.test(transactionId)) throw new Error("Payment reference has invalid characters");
       if (note.length > paymentNoteMaxLength) throw new Error("Payment note cannot exceed 250 characters");
-      const proof = formData.get("paymentProof");
-      if (proof instanceof File && proof.size > 0) {
-        if (proof.size > leadDocumentMaxSize) throw new Error("Payment proof must be below 2 MB");
-        if (!leadDocumentTypes.includes(proof.type) && !/\.(pdf|jpe?g|png|webp)$/i.test(proof.name)) throw new Error("Payment proof must be PDF, JPG, PNG or WEBP");
+
+      let proofFiles: File[] = [];
+      if (selectedProofFiles && selectedProofFiles.length > 0) {
+        proofFiles = selectedProofFiles;
+        formData.delete("paymentProof");
+        proofFiles.forEach((file) => formData.append("paymentProof", file));
+      } else {
+        proofFiles = (formData.getAll("paymentProof") as (File | string)[]).filter((f): f is File => f instanceof File && f.size > 0);
+      }
+
+      if (proofFiles.length > 0) {
+        for (const proof of proofFiles) {
+          if (proof.size > leadDocumentMaxSize) throw new Error(`Proof "${proof.name}" must be below 2 MB`);
+          if (!leadDocumentTypes.includes(proof.type) && !/\.(pdf|jpe?g|png|webp)$/i.test(proof.name)) throw new Error(`Proof "${proof.name}" must be PDF, JPG, PNG or WEBP`);
+        }
       } else {
         if (mode !== "Cash") throw new Error("Payment proof is required for non-cash payments");
         formData.delete("paymentProof");
@@ -2303,15 +2317,19 @@ export default function AdminCrm() {
       form.reset();
       toast.success("Payment recorded. Generate receipt next.");
       await refreshAll();
+      return true;
     } catch (error) {
       toast.error(error instanceof Error ? error.message : "Unable to record payment");
+      return false;
     }
   };
 
-  const downloadPaymentProof = async (student: Student, payment: PaymentRecord, index: number) => {
-    if (!payment.proof?.storedName) return toast.message("No payment proof uploaded");
+  const downloadPaymentProof = async (student: Student, payment: PaymentRecord, index: number, proofIndex = 0) => {
+    const proofList = (payment.proofs && payment.proofs.length > 0) ? payment.proofs : (payment.proof?.storedName ? [payment.proof] : []);
+    const targetProof = proofList[proofIndex] || payment.proof;
+    if (!targetProof?.storedName) return toast.message("No payment proof uploaded");
     try {
-      const response = await fetch(`${API_BASE_URL}/api/admin/students/${student._id}/payments/${index}/proof`, { headers: { Authorization: `Bearer ${token}` } });
+      const response = await fetch(`${API_BASE_URL}/api/admin/students/${student._id}/payments/${index}/proof?proofIndex=${proofIndex}`, { headers: { Authorization: `Bearer ${token}` } });
       if (!response.ok) {
         const result = await response.json().catch(() => null);
         throw new Error(result?.message || "Unable to download payment proof");
@@ -2320,7 +2338,7 @@ export default function AdminCrm() {
       const url = URL.createObjectURL(blob);
       const link = document.createElement("a");
       link.href = url;
-      link.download = payment.proof.originalName || "payment-proof";
+      link.download = targetProof.originalName || "payment-proof";
       document.body.appendChild(link);
       link.click();
       link.remove();
@@ -4352,6 +4370,7 @@ function LeadTable({
               />
             </th>
             <th>Lead</th>
+            <th>Date</th>
             <th>Contact</th>
             <th>Course</th>
             <th>Source</th>
@@ -4380,6 +4399,14 @@ function LeadTable({
                 />
               </td>
               <td><div className="lead-name-cell"><span className="avatar lead-avatar">{initials(lead.fullName)}</span><div><div className="cell-name">{lead.fullName}{lead.isSuspectedConsultancy && <span title={lead.consultancyFlagReason || "Suspected Consultancy / Bulk Upload from same IP"} style={{ background: "#fee2e2", color: "#dc2626", border: "1px solid #f87171", fontSize: "10px", fontWeight: "bold", padding: "1px 5px", borderRadius: "4px", marginLeft: "6px", display: "inline-block", verticalAlign: "middle" }}>⚠️ Suspected Consultancy</span>}</div><div className="cell-sub">{lead._id.slice(-8).toUpperCase()}</div></div></div></td>
+              <td className="mono" style={{ whiteSpace: "nowrap" }}>
+                <div>{formatDate(lead.createdAt || lead.updatedAt)}</div>
+                {(lead.createdAt || lead.updatedAt) && (
+                  <div className="cell-sub" style={{ fontSize: "10.5px" }}>
+                    {new Intl.DateTimeFormat("en-IN", { hour: "2-digit", minute: "2-digit" }).format(new Date(lead.createdAt || lead.updatedAt || ""))}
+                  </div>
+                )}
+              </td>
               <td>{lead.phone}<div className="cell-sub">{lead.studentLocation || lead.city || lead.email || "-"}</div></td>
               <td>{courseShortCode(lead.course)}</td>
               <td>
@@ -4413,7 +4440,7 @@ function LeadTable({
             </tr>
             );
           })}
-          {!leads.length && <tr><td colSpan={12}><div className="empty-state"><h4>No leads found</h4><p>Try clearing filters or add a new lead.</p></div></td></tr>}
+          {!leads.length && <tr><td colSpan={13}><div className="empty-state"><h4>No leads found</h4><p>Try clearing filters or add a new lead.</p></div></td></tr>}
         </tbody>
       </table>
     </div>
@@ -8165,7 +8192,7 @@ function SettingsPanel({ isHeadSuperAdmin, isCenterAdmin = false, isHeadBranchAd
   );
 }
 
-function ProfilePanel({ profile, user, accessCount, canManageFees, canManageSettings, canAssignTeachers, canManageCertificates, canManageInternships, canManageInventory, onIssueKit, centres, courses, allCourses = [], batches, teachers, counsellors = [], onBack, onGoSettings, onLeadPatch, onStudentPatch, onGenerateStudentLmsAccess, onInternshipSave, onInternshipDelete, onPayment, onDownloadPaymentProof, onFeedback, onIssue, onPreviewDocument, onPreviewInternshipPhoto }: { profile: ProfileTarget; user: AdminUser | null; accessCount: number; canManageFees: boolean; canManageSettings: boolean; canAssignTeachers: boolean; canManageCertificates: boolean; canManageInternships: boolean; canManageInventory?: boolean; onIssueKit?: (student: Student) => void; centres: string[]; courses: string[]; allCourses?: Course[]; batches: Batch[]; teachers: Counsellor[]; counsellors?: Counsellor[]; onBack: () => void; onGoSettings: () => void; onLeadPatch: (id: string, updates: Partial<Lead>) => void; onStudentPatch: (id: string, updates: Partial<Student>) => void; onGenerateStudentLmsAccess: (student: Student) => void; onInternshipSave: (event: FormEvent<HTMLFormElement>, student: Student) => void; onInternshipDelete: (student: Student) => void; onPayment: (event: FormEvent<HTMLFormElement>, student: Student) => void; onDownloadPaymentProof: (student: Student, payment: PaymentRecord, index: number) => void; onFeedback: (event: FormEvent<HTMLFormElement>, student: Student) => void; onIssue: (student: Student) => void; onPreviewDocument: (request: DocumentPreviewRequest) => void; onPreviewInternshipPhoto: (student: Student, log: InternshipLog, photoType: "login" | "logout") => void }) {
+function ProfilePanel({ profile, user, accessCount, canManageFees, canManageSettings, canAssignTeachers, canManageCertificates, canManageInternships, canManageInventory, onIssueKit, centres, courses, allCourses = [], batches, teachers, counsellors = [], onBack, onGoSettings, onLeadPatch, onStudentPatch, onGenerateStudentLmsAccess, onInternshipSave, onInternshipDelete, onPayment, onDownloadPaymentProof, onFeedback, onIssue, onPreviewDocument, onPreviewInternshipPhoto }: { profile: ProfileTarget; user: AdminUser | null; accessCount: number; canManageFees: boolean; canManageSettings: boolean; canAssignTeachers: boolean; canManageCertificates: boolean; canManageInternships: boolean; canManageInventory?: boolean; onIssueKit?: (student: Student) => void; centres: string[]; courses: string[]; allCourses?: Course[]; batches: Batch[]; teachers: Counsellor[]; counsellors?: Counsellor[]; onBack: () => void; onGoSettings: () => void; onLeadPatch: (id: string, updates: Partial<Lead>) => void; onStudentPatch: (id: string, updates: Partial<Student>) => void; onGenerateStudentLmsAccess: (student: Student) => void; onInternshipSave: (event: FormEvent<HTMLFormElement>, student: Student) => void; onInternshipDelete: (student: Student) => void; onPayment: (event: FormEvent<HTMLFormElement>, student: Student, proofFiles?: File[]) => Promise<boolean> | void; onDownloadPaymentProof: (student: Student, payment: PaymentRecord, index: number, proofIndex?: number) => void; onFeedback: (event: FormEvent<HTMLFormElement>, student: Student) => void; onIssue: (student: Student) => void; onPreviewDocument: (request: DocumentPreviewRequest) => void; onPreviewInternshipPhoto: (student: Student, log: InternshipLog, photoType: "login" | "logout") => void }) {
   const isSuperAdmin = user?.role === "superadmin";
   const currentCourse = profile?.type === "student" ? (profile.data.course || "") : (profile?.type === "lead" ? (profile.data.course || "") : "");
   const studentCourseObj = allCourses.find((c) =>
@@ -8201,11 +8228,13 @@ function ProfilePanel({ profile, user, accessCount, canManageFees, canManageSett
   const [internshipEndDraft, setInternshipEndDraft] = useState(dateInputValueFromDuration(dateInputValue(), 3, "months"));
   const [internshipDurationDraft, setInternshipDurationDraft] = useState("3");
   const [internshipDurationUnitDraft, setInternshipDurationUnitDraft] = useState("months");
+  const [paymentProofFiles, setPaymentProofFiles] = useState<File[]>([]);
   const profileId = profile?.data._id;
   useEffect(() => {
     setStudentTab("sum");
     setLeadTab("info");
     setEditMode(profile?.mode === "edit");
+    setPaymentProofFiles([]);
     const initCourse = profile ? profile.data.course || "" : "";
     setEditCourseDraft(initCourse);
     setEditCentreDraft(profile ? profile.data.centre || "" : "");
@@ -8222,20 +8251,20 @@ function ProfilePanel({ profile, user, accessCount, canManageFees, canManageSett
   }, [profileId, profile?.mode]);
   useEffect(() => {
     if (!profileStudent) return;
-    const courseDurationMonths = Math.max(1, getCourseDurationMonths(profileStudent.course, courses));
-    const months = Math.max(1, (profileStudent.emiMonths && profileStudent.emiMonths > 0) ? profileStudent.emiMonths : courseDurationMonths);
+    const courseDurationMonths = Math.max(1, getCourseDurationMonths(profileStudent.course, allCourses.length ? allCourses : courses));
+    const months = courseDurationMonths;
     const baseAmount = profileDue || profileNetFee || 0;
     setEmiMonthsDraft(String(months));
-    setEmiAmountDraft(String(profileStudent.emiAmount && profileStudent.emiAmount <= baseAmount ? profileStudent.emiAmount : (months > 0 ? Math.floor(baseAmount / months) : 0)));
+    setEmiAmountDraft(String(months > 0 ? Math.floor(baseAmount / months) : 0));
     setPaymentPurposeDraft(Number(profileStudent.paidAmount || 0) <= 0 ? "Seat Booking Amount" : "Fees Installment");
-  }, [profileId]);
+  }, [profileId, allCourses]);
   useEffect(() => {
     if (!profileStudent) return;
     const savedMode = normalizeAdmissionPaymentMode(profileStudent.admissionPaymentMode || "");
     const mode = admissionPaymentModes.includes(savedMode) ? savedMode || "Full Payment" : profileStudent.emiEnabled ? "EMI" : "Full Payment";
     // Auto-calculate months from course duration (locked — not editable by user)
-    const courseDurationMonths = Math.max(1, getCourseDurationMonths(profileStudent.course, courses));
-    const months = Math.max(1, (profileStudent.emiMonths && profileStudent.emiMonths > 0) ? profileStudent.emiMonths : courseDurationMonths);
+    const courseDurationMonths = Math.max(1, getCourseDurationMonths(profileStudent.course, allCourses.length ? allCourses : courses));
+    const months = courseDurationMonths;
     const upfront = isPartialEmiPaymentMode(mode) ? Math.max(0, profileStudent.admissionUpfrontAmount || 0) : 0;
     const initialTotal = profileStudent.totalFee || dynamicCoursePayable || 0;
     const initialDiscount = profileStudent.discountAmount || 0;
@@ -8250,7 +8279,7 @@ function ProfilePanel({ profile, user, accessCount, canManageFees, canManageSett
     setAdmissionEmiMonthsDraft(String(months));
     setAdmissionEmiAmountDraft(isEmi ? String(calculatedEmi) : "0");
     setAdmissionNextEmiDateDraft(profileStudent.nextEmiDate ? dateInputValue(profileStudent.nextEmiDate) : dateInputValueFromOffset(12));
-  }, [profileId]);
+  }, [profileId, allCourses]);
   useEffect(() => {
     if (!profileStudent) return;
     const assignment = profileStudent.internshipAssignment;
@@ -8462,7 +8491,7 @@ function ProfilePanel({ profile, user, accessCount, canManageFees, canManageSett
   const emiBreakdown = studentEmiBreakdown(student);
   const assignedBatch = batches.find((b) => String(b.name || "").trim().toLowerCase() === String(student.batch || "").trim().toLowerCase());
   const batchStartDate = assignedBatch?.commenceDate || student.batchCommenceDate || "";
-  const courseDurationMonths = getCourseDurationMonths(student.course, courses);
+  const courseDurationMonths = getCourseDurationMonths(student.course, allCourses.length ? allCourses : courses);
   const batchEndDate = batchStartDate ? (dateInputValueFromDuration(dateInputValue(batchStartDate), courseDurationMonths, "months") || "") : "";
   const feedbacks = student.feedbacks || [];
   const normalizedStatus = normalizeStudentStatus(student.status);
@@ -8528,12 +8557,9 @@ function ProfilePanel({ profile, user, accessCount, canManageFees, canManageSett
       setAdmissionEmiAmountDraft("0");
       return;
     }
-    const resolvedCourseMonths = Math.max(1, getCourseDurationMonths(student.course, courses));
-    const parsedMonths = Number(newMonths || admissionEmiMonthsDraft || 0);
-    const months = parsedMonths > 0 ? parsedMonths : resolvedCourseMonths;
-    if (!admissionEmiMonthsDraft || Number(admissionEmiMonthsDraft) <= 0 || admissionEmiMonthsDraft !== String(months)) {
-      setAdmissionEmiMonthsDraft(String(months));
-    }
+    const resolvedCourseMonths = Math.max(1, getCourseDurationMonths(student.course, allCourses.length ? allCourses : courses));
+    const months = resolvedCourseMonths;
+    setAdmissionEmiMonthsDraft(String(months));
     const total = Math.max(0, Number(newTotal || 0));
     const disc = Math.max(0, Number(newDiscount || 0));
     const net = Math.max(0, total - disc);
@@ -8544,10 +8570,9 @@ function ProfilePanel({ profile, user, accessCount, canManageFees, canManageSett
   };
   const recalcEmiOnModeChange = (newMode: string) => {
     setAdmissionPaymentModeDraft(newMode);
-    const resolvedCourseMonths = Math.max(1, getCourseDurationMonths(student.course, courses));
-    const currentMonths = Number(admissionEmiMonthsDraft || 0) || resolvedCourseMonths;
-    setAdmissionEmiMonthsDraft(String(currentMonths));
-    updateAdmissionEmi(admissionTotalFeeDraft, admissionDiscountDraft, admissionUpfrontDraft, newMode, String(currentMonths));
+    const resolvedCourseMonths = Math.max(1, getCourseDurationMonths(student.course, allCourses.length ? allCourses : courses));
+    setAdmissionEmiMonthsDraft(String(resolvedCourseMonths));
+    updateAdmissionEmi(admissionTotalFeeDraft, admissionDiscountDraft, admissionUpfrontDraft, newMode, String(resolvedCourseMonths));
   };
   const updateInternshipDuration = (start: string, duration: string, unit: string) => {
     const nextEndDate = dateInputValueFromDuration(start, duration, unit);
@@ -8577,8 +8602,8 @@ function ProfilePanel({ profile, user, accessCount, canManageFees, canManageSett
     const isPartial = isPartialEmiPaymentMode(paymentMode);
     const isEmi = paymentMode === "EMI" || isPartial;
     const upfrontAmount = isPartial ? Number(admissionUpfrontDraft || 0) : 0;
-    const resolvedCourseMonths = Math.max(1, getCourseDurationMonths(student.course, courses));
-    const months = Math.max(1, Number(admissionEmiMonthsDraft || 0) || resolvedCourseMonths);
+    const resolvedCourseMonths = Math.max(1, getCourseDurationMonths(student.course, allCourses.length ? allCourses : courses));
+    const months = resolvedCourseMonths;
     const netFee = Math.max(0, totalFee - discountAmount);
     const emiBalance = isPartial
       ? Math.max(0, netFee - Math.max(student.paidAmount || 0, upfrontAmount))
@@ -8682,7 +8707,7 @@ function ProfilePanel({ profile, user, accessCount, canManageFees, canManageSett
         ...(canManageSettings ? { counsellor: String(form.counsellor || "") } : {}),
         ...(canAssignTeachers ? { teacher: String(form.teacher || "") } : {}),
       };
-      const editCourseMonths = Math.max(1, getCourseDurationMonths(String(form.course || student.course), courses));
+      const editCourseMonths = Math.max(1, getCourseDurationMonths(String(form.course || student.course), allCourses.length ? allCourses : courses));
       const editEmiMonths = emiEnabled ? Math.max(1, Number(form.emiMonths || 0) || editCourseMonths) : 0;
       if (canManageFees) Object.assign(updates, {
         totalFee,
@@ -8983,8 +9008,8 @@ function ProfilePanel({ profile, user, accessCount, canManageFees, canManageSett
             <div className="field"><RequiredLabel required>Fee payment plan</RequiredLabel><select name="admissionPaymentMode" required disabled={!canDecideFees} value={admissionPaymentModeDraft} onChange={(event) => recalcEmiOnModeChange(event.target.value)}>{admissionPaymentModes.map((mode) => <option key={mode}>{mode}</option>)}</select></div>
             {isAdmissionPartialEmiPlan && <div className="field"><RequiredLabel required>Upfront / partial amount</RequiredLabel><input name="admissionUpfrontAmount" type="number" min="1" max={admissionNetFee ? admissionNetFee - 1 : undefined} required disabled={!canDecideFees} value={admissionUpfrontDraft} onChange={(event) => { const value = event.target.value; setAdmissionUpfrontDraft(value); updateAdmissionEmi(admissionTotalFeeDraft, admissionDiscountDraft, value, admissionPaymentModeDraft); }} /><span className="field-help">Record this actual payment from the Payments tab after saving admission.</span></div>}
             {isAdmissionEmiPlan && <>
-              <div className="field"><RequiredLabel required>EMI months</RequiredLabel><input name="emiMonths" type="number" required readOnly disabled value={admissionEmiMonthsDraft} style={{ background: "var(--surface-2, #f3f4f6)", cursor: "not-allowed" }} /><span className="field-help">Auto-set from course duration ({admissionEmiMonthsDraft} months) — not editable</span></div>
-              <div className="field"><RequiredLabel required>Monthly EMI (auto-calculated)</RequiredLabel><input name="emiAmount" type="number" required readOnly disabled value={admissionEmiAmountDraft} style={{ background: "var(--surface-2, #f3f4f6)", cursor: "not-allowed" }} /><span className="field-help">{isAdmissionPartialEmiPlan ? "EMI balance" : "Pending due"}: {formatCurrency(isAdmissionPartialEmiPlan ? admissionEmiBalance : admissionDue)} / {admissionEmiMonthsDraft} months — auto-calculated (not editable){(isAdmissionPartialEmiPlan ? admissionEmiBalance : admissionDue) - (Number(admissionEmiAmountDraft || 0) * Number(admissionEmiMonthsDraft || 1)) > 0 ? ` (₹${(isAdmissionPartialEmiPlan ? admissionEmiBalance : admissionDue) - (Number(admissionEmiAmountDraft || 0) * Number(admissionEmiMonthsDraft || 1))} adjusted in final month)` : ""}</span></div>
+              <div className="field"><RequiredLabel required>EMI months</RequiredLabel><input name="emiMonths" type="number" required readOnly disabled value={admissionEmiMonthsDraft} style={{ background: "var(--surface-2, #f3f4f6)", cursor: "not-allowed" }} /><span className="field-help">Auto-set from course duration ({admissionEmiMonthsDraft} {Number(admissionEmiMonthsDraft) === 1 ? "month" : "months"}) — not editable</span></div>
+              <div className="field"><RequiredLabel required>Monthly EMI (auto-calculated)</RequiredLabel><input name="emiAmount" type="number" required readOnly disabled value={admissionEmiAmountDraft} style={{ background: "var(--surface-2, #f3f4f6)", cursor: "not-allowed" }} /><span className="field-help">{isAdmissionPartialEmiPlan ? "EMI balance" : "Pending due"}: {formatCurrency(isAdmissionPartialEmiPlan ? admissionEmiBalance : admissionDue)} / {admissionEmiMonthsDraft} {Number(admissionEmiMonthsDraft) === 1 ? "month" : "months"}{(isAdmissionPartialEmiPlan ? admissionEmiBalance : admissionDue) - (Number(admissionEmiAmountDraft || 0) * Number(admissionEmiMonthsDraft || 1)) > 0 ? ` (₹${(isAdmissionPartialEmiPlan ? admissionEmiBalance : admissionDue) - (Number(admissionEmiAmountDraft || 0) * Number(admissionEmiMonthsDraft || 1))} adjusted in final month)` : ""}</span></div>
               <div className="field"><RequiredLabel required>Next EMI date</RequiredLabel><input name="nextEmiDate" type="date" required disabled={!canDecideFees} value={admissionNextEmiDateDraft} onChange={(event) => setAdmissionNextEmiDateDraft(event.target.value)} /></div>
             </>}
             <div className="profile-edit-actions"><button className="btn btn-primary" disabled={!canDecideFees}><CheckCircle2 size={15} /> Save fees decided</button></div>
@@ -9008,16 +9033,69 @@ function ProfilePanel({ profile, user, accessCount, canManageFees, canManageSett
           </div>
         </div>}
         {activeStudentTab === "pay" && <div className="dpane active">
-          <div className="table-wrap"><table><thead><tr><th>#</th><th>Date</th><th>Payment for</th><th>Mode</th><th>Reference</th><th>Amount</th><th>Recorded by</th><th>Receipt</th><th>Proof</th></tr></thead><tbody>{payments.map((payment, index) => <tr key={`${payment.paidAt || index}-${payment.amount || 0}`}><td>{index + 1}</td><td className="mono">{formatDate(payment.paidAt)}</td><td>{normalizePaymentPurpose(payment.paymentPurpose, payment.mode)}{payment.emiReference && <div className="cell-sub mono">{payment.emiReference}</div>}</td><td>{payment.mode || "-"}</td><td className="mono">{payment.transactionId || "-"}{payment.loanProviderName && <div className="cell-sub">{payment.loanProviderName}</div>}</td><td className="mono">{formatCurrency(payment.amount || 0)}</td><td>{payment.by || "-"}</td><td className="mono">{paymentReceiptNumber(student, index)}</td><td>{payment.proof?.storedName ? <button type="button" className="action-icon-btn action-icon-primary" title={payment.proof.originalName || "Download proof"} onClick={() => onDownloadPaymentProof(student, payment, index)}><Download size={14} /></button> : <span className="cell-sub">Missing</span>}</td></tr>)}{!payments.length && <tr><td colSpan={9}><div className="empty-state"><h4>No payments yet</h4></div></td></tr>}</tbody></table></div>
-          {canManageFees && (!admissionPlanReady ? <div className="empty-state"><h4>Complete admission first</h4><p>Finalize the fee and payment plan in the Admission tab before recording payments.</p><button type="button" className="btn btn-primary" onClick={() => setStudentTab("admission")}>Open admission</button></div> : due <= 0 ? <div className="empty-state paid-empty"><h4>Fully paid</h4><p>No pending due for this student.</p></div> : <form className="payment-form profile-payment-form" onSubmit={(event) => onPayment(event, student)}>
+          <div className="table-wrap"><table><thead><tr><th>#</th><th>Date</th><th>Payment for</th><th>Mode</th><th>Reference</th><th>Amount</th><th>Recorded by</th><th>Receipt</th><th>Proof</th></tr></thead><tbody>{payments.map((payment, index) => <tr key={`${payment.paidAt || index}-${payment.amount || 0}`}><td>{index + 1}</td><td className="mono">{formatDate(payment.paidAt)}</td><td>{normalizePaymentPurpose(payment.paymentPurpose, payment.mode)}{payment.emiReference && <div className="cell-sub mono">{payment.emiReference}</div>}</td><td>{payment.mode || "-"}</td><td className="mono">{payment.transactionId || "-"}{payment.loanProviderName && <div className="cell-sub">{payment.loanProviderName}</div>}</td><td className="mono">{formatCurrency(payment.amount || 0)}</td><td>{payment.by || "-"}</td><td className="mono">{paymentReceiptNumber(student, index)}</td><td>{(() => {
+            const proofs = (payment.proofs && payment.proofs.length > 0) ? payment.proofs : (payment.proof?.storedName ? [payment.proof] : []);
+            if (!proofs.length) return <span className="cell-sub">Missing</span>;
+            if (proofs.length === 1) {
+              return <button type="button" className="action-icon-btn action-icon-primary" title={proofs[0].originalName || "Download proof"} onClick={() => onDownloadPaymentProof(student, payment, index, 0)}><Download size={14} /></button>;
+            }
+            return (
+              <div style={{ display: "flex", gap: "4px", flexWrap: "wrap", alignItems: "center" }}>
+                {proofs.map((p, pIdx) => (
+                  <button key={pIdx} type="button" className="btn btn-sm btn-ghost" style={{ padding: "2px 6px", fontSize: "11px", height: "auto" }} title={p.originalName || `Proof ${pIdx + 1}`} onClick={() => onDownloadPaymentProof(student, payment, index, pIdx)}>
+                    <Download size={12} style={{ marginRight: 2 }} /> #{pIdx + 1}
+                  </button>
+                ))}
+              </div>
+            );
+          })()}</td></tr>)}{!payments.length && <tr><td colSpan={9}><div className="empty-state"><h4>No payments yet</h4></div></td></tr>}</tbody></table></div>
+          {canManageFees && (!admissionPlanReady ? <div className="empty-state"><h4>Complete admission first</h4><p>Finalize the fee and payment plan in the Admission tab before recording payments.</p><button type="button" className="btn btn-primary" onClick={() => setStudentTab("admission")}>Open admission</button></div> : due <= 0 ? <div className="empty-state paid-empty"><h4>Fully paid</h4><p>No pending due for this student.</p></div> : <form className="payment-form profile-payment-form" onSubmit={async (event) => {
+            const success = await onPayment(event, student, paymentProofFiles);
+            if (success) setPaymentProofFiles([]);
+          }}>
             <div className="field"><RequiredLabel required>Payment amount</RequiredLabel><input name="amount" type="number" min="1" max={due} step="1" required defaultValue={paymentPurposeDraft === "Fees Installment" && emiBreakdown.isEmi ? emiBreakdown.currentDue : ""} key={`${student._id}-${paymentPurposeDraft}`} /><span className="field-help">{paymentPurposeDraft === "Fees Installment" && emiBreakdown.isEmi ? `Expected this cycle: ${formatCurrency(emiBreakdown.currentDue)} ${emiBreakdown.shortfall > 0 ? `(${formatCurrency(emiBreakdown.baseEmi)} EMI + ${formatCurrency(emiBreakdown.shortfall)} shortfall)` : ""} | ` : ""}Pending due: {formatCurrency(due)}</span></div>
             <div className="field"><RequiredLabel required>Payment for</RequiredLabel><select name="paymentPurpose" value={paymentPurposeDraft} required onChange={(event) => setPaymentPurposeDraft(event.target.value)}>{paymentPurposes.map((purpose) => <option key={purpose}>{purpose}</option>)}</select>{paymentPurposeDraft === "Seat Booking Amount" && <span className="field-help">Use this for the first booking/token amount.</span>}</div>
-            <div className="field"><RequiredLabel required>Mode</RequiredLabel><select name="mode" value={paymentModeDraft} required onChange={(event) => setPaymentModeDraft(event.target.value)}>{paymentModes.map((mode) => <option key={mode}>{mode}</option>)}</select></div>
+            <div className="field"><RequiredLabel required>Mode</RequiredLabel><select name="mode" value={paymentModeDraft} required onChange={(event) => { setPaymentModeDraft(event.target.value); if (event.target.value === "Cash") setPaymentProofFiles([]); }}>{paymentModes.map((mode) => <option key={mode}>{mode}</option>)}</select></div>
             {paymentModeDraft === "Loan Provider" && <div className="field"><RequiredLabel required>Loan provider name</RequiredLabel><input name="loanProviderName" required maxLength={100} /></div>}
             {paymentPurposeDraft === "Fees Installment" && student.emiEnabled && <div className="field"><RequiredLabel>EMI reference no.</RequiredLabel><input name="emiReference" value={emiReferenceNumber(student)} readOnly maxLength={paymentReferenceMaxLength} /><span className="field-help">Auto generated for this EMI installment.</span></div>}
-            {paymentModeDraft !== "Cash" && <div className="field"><RequiredLabel required>{paymentReferenceLabel(paymentModeDraft)}</RequiredLabel><input name="transactionId" required maxLength={paymentReferenceMaxLength} pattern="[A-Za-z0-9][A-Za-z0-9 ._/@:-]*" /><span className="field-help">Required for {paymentModeDraft} payments.</span></div>}
+            {paymentModeDraft !== "Cash" && <div className="field"><RequiredLabel required>{paymentReferenceLabel(paymentModeDraft)}</RequiredLabel><input name="transactionId" required maxLength={paymentReferenceMaxLength} pattern="[A-Za-z0-9][A-Za-z0-9 ._/@:;,-]*" placeholder={paymentModeDraft === "UPI" ? "e.g. UPI12345, UPI67890 (comma separated for multiple)" : undefined} /><span className="field-help">Required for {paymentModeDraft} payments. Separate multiple transaction IDs with commas if paid in parts.</span></div>}
             <div className="field"><label>Note</label><input name="note" maxLength={paymentNoteMaxLength} /></div>
-            {paymentModeDraft !== "Cash" && <div className="field"><RequiredLabel required>Payment proof</RequiredLabel><input name="paymentProof" type="file" accept={leadDocumentAccept} required /><span className="field-help">{leadDocumentHelpText}</span></div>}
+            {paymentModeDraft !== "Cash" && <div className="field">
+              <RequiredLabel required>Payment proof(s)</RequiredLabel>
+              <input
+                name="paymentProof"
+                type="file"
+                accept={leadDocumentAccept}
+                multiple
+                onChange={(e) => {
+                  const newFiles = Array.from(e.target.files || []);
+                  if (newFiles.length) {
+                    setPaymentProofFiles((prev) => {
+                      const existingKeys = new Set(prev.map((f) => `${f.name}-${f.size}`));
+                      const unique = newFiles.filter((f) => !existingKeys.has(`${f.name}-${f.size}`));
+                      return [...prev, ...unique];
+                    });
+                  }
+                  e.target.value = "";
+                }}
+              />
+              <span className="field-help">{leadDocumentHelpText}. You can select or add multiple files/screenshots for split transactions.</span>
+              {paymentProofFiles.length > 0 && (
+                <div style={{ marginTop: "8px", display: "flex", flexDirection: "column", gap: "6px" }}>
+                  <div style={{ fontSize: "12px", fontWeight: 600, color: "var(--text-muted, #64748b)" }}>
+                    {paymentProofFiles.length} {paymentProofFiles.length === 1 ? "proof file" : "proof files"} attached:
+                  </div>
+                  <div style={{ display: "flex", flexWrap: "wrap", gap: "6px" }}>
+                    {paymentProofFiles.map((file, fileIdx) => (
+                      <span key={`${file.name}-${fileIdx}`} className="badge badge-gray" style={{ display: "inline-flex", alignItems: "center", gap: "6px", padding: "4px 8px", fontSize: "12px", maxWidth: "260px" }}>
+                        <span style={{ overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{file.name} ({(file.size / 1024).toFixed(0)} KB)</span>
+                        <button type="button" style={{ background: "none", border: "none", cursor: "pointer", padding: "0 2px", fontSize: "15px", lineHeight: 1, color: "var(--red-500, #ef4444)", fontWeight: "bold" }} title="Remove this file" onClick={() => setPaymentProofFiles((prev) => prev.filter((_, i) => i !== fileIdx))}>×</button>
+                      </span>
+                    ))}
+                  </div>
+                </div>
+              )}
+            </div>}
             <div className="payment-form-actions"><button className="btn btn-primary">Record payment</button></div>
           </form>)}
         </div>}
@@ -9058,8 +9136,8 @@ function ProfilePanel({ profile, user, accessCount, canManageFees, canManageSett
             </div>
           </>}
           {canManageFees ? (!admissionPlanReady ? <div className="empty-state"><h4>Complete admission first</h4><p>EMI terms must be decided in the Admission tab before updating EMI reminders.</p><button type="button" className="btn btn-primary" onClick={() => setStudentTab("admission")}>Open admission</button></div> : due <= 0 ? <div className="empty-state paid-empty"><h4>Fully paid</h4><p>EMI plan is not needed because there is no pending due.</p>{hasEmi && <button type="button" className="btn btn-ghost" onClick={closeEmiPlan}>Close EMI plan</button>}</div> : <form className="field-grid feedback-form emi-plan-form" onSubmit={saveEmiPlan}>
-            <div className="field"><RequiredLabel required>EMI months</RequiredLabel><input name="emiMonths" type="number" required readOnly disabled value={emiMonthsDraft} style={{ background: "var(--surface-2, #f3f4f6)", cursor: "not-allowed" }} /><span className="field-help">Auto-set from course duration ({emiMonthsDraft} months) — not editable</span></div>
-            <div className="field"><RequiredLabel required>Monthly EMI (auto-calculated)</RequiredLabel><input name="emiAmount" type="number" required readOnly disabled value={emiAmountDraft} style={{ background: "var(--surface-2, #f3f4f6)", cursor: "not-allowed" }} /><span className="field-help">Pending due: {formatCurrency(due)} / {emiMonthsDraft} months — auto-calculated (not editable){due - (Number(emiAmountDraft || 0) * Number(emiMonthsDraft || 1)) > 0 ? ` (₹${due - (Number(emiAmountDraft || 0) * Number(emiMonthsDraft || 1))} adjusted in final month)` : ""}</span></div>
+            <div className="field"><RequiredLabel required>EMI months</RequiredLabel><input name="emiMonths" type="number" required readOnly disabled value={emiMonthsDraft} style={{ background: "var(--surface-2, #f3f4f6)", cursor: "not-allowed" }} /><span className="field-help">Auto-set from course duration ({emiMonthsDraft} {Number(emiMonthsDraft) === 1 ? "month" : "months"}) — not editable</span></div>
+            <div className="field"><RequiredLabel required>Monthly EMI (auto-calculated)</RequiredLabel><input name="emiAmount" type="number" required readOnly disabled value={emiAmountDraft} style={{ background: "var(--surface-2, #f3f4f6)", cursor: "not-allowed" }} /><span className="field-help">Pending due: {formatCurrency(due)} / {emiMonthsDraft} {Number(emiMonthsDraft) === 1 ? "month" : "months"}{due - (Number(emiAmountDraft || 0) * Number(emiMonthsDraft || 1)) > 0 ? ` (₹${due - (Number(emiAmountDraft || 0) * Number(emiMonthsDraft || 1))} adjusted in final month)` : ""}</span></div>
             <Field name="nextEmiDate" label="Next EMI date" type="date" defaultValue={student.nextEmiDate ? dateInputValue(student.nextEmiDate) : dateInputValueFromOffset(12)} required />
             <div className="profile-edit-actions"><button className="btn btn-primary"><CalendarDays size={15} /> {hasEmi ? "Update EMI plan" : "Save EMI plan"}</button>{hasEmi && <button type="button" className="btn btn-ghost" onClick={closeEmiPlan}>Close EMI plan</button>}</div>
           </form>) : <div className="empty-state"><h4>EMI updates restricted</h4><p>Admin access is required to manage EMI plans.</p></div>}
@@ -9236,7 +9314,7 @@ function CrmStyles() {
       .main{flex:1;display:flex;flex-direction:column;height:100vh;overflow:hidden;width:100%;max-width:100%;min-width:0;box-sizing:border-box}.topbar{height:60px;flex:0 0 60px;background:#fff;border-bottom:1px solid var(--border);display:flex;align-items:center;gap:12px;padding:0 22px;width:100%;max-width:100%;min-width:0;box-sizing:border-box;position:relative;z-index:40;overflow:visible}.page-title{font-size:16px;font-weight:700}.page-sub{font-size:11.5px;color:var(--text-400);margin-top:1px}.topbar-spacer{flex:1}.scope-select,.df-select,.fbtn{border:1px solid var(--border);background:#fff;border-radius:8px;padding:7px 10px;font-size:12.5px;color:var(--text-700);font-weight:500;font-family:inherit}.scope-select{height:36px;box-sizing:border-box;display:inline-flex;align-items:center;padding:0 12px;flex-shrink:0}.scope-select-locked{background:var(--bg);color:var(--text-400)}.date-filter{display:inline-flex;align-items:center;gap:4px;background:var(--bg);border:1px solid var(--border);border-radius:9px;padding:3px;height:36px;box-sizing:border-box;flex-shrink:0}.df-btn{border:none;background:transparent;padding:0 11px;height:28px;border-radius:7px;font-size:12px;font-weight:600;color:var(--text-600);white-space:nowrap;display:inline-flex;align-items:center;justify-content:center;line-height:1;flex-shrink:0}.df-btn.active{background:#fff;color:var(--indigo-600);box-shadow:0 1px 2px rgba(16,20,40,.05)}.df-date{border:1px solid var(--border);border-radius:7px;padding:5px 8px;font-size:12px;display:none;height:28px;box-sizing:border-box}.df-date.show{display:inline-block}.icon-btn{width:36px;height:36px;border-radius:9px;border:1px solid var(--border);background:#fff;display:inline-flex;align-items:center;justify-content:center;color:var(--text-600);box-sizing:border-box;flex-shrink:0}.search-box{display:flex;align-items:center;gap:7px;background:var(--bg);border:1px solid var(--border);border-radius:9px;padding:0 12px;width:230px;height:36px;box-sizing:border-box;flex-shrink:0}.search-box input{border:none;background:transparent;outline:none;font-size:12.5px;width:100%;color:var(--text-900);padding:0}
       .content{flex:1;overflow-y:auto;overflow-x:hidden;padding:22px;width:100%;max-width:100%;min-width:0;box-sizing:border-box}.grid-metrics{display:grid;grid-template-columns:repeat(auto-fit,minmax(170px,1fr));gap:14px;margin-bottom:18px}.metric-card,.card{background:#fff;border:1px solid var(--border);border-radius:14px;box-shadow:0 1px 2px rgba(16,20,40,.05)}.metric-card{padding:16px 18px;position:relative;overflow:hidden}.m-label{font-size:11.5px;color:var(--text-600);font-weight:600;display:flex;align-items:center;gap:6px}.m-value{font-size:24px;font-weight:800;margin-top:8px;color:#061633;font-family:JetBrains Mono,monospace}.m-delta{font-size:11px;font-weight:600;margin-top:6px}.m-delta.up{color:var(--green-700)}.m-delta.down{color:var(--red-700)}.m-dot{width:9px;height:9px;border-radius:3px;display:inline-block}.two-col{display:grid;grid-template-columns:1.3fr 1fr;gap:16px;margin-bottom:16px}.lower-grid{grid-template-columns:1fr 1fr .75fr}.card-head{display:flex;align-items:center;gap:12px;padding:16px 18px;border-bottom:1px solid var(--border-soft)}.card-head h3{font-size:13.5px;font-weight:700;margin:0}.card-head .sub{font-size:11px;color:var(--text-400);margin-top:2px}.card-head button,.card-head input{margin-left:auto}.card-body{padding:16px 18px}.funnel-wrap{display:flex;flex-direction:column;gap:6px}.funnel-row{display:grid;grid-template-columns:120px 1fr 90px;align-items:center;gap:10px}.flabel{font-size:12px;font-weight:600;color:var(--text-600)}.funnel-bar-track{background:var(--border-soft);border-radius:6px;height:22px;overflow:hidden}.funnel-bar-fill{height:100%;border-radius:6px;background:linear-gradient(90deg,var(--indigo-500),#8A6BFF);display:flex;align-items:center;justify-content:flex-end;padding-right:8px}.funnel-bar-fill span{color:#fff;font-size:10.5px;font-weight:700}.fval{font-size:12px;color:var(--text-400);text-align:right;font-family:JetBrains Mono,monospace}
       .filter-bar{display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin-bottom:14px}.btn{border:none;border-radius:8px;padding:8px 14px;font-size:12.5px;font-weight:600;display:inline-flex;align-items:center;gap:6px;text-decoration:none}.btn-primary{background:var(--indigo-500);color:#fff;box-shadow:0 4px 10px rgba(79,107,255,.28)}.btn-ghost{background:#fff;border:1px solid var(--border);color:var(--text-700)}.btn-soft{background:var(--indigo-100);color:var(--indigo-600)}.btn-whatsapp{background:#e8f8ef;color:#047a43}.btn-danger{background:var(--red-700);color:#fff;box-shadow:0 4px 10px rgba(229,72,77,.22)}.btn-sm{padding:5px 10px;font-size:11.5px;border-radius:7px}.btn:disabled{opacity:.55;cursor:not-allowed}.file-upload-btn{position:relative;overflow:hidden;cursor:pointer}.file-upload-btn input{position:absolute;inset:0;opacity:0;cursor:pointer}.action-icons{display:flex;align-items:center;gap:6px}.action-icon-btn{width:30px;height:30px;border:1px solid var(--border);border-radius:8px;background:#fff;color:var(--text-600);display:inline-flex;align-items:center;justify-content:center}.action-icon-btn:hover{background:var(--bg);color:var(--text-900)}.action-icon-primary{background:var(--indigo-100);border-color:#dbe2ff;color:var(--indigo-600)}.action-icon-danger{background:var(--red-50);border-color:#f7d7d7;color:var(--red-700)}.action-icon-whatsapp{background:#e8f8ef;border-color:#c8eed9;color:#047a43}.delete-modal,.forgot-modal{width:390px;max-width:92vw;overflow:hidden}.delete-modal .modal-head,.forgot-modal .modal-head{padding:18px 18px 16px}.delete-modal-body,.forgot-modal-body{display:flex;gap:14px;align-items:center;padding:20px 18px}.delete-modal-body p,.forgot-modal-body p{margin:0;color:var(--text-700);line-height:1.45;min-width:0}.forgot-email-field{margin-top:12px}.forgot-email-field input{height:38px}.delete-icon{width:38px;height:38px;border-radius:10px;background:var(--red-50);color:var(--red-700);display:flex;align-items:center;justify-content:center;flex:0 0 38px}.logout-icon{background:var(--indigo-100);color:var(--indigo-600)}.delete-modal-actions{display:flex;justify-content:flex-end;gap:10px;padding:0 18px 18px}.delete-modal-actions .btn{min-width:66px;justify-content:center}.pamphlet-select{height:32px;border:1px solid #dbe2ff;border-radius:8px;background:var(--indigo-100);color:var(--indigo-600);font-size:11.5px;font-weight:700;padding:0 8px;max-width:150px}.pamphlet-select.compact{width:92px;height:30px;padding:0 6px}.table-wrap{overflow-x:auto}table{width:100%;border-collapse:collapse;font-size:12.5px}thead th{text-align:left;font-size:10.5px;text-transform:uppercase;letter-spacing:.4px;color:var(--text-400);font-weight:700;padding:10px 12px;border-bottom:1px solid var(--border);white-space:nowrap;background:#FAFBFD}tbody td{padding:11px 12px;border-bottom:1px solid var(--border-soft);color:var(--text-700);white-space:nowrap}tbody tr:hover{background:#F8F9FD}.clickable{cursor:pointer}.cell-name,.nm{font-weight:700;color:var(--text-900)}.cell-sub,.mt{font-size:11px;color:var(--text-400)}.mini-select,.mini-input{max-width:160px;border:1px solid var(--border);border-radius:7px;padding:5px 7px;background:#fff}.tag{font-size:12px;border-radius:999px;padding:6px 10px;font-weight:700}.tag.green{background:var(--green-50);color:var(--green-700)}.tag.purple{background:var(--purple-50);color:var(--purple-700)}.tag.amber{background:var(--amber-50);color:var(--amber-700)}.tag.blue{background:var(--blue-50);color:var(--indigo-600)}.tag.red{background:var(--red-50);color:var(--red-700)}
-      .badge{display:inline-flex;align-items:center;gap:5px;padding:3px 9px;border-radius:20px;font-size:11px;font-weight:700;white-space:nowrap}.badge-gray{background:#f1f2f6;color:var(--text-600)}.badge-amber{background:var(--amber-50);color:var(--amber-700)}.badge-red{background:var(--red-50);color:var(--red-700)}.badge-green{background:var(--green-50);color:var(--green-700)}.badge-blue{background:var(--blue-50);color:var(--indigo-600)}.badge-purple{background:var(--purple-50);color:var(--purple-700)}.badge-junk{background:#fee2e2;color:#991b1b;border:1px solid #fecaca}.btn-green{background:var(--green-50);color:var(--green-700)}.leads-filter-bar{gap:10px;margin-bottom:14px}.leads-filter-bar .fbtn{height:34px}.leads-filter-bar .lead-search-input{width:200px}.leads-filter-bar .filter-spacer{flex:1}.leads-card{border-radius:14px;overflow:hidden}.leads-table-wrap{overflow-x:auto}.leads-table{min-width:1220px}.leads-table thead th{height:38px;padding:10px 12px;background:#fafbfd;color:#99a1b3;font-size:10.5px;letter-spacing:.4px}.leads-table tbody td{height:58px;padding:10px 12px;color:#333a56}.leads-table tbody tr:hover{background:#f8f9fd}.lead-name-cell{display:flex;align-items:center;gap:9px}.avatar{width:30px;height:30px;border-radius:8px;display:flex;align-items:center;justify-content:center;color:#fff;font-weight:700;font-size:11.5px;flex:0 0 30px}.lead-avatar{background:#eef3ff;color:#4f6bff;border-radius:8px}.leads-table .cell-name{font-size:12.5px;font-weight:700;color:#161b33}.leads-table .cell-sub{font-size:11px;color:#99a1b3;margin-top:3px}.leads-table .mini-select,.leads-table .stage-select{height:29px;max-width:150px;border:1px solid var(--border);border-radius:7px;background:#fff;padding:5px 8px;font-size:11.5px;color:var(--text-700)}.leads-table .stage-select{max-width:118px}.leads-table .feedback-select{max-width:132px;font-weight:700;border-radius:999px}.feedback-select.badge-red{background:var(--red-50);color:var(--red-700);border-color:#f7d7d7}.feedback-select.badge-gray{background:#f1f2f6;color:var(--text-600)}.feedback-select.badge-amber{background:var(--amber-50);color:var(--amber-700);border-color:#f5dfaf}.feedback-select.badge-blue{background:var(--blue-50);color:var(--indigo-600);border-color:#dbe2ff}.feedback-select.badge-green{background:var(--green-50);color:var(--green-700);border-color:#caefdf}.feedback-select.badge-purple{background:var(--purple-50);color:var(--purple-700);border-color:#ded2fb}.feedback-select.badge-junk{background:#fee2e2;color:#991b1b;border-color:#fecaca}.leads-table .btn-soft{background:var(--indigo-100);color:var(--indigo-600);box-shadow:none}.leads-table .empty-state h4{margin:0 0 4px;color:var(--text-600);font-size:13px}.leads-table .empty-state p{margin:0;font-size:12px;color:var(--text-400)}.pill-tabs{display:flex;gap:4px;background:var(--bg);border:1px solid var(--border);border-radius:999px;padding:3px}.pill-tab{padding:7px 14px;border-radius:999px;font-size:12px;font-weight:600;color:var(--text-600);background:transparent;border:none}.pill-tab.active{background:#fff;color:var(--indigo-600);box-shadow:0 1px 3px rgba(16,20,40,.08)}.admissions-tabs{width:max-content;margin-bottom:16px}.admissions-card{border-radius:14px;overflow:hidden}.admissions-table{width:100%;min-width:980px;border-collapse:collapse}.admissions-table thead th{height:42px;padding:11px 16px;background:#fafbfd;color:#99a1b3;font-size:10.5px;letter-spacing:.4px;font-weight:700;white-space:nowrap;border-bottom:1px solid var(--border)}.admissions-table thead th:last-child{text-align:right}.admissions-table tbody td{height:70px;padding:12px 16px;color:#333a56;vertical-align:middle;border-bottom:1px solid var(--border-soft)}.admissions-table tbody tr:hover{background:#f8f9fd}.admissions-table th:nth-child(1),.admissions-table td:nth-child(1){width:24%;min-width:200px}.admissions-table th:nth-child(2),.admissions-table td:nth-child(2){width:10%;min-width:85px}.admissions-table th:nth-child(3),.admissions-table td:nth-child(3){width:12%;min-width:100px}.admissions-table th:nth-child(4),.admissions-table td:nth-child(4){width:13%;min-width:110px}.admissions-table th:nth-child(5),.admissions-table td:nth-child(5){width:11%;min-width:100px}.admissions-table th:nth-child(6),.admissions-table td:nth-child(6){width:12%;min-width:110px}.admissions-table th:nth-child(7),.admissions-table td:nth-child(7){width:18%;min-width:180px}.admissions-table th:nth-child(8),.admissions-table td:nth-child(8){width:8%;min-width:85px;text-align:right}.admissions-table .cell-name{font-size:12.5px;font-weight:700;color:#161b33}.admissions-table .cell-sub{font-size:11px;color:#99a1b3;margin-top:3px}.admission-batch-cell{display:grid;align-content:center;gap:5px;max-width:220px}.admissions-table .student-mini-select{width:100%;max-width:180px;height:32px}.admission-batch-hint{display:grid;gap:1px;max-width:220px;color:var(--text-400);margin-top:0}.admission-batch-hint b{color:var(--amber-700);font-size:10.5px;line-height:1.2;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}.admission-batch-hint span{font-size:10px;line-height:1.2;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}.admission-action-cell{text-align:right}.admission-action-cell .btn{height:32px;min-width:82px;justify-content:center}.mono{font-family:JetBrains Mono,monospace}.admissions-table .btn-primary{box-shadow:0 4px 10px rgba(79,107,255,.22)}.admissions-table .empty-state{padding:54px 20px;text-align:center}.admissions-table .empty-state h4{margin:0 0 6px;color:var(--text-600);font-size:14px;font-weight:700}.admissions-table .empty-state p{margin:0;font-size:12.5px;color:var(--text-400)}
+      .badge{display:inline-flex;align-items:center;gap:5px;padding:3px 9px;border-radius:20px;font-size:11px;font-weight:700;white-space:nowrap}.badge-gray{background:#f1f2f6;color:var(--text-600)}.badge-amber{background:var(--amber-50);color:var(--amber-700)}.badge-red{background:var(--red-50);color:var(--red-700)}.badge-green{background:var(--green-50);color:var(--green-700)}.badge-blue{background:var(--blue-50);color:var(--indigo-600)}.badge-purple{background:var(--purple-50);color:var(--purple-700)}.badge-junk{background:#fee2e2;color:#991b1b;border:1px solid #fecaca}.btn-green{background:var(--green-50);color:var(--green-700)}.leads-filter-bar{gap:10px;margin-bottom:14px}.leads-filter-bar .fbtn{height:34px}.leads-filter-bar .lead-search-input{width:200px}.leads-filter-bar .filter-spacer{flex:1}.leads-card{border-radius:14px;overflow:hidden}.leads-table-wrap{overflow-x:auto}.leads-table{min-width:1300px}.leads-table thead th{height:38px;padding:10px 12px;background:#fafbfd;color:#99a1b3;font-size:10.5px;letter-spacing:.4px}.leads-table tbody td{height:58px;padding:10px 12px;color:#333a56}.leads-table tbody tr:hover{background:#f8f9fd}.lead-name-cell{display:flex;align-items:center;gap:9px}.avatar{width:30px;height:30px;border-radius:8px;display:flex;align-items:center;justify-content:center;color:#fff;font-weight:700;font-size:11.5px;flex:0 0 30px}.lead-avatar{background:#eef3ff;color:#4f6bff;border-radius:8px}.leads-table .cell-name{font-size:12.5px;font-weight:700;color:#161b33}.leads-table .cell-sub{font-size:11px;color:#99a1b3;margin-top:3px}.leads-table .mini-select,.leads-table .stage-select{height:29px;max-width:150px;border:1px solid var(--border);border-radius:7px;background:#fff;padding:5px 8px;font-size:11.5px;color:var(--text-700)}.leads-table .stage-select{max-width:118px}.leads-table .feedback-select{max-width:132px;font-weight:700;border-radius:999px}.feedback-select.badge-red{background:var(--red-50);color:var(--red-700);border-color:#f7d7d7}.feedback-select.badge-gray{background:#f1f2f6;color:var(--text-600)}.feedback-select.badge-amber{background:var(--amber-50);color:var(--amber-700);border-color:#f5dfaf}.feedback-select.badge-blue{background:var(--blue-50);color:var(--indigo-600);border-color:#dbe2ff}.feedback-select.badge-green{background:var(--green-50);color:var(--green-700);border-color:#caefdf}.feedback-select.badge-purple{background:var(--purple-50);color:var(--purple-700);border-color:#ded2fb}.feedback-select.badge-junk{background:#fee2e2;color:#991b1b;border-color:#fecaca}.leads-table .btn-soft{background:var(--indigo-100);color:var(--indigo-600);box-shadow:none}.leads-table .empty-state h4{margin:0 0 4px;color:var(--text-600);font-size:13px}.leads-table .empty-state p{margin:0;font-size:12px;color:var(--text-400)}.pill-tabs{display:flex;gap:4px;background:var(--bg);border:1px solid var(--border);border-radius:999px;padding:3px}.pill-tab{padding:7px 14px;border-radius:999px;font-size:12px;font-weight:600;color:var(--text-600);background:transparent;border:none}.pill-tab.active{background:#fff;color:var(--indigo-600);box-shadow:0 1px 3px rgba(16,20,40,.08)}.admissions-tabs{width:max-content;margin-bottom:16px}.admissions-card{border-radius:14px;overflow:hidden}.admissions-table{width:100%;min-width:980px;border-collapse:collapse}.admissions-table thead th{height:42px;padding:11px 16px;background:#fafbfd;color:#99a1b3;font-size:10.5px;letter-spacing:.4px;font-weight:700;white-space:nowrap;border-bottom:1px solid var(--border)}.admissions-table thead th:last-child{text-align:right}.admissions-table tbody td{height:70px;padding:12px 16px;color:#333a56;vertical-align:middle;border-bottom:1px solid var(--border-soft)}.admissions-table tbody tr:hover{background:#f8f9fd}.admissions-table th:nth-child(1),.admissions-table td:nth-child(1){width:24%;min-width:200px}.admissions-table th:nth-child(2),.admissions-table td:nth-child(2){width:10%;min-width:85px}.admissions-table th:nth-child(3),.admissions-table td:nth-child(3){width:12%;min-width:100px}.admissions-table th:nth-child(4),.admissions-table td:nth-child(4){width:13%;min-width:110px}.admissions-table th:nth-child(5),.admissions-table td:nth-child(5){width:11%;min-width:100px}.admissions-table th:nth-child(6),.admissions-table td:nth-child(6){width:12%;min-width:110px}.admissions-table th:nth-child(7),.admissions-table td:nth-child(7){width:18%;min-width:180px}.admissions-table th:nth-child(8),.admissions-table td:nth-child(8){width:8%;min-width:85px;text-align:right}.admissions-table .cell-name{font-size:12.5px;font-weight:700;color:#161b33}.admissions-table .cell-sub{font-size:11px;color:#99a1b3;margin-top:3px}.admission-batch-cell{display:grid;align-content:center;gap:5px;max-width:220px}.admissions-table .student-mini-select{width:100%;max-width:180px;height:32px}.admission-batch-hint{display:grid;gap:1px;max-width:220px;color:var(--text-400);margin-top:0}.admission-batch-hint b{color:var(--amber-700);font-size:10.5px;line-height:1.2;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}.admission-batch-hint span{font-size:10px;line-height:1.2;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}.admission-action-cell{text-align:right}.admission-action-cell .btn{height:32px;min-width:82px;justify-content:center}.mono{font-family:JetBrains Mono,monospace}.admissions-table .btn-primary{box-shadow:0 4px 10px rgba(79,107,255,.22)}.admissions-table .empty-state{padding:54px 20px;text-align:center}.admissions-table .empty-state h4{margin:0 0 6px;color:var(--text-600);font-size:14px;font-weight:700}.admissions-table .empty-state p{margin:0;font-size:12.5px;color:var(--text-400)}
       .leads-bulk-bar{display:flex;align-items:center;gap:12px;padding:10px 16px;background:linear-gradient(90deg,#eef3ff,#f8faff);border:1px solid #c7d7fe;border-radius:10px;margin-bottom:14px;box-shadow:0 2px 8px rgba(79,107,255,.08);flex-wrap:wrap}.leads-bulk-count{font-weight:700;color:var(--indigo-600);font-size:12.5px;display:inline-flex;align-items:center;gap:6px}.leads-bulk-actions{display:inline-flex;align-items:center;gap:8px;margin-left:auto;flex-wrap:wrap}.leads-table th.col-select,.leads-table td.col-select{width:42px;min-width:42px;text-align:center;padding:0 8px}.lead-checkbox{width:16px;height:16px;cursor:pointer;accent-color:var(--indigo-500);border-radius:4px;vertical-align:middle}.leads-table tbody tr.row-selected{background:#eef3ff!important}.leads-table tbody tr.row-selected:hover{background:#e4ebff!important}
       .drawer-overlay{position:fixed;inset:0;background:rgba(10,14,29,.45);display:none;z-index:200}.drawer-overlay.show{display:block}.drawer{position:fixed;top:0;right:0;height:100vh;width:520px;max-width:94vw;background:#fff;box-shadow:-14px 0 40px rgba(10,14,29,.25);transform:translateX(100%);transition:transform .22s ease;z-index:201;display:flex;flex-direction:column}.drawer.show{transform:translateX(0)}.drawer-head{padding:20px 22px;border-bottom:1px solid var(--border-soft);display:flex;align-items:flex-start;gap:14px}.drawer-avatar{width:44px;height:44px;font-size:14px;background:linear-gradient(135deg,var(--indigo-500),#8A6BFF)}.drawer-title{flex:1;min-width:0}.drawer-title h3{margin:0;font-size:15px;line-height:1.25;color:var(--text-900)}.drawer-title .cell-sub{display:flex;align-items:center;gap:6px;flex-wrap:wrap;margin-top:4px}.close-x{width:30px;height:30px;border-radius:8px;border:none;background:var(--bg);color:var(--text-600);font-size:15px}.drawer-body{flex:1;overflow-y:auto;padding:0 0 30px}.dtabs{display:flex;gap:2px;padding:0 22px;border-bottom:1px solid var(--border-soft)}.dtab{padding:12px 12px;font-size:12px;font-weight:700;color:var(--text-400);border:0;background:transparent;border-bottom:2px solid transparent}.dtab.active{color:var(--indigo-600);border-color:var(--indigo-500)}.dpane{display:none;padding:18px 22px}.dpane.active{display:block}.kv-row{display:flex;justify-content:space-between;gap:18px;padding:9px 0;border-bottom:1px solid var(--border-soft);font-size:12.5px}.kv-row .k{color:var(--text-400)}.kv-row .v{font-weight:600;color:var(--text-900);text-align:right;overflow-wrap:anywhere}.drawer-notes{margin-top:14px}.drawer-full-btn{width:100%;justify-content:center;margin-top:12px}.drawer-admit-btn{margin-top:8px}
       .batch-metrics{grid-template-columns:repeat(3,1fr);margin-bottom:18px}.batch-card-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:16px}.batch-select-card{border:1px solid var(--border);background:#fff;border-radius:14px;padding:18px;text-align:left;box-shadow:0 1px 2px rgba(16,20,40,.05);cursor:pointer;transition:transform .16s ease,box-shadow .16s ease,border-color .16s ease}.batch-select-card:hover{transform:translateY(-2px);border-color:#b9c5ff;box-shadow:0 14px 30px rgba(79,107,255,.12)}.batch-select-top{display:flex;align-items:center;justify-content:space-between;margin-bottom:18px}.batch-select-card h3{margin:0 0 6px;font-size:16px;color:#061633}.batch-select-stats{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-top:18px}.batch-select-stats span{border:1px solid var(--border-soft);border-radius:9px;padding:9px 8px;color:var(--text-400);font-size:11px}.batch-select-stats b{display:block;color:#061633;font-size:15px}.calendar-connect-card{display:flex;align-items:center;justify-content:space-between;gap:14px;padding:15px 18px;margin-bottom:16px}.calendar-connect-card h3{margin:0 0 4px;font-size:15px;color:#061633}.calendar-connect-card .sub{font-size:12px;color:var(--text-400)}.calendar-connect-actions{display:flex;align-items:center;gap:8px;flex-wrap:wrap;justify-content:flex-end}.teacher-batches-card{margin-bottom:16px}.teacher-batches-card .card-body{padding:16px 18px}.teacher-batch-grid{grid-template-columns:repeat(auto-fit,minmax(280px,340px));align-items:stretch}.teacher-batch-grid .batch-select-card{min-height:176px;display:flex;flex-direction:column}.teacher-batch-grid .batch-select-stats{margin-top:auto;padding-top:18px}.teacher-action-grid{align-items:stretch}.teacher-action-grid>.card{min-height:258px}.teacher-row-list .crow{display:grid;grid-template-columns:minmax(0,1fr) auto;align-items:center;gap:16px;min-height:72px}.teacher-row-list .who{min-width:0}.teacher-row-list .who>div{min-width:0}.teacher-row-list .nm,.teacher-row-list .mt{overflow:hidden;text-overflow:ellipsis;display:block}.teacher-row-list .nm{line-height:1.35}.teacher-row-list .mt{white-space:nowrap}.teacher-update-tag{min-width:78px;max-width:96px;justify-content:center;text-align:center;white-space:normal;line-height:1.2;padding:8px 10px}.selected-batch-head{margin-bottom:16px}.batch-grid{grid-template-columns:1.2fr .9fr;gap:16px}.batch-grid-single{display:grid;grid-template-columns:1fr;gap:16px}.batch-card{border-radius:14px;overflow:hidden}.batch-card .card-head{min-height:64px}.batch-table,.batch-roster-table{min-width:100%}.batch-table thead th,.batch-roster-table thead th{height:38px;padding:10px 12px;background:#fafbfd;color:#99a1b3;font-size:10.5px;letter-spacing:.4px}.batch-table tbody td,.batch-roster-table tbody td{height:56px;padding:11px 12px;color:#333a56}.batch-table tbody tr:hover,.batch-roster-table tbody tr:hover{background:#f8f9fd}.batch-table .selected-row{background:#f8f9fd}.batch-table .cell-name{font-weight:700;color:#161b33}.batch-roster-table .cell-name{font-size:12.5px;font-weight:700;color:#161b33}.batch-roster-table .cell-sub{font-size:11px;color:#99a1b3;margin-top:3px}
