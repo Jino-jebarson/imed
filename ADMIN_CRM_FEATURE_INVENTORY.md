@@ -109,6 +109,7 @@ Source reviewed:
   - BTL
   - College
   - Referral
+  - Purchased Leads
 - Lead document support:
   - PDF, JPG, JPEG, PNG, WEBP
   - Frontend max 2 MB per file

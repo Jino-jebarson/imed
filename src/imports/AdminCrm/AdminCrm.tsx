@@ -63,7 +63,7 @@ const stages = ["New Lead", "Contacted", "Counselling", "Demo / Visit", "Admissi
 const studentStatuses = ["Enrolled", "Admission Completed", "Fees Decided", "Fees Collected", "Active Student", "Classroom Complete", "Course Completed", "Alumni"];
 const studentJourneyStages = ["Enrolled", "Admission Completed", "Fees Decided", "Fees Collected", "Active Student", "Classroom Complete", "Course Completed", "Alumni"];
 const attendanceStatuses: AttendanceStatus[] = ["Present", "Absent", "Late", "Leave"];
-const sources = ["Meta", "BTL", "College", "Referral"];
+const sources = ["Meta", "BTL", "College", "Referral", "Purchased Leads"];
 const leadDocumentAccept = ".pdf,.jpg,.jpeg,.png,.webp";
 const leadDocumentHelpText = "PDF, JPG, PNG or WEBP. Max 2 MB.";
 const leadDocumentMaxSize = 2 * 1024 * 1024;
@@ -491,6 +491,10 @@ function openLeadPamphlet(lead: Lead, pamphlet: LeadPamphletKey) {
 
 function roleLabel(role = "") {
   return role === "superadmin" ? "Super Admin" : role === "center_admin" ? "Center Admin" : role === "admin" ? "Branch Admin" : role === "operations_executive" ? "Operations Executive" : role === "franchise_operations_executive" ? "Franchise Operations Executive" : role === "teacher" ? "Teacher" : role === "franchise_superadmin" ? "Franchise Super Admin" : role === "franchise_counsellor" ? "Franchise Counsellor" : role === "franchise_teacher" ? "Franchise Teacher" : "Counsellor";
+}
+
+function isCounsellorStaffRole(role = "") {
+  return role === "counsellor" || role === "franchise_counsellor";
 }
 
 function attendanceStatusLabel(status: AttendanceStatus) {
@@ -1082,6 +1086,7 @@ export default function AdminCrm() {
   const [leadDrawerTab, setLeadDrawerTab] = useState<"info" | "follow" | "docs" | "act">("info");
   const [dedicatedFollowUps, setDedicatedFollowUps] = useState<Lead[]>([]);
   const [dedicatedAssignedLeads, setDedicatedAssignedLeads] = useState<Lead[]>([]);
+  const [admissionLeads, setAdmissionLeads] = useState<Lead[]>([]);
   const [receiptStudent, setReceiptStudent] = useState<Student | null>(null);
   const [receiptSelection, setReceiptSelection] = useState<ReceiptSelection>({ type: "invoice" });
   const [deletePrompt, setDeletePrompt] = useState<DeletePrompt | null>(null);
@@ -1108,6 +1113,10 @@ export default function AdminCrm() {
   const isFranchiseUser = user?.role === "franchise_superadmin" || user?.role === "franchise_counsellor" || user?.role === "franchise_teacher" || user?.role === "franchise_operations_executive";
   const isCounsellorAccount = user?.role === "counsellor" || user?.role === "franchise_counsellor";
   const isTeacherAccount = user?.role === "teacher" || user?.role === "franchise_teacher";
+  const actualCounsellors = useMemo(
+    () => counsellors.filter((c) => isCounsellorStaffRole(c.role)),
+    [counsellors]
+  );
   const isStudentStaffAccount = isCounsellorAccount || isTeacherAccount;
   const canUseLeads = isHeadAdmin || isFranchiseSuperAdmin || isCounsellorAccount;
   const canUseAttendance = isHeadAdmin || isFranchiseSuperAdmin || isTeacherAccount || isOperationsAccount;
@@ -1129,7 +1138,23 @@ export default function AdminCrm() {
   const authedHeaders = { Authorization: `Bearer ${token}`, "Content-Type": "application/json" };
   const centreOptions = centres.length ? centres.map((centre) => centre.name) : fallbackCentres;
   const courseOptions = courses.length ? courses.map((course) => course.code || course.name) : fallbackCourses;
-  const teacherAssignedBatchNames = batches.filter((batch) => batch.assignedFaculty?.includes(user?.name || "")).map((batch) => batch.name);
+  const visibleBatches = useMemo(() => {
+    if (isHeadSuperAdmin && roleScope === "all") return batches;
+    if (scopedFranchiseId) {
+      const centreObj = centres.find((c) => c._id === scopedFranchiseId);
+      const centreName = centreObj?.name?.toLowerCase();
+      return batches.filter((b) =>
+        (b.franchiseId && String(b.franchiseId) === String(scopedFranchiseId)) ||
+        (centreName && b.centre && String(b.centre).toLowerCase() === centreName)
+      );
+    }
+    if (isCenterAdmin || isHeadBranchAdmin || isCounsellorAccount || isFranchiseUser) {
+      const allowedNames = centreOptions.map((n) => n.toLowerCase());
+      return batches.filter((b) => b.centre && allowedNames.includes(b.centre.toLowerCase()));
+    }
+    return batches;
+  }, [batches, isHeadSuperAdmin, roleScope, scopedFranchiseId, centres, isCenterAdmin, isHeadBranchAdmin, isCounsellorAccount, isFranchiseUser, centreOptions]);
+  const teacherAssignedBatchNames = visibleBatches.filter((batch) => batch.assignedFaculty?.includes(user?.name || "")).map((batch) => batch.name);
   const visibleStudents = isOperationsAccount
     ? students
     : (panel === "mystudents" || (isStudentStaffAccount && ["attendance", "dashboard", "internship"].includes(panel)))
@@ -1279,10 +1304,11 @@ export default function AdminCrm() {
   };
 
   const loadMeta = async () => {
+    const suffix = queryString({ franchiseId: scopedFranchiseId });
     const [centreRes, courseRes, batchRes] = await Promise.all([
       api<Centre[]>("/api/admin/centres", { headers: authedHeaders }),
       api<Course[]>("/api/admin/courses", { headers: authedHeaders }),
-      api<Batch[]>("/api/admin/batches", { headers: authedHeaders }),
+      api<Batch[]>(`/api/admin/batches${suffix}`, { headers: authedHeaders }),
     ]);
     setCentres(centreRes.data || []);
     setCourses(courseRes.data || []);
@@ -1355,6 +1381,23 @@ export default function AdminCrm() {
     const suffix = queryString({ franchiseId: scopedFranchiseId });
     const res = await api<{ total: number }>(`/api/admin/admissions/pending-count${suffix}`, { headers: authedHeaders });
     setAdmissionPendingCount(res.data?.total || 0);
+  };
+
+  const loadAdmissions = async () => {
+    if (!token || !canUseLeads) {
+      setAdmissionLeads([]);
+      return;
+    }
+    try {
+      const suffix = queryString({ franchiseId: scopedFranchiseId });
+      const res = await api<Lead[]>(`/api/admin/admissions${suffix}`, { headers: authedHeaders });
+      if (res.data) {
+        setAdmissionLeads(res.data);
+        setAdmissionPendingCount(res.data.length);
+      }
+    } catch {
+      // fallback silently
+    }
   };
 
   const loadFollowUps = async () => {
@@ -1675,7 +1718,7 @@ export default function AdminCrm() {
   const refreshAll = async () => {
     if (!token) return;
     try {
-      await Promise.all([loadMeta(), loadDashboard(), canUseLeads ? Promise.all([loadLeads(1), loadAdmissionPendingCount(), loadFollowUps(), loadAssignedLeads()]) : Promise.resolve(), loadStudents(1), loadCounsellors(), loadTeachers(), isTeacherAccount ? loadGoogleCalendarStatus() : Promise.resolve(), canUseAcademics ? Promise.all([loadClassSchedules(), loadTopicProgress(), loadPracticalRecords(), loadStudyNotes()]) : Promise.resolve(), (canManageNps || isTeacherAccount) ? loadNps(1) : Promise.resolve(), canManageInventory ? refreshInventory() : Promise.resolve()]);
+      await Promise.all([loadMeta(), loadDashboard(), canUseLeads ? Promise.all([loadLeads(1), loadAdmissionPendingCount(), loadAdmissions(), loadFollowUps(), loadAssignedLeads()]) : Promise.resolve(), loadStudents(1), loadCounsellors(), loadTeachers(), isTeacherAccount ? loadGoogleCalendarStatus() : Promise.resolve(), canUseAcademics ? Promise.all([loadClassSchedules(), loadTopicProgress(), loadPracticalRecords(), loadStudyNotes()]) : Promise.resolve(), (canManageNps || isTeacherAccount) ? loadNps(1) : Promise.resolve(), canManageInventory ? refreshInventory() : Promise.resolve()]);
     } catch (error) {
       toast.error(error instanceof Error ? error.message : "Unable to load CRM data");
     }
@@ -1694,6 +1737,7 @@ export default function AdminCrm() {
   useEffect(() => { void refreshAll(); }, [token, scopedFranchiseId, selectedDate, canUseLeads, isTeacherAccount]);
   useEffect(() => { if (token && canUseLeads) void loadLeads(leadPage); }, [leadPage, filters.stage, filters.centre, filters.course, filters.counsellor, filters.leadFeedback, canUseLeads]);
   useEffect(() => { if (token && canUseLeads) void loadAdmissionPendingCount(); }, [token, canUseLeads, scopedFranchiseId]);
+  useEffect(() => { if (token && canUseLeads && (panel === "admissions" || panel === "leads" || panel === "dashboard")) void loadAdmissions(); }, [token, canUseLeads, scopedFranchiseId, panel]);
   useEffect(() => { if (token && canUseLeads) void loadFollowUps(); }, [token, canUseLeads, scopedFranchiseId]);
   useEffect(() => { if (token && canUseLeads) void loadAssignedLeads(); }, [token, canUseLeads, scopedFranchiseId]);
 
@@ -1704,9 +1748,10 @@ export default function AdminCrm() {
       void loadAssignedLeads();
       void loadFollowUps();
       void loadAdmissionPendingCount();
+      if (panel === "admissions") void loadAdmissions();
     }, 20000);
     return () => clearInterval(interval);
-  }, [token, canUseLeads, scopedFranchiseId]);
+  }, [token, canUseLeads, scopedFranchiseId, panel]);
 
   // Refresh notifications immediately when window/tab regains focus
   useEffect(() => {
@@ -1715,10 +1760,11 @@ export default function AdminCrm() {
       void loadAssignedLeads();
       void loadFollowUps();
       void loadAdmissionPendingCount();
+      if (panel === "admissions") void loadAdmissions();
     };
     window.addEventListener("focus", onFocus);
     return () => window.removeEventListener("focus", onFocus);
-  }, [token, canUseLeads, scopedFranchiseId]);
+  }, [token, canUseLeads, scopedFranchiseId, panel]);
   useEffect(() => { if (token) void loadStudents(studentPage); }, [studentPage, panel]);
   useEffect(() => { if (token && canManageSettings) void loadCounsellors(); }, [token, canManageSettings]);
   useEffect(() => { if (token && (canManageSettings || isCounsellorAccount)) void loadTeachers(); }, [token, canManageSettings, isCounsellorAccount]);
@@ -1989,6 +2035,7 @@ export default function AdminCrm() {
       }
       void loadDashboard();
       void loadAdmissionPendingCount();
+      void loadAdmissions();
       void loadFollowUps();
     } catch (error) {
       toast.error(error instanceof Error ? error.message : "Unable to update lead");
@@ -3208,24 +3255,24 @@ export default function AdminCrm() {
           </header>
 
           <section className="content">
-            {panel === "dashboard" && (isCounsellorAccount ? <SalesCounsellorDashboardPanel leads={leads} students={visibleStudents} onOpenLead={openLeadDrawer} onGoLeads={() => setPanel("leads")} onGoAddLead={() => setPanel("addlead")} onGoAdmissions={() => setPanel("admissions")} onOpenStudent={(student) => openProfile({ type: "student", data: student }, "dashboard")} /> : isTeacherAccount ? <TeacherDashboardPanel batches={batches} students={visibleStudents} sessions={classSessions} schedules={classSchedulesState} topicProgress={topicProgress} practicalRecords={practicalRecords} user={user} googleCalendarStatus={googleCalendarStatus} calendarSyncing={calendarSyncing} onConnectCalendar={connectGoogleCalendar} onDisconnectCalendar={disconnectGoogleCalendar} onSyncCalendar={syncGoogleCalendar} onOpenStudent={(student) => openProfile({ type: "student", data: student }, "dashboard")} onOpenBatch={(batchId, sessionId) => { setSelectedBatchId(batchId); setSelectedClassSessionId(sessionId || ""); setPanel("batch"); }} /> : isOperationsAccount ? <OperationsDashboardPanel students={students} batches={batches} onOpenStudent={(student) => openProfile({ type: "student", data: student }, "dashboard")} onGoStudents={() => setPanel("allstudents")} onGoFinance={() => setPanel("finance")} onGoEmi={() => setPanel("emi")} onGoCert={() => setPanel("cert")} onGoInternship={() => setPanel("internship")} onGoInventory={() => setPanel("inventory")} inventorySummary={inventorySummary} /> : <DashboardPanel summary={summary} funnel={funnel} centreStats={centreStats} students={students} leads={leads} onOpenLead={openLeadDrawer} />)}
-            {panel === "leads" && <LeadsPanel leads={leads} students={students} batches={batches} meta={leadMeta} filters={filters} setFilters={setFilters} centres={centreOptions} courses={courseOptions} canAssign={canAssignCounsellors} canDelete={canDeleteRecords} counsellors={counsellors} onSearch={() => loadLeads(1)} onPage={setLeadPage} onPatch={patchLead} onDelete={deleteLead} onEdit={(lead) => openProfile({ type: "lead", data: lead, mode: "edit" }, "leads")} onAddLead={() => setPanel("addlead")} onImportExcel={importLeadExcel} onOpen={openLeadDrawer} onBulkAssignCentre={bulkAssignLeadCentre} onBulkDelete={bulkDeleteLeads} />}
-            {panel === "addlead" && <AddLeadPanel centres={centreOptions} courses={courseOptions} allCourses={courses} counsellors={counsellors} onSubmit={addLead} isSuperAdmin={isHeadSuperAdmin} />}
-            {panel === "admissions" && <AdmissionsPanel leads={leads.filter((lead) => lead.stage === "Admission" && !students.some((student) => String(student.leadId || "") === String(lead._id)))} batches={batches} canAssign={canAssignCounsellors} counsellors={counsellors} centres={centreOptions} onPatch={patchLead} onConvert={convertLead} onOpen={openLeadDrawer} />}
-            {panel === "batch" && <BatchPanel batches={batches} students={students} schedules={classSchedulesState} sessions={classSessions} topicProgress={topicProgress} practicalRecords={practicalRecords} studyNotes={studyNotes} npsDashboard={npsDashboard} teachers={teachers} user={user} classWeek={classWeek} setClassWeek={setClassWeek} selectedBatchId={selectedBatchId} setSelectedBatchId={setSelectedBatchId} selectedSessionId={selectedClassSessionId} setSelectedSessionId={setSelectedClassSessionId} initialTab={batchResumeTab} classesGenerating={classesGenerating} attendanceDraft={classAttendanceDraft} setAttendanceDraft={setClassAttendanceDraft} attendanceLogs={attendanceSummaries} selectedAttendanceSummary={selectedAttendanceSummary} attendanceDetailLogs={attendanceDetailLogs} attendanceDetailFilters={attendanceDetailFilters} setAttendanceDetailFilters={setAttendanceDetailFilters} onSelectAttendanceSummary={setSelectedAttendanceSummary} onCreateSchedule={createClassSchedule} onGenerateWeek={generateWeeklyRoster} onSaveAttendance={saveClassAttendance} onResetAttendance={resetClassAttendance} onEditSession={patchClassSession} onTopicProgress={updateTopicProgress} onDeleteTopic={deleteTopicProgress} onCreateBatchPractical={createBatchPractical} onPracticalRecord={updatePracticalRecord} onUploadStudyNote={uploadStudyNote} onDownloadStudyNote={downloadStudyNote} onDeleteStudyNote={deleteStudyNote} onOpen={(student) => { setBatchResumeTab("students"); openProfile({ type: "student", data: student }, "batch"); }} />}
-            {panel === "mystudents" && <StudentsPanel title="My candidates" students={visibleStudents} meta={studentMeta} batches={batches} canAssign={canAssignTeachers} canDelete={canDeleteRecords} teachers={teachers} onPage={setStudentPage} onPatch={patchStudent} onDelete={deleteStudent} onEdit={(student) => openProfile({ type: "student", data: student, mode: "edit" }, "mystudents")} onOpen={(student) => openProfile({ type: "student", data: student }, "mystudents")} />}
-            {panel === "allstudents" && <StudentsPanel title="All candidates" students={students} meta={studentMeta} batches={batches} canAssign={canAssignTeachers} canDelete={canDeleteRecords} teachers={teachers} onPage={setStudentPage} onPatch={patchStudent} onDelete={deleteStudent} onEdit={(student) => openProfile({ type: "student", data: student, mode: "edit" }, "allstudents")} onOpen={(student) => openProfile({ type: "student", data: student }, "allstudents")} />}
+            {panel === "dashboard" && (isCounsellorAccount ? <SalesCounsellorDashboardPanel leads={leads} students={visibleStudents} onOpenLead={openLeadDrawer} onGoLeads={() => setPanel("leads")} onGoAddLead={() => setPanel("addlead")} onGoAdmissions={() => setPanel("admissions")} onOpenStudent={(student) => openProfile({ type: "student", data: student }, "dashboard")} /> : isTeacherAccount ? <TeacherDashboardPanel batches={visibleBatches} students={visibleStudents} sessions={classSessions} schedules={classSchedulesState} topicProgress={topicProgress} practicalRecords={practicalRecords} user={user} googleCalendarStatus={googleCalendarStatus} calendarSyncing={calendarSyncing} onConnectCalendar={connectGoogleCalendar} onDisconnectCalendar={disconnectGoogleCalendar} onSyncCalendar={syncGoogleCalendar} onOpenStudent={(student) => openProfile({ type: "student", data: student }, "dashboard")} onOpenBatch={(batchId, sessionId) => { setSelectedBatchId(batchId); setSelectedClassSessionId(sessionId || ""); setPanel("batch"); }} /> : isOperationsAccount ? <OperationsDashboardPanel students={students} batches={visibleBatches} onOpenStudent={(student) => openProfile({ type: "student", data: student }, "dashboard")} onGoStudents={() => setPanel("allstudents")} onGoFinance={() => setPanel("finance")} onGoEmi={() => setPanel("emi")} onGoCert={() => setPanel("cert")} onGoInternship={() => setPanel("internship")} onGoInventory={() => setPanel("inventory")} inventorySummary={inventorySummary} /> : <DashboardPanel summary={summary} funnel={funnel} centreStats={centreStats} students={students} leads={leads} onOpenLead={openLeadDrawer} />)}
+            {panel === "leads" && <LeadsPanel leads={leads} students={students} batches={visibleBatches} meta={leadMeta} filters={filters} setFilters={setFilters} centres={centreOptions} courses={courseOptions} canAssign={canAssignCounsellors} canDelete={canDeleteRecords} counsellors={actualCounsellors} onSearch={() => loadLeads(1)} onPage={setLeadPage} onPatch={patchLead} onDelete={deleteLead} onEdit={(lead) => openProfile({ type: "lead", data: lead, mode: "edit" }, "leads")} onAddLead={() => setPanel("addlead")} onImportExcel={importLeadExcel} onOpen={openLeadDrawer} onBulkAssignCentre={bulkAssignLeadCentre} onBulkDelete={bulkDeleteLeads} />}
+            {panel === "addlead" && <AddLeadPanel centres={centreOptions} courses={courseOptions} allCourses={courses} counsellors={actualCounsellors} onSubmit={addLead} isSuperAdmin={isHeadSuperAdmin} />}
+            {panel === "admissions" && <AdmissionsPanel leads={admissionLeads} batches={visibleBatches} canAssign={canAssignCounsellors} counsellors={actualCounsellors} centres={centreOptions} onPatch={patchLead} onConvert={convertLead} onOpen={openLeadDrawer} />}
+            {panel === "batch" && <BatchPanel batches={visibleBatches} students={students} schedules={classSchedulesState} sessions={classSessions} topicProgress={topicProgress} practicalRecords={practicalRecords} studyNotes={studyNotes} npsDashboard={npsDashboard} teachers={teachers} user={user} classWeek={classWeek} setClassWeek={setClassWeek} selectedBatchId={selectedBatchId} setSelectedBatchId={setSelectedBatchId} selectedSessionId={selectedClassSessionId} setSelectedSessionId={setSelectedClassSessionId} initialTab={batchResumeTab} classesGenerating={classesGenerating} attendanceDraft={classAttendanceDraft} setAttendanceDraft={setClassAttendanceDraft} attendanceLogs={attendanceSummaries} selectedAttendanceSummary={selectedAttendanceSummary} attendanceDetailLogs={attendanceDetailLogs} attendanceDetailFilters={attendanceDetailFilters} setAttendanceDetailFilters={setAttendanceDetailFilters} onSelectAttendanceSummary={setSelectedAttendanceSummary} onCreateSchedule={createClassSchedule} onGenerateWeek={generateWeeklyRoster} onSaveAttendance={saveClassAttendance} onResetAttendance={resetClassAttendance} onEditSession={patchClassSession} onTopicProgress={updateTopicProgress} onDeleteTopic={deleteTopicProgress} onCreateBatchPractical={createBatchPractical} onPracticalRecord={updatePracticalRecord} onUploadStudyNote={uploadStudyNote} onDownloadStudyNote={downloadStudyNote} onDeleteStudyNote={deleteStudyNote} onOpen={(student) => { setBatchResumeTab("students"); openProfile({ type: "student", data: student }, "batch"); }} />}
+            {panel === "mystudents" && <StudentsPanel title="My candidates" students={visibleStudents} meta={studentMeta} batches={visibleBatches} canAssign={canAssignTeachers} canDelete={canDeleteRecords} teachers={teachers} onPage={setStudentPage} onPatch={patchStudent} onDelete={deleteStudent} onEdit={(student) => openProfile({ type: "student", data: student, mode: "edit" }, "mystudents")} onOpen={(student) => openProfile({ type: "student", data: student }, "mystudents")} />}
+            {panel === "allstudents" && <StudentsPanel title="All candidates" students={students} meta={studentMeta} batches={visibleBatches} canAssign={canAssignTeachers} canDelete={canDeleteRecords} teachers={teachers} onPage={setStudentPage} onPatch={patchStudent} onDelete={deleteStudent} onEdit={(student) => openProfile({ type: "student", data: student, mode: "edit" }, "allstudents")} onOpen={(student) => openProfile({ type: "student", data: student }, "allstudents")} />}
             {panel === "attendance" && <AttendancePanel students={visibleStudents} attendance={attendance} draft={attendanceDraft} setDraft={setAttendanceDraft} attendanceDate={attendanceDateValue} setAttendanceDate={setAttendanceDateValue} onRefresh={loadAttendance} onSave={saveAttendance} />}
             {panel === "logs" && <LogsPanel logs={attendanceSummaries} onSelect={(summary) => { setSelectedAttendanceSummary(summary); setPanel("attdetail"); }} />}
             {panel === "attdetail" && <AttendanceDetailPanel summary={selectedAttendanceSummary} logs={attendanceDetailLogs} filters={attendanceDetailFilters} setFilters={setAttendanceDetailFilters} onBack={() => setPanel("logs")} />}
             {panel === "internship" && canUseInternship && <InternshipPanel students={visibleStudents} user={user} onPreviewPhoto={openInternshipPhotoPreview} onReviewLogbook={reviewLogbookEntry} />}
-            {panel === "nps" && (canManageNps || isTeacherAccount) && <NpsPanel dashboard={npsDashboard} responses={npsResponses} meta={npsMeta} filters={npsFilters} setFilters={(next) => { setNpsFilters(next); setNpsPage(1); }} courses={courseOptions} batches={batches} canManage={canManageNps} onPage={setNpsPage} onFollowUp={saveNpsFollowUp} onExport={exportNps} />}
+            {panel === "nps" && (canManageNps || isTeacherAccount) && <NpsPanel dashboard={npsDashboard} responses={npsResponses} meta={npsMeta} filters={npsFilters} setFilters={(next) => { setNpsFilters(next); setNpsPage(1); }} courses={courseOptions} batches={visibleBatches} canManage={canManageNps} onPage={setNpsPage} onFollowUp={saveNpsFollowUp} onExport={exportNps} />}
             {panel === "alumni" && <AlumniPanel students={isTeacherAccount ? visibleStudents : students} meta={studentMeta} canManage={!isTeacherAccount && !isCounsellorAccount} onPage={setStudentPage} onPatch={patchStudent} onOpen={(student) => openProfile({ type: "student", data: student }, "alumni")} />}
             {panel === "finance" && <FinancePanel students={students} meta={studentMeta} user={user} onPage={setStudentPage} onOpen={(student) => openProfile({ type: "student", data: student }, "finance")} onCashDeposit={recordCashDeposit} onDownloadCashDepositProof={downloadCashDepositProof} />}
             {panel === "emi" && <EmiPanel students={students} meta={studentMeta} onPage={setStudentPage} onOpen={(student) => openProfile({ type: "student", data: student }, "emi")} />}
             {panel === "receipts" && canManageFees && <ReceiptsPanel students={visibleStudents} meta={studentMeta} onPage={setStudentPage} onOpen={(student) => { setReceiptStudent(student); setReceiptSelection({ type: "invoice" }); }} />}
             {panel === "cert" && canManageCertificates && <CertificatePanel students={students} meta={studentMeta} onPage={setStudentPage} onIssue={issueCertificate} onOpen={(student) => openProfile({ type: "student", data: student }, "cert")} />}
-            {panel === "settings" && canManageSettings && <SettingsPanel isHeadSuperAdmin={isHeadSuperAdmin} isCenterAdmin={isCenterAdmin} isHeadBranchAdmin={isHeadBranchAdmin} isFranchiseSuperAdmin={isFranchiseSuperAdmin} centres={centres} courses={courses} batches={batches} counsellors={counsellors} teachers={teachers} user={user} centreOptions={centreOptions} courseOptions={courseOptions} onAddStaff={addCounsellor} onUpdateStaff={updateCounsellor} onAddCentre={(event) => addCentreOrCourse(event, "centres")} onUpdateCentreBilling={updateCentreBilling} onAddCourse={(event) => addCentreOrCourse(event, "courses")} onUpdateCourse={updateCourse} onDeleteCourse={deleteCourse} onAddBatch={addBatch} onUpdateBatch={updateBatch} onDeleteBatch={deleteBatch} onUpdatePassword={updatePassword} />}
+            {panel === "settings" && canManageSettings && <SettingsPanel isHeadSuperAdmin={isHeadSuperAdmin} isCenterAdmin={isCenterAdmin} isHeadBranchAdmin={isHeadBranchAdmin} isFranchiseSuperAdmin={isFranchiseSuperAdmin} centres={centres} courses={courses} batches={visibleBatches} counsellors={counsellors} teachers={teachers} user={user} centreOptions={centreOptions} courseOptions={courseOptions} onAddStaff={addCounsellor} onUpdateStaff={updateCounsellor} onAddCentre={(event) => addCentreOrCourse(event, "centres")} onUpdateCentreBilling={updateCentreBilling} onAddCourse={(event) => addCentreOrCourse(event, "courses")} onUpdateCourse={updateCourse} onDeleteCourse={deleteCourse} onAddBatch={addBatch} onUpdateBatch={updateBatch} onDeleteBatch={deleteBatch} onUpdatePassword={updatePassword} />}
             {panel === "inventory" && canManageInventory && (
               <InventoryPanel
                 summary={inventorySummary}
@@ -3247,7 +3294,7 @@ export default function AdminCrm() {
                 onOpenStudent={(student) => openProfile({ type: "student", data: student }, "inventory")}
               />
             )}
-            {panel === "profile" && <ProfilePanel profile={profile} user={user} accessCount={visibleNavGroups.reduce((sum, group) => sum + group.items.length, 0)} canManageFees={canManageFees} canManageSettings={canManageSettings} canAssignTeachers={canAssignTeachers} canManageCertificates={canManageCertificates} canManageInternships={canManageInternships} canManageInventory={canManageInventory} onIssueKit={(st) => { setIssueKitTargetStudent(st); setIssueKitTargetTablet(null); setIssueKitModalOpen(true); }} centres={centreOptions} courses={courseOptions} allCourses={courses} batches={batches} teachers={teachers} counsellors={counsellors} onBack={closeProfile} onGoSettings={() => setPanel("settings")} onLeadPatch={patchLead} onStudentPatch={patchStudent} onGenerateStudentLmsAccess={generateStudentLmsAccess} onInternshipSave={saveStudentInternship} onInternshipDelete={deleteStudentInternship} onPayment={addPayment} onDownloadPaymentProof={downloadPaymentProof} onFeedback={addStudentFeedback} onIssue={issueCertificate} onPreviewDocument={openDocumentPreview} onPreviewInternshipPhoto={openInternshipPhotoPreview} />}
+            {panel === "profile" && <ProfilePanel profile={profile} user={user} accessCount={visibleNavGroups.reduce((sum, group) => sum + group.items.length, 0)} canManageFees={canManageFees} canManageSettings={canManageSettings} canAssignTeachers={canAssignTeachers} canManageCertificates={canManageCertificates} canManageInternships={canManageInternships} canManageInventory={canManageInventory} onIssueKit={(st) => { setIssueKitTargetStudent(st); setIssueKitTargetTablet(null); setIssueKitModalOpen(true); }} centres={centreOptions} courses={courseOptions} allCourses={courses} batches={visibleBatches} teachers={teachers} counsellors={actualCounsellors} onBack={closeProfile} onGoSettings={() => setPanel("settings")} onLeadPatch={patchLead} onStudentPatch={patchStudent} onGenerateStudentLmsAccess={generateStudentLmsAccess} onInternshipSave={saveStudentInternship} onInternshipDelete={deleteStudentInternship} onPayment={addPayment} onDownloadPaymentProof={downloadPaymentProof} onFeedback={addStudentFeedback} onIssue={issueCertificate} onPreviewDocument={openDocumentPreview} onPreviewInternshipPhoto={openInternshipPhotoPreview} />}
           </section>
         </div>
       </div>
@@ -3258,7 +3305,7 @@ export default function AdminCrm() {
         canAssign={canAssignCounsellors}
         centres={centreOptions}
         courses={courses}
-        counsellors={counsellors}
+        counsellors={actualCounsellors}
         onClose={closeLeadDrawer}
         onPatch={patchLead}
         onFollowUp={addLeadFollowUp}
@@ -4093,8 +4140,13 @@ function LeadsPanel(props: {
   const [bulkCentre, setBulkCentre] = useState("");
   const [isBulkAssigning, setIsBulkAssigning] = useState(false);
 
-  const counsellorNames = (props.counsellors.length
-    ? props.counsellors.map((counsellor) => counsellor.name)
+  const counsellorStaff = useMemo(
+    () => props.counsellors.filter((c) => isCounsellorStaffRole(c.role || "counsellor")),
+    [props.counsellors]
+  );
+
+  const counsellorNames = (counsellorStaff.length
+    ? counsellorStaff.map((counsellor) => counsellor.name)
     : (Array.from(new Set(props.leads.map((lead) => lead.counsellor).filter(Boolean))) as string[])
   ).filter((name) => name && name !== "Unassigned");
 
@@ -4334,6 +4386,10 @@ function LeadTable({
   onToggleSelectAll?: () => void;
 }) {
   const leadStages = stages;
+  const counsellorStaff = useMemo(
+    () => (counsellors || []).filter((c) => isCounsellorStaffRole(c?.role || "counsellor")),
+    [counsellors]
+  );
   const isJunkOrLost = (lead: Lead) => {
     const fb = String(lead.leadFeedback || "").trim().toLowerCase();
     const stg = String(lead.stage || "").trim().toLowerCase();
@@ -4386,7 +4442,7 @@ function LeadTable({
         <tbody>
           {sortedLeads.map((lead) => {
             const displayOwner = leadOwnerForDisplay(lead, students, batches);
-            const hasCounsellorOption = !displayOwner || counsellors.some((counsellor) => counsellor.name === displayOwner);
+            const hasCounsellorOption = !displayOwner || counsellorStaff.some((counsellor) => counsellor.name === displayOwner);
             const isSelected = selectedLeadIds.includes(lead._id);
             return (
             <tr key={lead._id} className={`clickable ${isSelected ? "row-selected" : ""}`} onClick={() => onOpen(lead)}>
@@ -4425,7 +4481,7 @@ function LeadTable({
                 )}
               </td>
               <td>{canAssign ? <select className="mini-select" value={lead.centre || ""} onClick={(e) => e.stopPropagation()} onChange={(event) => onPatch(lead._id, { centre: event.target.value })}><option value="">Assign centre</option>{centres.map((centre) => <option key={centre}>{centre}</option>)}</select> : lead.centre || "-"}</td>
-              <td>{canAssign ? <select className="mini-select" value={displayOwner} onClick={(e) => e.stopPropagation()} onChange={(event) => onPatch(lead._id, { counsellor: event.target.value })}><option value="">Unassigned</option>{!hasCounsellorOption && <option value={displayOwner}>{displayOwner}</option>}{counsellors.map((counsellor) => <option key={counsellor.email}>{counsellor.name}</option>)}</select> : displayOwner || "-"}</td>
+              <td>{canAssign ? <select className="mini-select" value={displayOwner} onClick={(e) => e.stopPropagation()} onChange={(event) => onPatch(lead._id, { counsellor: event.target.value })}><option value="">Unassigned</option>{!hasCounsellorOption && <option value={displayOwner}>{displayOwner}</option>}{counsellorStaff.map((counsellor) => <option key={counsellor.email || counsellor._id || counsellor.name} value={counsellor.name}>{counsellor.name}</option>)}</select> : displayOwner || "-"}</td>
               <td onClick={(event) => event.stopPropagation()}><select className="fbtn stage-select" value={leadStages.includes(lead.stage) ? lead.stage : "New Lead"} onChange={(event) => onPatch(lead._id, { stage: event.target.value })}>{leadStages.map((stage) => <option key={stage}>{stage}</option>)}</select></td>
               <td onClick={(event) => event.stopPropagation()}><select className={`fbtn stage-select feedback-select ${leadFeedbackBadgeClass(lead.leadFeedback)}`} value={normalizeLeadFeedbackStatus(lead.leadFeedback)} onChange={(event) => onPatch(lead._id, { leadFeedback: event.target.value })}>{leadFeedbackOptions.map((feedback) => <option key={feedback}>{feedback}</option>)}</select></td>
               <td><span className={`badge ${priorityBadgeClass(lead.priority)}`}>{leadPriorityLabel(lead.priority)}</span></td>
@@ -4506,10 +4562,15 @@ function AddLeadPanel({ centres, courses, allCourses = [], counsellors = [], onS
         <SelectField name="leadFeedback" label="Status" options={leadFeedbackOptions} defaultValue="New" />
         <div className="field"><RequiredLabel required>Centre / franchise</RequiredLabel><select name="centre" required value={centreDraft} onChange={(event) => { setCentreDraft(event.target.value); setCourseDraft(""); }}><option value="" disabled>Select centre</option>{centres.map((centre) => <option key={centre}>{centre}</option>)}</select></div>
         <div className="field">
-          <RequiredLabel>Course</RequiredLabel>
-          <select name="course" value={courseDraft} onChange={(event) => setCourseDraft(event.target.value)}>
-            <option value="">Select course</option>
-            {availableCourses.map((course) => <option key={course}>{course}</option>)}
+          <RequiredLabel required>Course</RequiredLabel>
+          <select
+            name="course"
+            required
+            value={courseDraft}
+            onChange={(event) => setCourseDraft(event.target.value)}
+          >
+            <option value="" disabled>Select course</option>
+            {availableCourses.map((course) => <option key={course} value={course}>{course}</option>)}
           </select>
           {selectedCoursePayable > 0 && (
             <span className="field-help" style={{ color: "var(--primary, #4F6BFF)", fontWeight: 600 }}>
@@ -6871,6 +6932,59 @@ function IssueKitModal({
 
   const availableTablets = tablets.filter((t) => t.status === "In Stock");
 
+  const [candidateSearch, setCandidateSearch] = useState("");
+  const [candidateDropdownOpen, setCandidateDropdownOpen] = useState(false);
+  const candidateDropdownRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    const handleClickOutside = (e: MouseEvent) => {
+      if (candidateDropdownRef.current && !candidateDropdownRef.current.contains(e.target as Node)) {
+        setCandidateDropdownOpen(false);
+      }
+    };
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => document.removeEventListener("mousedown", handleClickOutside);
+  }, []);
+
+  const filteredCandidates = useMemo(() => {
+    const q = candidateSearch.trim().toLowerCase();
+    if (!q) return students.slice(0, 60);
+    return students.filter((s) => {
+      return [
+        s.fullName,
+        s.phone,
+        s.admissionNumber,
+        s.course,
+        s.batch,
+        s.centre,
+        s.studentLocation,
+      ].some((v) => String(v || "").toLowerCase().includes(q));
+    }).slice(0, 60);
+  }, [students, candidateSearch]);
+
+  const currentStudent = useMemo(() => {
+    return students.find((s) => s._id === selectedStudentId) || targetStudent || null;
+  }, [students, selectedStudentId, targetStudent]);
+
+  const selectStudent = (st: Student) => {
+    setSelectedStudentId(st._id);
+    setIdCardNumber(st.admissionNumber || "");
+    setCandidateDropdownOpen(false);
+    setCandidateSearch("");
+    const kd = st.kitDistribution || {};
+    setIssueIdCard(!kd.idCardIssued);
+    setIssueTshirt(!kd.tshirtIssued);
+    if (Array.isArray(kd.tshirts) && kd.tshirts.length > 0) {
+      setTshirtSelections(kd.tshirts.map((t) => ({ size: (t.size as TshirtSize) || "L", quantity: t.quantity || 1 })));
+    } else if (kd.tshirtSize && ["S", "M", "L", "XL", "XXL"].includes(kd.tshirtSize as any)) {
+      setTshirtSelections([{ size: kd.tshirtSize as TshirtSize, quantity: kd.tshirtQuantity || 1 }]);
+    } else {
+      setTshirtSelections([{ size: "L", quantity: 1 }]);
+    }
+    setIssueBag(!kd.bagIssued);
+    setIssueTablet(!kd.tabletIssued);
+  };
+
   useEffect(() => {
     if (targetStudent) {
       setSelectedStudentId(targetStudent._id);
@@ -7021,26 +7135,186 @@ function IssueKitModal({
               minHeight: 0,
             }}
           >
-            <div className="field" style={{ margin: 0, width: "100%", maxWidth: "100%" }}>
-              <label style={{ marginBottom: 3, fontSize: 11.5, fontWeight: 700 }}>Select Candidate</label>
-              <select
-                className="fbtn"
-                style={{ height: 34, fontSize: 12, width: "100%", maxWidth: "100%", minWidth: 0 }}
-                value={selectedStudentId}
-                onChange={(e) => {
-                  const id = e.target.value;
-                  setSelectedStudentId(id);
-                  const st = students.find((s) => s._id === id);
-                  if (st) setIdCardNumber(st.admissionNumber || "");
-                }}
-                required
-              >
-                {students.map((st) => (
-                  <option key={st._id} value={st._id}>
-                    {st.fullName} ({courseShortCode(st.course)} - {st.batch || "No batch"} - {st.admissionNumber || st.phone})
-                  </option>
-                ))}
-              </select>
+            {/* Searchable Candidate Selector */}
+            <div className="field" style={{ margin: 0, width: "100%", maxWidth: "100%", position: "relative" }} ref={candidateDropdownRef}>
+              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 4 }}>
+                <label style={{ fontSize: 11.5, fontWeight: 700, margin: 0 }}>
+                  Candidate <span style={{ color: "var(--danger, #EF4444)" }}>*</span>
+                </label>
+                <span style={{ fontSize: 11, color: "var(--text-400, #94A3B8)" }}>
+                  {students.length} candidates available
+                </span>
+              </div>
+
+              {/* Selected Candidate Active Card */}
+              {currentStudent && !candidateDropdownOpen && (
+                <div
+                  onClick={() => setCandidateDropdownOpen(true)}
+                  style={{
+                    display: "flex",
+                    alignItems: "center",
+                    justifyContent: "space-between",
+                    padding: "8px 12px",
+                    background: "var(--surface-2, #F8FAFC)",
+                    border: "1px solid var(--border, #E2E8F0)",
+                    borderRadius: 8,
+                    cursor: "pointer",
+                    transition: "all 0.15s ease",
+                  }}
+                  title="Click to search or change candidate"
+                >
+                  <div style={{ display: "flex", alignItems: "center", gap: 10, minWidth: 0 }}>
+                    <span className="avatar lead-avatar" style={{ width: 28, height: 28, fontSize: 11, flex: "0 0 28px" }}>
+                      {initials(currentStudent.fullName)}
+                    </span>
+                    <div style={{ minWidth: 0 }}>
+                      <div style={{ display: "flex", alignItems: "center", gap: 6, flexWrap: "wrap" }}>
+                        <span style={{ fontWeight: 700, fontSize: 13, color: "var(--text-strong, #0F172A)" }}>
+                          {currentStudent.fullName}
+                        </span>
+                        <span className="badge badge-blue" style={{ fontSize: 10, padding: "1px 6px" }}>
+                          {courseShortCode(currentStudent.course)}
+                        </span>
+                        {currentStudent.batch && (
+                          <span className="badge badge-gray" style={{ fontSize: 10, padding: "1px 6px" }}>
+                            {currentStudent.batch}
+                          </span>
+                        )}
+                      </div>
+                      <div style={{ fontSize: 11, color: "var(--text-muted, #64748B)", marginTop: 1 }}>
+                        {currentStudent.admissionNumber ? `Adm: ${currentStudent.admissionNumber}` : `Phone: ${currentStudent.phone}`}
+                        {currentStudent.centre && ` • ${currentStudent.centre}`}
+                      </div>
+                    </div>
+                  </div>
+                  <button
+                    type="button"
+                    className="btn btn-sm btn-soft"
+                    style={{ fontSize: 11, padding: "3px 8px", height: "auto", flex: "0 0 auto" }}
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      setCandidateDropdownOpen(true);
+                    }}
+                  >
+                    Change
+                  </button>
+                </div>
+              )}
+
+              {/* Search Bar Input & Dropdown Menu */}
+              {(candidateDropdownOpen || !currentStudent) && (
+                <div style={{ position: "relative", width: "100%" }}>
+                  <div style={{ position: "relative", display: "flex", alignItems: "center" }}>
+                    <Search size={14} style={{ position: "absolute", left: 10, color: "var(--text-400, #94A3B8)", pointerEvents: "none" }} />
+                    <input
+                      type="text"
+                      autoFocus
+                      className="fbtn"
+                      style={{
+                        height: 36,
+                        fontSize: 12,
+                        width: "100%",
+                        paddingLeft: 32,
+                        paddingRight: candidateSearch ? 28 : 10,
+                        boxSizing: "border-box",
+                      }}
+                      placeholder="Search name, phone, admission ID, batch..."
+                      value={candidateSearch}
+                      onChange={(e) => setCandidateSearch(e.target.value)}
+                      onFocus={() => setCandidateDropdownOpen(true)}
+                    />
+                    {candidateSearch && (
+                      <button
+                        type="button"
+                        onClick={() => setCandidateSearch("")}
+                        style={{
+                          position: "absolute",
+                          right: 8,
+                          background: "transparent",
+                          border: "none",
+                          cursor: "pointer",
+                          color: "var(--text-400, #94A3B8)",
+                          padding: 2,
+                        }}
+                      >
+                        <X size={13} />
+                      </button>
+                    )}
+                  </div>
+
+                  {/* Dropdown Options List */}
+                  {candidateDropdownOpen && (
+                    <div
+                      style={{
+                        position: "absolute",
+                        top: "100%",
+                        left: 0,
+                        right: 0,
+                        marginTop: 4,
+                        maxHeight: 200,
+                        overflowY: "auto",
+                        background: "#FFFFFF",
+                        border: "1px solid var(--border, #E2E8F0)",
+                        borderRadius: 8,
+                        boxShadow: "0 10px 25px -5px rgba(0,0,0,0.1), 0 8px 10px -6px rgba(0,0,0,0.1)",
+                        zIndex: 100,
+                      }}
+                    >
+                      {filteredCandidates.map((st) => {
+                        const isSelected = st._id === selectedStudentId;
+                        return (
+                          <div
+                            key={st._id}
+                            onClick={() => selectStudent(st)}
+                            style={{
+                              display: "flex",
+                              alignItems: "center",
+                              justifyContent: "space-between",
+                              padding: "8px 12px",
+                              cursor: "pointer",
+                              borderBottom: "1px solid #F1F5F9",
+                              background: isSelected ? "#EEF2FF" : "transparent",
+                              transition: "background 0.12s ease",
+                            }}
+                            onMouseEnter={(e) => {
+                              if (!isSelected) e.currentTarget.style.background = "#F8FAFC";
+                            }}
+                            onMouseLeave={(e) => {
+                              if (!isSelected) e.currentTarget.style.background = "transparent";
+                            }}
+                          >
+                            <div style={{ display: "flex", alignItems: "center", gap: 8, minWidth: 0 }}>
+                              <span className="avatar lead-avatar" style={{ width: 26, height: 26, fontSize: 10.5, flex: "0 0 26px" }}>
+                                {initials(st.fullName)}
+                              </span>
+                              <div style={{ minWidth: 0 }}>
+                                <div style={{ display: "flex", alignItems: "center", gap: 5 }}>
+                                  <span style={{ fontWeight: 600, fontSize: 12.5, color: "#0F172A" }}>
+                                    {st.fullName}
+                                  </span>
+                                  <span className="badge badge-blue" style={{ fontSize: 9.5, padding: "0 5px" }}>
+                                    {courseShortCode(st.course)}
+                                  </span>
+                                </div>
+                                <div style={{ fontSize: 10.5, color: "#64748B" }}>
+                                  {st.admissionNumber ? `Adm: ${st.admissionNumber}` : st.phone}
+                                  {st.batch ? ` • ${st.batch}` : ""}
+                                </div>
+                              </div>
+                            </div>
+                            {isSelected && <Check size={14} color="#4F6BFF" />}
+                          </div>
+                        );
+                      })}
+                      {!filteredCandidates.length && (
+                        <div style={{ padding: "14px 12px", textAlign: "center", fontSize: 12, color: "#94A3B8" }}>
+                          No candidates found matching "{candidateSearch}"
+                        </div>
+                      )}
+                    </div>
+                  )}
+                </div>
+              )}
             </div>
 
             <div style={{ display: "grid", gap: 6, border: "1px solid var(--border)", borderRadius: 10, padding: "10px 14px", background: "#FBFBFE", width: "100%", boxSizing: "border-box" }}>

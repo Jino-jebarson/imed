@@ -1,5 +1,8 @@
 import { useEffect, useLayoutEffect, useRef, useState } from "react";
 import { trackPixelLead } from "../../shared/metaPixel";
+import "./HomePage.mobile.css";
+import { BsBriefcaseFill, BsBuildingFill, BsMortarboardFill, BsPeopleFill, BsChatDots } from "react-icons/bs";
+import { FaArrowRight } from "react-icons/fa6";
 import svgPaths from "./svg-xnb1grkepi";
 import imgImage1712 from "./imedLogoTMTag.svg";
 import { ImedLogo } from "./ImedLogo";
@@ -32,11 +35,11 @@ import imgRectangle10 from "./rectangle10.webp";
 import imgRectangle11 from "./rectangle11.webp";
 import imgRectangle12 from "./rectangle12.webp";
 import imgRectangle156 from "./rectangle156.webp";
-import imgEllipse5 from "./ellipse5.png";
-import imgEllipse6 from "./ellipse6.png";
-import imgEllipse7 from "./ellipse7.png";
-import imgRiyaKrishnamurthy from "./riyakrishnamurthy.png";
-import imgAnanya from "./ananya.png";
+import imgEllipse5 from "./ellipse5.svg";
+import imgEllipse6 from "./ananya.svg";
+import imgEllipse7 from "./ellipse7.svg";
+import imgRiyaKrishnamurthy from "./riyakrishnamurthy.svg";
+import imgAnanya from "./sweety.svg";
 import imgImage1727 from "./image1727.webp";
 import imgImage1718 from "./image1718.png";
 import imgImage1709 from "./image1709.webp";
@@ -200,7 +203,11 @@ function computeSalaryBreakdown(selection: ScopeDemandSelections): SalaryBreakdo
 function Group34() {
   return (
     <div className="h-[38px] w-[203px] relative shrink-0 flex items-center" data-name="image 1712">
-      <ImedLogo className="h-full w-full object-contain pointer-events-none select-none" />
+      <img
+        src={imgImage1712}
+        alt="iMED Academy"
+        className="h-full w-full object-contain pointer-events-none select-none"
+      />
     </div>
   );
 }
@@ -2884,8 +2891,8 @@ function StudentStoryCard({
       </div>
       <p
         className={`absolute font-['Inter:Regular',sans-serif] font-normal not-italic text-white ${isActive
-            ? "bottom-[40%] leading-[30px] left-[calc(50%-222.5px)] text-[20px] top-[26.67%] w-[445px]"
-            : "bottom-[40%] leading-[22px] left-[calc(50%-163.17px)] text-[14.667px] top-[26.67%] w-[326.333px]"
+          ? "bottom-[40%] leading-[30px] left-[calc(50%-222.5px)] text-[20px] top-[26.67%] w-[445px]"
+          : "bottom-[40%] leading-[22px] left-[calc(50%-163.17px)] text-[14.667px] top-[26.67%] w-[326.333px]"
           }`}
       >{`"${quote}"`}</p>
       <div className={`absolute content-stretch flex items-center ${isActive ? "gap-[21px] left-[41px] top-[262px]" : "gap-[15.4px] left-[30.07px] top-[192.13px]"}`}>
@@ -2906,39 +2913,40 @@ function StudentStoryCard({
 function Frame72() {
   const stories = [
     {
+      quote: "The guidance and training helped me become more confident about starting my career. Being placed at CK Birla Hospital is a proud moment for me",
+      name: "Ritik",
+      role: "Doctor Assistant & Patient Coordinator",
+      image: imgEllipse7,
+    },
+    {
       quote:
-        "I completed my B.com and had no idea what to do. My parents were worried. I had a job offer from Apollo Hospital. I couldn't believe it happened so fast. IMED changed my life.",
-      name: "Anshika",
-      role: "Claims Processing Executive",
+        "A great learning experience that gave me the confidence to step into hospital administration. I’m happy to begin my internship at Yashoda Hospitals.",
+      name: "Laxmi",
+      role: "Hospital Administration",
       image: imgRiyaKrishnamurthy,
     },
     {
       quote:
-        "The communication and hospital etiquette training set me apart. My employer told me I was the most prepared candidate they had seen from any skilling program.",
-      name: "Rahul Verma",
-      role: "Patient Coordinator",
+        "The training helped me understand hospital administration better and prepare for the workplace. Getting selected at Cloudnine Hospitals was a special moment for me",
+      name: "Gudia",
+      role: "Hospital Administration",
       image: imgEllipse6,
     },
     {
       quote:
-        "I was completely lost after 12th. iMED gave me a clear path, real skills, and got me placed at KRS Multi-speciality hospital within 45 days of completing my course. I'm earning more than I expected.",
-      name: "Ananya Krishnan",
-      role: "Medical Records Assistant",
+        "I gained valuable knowledge and confidence throughout my learning journey. I’m excited to start my internship at Marengo Asia Healthcare",
+      name: "Sweety",
+      role: "Hospital Administration",
       image: imgAnanya,
     },
     {
       quote:
-        "I had no idea what to do after 12th. iMED gave me direction, real skills, and a job at a private hospital within 5 months. Life changed completely.",
-      name: "Priya Sharma",
-      role: "Front Desk Executive",
+        "The experience helped me understand the healthcare field and find the right direction for my career. I’m grateful for this opportunity at Healing Tree Hospital",
+      name: "Anshika",
+      role: "Hospital Administration",
       image: imgEllipse5,
     },
-    {
-      quote: "As a parent I was nervous. But monthly progress reports, personal calls from the placement team ? they kept us involved every step. iMED delivered on every promise.",
-      name: "Sunita Gupta",
-      role: "Parent of iMED Graduate",
-      image: imgEllipse7,
-    },
+
   ];
   const loopedStories = [...stories, ...stories];
   const scrollerRef = useRef<HTMLDivElement>(null);
@@ -5917,6 +5925,1745 @@ function About6({
   );
 }
 
+function MobileSectionHeader({ badge, title, subtitle }: { badge: string; title: string; subtitle?: string }) {
+  return (
+    <div className="text-center px-4 mb-6">
+      <p className="text-[#25a88d] text-[13px] font-bold tracking-wide uppercase mb-1">{badge}</p>
+      <h2 className="text-[#1f3471] text-[22px] font-bold leading-tight">{title}</h2>
+      {subtitle && <p className="text-[#4a5565] text-[13px] leading-[1.65] mt-2 max-w-[340px] mx-auto">{subtitle}</p>}
+    </div>
+  );
+}
+
+function MobileNavBar({ onOpenCareers }: { onOpenCareers: () => void }) {
+  const [menuOpen, setMenuOpen] = useState(false);
+  const navLinks = [
+    { label: "Programs", target: "career-path" },
+    { label: "Online Programs", target: "imed-online" },
+    { label: "Our Partners", target: "trusted-partners" },
+    { label: "About Us", target: "about-imed" },
+    { label: "Why iMED", target: "why-imed" },
+    { label: "Contact Us", target: "contact-us" },
+  ];
+
+  useEffect(() => {
+    if (menuOpen) {
+      document.body.style.overflow = "hidden";
+    } else {
+      document.body.style.overflow = "";
+    }
+    return () => {
+      document.body.style.overflow = "";
+    };
+  }, [menuOpen]);
+
+  const scrollTo = (id: string) => {
+    setMenuOpen(false);
+    if (!id) return;
+    setTimeout(() => {
+      const mobileContainer = document.querySelector(".homepage-mobile-view");
+      const targetEl =
+        mobileContainer?.querySelector<HTMLElement>(`#${id}`) ||
+        document.getElementById(id);
+      if (targetEl) {
+        const headerOffset = 65;
+        const offset =
+          targetEl.getBoundingClientRect().top + window.pageYOffset - headerOffset;
+        window.scrollTo({
+          top: offset > 0 ? offset : 0,
+          behavior: "smooth",
+        });
+      }
+    }, 120);
+  };
+  return (
+    <header className="fixed left-0 top-0 z-[200] w-full bg-white shadow-[0px_2px_8px_rgba(40,53,147,0.08)] mob-nav-header border-b border-gray-100">
+      <div className="flex h-[60px] items-center justify-between px-4 w-full">
+        <button
+          type="button"
+          aria-label="Go to top"
+          className="flex items-center shrink-0 border-0 bg-transparent p-0 cursor-pointer"
+          onClick={() => {
+            setMenuOpen(false);
+            window.scrollTo({ top: 0, behavior: "smooth" });
+          }}
+        >
+          <div className="h-[34px] sm:h-[38px] w-[185px] sm:w-[203px] relative shrink-0 flex items-center">
+            <img
+              src={imgImage1712}
+              alt="iMED Academy"
+              className="h-full w-full object-contain pointer-events-none select-none"
+            />
+          </div>
+        </button>
+
+        <button
+          type="button"
+          aria-label={menuOpen ? "Close menu" : "Open menu"}
+          onClick={() => setMenuOpen((v) => !v)}
+          className="flex flex-col justify-center items-end gap-[5.5px] w-[36px] h-[36px] bg-transparent border-0 shrink-0 p-1 cursor-pointer focus:outline-none select-none"
+        >
+          <span
+            className={`block h-[2.5px] bg-[#1f3471] rounded-full transition-all duration-300 origin-center ${menuOpen ? "w-[22px] rotate-45 translate-y-[4px]" : "w-[22px]"
+              }`}
+          />
+          <span
+            className={`block h-[2.5px] bg-[#1f3471] rounded-full transition-all duration-300 origin-center ${menuOpen ? "w-[22px] -rotate-45 -translate-y-[4px]" : "w-[15px]"
+              }`}
+          />
+        </button>
+      </div>
+
+      {/* Backdrop */}
+      <div
+        className={`fixed inset-0 bg-black/45 backdrop-blur-[2px] z-[250] transition-opacity duration-300 ${menuOpen ? "opacity-100 pointer-events-auto" : "opacity-0 pointer-events-none"
+          }`}
+        onClick={() => setMenuOpen(false)}
+        aria-hidden="true"
+      />
+
+      {/* Right Side Drawer / Modal */}
+      <aside
+        aria-label="Mobile Navigation"
+        className={`fixed top-0 right-0 h-full w-[290px] max-w-[85vw] bg-white z-[260] shadow-2xl flex flex-col justify-between transition-transform duration-300 ease-out ${menuOpen ? "translate-x-0" : "translate-x-full"
+          }`}
+      >
+        {/* Drawer Header */}
+        <div className="flex items-center justify-between px-5 h-[62px] border-b border-gray-100 shrink-0">
+          <div className="h-[28px] w-[145px] flex items-center">
+            <img
+              src={imgImage1712}
+              alt="iMED Academy"
+              className="h-full w-full object-contain pointer-events-none select-none"
+            />
+          </div>
+          <button
+            type="button"
+            aria-label="Close menu"
+            onClick={() => setMenuOpen(false)}
+            className="flex items-center justify-center size-[34px] rounded-full text-gray-500 hover:text-gray-900 hover:bg-gray-100 transition-colors cursor-pointer border-0 bg-transparent text-[22px] leading-none"
+          >
+            &times;
+          </button>
+        </div>
+
+        {/* Drawer Nav Links */}
+        <nav className="flex-1 overflow-y-auto px-4 py-4 flex flex-col gap-1">
+          {navLinks.map((item) => (
+            <button
+              key={item.label}
+              type="button"
+              onClick={(e) => {
+                e.stopPropagation();
+                scrollTo(item.target);
+              }}
+              className="text-left text-[15.5px] font-medium text-[#1f3471] py-3 px-3 rounded-[10px] hover:bg-[#f0f4ff] transition-colors flex items-center justify-between cursor-pointer border-0 bg-transparent w-full"
+            >
+              <span>{item.label}</span>
+              <span className="text-[#25a88d] text-[18px] font-light">&rsaquo;</span>
+            </button>
+          ))}
+          <button
+            type="button"
+            onClick={(e) => {
+              e.stopPropagation();
+              setMenuOpen(false);
+              onOpenCareers();
+            }}
+            className="text-left text-[15.5px] font-medium text-[#1f3471] py-3 px-3 rounded-[10px] hover:bg-[#f0f4ff] transition-colors flex items-center justify-between cursor-pointer border-0 bg-transparent w-full"
+          >
+            <span>Careers</span>
+            <span className="text-[#25a88d] text-[18px] font-light">&rsaquo;</span>
+          </button>
+          <button
+            type="button"
+            onClick={(e) => {
+              e.stopPropagation();
+              setMenuOpen(false);
+              window.location.hash = "#skillbridge";
+              window.scrollTo({ top: 0, behavior: "smooth" });
+            }}
+            className="text-left text-[15.5px] font-medium text-[#1f3471] py-3 px-3 rounded-[10px] hover:bg-[#f0f4ff] transition-colors flex items-center justify-between cursor-pointer border-0 bg-transparent w-full"
+          >
+            <span>Skillbridge</span>
+            <span className="text-[#25a88d] text-[18px] font-light">&rsaquo;</span>
+          </button>
+        </nav>
+
+        {/* Apply Now - Placed at the very LAST */}
+        <div className="p-4 border-t border-gray-100 bg-gray-50/60 shrink-0">
+          <button
+            type="button"
+            onClick={(e) => {
+              e.stopPropagation();
+              scrollTo("contact-us");
+            }}
+            className="w-full bg-[#25a88d] text-white font-semibold text-[15px] py-3.5 rounded-[12px] shadow-sm hover:bg-[#1e8d76] active:scale-[0.98] transition-all text-center cursor-pointer border-0 tracking-wide"
+          >
+            Apply Now
+          </button>
+        </div>
+      </aside>
+    </header>
+  );
+}
+
+function MobileHeroSection() {
+  const [visibleCount, setVisibleCount] = useState(0);
+  const word = "Achievement";
+  useEffect(() => {
+    const timer = window.setInterval(() => {
+      setVisibleCount((prev) => {
+        if (prev >= word.length) {
+          window.clearInterval(timer);
+          return prev;
+        }
+        return prev + 1;
+      });
+    }, 90);
+    return () => window.clearInterval(timer);
+  }, []);
+
+  const scrollToContact = () => {
+    const mobileContainer = document.querySelector(".homepage-mobile-view");
+    const el = mobileContainer?.querySelector<HTMLElement>("#contact-us") || document.getElementById("contact-us");
+    if (el) {
+      const offset = el.getBoundingClientRect().top + window.pageYOffset - 65;
+      window.scrollTo({ top: offset > 0 ? offset : 0, behavior: "smooth" });
+    }
+  };
+
+  const openWhatsApp = () => {
+    window.open("https://wa.me/919266790357?text=Hi%20iMED%20Academy%2C%20I%20would%20like%20to%20talk%20to%20an%20expert%20about%20your%20programs.", "_blank");
+  };
+
+  return (
+    <section id="hero-section" className="relative w-full bg-white overflow-hidden pt-[66px]">
+
+      {/* Girl image - positioned on the right, scales proportionally across all mobile sizes */}
+      <div
+        className="mobile-hero-girl absolute top-[190px] z-10 pointer-events-none"
+        style={{ right: "-20%", width: "90%", maxWidth: "520px" }}
+      >
+        <img
+          src={imgImage1736}
+          alt="iMED Academy Student"
+          className="w-full h-auto object-contain drop-shadow-md"
+          loading="eager"
+          decoding="async"
+        />
+      </div>
+
+      {/* "Your Career Starts Here" annotation */}
+      <div className="absolute right-2 top-[68px] z-20 flex flex-col items-end pointer-events-none select-none">
+        <span className="font-caveat text-[#0c1e5b] text-[15px] font-bold leading-[1.05] text-right" style={{ transform: "rotate(-4deg)" }}>
+          Your Career<br />Starts Here
+        </span>
+        <svg className="w-4 h-6 text-[#0c1e5b] mr-4 mt-0.5" viewBox="0 0 20 28" fill="none">
+          <path d="M14 2C15 9 12 16 7 22" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" />
+          <path d="M5 16L7 23L12 20" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" />
+        </svg>
+      </div>
+
+      {/* Content */}
+      <div className="relative z-[15] px-4 pt-2 pb-4">
+        {/* Badge - full width available */}
+        <div className="inline-flex items-center gap-[5px] border border-[#00a884]/40 rounded-full px-2.5 py-[3px] mb-3 bg-white/95">
+          <div className="w-[7px] h-[7px] rounded-full bg-[#00a884]" />
+          <p className="text-[#00a884] text-[11px] font-semibold whitespace-nowrap">India&apos;s Career Launchpad</p>
+        </div>
+
+        {/* Heading - spans full width, "From Aspiration" fits on one line */}
+        <h1 className="text-[#0c1e5b] font-extrabold leading-[1.1] mb-2 tracking-[-0.3px]">
+          <span className="block text-[28px]">From Aspiration</span>
+          <span className="block text-[28px]">
+            to <span className="text-[#00a884]">{word.slice(0, visibleCount)}</span>
+          </span>
+        </h1>
+
+        {/* Subtitle - constrained to left side so it doesn't overlap with girl */}
+        <div className="max-w-[55%]">
+          <p className="text-[#475569] text-[12.5px] leading-[1.45] mb-1">
+            Practical training. Industry skills. Real opportunities.
+          </p>
+          <p className="text-[#475569] text-[12.5px] leading-[1.45] mb-4">
+            We prepare you for the roles that shape your future.
+          </p>
+        </div>
+
+        {/* Buttons - constrained to left side */}
+        <div className="flex flex-col gap-2.5 w-[150px]">
+          <button
+            type="button"
+            onClick={scrollToContact}
+            className="bg-[#00a884] text-white text-[13px] font-semibold rounded-[10px] py-[10px] w-full flex items-center justify-center gap-2 shadow-sm hover:bg-[#009272] transition-colors active:scale-[0.98]"
+          >
+            Apply Now
+            <FaArrowRight className="text-[11px]" />
+          </button>
+          <button
+            type="button"
+            onClick={openWhatsApp}
+            className="border-[1.5px] border-[#1f3471]/30 bg-white text-[#1f3471] text-[12px] font-semibold rounded-[10px] py-[9px] w-full flex items-center justify-center gap-1.5 hover:bg-slate-50 transition-colors active:scale-[0.98]"
+          >
+            <BsChatDots className="text-[13px]" />
+            Talk to an Expert
+          </button>
+        </div>
+      </div>
+    </section>
+  );
+}
+
+function MobileStatsSection() {
+  const stats = [
+    {
+      value: "60+",
+      label: "Career Roles",
+      icon: <BsBriefcaseFill className="text-[#0c1e5b] text-[17px]" />,
+    },
+    {
+      value: "100+",
+      label: "Hiring Partners",
+      icon: <BsBuildingFill className="text-[#0c1e5b] text-[17px]" />,
+    },
+    {
+      value: "Hands-on",
+      label: "Practical Training",
+      icon: <BsMortarboardFill className="text-[#0c1e5b] text-[17px]" />,
+    },
+    {
+      value: "Placement",
+      label: "Assistance",
+      icon: <BsPeopleFill className="text-[#0c1e5b] text-[17px]" />,
+    },
+  ];
+
+  return (
+    <section className="relative z-20 px-3.5 mt-1 mb-5">
+      <div className="bg-white rounded-[20px] shadow-[0_4px_24px_rgba(15,23,42,0.07)] border border-slate-100/80 px-4 py-4">
+        <div className="grid grid-cols-2 gap-x-4 gap-y-4">
+          {stats.map((s, i) => (
+            <div key={i} className="flex items-center gap-2.5">
+              <div className="size-[40px] rounded-full shrink-0 flex items-center justify-center bg-[#edf5fd]">
+                {s.icon}
+              </div>
+              <div className="min-w-0">
+                <p className="text-[#0c1e5b] text-[16px] font-bold leading-tight">
+                  {s.value}
+                </p>
+                <p className="text-[#6b7280] text-[11px] font-medium leading-tight mt-0.5">
+                  {s.label}
+                </p>
+              </div>
+            </div>
+          ))}
+        </div>
+      </div>
+    </section>
+  );
+}
+
+function MobileTrustedPartners() {
+  const row1 = [
+    imgImage1728,
+    imgImage1729,
+    imgDownload12,
+    imgImage1730,
+    imgAlphonsaLogo768X2001,
+    imgCkBirlaHospital,
+    imgDownload1,
+    imgDownload11,
+    imgMedideskLogo,
+  ];
+  const row2 = [
+    imgImage1732,
+    imgKmcims1,
+    imgDownload22,
+    imgDmhLogo1,
+    imgLogo11,
+    imgLeoHospitalLogo1,
+    imgMedia19Df1Ed29F463Db903203C85909Eb6B672B0639981,
+    imgAfba89EcFf22455EBad85E19B591A00517581886908541,
+    imgDownload2,
+    imgDownload21,
+  ];
+  return (
+    <section id="trusted-partners" className="bg-white py-8 overflow-hidden">
+      <p className="text-[#25a88d] text-[13px] font-semibold text-center uppercase tracking-wider mb-4">
+        Trusted Partners
+      </p>
+      <div className="mob-trusted-mask mb-3">
+        <div className="mob-trusted-track mob-trusted-row-rtl">
+          {[row1, row1].map((row, gi) => (
+            <div key={gi} className="mob-trusted-group">
+              {row.map((src, i) => (
+                <div key={i} className="h-[28px] w-auto flex-shrink-0">
+                  <img
+                    src={src}
+                    alt="Partner Logo"
+                    className="h-full w-auto object-contain pointer-events-none"
+                    loading="lazy"
+                    decoding="async"
+                  />
+                </div>
+              ))}
+            </div>
+          ))}
+        </div>
+      </div>
+      <div className="mob-trusted-mask">
+        <div className="mob-trusted-track mob-trusted-row-ltr">
+          {[row2, row2].map((row, gi) => (
+            <div key={gi} className="mob-trusted-group">
+              {row.map((src, i) => (
+                <div key={i} className="h-[28px] w-auto flex-shrink-0">
+                  <img
+                    src={src}
+                    alt="Partner Logo"
+                    className="h-full w-auto object-contain pointer-events-none"
+                    loading="lazy"
+                    decoding="async"
+                  />
+                </div>
+              ))}
+            </div>
+          ))}
+        </div>
+      </div>
+    </section>
+  );
+}
+
+function MobileAboutSection() {
+  return (
+    <section id="about-imed" className="bg-[#f9fafc] py-10 px-4">
+      <MobileSectionHeader
+        badge="About iMED Academy"
+        title="Building India's Allied Healthcare Workforce"
+      />
+      <div className="bg-white rounded-[16px] p-5 shadow-sm border border-gray-100 mb-5">
+        <p className="text-[#333] text-[13px] leading-[1.7] mb-4">
+          iMED Academy is a career-focused healthcare training institute dedicated to preparing industry-ready
+          professionals through practical, skill-based education. As an NSDC-certified training partner aligned with
+          the standards of the Healthcare Sector Skill Council (HSSC), the Academy offers specialized programs in
+          allied healthcare fields.
+        </p>
+        <p className="text-[#25a88d] font-bold text-[13px] mb-4">
+          Learn. Get Certified. Get Placed.
+        </p>
+        <div className="flex flex-wrap gap-2 mb-4">
+          {["NSDC Certified", "HSSC Aligned", "Hospital Partners", "100% Placement Support"].map((t) => (
+            <span
+              key={t}
+              className="bg-[#25a88d]/10 text-[#25a88d] text-[11px] font-semibold px-2.5 py-1 rounded-full"
+            >
+              {t}
+            </span>
+          ))}
+        </div>
+        <div className="bg-gradient-to-r from-[#1f3471] to-[#25a88d] rounded-[12px] p-4 text-white">
+          <p className="text-[18px] font-bold leading-tight">100+ Hospital Partners</p>
+          <p className="text-white/80 text-[12px] mt-1">Trusted by top hospitals across India: Delhi NCR &middot; Bangalore &middot; Kochi &middot; Hyderabad</p>
+        </div>
+      </div>
+      <div className="text-center">
+        <img
+          src={imgImage1723}
+          alt="iMED Pan-India Presence"
+          className="w-full max-w-[280px] mx-auto object-contain drop-shadow"
+          loading="lazy"
+          decoding="async"
+        />
+        <p className="text-[#1f3471] font-semibold text-[13px] mt-3">
+          One Nation. Many States. <span className="text-[#25a88d]">One Career Path.</span>
+        </p>
+      </div>
+    </section>
+  );
+}
+
+function MobileWhyImed() {
+  const cards = [
+    {
+      img: imgRectangle7,
+      title: "NSDC + HSSC Certified",
+      desc: "Your iMED Certificate is backed by National Skill Development Corporation and HSSC recognised by Hospitals and Employers across India.",
+      objectPosition: "object-center",
+    },
+    {
+      img: imgRectangle8,
+      title: "100% Placement Support",
+      desc: "We don't just hand you a Certificate and wave goodbye. Our Placement team works until you're Hired — mock interviews, drives, follow-ups included.",
+      objectPosition: "object-top",
+    },
+    {
+      img: imgRectangle9,
+      title: "Real Hospital Training",
+      desc: "Our Students Train inside actual Hospitals. Not Classrooms pretending to be Hospitals. Real Hospitals. Real Workflows. Real Experience.",
+      objectPosition: "object-center",
+    },
+  ];
+  return (
+    <section id="why-imed" className="bg-white py-10 px-4">
+      <MobileSectionHeader
+        badge="Why iMED Academy"
+        title="Real Hospital Training. Real Healthcare Careers."
+        subtitle="Healthcare cannot be learned from a textbook alone. At iMED, every program is built around real hospital experience."
+      />
+      <div className="flex flex-col gap-4">
+        {cards.map((c, i) => (
+          <div
+            key={i}
+            className="bg-white rounded-[16px] overflow-hidden border border-[#25a88d]/20 shadow-[0px_4px_16px_rgba(0,0,0,0.06)]"
+          >
+            <div className="w-full aspect-[16/10] overflow-hidden bg-gray-50">
+              <img
+                src={c.img}
+                alt={c.title}
+                className={`w-full h-full object-cover ${c.objectPosition}`}
+                loading="lazy"
+                decoding="async"
+              />
+            </div>
+            <div className="p-4">
+              <h3 className="text-[#1f3471] font-bold text-[16px] mb-1.5 leading-snug">{c.title}</h3>
+              <p className="text-[#555] text-[13px] leading-[1.6]">{c.desc}</p>
+            </div>
+          </div>
+        ))}
+      </div>
+    </section>
+  );
+}
+
+function MobileScopeSection({
+  selections,
+  salary,
+  onUpdateSelection,
+}: {
+  selections: ScopeDemandSelections;
+  salary: SalaryBreakdown;
+  onUpdateSelection: <K extends keyof ScopeDemandSelections>(key: K, value: ScopeDemandSelections[K]) => void;
+}) {
+  return (
+    <section className="bg-[#f5f8fc] py-10 px-4">
+      <MobileSectionHeader
+        badge="Scope & Demand"
+        title="Healthcare Career Scope & Salary Calculator"
+        subtitle="Select your preferences to calculate projected monthly and annual remuneration."
+      />
+      <div className="bg-white rounded-[16px] p-5 shadow-sm border border-gray-100 mb-5">
+        <div className="flex flex-col gap-4">
+          <div>
+            <label className="block text-[12px] font-semibold text-[#1f3471] uppercase tracking-wide mb-1.5">
+              Healthcare Role
+            </label>
+            <select
+              value={selections.healthcareRole}
+              onChange={(e) => onUpdateSelection("healthcareRole", e.target.value)}
+              className="w-full bg-[#f8fafc] border border-gray-200 rounded-[8px] px-3 py-2.5 text-[#111] text-[14px] outline-none focus:border-[#25a88d]"
+            >
+              {HEALTHCARE_ROLE_OPTIONS.map((r) => (
+                <option key={r} value={r}>
+                  {r}
+                </option>
+              ))}
+            </select>
+          </div>
+          <div>
+            <label className="block text-[12px] font-semibold text-[#1f3471] uppercase tracking-wide mb-1.5">
+              City Tier
+            </label>
+            <select
+              value={selections.cityTier}
+              onChange={(e) => onUpdateSelection("cityTier", e.target.value)}
+              className="w-full bg-[#f8fafc] border border-gray-200 rounded-[8px] px-3 py-2.5 text-[#111] text-[14px] outline-none focus:border-[#25a88d]"
+            >
+              {CITY_TIER_OPTIONS.map((c) => (
+                <option key={c} value={c}>
+                  {c}
+                </option>
+              ))}
+            </select>
+          </div>
+          <div>
+            <label className="block text-[12px] font-semibold text-[#1f3471] uppercase tracking-wide mb-1.5">
+              Hospital Type
+            </label>
+            <select
+              value={selections.hospitalType}
+              onChange={(e) => onUpdateSelection("hospitalType", e.target.value)}
+              className="w-full bg-[#f8fafc] border border-gray-200 rounded-[8px] px-3 py-2.5 text-[#111] text-[14px] outline-none focus:border-[#25a88d]"
+            >
+              {HOSPITAL_TYPE_OPTIONS.map((h) => (
+                <option key={h} value={h}>
+                  {h}
+                </option>
+              ))}
+            </select>
+          </div>
+          <div>
+            <label className="block text-[12px] font-semibold text-[#1f3471] uppercase tracking-wide mb-1.5">
+              Shift Preference
+            </label>
+            <select
+              value={selections.shift}
+              onChange={(e) => onUpdateSelection("shift", e.target.value)}
+              className="w-full bg-[#f8fafc] border border-gray-200 rounded-[8px] px-3 py-2.5 text-[#111] text-[14px] outline-none focus:border-[#25a88d]"
+            >
+              {SHIFT_OPTIONS.map((s) => (
+                <option key={s} value={s}>
+                  {s}
+                </option>
+              ))}
+            </select>
+          </div>
+          <div>
+            <div className="flex justify-between items-center mb-1.5">
+              <label className="text-[12px] font-semibold text-[#1f3471] uppercase tracking-wide">
+                Experience
+              </label>
+              <span className="text-[13px] font-bold text-[#25a88d]">{selections.experienceYears} Years</span>
+            </div>
+            <input
+              type="range"
+              min={0}
+              max={10}
+              step={1}
+              value={selections.experienceYears}
+              onChange={(e) => onUpdateSelection("experienceYears", Number(e.target.value))}
+              className="w-full accent-[#25a88d]"
+            />
+            <div className="flex justify-between text-[11px] text-gray-400 mt-1">
+              <span>0 yrs (Fresher)</span>
+              <span>10+ yrs</span>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div
+        className="rounded-[16px] p-5 text-white shadow-lg"
+        style={{
+          backgroundImage: "linear-gradient(135deg, rgb(15, 23, 43) 0%, rgb(28, 57, 142) 60%, rgb(37, 168, 141) 100%)",
+        }}
+      >
+        <span className="bg-white/20 text-[#46ecd5] text-[11px] font-bold px-2.5 py-1 rounded-full uppercase tracking-wider">
+          Estimated Monthly Salary
+        </span>
+        <p className="text-[28px] font-bold mt-2 leading-none">
+          Rs {formatInr(salary.monthlyGross)}
+        </p>
+        <p className="text-white/70 text-[12px] mt-1 mb-4">
+          Range: Rs {formatInr(salary.monthlyMin)} &ndash; Rs {formatInr(salary.monthlyMax)}
+        </p>
+        <div className="border-t border-white/15 pt-3 flex flex-col gap-2 text-[13px]">
+          <div className="flex justify-between text-white/80">
+            <span>Base Salary</span>
+            <span className="font-semibold text-white">Rs {formatInr(salary.baseMonthly)}</span>
+          </div>
+          <div className="flex justify-between text-white/80">
+            <span>HRA &amp; Allowances</span>
+            <span className="font-semibold text-white">Rs {formatInr(salary.hraAllowances)}</span>
+          </div>
+          <div className="flex justify-between text-white/80">
+            <span>Annual CTC (Est.)</span>
+            <span className="font-semibold text-white">Rs {formatInr(salary.annualGross)}</span>
+          </div>
+          <div className="bg-[#00bba7]/20 border border-[#00bba7]/30 rounded-[10px] p-2.5 mt-1 flex justify-between items-center text-[#46ecd5] font-bold">
+            <span>Estimated Take-Home</span>
+            <span>Rs {formatInr(salary.takeHomeMonthly)}/mo</span>
+          </div>
+        </div>
+      </div>
+    </section>
+  );
+}
+
+function MobileCareerPath() {
+  const programs = [
+    {
+      badge: "FLAGSHIP",
+      availableIn: "KOCHI",
+      title: "AHAP Program",
+      subtitle: "Advanced Healthcare Administration Program",
+      duration: "6 Months",
+      roleLabel: "60+ Job Roles",
+      description: "3 Months Classroom & Practical Training + 3 Months Hospital Internship",
+      highlights: [
+        "GCC Readiness Track + Advance Professional Skills Training",
+        "NSDC + HSSC-aligned curriculum",
+        "Real Hospital Internship at partner facilities",
+        "100% Placement assistance included",
+      ],
+      salary: "Rs 20,000 - Rs 35,000 /Month",
+      hash: "#ahap",
+      gradient: "linear-gradient(114deg, rgb(0,104,142), rgb(0,155,211), rgb(67,127,255))",
+    },
+    {
+      badge: "FLAGSHIP",
+      title: "HA Program",
+      subtitle: "Certification in Hospital Administration",
+      duration: "6 Months",
+      roleLabel: "60+ Job Roles",
+      description: "4 Months Classroom & Practical Training + 2 Months Hospital Internship",
+      highlights: [
+        "Dual Certification - iMED Academy + HSSC (HFDC)",
+        "100% HSSC-aligned curriculum",
+        "Real Hospital Internship at partner facilities",
+        "Placement assistance from Day 1",
+      ],
+      salary: "Rs 18,000 - Rs 25,000 /Month",
+      hash: "#ha",
+      gradient: "linear-gradient(114deg, rgb(82,86,100), rgb(65,72,91), rgb(165,174,202))",
+    },
+    {
+      badge: "HIGH DEMAND",
+      title: "EMT Program",
+      subtitle: "Certification in Emergency Medical Technology",
+      duration: "6 Months",
+      roleLabel: "Field Roles",
+      description: "3 Months Classroom & Practical Training + 3 Months field Internship",
+      highlights: [
+        "100% HSSC-aligned curriculum",
+        "Live emergency simulations & drills",
+        "Ambulance & Hospital Internship",
+        "Placement assistance included",
+      ],
+      salary: "Rs 15,000 - Rs 25,000 /Month",
+      hash: "#emt",
+      gradient: "linear-gradient(112deg, rgb(53,80,159), rgb(26,56,144), rgb(59,99,215))",
+    },
+    {
+      badge: "HIGH DEMAND",
+      availableIn: "KOCHI",
+      title: "GCA Program",
+      subtitle: "Certification in Geriatric Care Assistance",
+      duration: "4 Months",
+      roleLabel: "Care Roles",
+      description: "2.5 Months Classroom & Practical Training + 1.5 Months field Internship",
+      highlights: [
+        "NSDC + HSSC-aligned curriculum",
+        "Practical elderly care training",
+        "Home Care & Healthcare Facility Internship",
+        "Placement assistance included",
+      ],
+      salary: "Rs 15,000 - Rs 30,000 /Month",
+      hash: "#gca",
+      gradient: "linear-gradient(112deg, rgb(59,28,102), rgb(106,48,147), rgb(160,68,255))",
+    },
+    {
+      badge: "IN DEMAND",
+      title: "GDA Program",
+      subtitle: "General Duty Assistant",
+      duration: "6 Months",
+      roleLabel: "Care Roles",
+      description: "Classroom learning, hospital exposure, and hands-on patient care support training.",
+      highlights: [
+        "Bedside care fundamentals",
+        "Hospital ward workflow training",
+        "Patient safety and hygiene skills",
+        "Placement assistance included",
+      ],
+      salary: "Rs 12,000 - Rs 22,000 /Month",
+      hash: "#gda",
+      gradient: "linear-gradient(114deg, rgb(16,211,130), rgb(64,194,140), rgb(8,109,67))",
+    },
+    {
+      badge: "LAB TECH",
+      title: "MLT Program",
+      subtitle: "Medical Laboratory Technician",
+      duration: "6 Months",
+      roleLabel: "Lab Roles",
+      description: "Classroom learning, lab practice, and diagnostic workflow training for entry-level laboratory careers.",
+      highlights: [
+        "Sample collection and processing",
+        "Pathology lab equipment training",
+        "Reports and quality control basics",
+        "Placement assistance included",
+      ],
+      salary: "Rs 15,000 - Rs 28,000 /Month",
+      hash: "#mlt",
+      gradient: "linear-gradient(114deg, rgb(211,16,71), rgb(194,64,101), rgb(109,8,10))",
+    },
+    {
+      badge: "IMAGING",
+      title: "Radiology Program",
+      subtitle: "Radiology X-Ray Technician",
+      duration: "6 Months",
+      roleLabel: "Imaging Roles",
+      description: "Hands-on training for radiology department workflows, patient positioning, and imaging assistance.",
+      highlights: [
+        "X-Ray positioning fundamentals",
+        "Radiology safety and protocols",
+        "Hospital department exposure",
+        "Placement assistance included",
+      ],
+      salary: "Rs 16,000 - Rs 30,000 /Month",
+      hash: "#radiology",
+      gradient: "linear-gradient(114deg, rgb(211,127,16), rgb(194,138,64), rgb(109,55,8))",
+    },
+  ];
+  const handleExplore = (hash: string) => {
+    window.location.hash = hash;
+    window.scrollTo({ top: 0, behavior: "smooth" });
+  };
+  return (
+    <section id="career-path" className="bg-white py-10">
+      <MobileSectionHeader
+        badge="Our Programs"
+        title="Choose Your Career Path"
+        subtitle="Pick the path that fits your life. Every track ends with a real Healthcare Career."
+      />
+      <div className="overflow-x-auto mob-no-scrollbar">
+        <div className="flex gap-4 px-4 pb-3" style={{ width: "max-content" }}>
+          {programs.map((p) => (
+            <div
+              key={p.hash}
+              className="bg-white rounded-[18px] shadow-[0px_8px_20px_-3px_rgba(37,99,235,0.12)] border border-gray-100 overflow-hidden flex-shrink-0 w-[285px] flex flex-col justify-between"
+            >
+              <div>
+                <div className="min-h-[96px] p-4 flex flex-col justify-between" style={{ backgroundImage: p.gradient }}>
+                  <div className="flex items-center justify-between gap-2">
+                    {p.availableIn ? (
+                      <div className="bg-white/20 backdrop-blur-xs px-2 py-0.5 rounded flex gap-[4px] items-center">
+                        <svg aria-hidden="true" className="size-[14px] shrink-0" fill="none" viewBox="0 0 24 24">
+                          <path d="M12 21s7-4.57 7-11a7 7 0 1 0-14 0c0 6.43 7 11 7 11Z" fill="white" />
+                          <path
+                            d="M12 12.25a2.25 2.25 0 1 0 0-4.5 2.25 2.25 0 0 0 0 4.5Z"
+                            fill={
+                              p.gradient.includes("0, 104, 142") || p.gradient.includes("0,104,142")
+                                ? "#008ed0"
+                                : p.gradient.includes("59, 28, 102") || p.gradient.includes("59,28,102")
+                                  ? "#6a3093"
+                                  : "#25a88d"
+                            }
+                          />
+                        </svg>
+                        <span className="font-['Inter:Extra_Bold',sans-serif] font-extrabold text-[10.5px] text-white tracking-wide uppercase">
+                          {p.availableIn}
+                        </span>
+                      </div>
+                    ) : (
+                      <span />
+                    )}
+                    <span className="bg-white/20 backdrop-blur-xs text-white text-[10px] font-bold tracking-wider px-2 py-0.5 rounded uppercase">
+                      {p.badge}
+                    </span>
+                  </div>
+                  <div className="mt-1">
+                    <h3 className="text-white font-bold text-[17px] leading-tight">{p.title}</h3>
+                    <p className="text-white/85 text-[11.5px] leading-tight mt-0.5">{p.subtitle}</p>
+                  </div>
+                </div>
+
+                <div className="p-4">
+                  <div className="flex justify-between items-center text-[12px] text-gray-500 font-semibold mb-2.5 pb-2 border-b border-gray-100">
+                    <span className="text-[#1f3471] font-medium">{p.duration}</span>
+                    <span className="bg-[#1f3471]/5 text-[#1f3471] px-2 py-0.5 rounded text-[11px] font-semibold">
+                      {p.roleLabel}
+                    </span>
+                  </div>
+                  <p className="text-[#444] text-[12px] leading-[1.6] mb-3">{p.description}</p>
+                  <p className="text-[#25a88d] text-[11.5px] font-semibold uppercase tracking-wider mb-2">
+                    Program Highlights
+                  </p>
+                  <div className="flex flex-col gap-2 mb-4">
+                    {p.highlights.map((h) => (
+                      <div key={h} className="flex gap-2 items-start text-[11.5px] text-[#333] leading-snug">
+                        <div className="size-[18px] shrink-0 flex items-center justify-center mt-[-1px]">
+                          <svg className="size-[18px]" fill="none" viewBox="0 0 24 24">
+                            <path d={svgPaths.p39d55130} fill="#25A88D" />
+                          </svg>
+                        </div>
+                        <span className="flex-1">{h}</span>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              </div>
+
+              <div className="p-4 pt-0">
+                <div className="border-t border-gray-100 pt-2.5 mb-3">
+                  <p className="text-[10.5px] font-medium text-gray-400 uppercase tracking-wider">Starting Salary</p>
+                  <p className="text-[#25a88d] font-bold text-[14px] mt-0.5">{p.salary}</p>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => handleExplore(p.hash)}
+                  className="w-full py-2.5 rounded-[9px] text-white text-[13px] font-semibold bg-[#1f3471] hover:bg-[#162550] active:scale-[0.98] transition-all shadow-xs text-center cursor-pointer border-0"
+                >
+                  Explore Now
+                </button>
+              </div>
+            </div>
+          ))}
+        </div>
+      </div>
+    </section>
+  );
+}
+
+function MobileOnlineSection() {
+  const handleExplore = () => {
+    window.location.hash = "ocha";
+    window.scrollTo({ top: 0, behavior: "smooth" });
+  };
+
+  return (
+    <section id="imed-online" className="bg-white py-12 px-5">
+      <div className="max-w-[500px] mx-auto flex flex-col gap-6">
+        {/* Header */}
+        <div>
+          <p className="text-[#25a88d] font-bold text-[18px] mb-2 tracking-normal">
+            iMED Online
+          </p>
+          <h2 className="text-[#1f3471] font-bold text-[28px] sm:text-[32px] leading-[1.25] mb-3">
+            Online Certificate in Hospital Administration
+          </h2>
+          <p className="text-[#4a5565] text-[16px] leading-[1.6]">
+            A 3-month weekend program for working professionals entering Healthcare Administration.
+          </p>
+        </div>
+
+        {/* Student Image */}
+        <div className="w-full rounded-[15px] overflow-hidden shadow-md aspect-[4/3] bg-gray-100 relative">
+          <img
+            loading="lazy"
+            decoding="async"
+            src={imgImage1723}
+            alt="Online Certificate in Hospital Administration"
+            className="w-full h-full object-cover object-center pointer-events-none"
+          />
+        </div>
+
+        {/* Program Highlights */}
+        <div>
+          <p className="text-[#25a88d] font-semibold text-[20px] mb-4">
+            Program Highlights
+          </p>
+          <div className="flex flex-col gap-3.5">
+            {[
+              "3 Months - weekends only (4 hrs/day)",
+              "100% Online, Live instructor-led",
+              "iMED Academy Certification",
+              "Careers: Medical Billing, Insurance Billing, Hospital Admin",
+            ].map((item, idx) => (
+              <div key={idx} className="flex items-start gap-3">
+                <div className="relative shrink-0 size-[26px] mt-0.5" data-name="mdi:tick">
+                  <svg className="block size-full" fill="none" viewBox="0 0 30 30">
+                    <path d={svgPaths.p159e99f0} fill="#25A88D" />
+                  </svg>
+                </div>
+                <p className="font-['Inter:Regular',sans-serif] text-[#333333] text-[16px] leading-[1.5] not-italic">
+                  {item}
+                </p>
+              </div>
+            ))}
+          </div>
+        </div>
+
+        {/* Explore Now Button */}
+        <div>
+          <button
+            type="button"
+            onClick={handleExplore}
+            className="w-[220px] max-w-full bg-[#25a88d] text-white font-['Inter:Semi_Bold',sans-serif] font-semibold text-[18px] h-[50px] rounded-[12px] hover:bg-[#1e8d76] active:scale-[0.98] transition-all cursor-pointer border-0 flex items-center justify-center shadow-sm"
+          >
+            Explore Now
+          </button>
+        </div>
+      </div>
+    </section>
+  );
+}
+
+function MobileStudentStories() {
+  const stories = [
+    {
+      quote:
+        "The guidance and training helped me become more confident about starting my career. Being placed at CK Birla Hospital is a proud moment for me",
+      name: "Ritik",
+      role: "Doctor Assistant & Patient Coordinator",
+      image: imgEllipse7,
+    },
+    {
+      quote:
+        "A great learning experience that gave me the confidence to step into hospital administration. I’m happy to begin my internship at Yashoda Hospitals.",
+      name: "Laxmi",
+      role: "Hospital Administration",
+      image: imgRiyaKrishnamurthy,
+    },
+    {
+      quote:
+        "The training helped me understand hospital administration better and prepare for the workplace. Getting selected at Cloudnine Hospitals was a special moment for me",
+      name: "Gudia",
+      role: "Hospital Administration",
+      image: imgEllipse6,
+    },
+    {
+      quote:
+        "I gained valuable knowledge and confidence throughout my learning journey. I’m excited to start my internship at Marengo Asia Healthcare",
+      name: "Sweety",
+      role: "Hospital Administration",
+      image: imgAnanya,
+    },
+    {
+      quote:
+        "The experience helped me understand the healthcare field and find the right direction for my career. I’m grateful for this opportunity at Healing Tree Hospital",
+      name: "Anshika",
+      role: "Hospital Administration",
+      image: imgEllipse5,
+    },
+  ];
+  return (
+    <section
+      id="student-stories"
+      className="py-10 text-white"
+      style={{
+        backgroundImage:
+          "linear-gradient(151deg, rgb(15,23,43) 0%, rgb(28,57,142) 50%, rgb(15,23,43) 100%)",
+      }}
+    >
+      <div className="px-4 mb-6 text-center">
+        <p className="text-[#25a88d] text-[13px] font-bold uppercase tracking-wider mb-1">
+          Student Stories
+        </p>
+        <h2 className="text-white text-[22px] font-bold leading-tight">
+          Real Students. Real Jobs. Real Life Change.
+        </h2>
+        <p className="text-white/70 text-[13px] leading-[1.65] mt-2 max-w-[320px] mx-auto">
+          Every student who walks through iMED&apos;s doors carries a dream. We stand with you until you have an offer letter.
+        </p>
+      </div>
+      <div className="overflow-x-auto mob-no-scrollbar">
+        <div className="flex gap-4 px-4 pb-2" style={{ width: "max-content" }}>
+          {stories.map((story, i) => (
+            <div
+              key={i}
+              className="bg-white/10 backdrop-blur-md rounded-[16px] p-5 w-[272px] flex-shrink-0 border border-white/10 flex flex-col justify-between"
+            >
+              <div>
+                <p className="text-[#25a88d] text-[24px] font-serif leading-none mb-1">&ldquo;</p>
+                <p className="text-white/90 text-[13px] leading-[1.65] mb-4">{story.quote}</p>
+              </div>
+              <div className="flex items-center gap-3 pt-3 border-t border-white/10">
+                <img
+                  src={story.image}
+                  alt={story.name}
+                  className="w-[38px] h-[38px] rounded-full object-cover flex-shrink-0"
+                  loading="lazy"
+                  decoding="async"
+                />
+                <div>
+                  <p className="text-[#46ecd5] font-bold text-[13px]">{story.name}</p>
+                  <p className="text-white/70 text-[11px]">{story.role}</p>
+                </div>
+              </div>
+            </div>
+          ))}
+        </div>
+      </div>
+    </section>
+  );
+}
+
+function MobileHowItWorks() {
+  const steps = [
+    {
+      num: "1",
+      title: "Free Counselling",
+      desc: "Book a call. Our expert counsellors understand your background and guide you to the right Program.",
+    },
+    {
+      num: "2",
+      title: "Enroll & Train",
+      desc: "3-4 Months of structured Classroom + Practical training with weekly hands-on assessments.",
+    },
+    {
+      num: "3",
+      title: "Hospital Internship",
+      desc: "Real Hospital Experience. Work alongside doctors and staff in Partner Hospitals.",
+    },
+    {
+      num: "4",
+      title: "Get Placed",
+      desc: "Dedicated Placement drives. Resume building, interview prep, and direct job offers.",
+    },
+  ];
+
+  const containerRef = useRef<HTMLDivElement>(null);
+  const stepRefs = useRef<(HTMLDivElement | null)[]>([]);
+  const [lineHeight, setLineHeight] = useState(0);
+  const [activeSteps, setActiveSteps] = useState<boolean[]>([true, false, false, false]);
+
+  useEffect(() => {
+    let rafId: number;
+
+    const updateScroll = () => {
+      if (!containerRef.current) return;
+      const triggerY = window.innerHeight * 0.65;
+
+      const stepElements = stepRefs.current;
+      if (!stepElements[0] || !stepElements[stepElements.length - 1]) return;
+
+      const firstRect = stepElements[0].getBoundingClientRect();
+      const lastRect = stepElements[stepElements.length - 1].getBoundingClientRect();
+
+      const firstCircleY = firstRect.top + 18;
+      const lastCircleY = lastRect.top + 18;
+      const totalHeight = Math.max(lastCircleY - firstCircleY, 1);
+
+      const currentDist = triggerY - firstCircleY;
+      const clampedProgress = Math.min(Math.max(currentDist / totalHeight, 0), 1);
+
+      setLineHeight(clampedProgress * totalHeight);
+
+      const newActive = stepElements.map((el, idx) => {
+        if (!el) return idx === 0;
+        const rect = el.getBoundingClientRect();
+        return rect.top + 18 <= triggerY;
+      });
+
+      if (firstRect.top <= window.innerHeight * 0.85) {
+        newActive[0] = true;
+      }
+
+      setActiveSteps(newActive);
+    };
+
+    const onScroll = () => {
+      cancelAnimationFrame(rafId);
+      rafId = requestAnimationFrame(updateScroll);
+    };
+
+    window.addEventListener("scroll", onScroll, { passive: true });
+    window.addEventListener("resize", onScroll, { passive: true });
+    updateScroll();
+
+    return () => {
+      window.removeEventListener("scroll", onScroll);
+      window.removeEventListener("resize", onScroll);
+      cancelAnimationFrame(rafId);
+    };
+  }, []);
+
+  return (
+    <section className="bg-[#f5f7fb] py-12 px-5 overflow-hidden">
+      <div className="text-center mb-9">
+        <p className="text-[#25a88d] text-[13px] font-bold uppercase tracking-wider mb-1.5">
+          How It Works
+        </p>
+        <h2 className="text-[#1f3471] text-[24px] font-bold leading-tight">
+          From Student to Healthcare Professional
+        </h2>
+      </div>
+
+      <div ref={containerRef} className="relative pl-[44px] flex flex-col gap-6 max-w-[460px] mx-auto">
+        {/* Background Track Line */}
+        <div className="absolute left-[17px] top-[18px] bottom-[18px] w-[2.5px] bg-[#e2e8f0] rounded-full" />
+
+        {/* Animated Active Progress Line */}
+        <div
+          className="absolute left-[17px] top-[18px] w-[2.5px] bg-gradient-to-b from-[#25a88d] via-[#25a88d] to-[#1f3471] rounded-full transition-[height] duration-150 ease-out"
+          style={{ height: `${lineHeight}px` }}
+        />
+
+        {steps.map((step, i) => {
+          const isActive = activeSteps[i];
+          const isCurrent = isActive && (i === steps.length - 1 || !activeSteps[i + 1]);
+
+          return (
+            <div
+              key={i}
+              ref={(el) => (stepRefs.current[i] = el)}
+              className="relative flex items-start"
+            >
+              {/* Animated Step Circle */}
+              <div
+                className={`absolute left-[-44px] shrink-0 w-[36px] h-[36px] rounded-full font-bold text-[16px] flex items-center justify-center transition-all duration-300 z-10 ${isActive
+                  ? `bg-[#25a88d] text-white shadow-md shadow-[#25a88d]/30 scale-105 ${isCurrent ? "ring-4 ring-[#25a88d]/25" : ""
+                  }`
+                  : "bg-[#e2e8f0] text-[#94a3b8] scale-95"
+                  }`}
+              >
+                {step.num}
+              </div>
+
+              {/* Animated Step Card */}
+              <div
+                className={`rounded-[14px] p-4.5 w-full transition-all duration-500 ease-out border ${isActive
+                  ? "bg-white opacity-100 translate-x-0 scale-100 shadow-md border-gray-100/80 border-l-4 border-l-[#25a88d]"
+                  : "bg-white/70 opacity-40 translate-x-3 scale-[0.98] shadow-xs border-gray-100 border-l border-l-gray-200"
+                  }`}
+              >
+                <div className="flex items-center justify-between mb-1.5">
+                  <h3
+                    className={`font-bold text-[16px] transition-colors duration-300 ${isActive ? "text-[#1f3471]" : "text-gray-500"
+                      }`}
+                  >
+                    {step.title}
+                  </h3>
+                  {isActive && (
+                    <span className="text-[10.5px] font-semibold uppercase tracking-wider text-[#25a88d] bg-[#25a88d]/10 px-2 py-0.5 rounded-full">
+                      Step {step.num}
+                    </span>
+                  )}
+                </div>
+                <p className="text-[#555] text-[13px] leading-[1.65]">
+                  {step.desc}
+                </p>
+              </div>
+            </div>
+          );
+        })}
+      </div>
+    </section>
+  );
+}
+
+function MobileFAQ() {
+  const [openIndex, setOpenIndex] = useState<number | null>(0);
+  return (
+    <section className="bg-white py-10 px-4">
+      <MobileSectionHeader badge="FAQs" title="Frequently Asked Questions" />
+      <div className="flex flex-col gap-3 max-w-[500px] mx-auto">
+        {faqItems.map((item, i) => {
+          const isOpen = openIndex === i;
+          return (
+            <div
+              key={i}
+              className="border border-gray-200 rounded-[12px] overflow-hidden transition-colors"
+            >
+              <button
+                type="button"
+                onClick={() => setOpenIndex(isOpen ? null : i)}
+                className="w-full text-left p-4 flex justify-between items-center gap-3 bg-white"
+              >
+                <span className="text-[#1f3471] font-semibold text-[14px] leading-snug">
+                  {item.question}
+                </span>
+                <span className="text-[#25a88d] font-bold text-[18px] shrink-0">
+                  {isOpen ? "−" : "+"}
+                </span>
+              </button>
+              {isOpen && (
+                <div className="px-4 pb-4 pt-1 bg-[#f9fafc] border-t border-gray-100">
+                  <p className="text-[#4a5565] text-[13px] leading-[1.65]">{item.answer}</p>
+                </div>
+              )}
+            </div>
+          );
+        })}
+      </div>
+    </section>
+  );
+}
+
+function MobileCtaBanner() {
+  const scrollToContact = () => {
+    const mobileContainer = document.querySelector(".homepage-mobile-view");
+    const el = mobileContainer?.querySelector<HTMLElement>("#contact-us") || document.getElementById("contact-us");
+    if (el) {
+      const offset = el.getBoundingClientRect().top + window.pageYOffset - 65;
+      window.scrollTo({ top: offset > 0 ? offset : 0, behavior: "smooth" });
+    }
+  };
+  return (
+    <section
+      className="py-10 px-5 text-center text-white"
+      style={{
+        backgroundImage:
+          "linear-gradient(168deg, rgb(15,23,43) 0%, rgb(28,57,142) 60%, rgb(15,23,43) 100%)",
+      }}
+    >
+      <h2 className="text-white text-[22px] font-bold leading-tight mb-2.5">
+        Your Healthcare Career Starts With One Call.
+      </h2>
+      <p className="text-[#dbeafe] text-[13.5px] leading-[1.6] mb-6 max-w-[300px] mx-auto">
+        Free counselling. Zero pressure. Just clarity on your next step.
+      </p>
+      <div className="flex flex-col gap-3 max-w-[260px] mx-auto">
+        <button
+          type="button"
+          onClick={scrollToContact}
+          className="bg-[#25a88d] text-white font-semibold text-[15px] rounded-[10px] py-3.5 w-full shadow-lg hover:bg-[#1e8d76] transition-colors"
+        >
+          Apply Now
+        </button>
+        <button
+          type="button"
+          onClick={scrollToContact}
+          className="border-2 border-white text-white font-semibold text-[15px] rounded-[10px] py-3 w-full hover:bg-white/10 transition-colors"
+        >
+          Talk to Expert
+        </button>
+      </div>
+    </section>
+  );
+}
+
+function MobileContactSection() {
+  const [formValues, setFormValues] = useState({
+    fullName: "",
+    phone: "",
+    qualification: "",
+    preferredProgram: "",
+    mode: "",
+    message: "",
+  });
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [feedback, setFeedback] = useState<string | null>(null);
+
+  const updateValue = (key: keyof typeof formValues, value: string) => {
+    setFormValues((prev) => ({ ...prev, [key]: value }));
+  };
+
+  const submitContact = async (event: React.FormEvent) => {
+    event.preventDefault();
+    setFeedback(null);
+
+    if (!formValues.fullName || !formValues.phone || !formValues.preferredProgram) {
+      setFeedback("Please fill name, phone, and preferred program.");
+      return;
+    }
+
+    try {
+      setIsSubmitting(true);
+      const response = await fetch(`${API_BASE_URL}/api/contact`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(formValues),
+      });
+
+      if (!response.ok) {
+        throw new Error("Request failed");
+      }
+
+      trackPixelLead({
+        content_name: "HomePage Contact Form",
+        content_category: formValues.preferredProgram,
+      });
+
+      setFeedback("Message sent successfully.");
+      setFormValues({
+        fullName: "",
+        phone: "",
+        qualification: "",
+        preferredProgram: "",
+        mode: "",
+        message: "",
+      });
+    } catch (_error) {
+      setFeedback("Failed to send message. Please try again.");
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
+  return (
+    <section id="contact-us" className="bg-[#f5f7fb] py-12 px-4">
+      {/* Header matching PC */}
+      <div className="text-center mb-8">
+        <p className="text-[#25a88d] font-bold text-[15px] uppercase tracking-wider mb-1.5">
+          Contact us
+        </p>
+        <h2 className="text-[#1f3471] font-bold text-[24px] sm:text-[28px] leading-tight mb-2">
+          Start Your Healthcare Journey
+        </h2>
+        <p className="text-[#4a5565] text-[15px] leading-relaxed">
+          Book a free career counselling session.
+        </p>
+      </div>
+
+      {/* Card with PC Form */}
+      <div className="bg-white border border-[#f3f4f6] rounded-[16px] p-6 max-w-[480px] mx-auto shadow-[0px_10px_15px_0px_rgba(0,0,0,0.06),0px_4px_6px_0px_rgba(0,0,0,0.04)]">
+        <h3 className="font-semibold text-[#1f3471] text-[20px] mb-5">
+          Send us a Message
+        </h3>
+
+        <form onSubmit={submitContact} className="flex flex-col gap-4">
+          {/* Full Name */}
+          <div className="flex flex-col gap-1.5">
+            <label className="text-[#364153] font-medium text-[15px]">
+              Full Name
+            </label>
+            <input
+              type="text"
+              value={formValues.fullName}
+              onChange={(e) => updateValue("fullName", e.target.value)}
+              placeholder="Your full name"
+              className="bg-[#f3f3f5] h-[40px] rounded-[6px] w-full px-3 text-[#111827] text-[14px] outline-none border border-transparent focus:border-[#25a88d] transition-colors"
+            />
+          </div>
+
+          {/* Phone */}
+          <div className="flex flex-col gap-1.5">
+            <label className="text-[#364153] font-medium text-[15px]">
+              Phone
+            </label>
+            <input
+              type="tel"
+              value={formValues.phone}
+              onChange={(e) => updateValue("phone", e.target.value)}
+              placeholder="+91 XXXXX XXXXX"
+              className="bg-[#f3f3f5] h-[40px] rounded-[6px] w-full px-3 text-[#111827] text-[14px] outline-none border border-transparent focus:border-[#25a88d] transition-colors"
+            />
+          </div>
+
+          {/* Qualification */}
+          <div className="flex flex-col gap-1.5">
+            <label className="text-[#364153] font-medium text-[15px]">
+              Qualification
+            </label>
+            <input
+              type="text"
+              value={formValues.qualification}
+              onChange={(e) => updateValue("qualification", e.target.value)}
+              placeholder="Enter your Qualification"
+              className="bg-[#f3f3f5] h-[40px] rounded-[6px] w-full px-3 text-[#111827] text-[14px] outline-none border border-transparent focus:border-[#25a88d] transition-colors"
+            />
+          </div>
+
+          {/* Preferred Program */}
+          <div className="flex flex-col gap-1.5">
+            <label className="text-[#364153] font-medium text-[15px]">
+              Preferred Program
+            </label>
+            <select
+              value={formValues.preferredProgram}
+              onChange={(e) => updateValue("preferredProgram", e.target.value)}
+              className="bg-[#f3f3f5] h-[40px] rounded-[6px] w-full px-3 text-[#111827] text-[14px] outline-none border border-transparent focus:border-[#25a88d] transition-colors cursor-pointer"
+            >
+              <option value="" disabled>
+                Select a Program
+              </option>
+              <option value="Emergency Medical Technician">Emergency Medical Technician</option>
+              <option value="Hospital Administration">Hospital Administration</option>
+              <option value="General Duty Assistance">General Duty Assistance</option>
+              <option value="OCHA">OCHA</option>
+              <option value="AHAP">AHAP</option>
+              <option value="GCA">GCA</option>
+              <option value="MLT">MLT</option>
+              <option value="Radiology">Radiology</option>
+            </select>
+          </div>
+
+          {/* Mode of Program */}
+          <div className="flex flex-col gap-1.5">
+            <label className="text-[#364153] font-medium text-[15px]">
+              Mode of Program
+            </label>
+            <select
+              value={formValues.mode}
+              onChange={(e) => updateValue("mode", e.target.value)}
+              className="bg-[#f3f3f5] h-[40px] rounded-[6px] w-full px-3 text-[#111827] text-[14px] outline-none border border-transparent focus:border-[#25a88d] transition-colors cursor-pointer"
+            >
+              <option value="" disabled>
+                Select a Mode
+              </option>
+              <option value="Online">Online</option>
+              <option value="Offline">Offline</option>
+            </select>
+          </div>
+
+          {/* Message */}
+          <div className="flex flex-col gap-1.5">
+            <label className="text-[#364153] font-medium text-[15px]">
+              Message
+            </label>
+            <textarea
+              rows={3}
+              value={formValues.message}
+              onChange={(e) => updateValue("message", e.target.value)}
+              placeholder="Tell us anything"
+              className="bg-[#f3f3f5] h-[72px] rounded-[6px] w-full px-3 py-2 text-[#111827] text-[14px] outline-none resize-none border border-transparent focus:border-[#25a88d] transition-colors"
+            />
+          </div>
+
+          {/* Feedback */}
+          {feedback && (
+            <p className="w-full break-words text-[13.5px] leading-[18px] text-[#1f3471] font-medium bg-[#25a88d]/10 p-2.5 rounded-[6px] text-center">
+              {feedback}
+            </p>
+          )}
+
+          {/* Submit Button */}
+          <button
+            disabled={isSubmitting}
+            type="submit"
+            className="bg-[#25a88d] h-[48px] rounded-[12px] shrink-0 w-full disabled:opacity-70 flex items-center justify-center gap-[10px] hover:bg-[#1e8d76] active:scale-[0.98] transition-all cursor-pointer border-0 mt-1 shadow-sm"
+          >
+            <span className="font-['Inter:Medium',sans-serif] font-medium text-[17px] text-center text-white whitespace-nowrap">
+              {isSubmitting ? "Sending..." : "Send Message"}
+            </span>
+            <div className="relative size-[16px] shrink-0">
+              <svg className="block size-full" fill="none" viewBox="0 0 16 16">
+                <path d={svgPaths.p37a4d100} stroke="white" strokeLinecap="round" strokeLinejoin="round" strokeWidth="1.33333" />
+                <path d={svgPaths.p20c783c0} stroke="white" strokeLinecap="round" strokeLinejoin="round" strokeWidth="1.33333" />
+              </svg>
+            </div>
+          </button>
+        </form>
+      </div>
+    </section>
+  );
+}
+
+function MobileFooter({ onOpenCareers }: { onOpenCareers: () => void }) {
+  const programs = [
+    { label: "Emergency Medical Technician", hash: "#emt" },
+    { label: "Hospital Administration", hash: "#ha" },
+    { label: "General Duty Assistance", hash: "#gda" },
+    { label: "OCHA", hash: "#ocha" },
+    { label: "AHAP", hash: "#ahap" },
+    { label: "GCA", hash: "#gca" },
+    { label: "MLT", hash: "#mlt" },
+    { label: "Radiology", hash: "#radiology" },
+  ];
+
+  return (
+    <footer className="bg-[#1f3471] text-white overflow-hidden">
+      <div className="px-5 pt-10 pb-8 flex flex-col gap-8 max-w-[500px] mx-auto">
+        {/* Brand Header matching PC Frame3 */}
+        <div className="flex flex-col gap-3">
+          <div className="flex items-center gap-3">
+            {/* PC White Graduation Cap Logo */}
+            <div className="h-[38px] w-[27px] shrink-0">
+              <svg className="size-full block" fill="none" viewBox="0 0 29.4797 42">
+                <path d={svgPaths.p39fca700} fill="white" />
+                <path d={svgPaths.p3f5aca80} fill="white" />
+                <path d={svgPaths.p18842c00} fill="white" />
+                <path d={svgPaths.p66e1300} fill="white" />
+              </svg>
+            </div>
+            {/* PC Brand Typography */}
+            <div className="flex flex-col">
+              <p className="font-['Inter:Bold',sans-serif] font-bold text-[22px] leading-tight text-white tracking-tight">
+                iMED Academy
+              </p>
+              <p className="font-['Inter:Medium',sans-serif] font-medium text-[12px] text-white/70 tracking-wide mt-0.5">
+                Educate. Equip. Employ.
+              </p>
+            </div>
+          </div>
+          <p className="font-['Inter:Medium',sans-serif] font-medium text-[14px] text-white/80">
+            India&apos;s Career Launchpad
+          </p>
+
+          {/* PC Partner Accreditation Badges (NSDC & MSME) */}
+          <div className="h-[52px] w-[240px] relative overflow-hidden pointer-events-none mt-1">
+            <img
+              loading="lazy"
+              decoding="async"
+              alt="iMED Accreditation Partners"
+              className="absolute h-[328.33%] left-[-10.01%] max-w-none top-[-103.91%] w-[111.47%]"
+              src={imgImage1718}
+            />
+          </div>
+        </div>
+
+        {/* 2-Column Links Layout matching PC */}
+        <div className="grid grid-cols-2 gap-7 border-t border-white/10 pt-6">
+          {/* Programs Column */}
+          <div>
+            <p className="font-['Inter:Semi_Bold',sans-serif] font-semibold text-[#25a88d] text-[16px] mb-3.5">
+              Programs
+            </p>
+            <div className="flex flex-col gap-2.5">
+              {programs.map((p) => (
+                <button
+                  key={p.hash}
+                  type="button"
+                  onClick={() => {
+                    window.location.hash = p.hash;
+                    window.scrollTo({ top: 0, behavior: "smooth" });
+                  }}
+                  className="text-white/80 text-[13px] text-left hover:text-[#8ee2d2] transition-colors cursor-pointer border-0 bg-transparent p-0 leading-snug"
+                >
+                  {p.label}
+                </button>
+              ))}
+            </div>
+          </div>
+
+          {/* Company & Contact Column */}
+          <div className="flex flex-col gap-6">
+            <div>
+              <p className="font-['Inter:Semi_Bold',sans-serif] font-semibold text-[#25a88d] text-[16px] mb-3.5">
+                Company
+              </p>
+              <div className="flex flex-col gap-2.5">
+                <a
+                  href="#about-imed"
+                  className="text-white/80 text-[13px] hover:text-[#8ee2d2] transition-colors leading-snug"
+                >
+                  About Us
+                </a>
+                <a
+                  href="#trusted-partners"
+                  className="text-white/80 text-[13px] hover:text-[#8ee2d2] transition-colors leading-snug"
+                >
+                  Hospital Partners
+                </a>
+                <button
+                  type="button"
+                  onClick={onOpenCareers}
+                  className="text-white/80 text-[13px] text-left hover:text-[#8ee2d2] transition-colors cursor-pointer border-0 bg-transparent p-0 leading-snug"
+                >
+                  Careers
+                </button>
+                <button
+                  type="button"
+                  onClick={() => {
+                    window.location.hash = "#skillbridge";
+                    window.scrollTo({ top: 0, behavior: "smooth" });
+                  }}
+                  className="text-white/80 text-[13px] text-left hover:text-[#8ee2d2] transition-colors cursor-pointer border-0 bg-transparent p-0 leading-snug"
+                >
+                  Skillbridge
+                </button>
+              </div>
+            </div>
+
+            <div>
+              <p className="font-['Inter:Semi_Bold',sans-serif] font-semibold text-[#25a88d] text-[16px] mb-3">
+                Contact Us
+              </p>
+              <div className="flex flex-col gap-2.5 text-[12.5px] text-white/85">
+                <a
+                  href="mailto:contact@imedacademy.in"
+                  className="flex items-center gap-2 hover:text-[#8ee2d2] transition-colors"
+                >
+                  <div className="relative shrink-0 size-[18px]">
+                    <svg className="block size-full" fill="none" viewBox="0 0 24 24">
+                      <path d={svgPaths.p3e50e500} fill="#25A88D" />
+                    </svg>
+                  </div>
+                  <span className="truncate">contact@imedacademy.in</span>
+                </a>
+                <a
+                  href="tel:+919266790357"
+                  className="flex items-center gap-2 hover:text-[#8ee2d2] transition-colors font-medium"
+                >
+                  <div className="relative shrink-0 size-[18px]">
+                    <svg className="block size-full" fill="none" viewBox="0 0 24 24">
+                      <path d={svgPaths.p3f2dc880} fill="#25A88D" />
+                    </svg>
+                  </div>
+                  <span>+91 92667 90357</span>
+                </a>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        {/* Social Icons matching PC circular white buttons with #25A88D SVGs */}
+        <div className="border-t border-white/10 pt-6">
+          <p className="text-[13px] font-semibold uppercase tracking-wider text-[#25a88d] mb-3.5">
+            Follow Us
+          </p>
+          <div className="flex items-center gap-3">
+            {/* Instagram */}
+            <a
+              href="https://www.instagram.com/imed_academy_/?fbclid=IwY2xjawRhEjJleHRuA2FlbQIxMQBicmlkETE2YTZTZWMwVkpnTnBueDlNc3J0YwZhcHBfaWQBMAABHtQKnEn3xPSCpWGVechsClKv5s90Gqvqv4WFolT0Ae-hvnagmTedAqkxCNoZ_aem_9xl0yX6vqRemofRGlIchGQ"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="size-[35px] rounded-full bg-white flex items-center justify-center hover:scale-110 active:scale-95 transition-all shadow-sm"
+              aria-label="Instagram"
+            >
+              <svg className="size-[18px]" fill="none" viewBox="0 0 35 35">
+                <path d={svgPaths.p3eeb9f80} fill="#25A88D" />
+              </svg>
+            </a>
+
+            {/* Facebook */}
+            <a
+              href="https://www.facebook.com/people/IMed-Academy/61587360444802/"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="size-[35px] rounded-full bg-white flex items-center justify-center hover:scale-110 active:scale-95 transition-all shadow-sm"
+              aria-label="Facebook"
+            >
+              <svg className="h-[16px] w-[8px]" fill="none" viewBox="0 0 7.90323 15.2186">
+                <path d={svgPaths.p2e759440} fill="#25A88D" />
+              </svg>
+            </a>
+
+            {/* LinkedIn */}
+            <a
+              href="https://www.linkedin.com/company/imed-academy/"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="size-[35px] rounded-full bg-white flex items-center justify-center hover:scale-110 active:scale-95 transition-all shadow-sm"
+              aria-label="LinkedIn"
+            >
+              <svg className="size-[15px]" fill="none" viewBox="0 0 14 14">
+                <path clipRule="evenodd" d={svgPaths.pa152600} fill="#25A88D" fillRule="evenodd" />
+              </svg>
+            </a>
+
+            {/* Twitter / X */}
+            <a
+              href="https://twitter.com/imedacademy_"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="size-[35px] rounded-full bg-white flex items-center justify-center hover:scale-110 active:scale-95 transition-all shadow-sm"
+              aria-label="Twitter"
+            >
+              <svg className="size-[14px]" fill="none" viewBox="0 0 12.8333 11.6667">
+                <path d={svgPaths.pf014ab0} fill="#25A88D" />
+                <path d={svgPaths.p35937000} fill="#25A88D" />
+                <path d={svgPaths.p11c90580} fill="#25A88D" />
+              </svg>
+            </a>
+
+            {/* YouTube */}
+            <a
+              href="https://www.youtube.com/@imedacademy-25"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="size-[35px] rounded-full bg-white flex items-center justify-center hover:scale-110 active:scale-95 transition-all shadow-sm"
+              aria-label="YouTube"
+            >
+              <svg className="size-[15px]" fill="none" viewBox="0 0 14 14">
+                <path d={svgPaths.p28fdae80} fill="#25A88D" />
+              </svg>
+            </a>
+          </div>
+        </div>
+      </div>
+
+      {/* Bottom Bar matching PC Frame2 */}
+      <div className="bg-[#182a5c] px-5 py-4 text-center text-white/70 text-[12px] border-t border-white/5 shadow-inner">
+        <p className="leading-relaxed mb-2">
+          &copy; 2026 iMED Academy. All rights reserved.
+          <br />
+          <span className="text-white/55 text-[11px]">
+            NSDC Authorised Training Partner &middot; MSME Registered
+          </span>
+        </p>
+        <div className="flex justify-center items-center gap-5 text-white/75 text-[12px]">
+          <a
+            href="#privacy-policy"
+            className="hover:text-[#8ee2d2] transition-colors"
+          >
+            Privacy Policy
+          </a>
+          <span className="text-white/30">&middot;</span>
+          <a
+            href="#terms-and-conditions"
+            className="hover:text-[#8ee2d2] transition-colors"
+          >
+            Terms of use
+          </a>
+        </div>
+      </div>
+    </footer>
+  );
+}
+
 export default function HomePage({ onOpenCareers }: { onOpenCareers: () => void }) {
   const designWidth = 1440;
   const pageRef = useRef<HTMLDivElement>(null);
@@ -5972,7 +7719,7 @@ export default function HomePage({ onOpenCareers }: { onOpenCareers: () => void 
 
   return (
     <div
-      className="bg-white overflow-x-hidden relative w-full"
+      className="bg-white overflow-x-hidden relative w-full home-page-container"
       data-name="Home Page"
       style={{ height: scaledHeight ? `${scaledHeight}px` : "100vh" }}
     >
@@ -5997,6 +7744,16 @@ export default function HomePage({ onOpenCareers }: { onOpenCareers: () => void 
                   className="w-full h-auto max-h-[80vh] object-contain cursor-pointer rounded-[12px]"
                   onClick={() => {
                     closePopup();
+                    const isMobile = window.innerWidth <= 768;
+                    if (isMobile) {
+                      const mobileContainer = document.querySelector(".homepage-mobile-view");
+                      const el = mobileContainer?.querySelector<HTMLElement>("#contact-us");
+                      if (el) {
+                        const offset = el.getBoundingClientRect().top + window.pageYOffset - 65;
+                        window.scrollTo({ top: offset > 0 ? offset : 0, behavior: "smooth" });
+                        return;
+                      }
+                    }
                     const el = document.getElementById("contact-us");
                     if (el) el.scrollIntoView({ behavior: "smooth", block: "start" });
                   }}
@@ -6059,35 +7816,55 @@ export default function HomePage({ onOpenCareers }: { onOpenCareers: () => void 
           100% { transform: translate3d(0,0,0); }
         }
       `}</style>
-      <div
-        className="fixed left-0 top-0 z-[200] origin-top-left"
-        style={{ transform: `scale(${pageScale})`, width: `${designWidth}px` }}
-      >
-        <NavBar />
-      </div>
-      <div
-        ref={pageRef}
-        className="origin-top-left"
-        style={{ transform: `scale(${pageScale})`, width: `${designWidth}px` }}
-      >
-        <div className="bg-white relative size-full">
-          <MainPage />
-          <div className="-translate-x-1/2 absolute bg-gradient-to-b from-[rgba(255,255,255,0)] h-[231px] left-1/2 to-[45.416%] to-white top-[641px] w-[1440px]" />
-          <Container />
-          <Container10 />
-          <About />
-          <About1 />
-          <About2 />
-          <About3 />
-          <Container21 />
-          <WhyChooseUs />
-          <Contact />
-          <Frame17 onOpenCareers={onOpenCareers} />
-
-          <About4 />
-          <About5 />
-          <About6 onUpdateSelection={updateScopeDemandSelection} salary={salaryBreakdown} selections={scopeDemandSelections} />
+      <div className="homepage-desktop-view">
+        <div
+          className="fixed left-0 top-0 z-[200] origin-top-left"
+          style={{ transform: `scale(${pageScale})`, width: `${designWidth}px` }}
+        >
+          <NavBar />
         </div>
+        <div
+          ref={pageRef}
+          className="origin-top-left"
+          style={{ transform: `scale(${pageScale})`, width: `${designWidth}px` }}
+        >
+          <div className="bg-white relative size-full">
+            <MainPage />
+            <div className="-translate-x-1/2 absolute bg-gradient-to-b from-[rgba(255,255,255,0)] h-[231px] left-1/2 to-[45.416%] to-white top-[641px] w-[1440px]" />
+            <Container />
+            <Container10 />
+            <About />
+            <About1 />
+            <About2 />
+            <About3 />
+            <Container21 />
+            <WhyChooseUs />
+            <Contact />
+            <Frame17 onOpenCareers={onOpenCareers} />
+
+            <About4 />
+            <About5 />
+            <About6 onUpdateSelection={updateScopeDemandSelection} salary={salaryBreakdown} selections={scopeDemandSelections} />
+          </div>
+        </div>
+      </div>
+
+      <div className="homepage-mobile-view">
+        <MobileNavBar onOpenCareers={onOpenCareers} />
+        <MobileHeroSection />
+        <MobileStatsSection />
+        <MobileTrustedPartners />
+        <MobileAboutSection />
+        <MobileWhyImed />
+        <MobileScopeSection selections={scopeDemandSelections} salary={salaryBreakdown} onUpdateSelection={updateScopeDemandSelection} />
+        <MobileCareerPath />
+        <MobileOnlineSection />
+        <MobileStudentStories />
+        <MobileHowItWorks />
+        <MobileFAQ />
+        <MobileCtaBanner />
+        <MobileContactSection />
+        <MobileFooter onOpenCareers={onOpenCareers} />
       </div>
     </div>
   );

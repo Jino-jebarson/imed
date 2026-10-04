@@ -2173,6 +2173,23 @@ app.get("/api/admin/leads/assigned", requireAuth, async (req, res) => {
   res.json({ ok: true, data: leads });
 });
 
+app.get("/api/admin/admissions", requireAuth, async (req, res) => {
+  if (!canUseLeads(req.user)) return sendError(res, 403, "Lead access is restricted to counsellor and admin accounts");
+  const leadFilter = { stage: "Admission" };
+  Object.assign(leadFilter, await scopedDataFilter(req, req.query));
+  if (isCounsellorAccount(req.user)) leadFilter.counsellor = req.user.name;
+
+  const studentFilter = { leadId: { $exists: true, $ne: null } };
+  Object.assign(studentFilter, await scopedDataFilter(req, req.query));
+  if (isCounsellorAccount(req.user)) studentFilter.counsellor = req.user.name;
+
+  const convertedLeadIds = await Student.distinct("leadId", studentFilter);
+  const leads = await Lead.find({ ...leadFilter, _id: { $nin: convertedLeadIds } })
+    .sort({ updatedAt: -1, createdAt: -1 })
+    .lean();
+  res.json({ ok: true, data: leads });
+});
+
 app.get("/api/admin/admissions/pending-count", requireAuth, async (req, res) => {
   if (!canUseLeads(req.user)) return sendError(res, 403, "Lead access is restricted to counsellor and admin accounts");
   const leadFilter = { stage: "Admission" };
@@ -2195,8 +2212,8 @@ app.post("/api/admin/leads", requireAuth, leadDocumentUpload.fields([
   if (!canUseLeads(req.user)) return sendError(res, 403, "Lead creation is restricted to counsellor and admin accounts");
   const body = req.body || {};
   const files = req.files || {};
-  if (!body.fullName || !body.phone || !body.studentLocation || !body.source || !body.centre) {
-    return sendError(res, 400, "Full name, phone, student location, source and centre are required");
+  if (!body.fullName || !body.phone || !body.studentLocation || !body.source || !body.centre || !body.course) {
+    return sendError(res, 400, "Full name, phone, student location, source, centre, and course are required");
   }
   const franchise = await resolveFranchiseFromRequest(req, body.centre || "");
   if (isFranchiseUser(req.user) && !franchise) return sendError(res, 403, "Franchise account is not assigned");
@@ -4170,12 +4187,8 @@ app.delete("/api/admin/courses/:id", requireAuth, requireFranchiseManager, async
 });
 
 app.get("/api/admin/batches", requireAuth, async (req, res) => {
-  const branchScope = isHeadBranchScoped(req.user) ? await headOfficeBranchScope(req.user) : null;
-  const filter = isFranchiseUser(req.user)
-    ? { active: true, franchiseId: req.user.franchiseId || emptyObjectId }
-    : isHeadBranchScoped(req.user)
-      ? { active: true, $or: [{ franchiseId: { $in: branchScope.ids } }, { centre: { $in: branchScope.names } }] }
-      : { active: true };
+  const scopedFilter = await scopedDataFilter(req, req.query);
+  const filter = { active: true, ...scopedFilter };
   if (isTeacherAccount(req.user)) {
     const scope = await teacherAcademicBatchScope(req.user);
     filter.$and = [{ $or: [{ _id: { $in: scope.batchIds } }, { name: { $in: scope.batchNames } }] }];

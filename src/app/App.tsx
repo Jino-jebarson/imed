@@ -303,6 +303,16 @@ export default function App() {
     };
 
     const scrollToHomeContact = () => {
+      const isMobile = window.innerWidth <= 768;
+      if (isMobile) {
+        const mobileContainer = document.querySelector(".homepage-mobile-view");
+        const mobileEl = mobileContainer?.querySelector<HTMLElement>("#contact-us");
+        if (mobileEl) {
+          const offset = mobileEl.getBoundingClientRect().top + window.pageYOffset - 65;
+          window.scrollTo({ top: offset > 0 ? offset : 0, behavior: "smooth" });
+          return;
+        }
+      }
       const target =
         document.getElementById("contact-us") ||
         (document.querySelector("[data-name='Contact']") as HTMLElement | null);
@@ -321,7 +331,19 @@ export default function App() {
     };
 
     const scrollToSection = (sectionId: string) => {
-      const section = document.getElementById(sectionId) || (document.querySelector(`[data-nav="${sectionId}"]`) as HTMLElement | null);
+      const isMobile = window.innerWidth <= 768;
+      if (isMobile) {
+        const mobileContainer = document.querySelector(".homepage-mobile-view");
+        const mobileEl = mobileContainer?.querySelector<HTMLElement>(`#${sectionId}`);
+        if (mobileEl) {
+          const offset = mobileEl.getBoundingClientRect().top + window.pageYOffset - 65;
+          window.scrollTo({ top: offset > 0 ? offset : 0, behavior: "smooth" });
+          return;
+        }
+      }
+      const section =
+        document.getElementById(sectionId) ||
+        (document.querySelector(`[data-nav="${sectionId}"]`) as HTMLElement | null);
       if (!section) return;
       section.scrollIntoView({ behavior: "smooth", block: "start" });
     };
