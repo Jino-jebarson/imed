@@ -182,7 +182,7 @@ const adminUserSchema = new mongoose.Schema({
   name: { type: String, required: true, trim: true },
   email: { type: String, required: true, unique: true, lowercase: true, trim: true },
   passwordHash: { type: String, required: true },
-  role: { type: String, enum: ["superadmin", "center_admin", "admin", "counsellor", "teacher", "operations_executive", "franchise_superadmin", "franchise_counsellor", "franchise_teacher", "franchise_operations_executive"], default: "admin" },
+  role: { type: String, enum: ["superadmin", "center_admin", "admin", "branch_admin_counsellor", "counsellor", "teacher", "operations_executive", "franchise_superadmin", "franchise_admin_counsellor", "franchise_counsellor", "franchise_teacher", "franchise_operations_executive"], default: "admin" },
   franchiseId: { type: mongoose.Schema.Types.ObjectId, ref: "Centre" },
   passwordResetTokenHash: { type: String, default: "" },
   passwordResetExpiresAt: { type: Date },
@@ -905,7 +905,7 @@ function isOperationsAccount(user) {
 }
 
 function isHeadAdmin(user) {
-  return ["superadmin", "center_admin", "admin"].includes(user?.role);
+  return ["superadmin", "center_admin", "admin", "branch_admin_counsellor"].includes(user?.role);
 }
 
 function isHeadSuperAdmin(user) {
@@ -917,15 +917,15 @@ function isCenterAdmin(user) {
 }
 
 function isHeadBranchAdmin(user) {
-  return user?.role === "admin";
+  return ["admin", "branch_admin_counsellor"].includes(user?.role);
 }
 
 function isFranchiseUser(user) {
-  return ["franchise_superadmin", "franchise_counsellor", "franchise_teacher", "franchise_operations_executive"].includes(user?.role);
+  return ["franchise_superadmin", "franchise_admin_counsellor", "franchise_counsellor", "franchise_teacher", "franchise_operations_executive"].includes(user?.role);
 }
 
 function isFranchiseSuperAdmin(user) {
-  return user?.role === "franchise_superadmin";
+  return ["franchise_superadmin", "franchise_admin_counsellor"].includes(user?.role);
 }
 
 function isCounsellorAccount(user) {
@@ -1889,12 +1889,12 @@ app.get("/api/centres", async (_req, res) => {
 
 app.get("/api/admin/counsellors", requireAuth, requireFranchiseManager, async (req, res) => {
   const filter = isFranchiseSuperAdmin(req.user)
-    ? { role: { $in: ["franchise_counsellor", "franchise_teacher", "franchise_operations_executive"] }, franchiseId: req.user.franchiseId || emptyObjectId }
+    ? { role: { $in: ["franchise_superadmin", "franchise_admin_counsellor", "franchise_counsellor", "franchise_teacher", "franchise_operations_executive"] }, franchiseId: req.user.franchiseId || emptyObjectId }
     : isCenterAdmin(req.user)
-      ? { role: { $in: ["admin", "counsellor", "teacher", "operations_executive"] }, franchiseId: { $in: (await centerAdminBranchIds(req.user)) } }
+      ? { role: { $in: ["admin", "branch_admin_counsellor", "counsellor", "teacher", "operations_executive"] }, franchiseId: { $in: (await centerAdminBranchIds(req.user)) } }
       : isHeadBranchAdmin(req.user)
-        ? { role: { $in: ["admin", "counsellor", "teacher", "operations_executive"] }, ...(req.user.franchiseId ? { franchiseId: req.user.franchiseId } : {}) }
-        : { role: { $in: ["superadmin", "center_admin", "admin", "counsellor", "teacher", "operations_executive", "franchise_superadmin", "franchise_counsellor", "franchise_teacher", "franchise_operations_executive"] } };
+        ? { role: { $in: ["admin", "branch_admin_counsellor", "counsellor", "teacher", "operations_executive"] }, ...(req.user.franchiseId ? { franchiseId: req.user.franchiseId } : {}) }
+        : { role: { $in: ["superadmin", "center_admin", "admin", "branch_admin_counsellor", "counsellor", "teacher", "operations_executive", "franchise_superadmin", "franchise_admin_counsellor", "franchise_counsellor", "franchise_teacher", "franchise_operations_executive"] } };
   const counsellors = await AdminUser.find(filter).select("_id name email role franchiseId").sort({ name: 1 }).lean();
   res.json({ ok: true, data: counsellors });
 });
@@ -1918,19 +1918,19 @@ app.post("/api/admin/counsellors", requireAuth, requireFranchiseManager, async (
   const { name, email, password, role = "counsellor", franchiseId = "" } = req.body || {};
   if (!name || !email || !password) return sendError(res, 400, "Name, email, and password are required");
   if (String(password).length < 8) return sendError(res, 400, "Password must be at least 8 characters");
-  if (!["superadmin", "center_admin", "admin", "counsellor", "teacher", "operations_executive", "franchise_superadmin", "franchise_counsellor", "franchise_teacher", "franchise_operations_executive"].includes(role)) return sendError(res, 400, "Invalid staff role");
-  if (isFranchiseSuperAdmin(req.user) && !["franchise_counsellor", "franchise_teacher", "franchise_operations_executive"].includes(role)) return sendError(res, 403, "Franchise super admin can create only franchise staff");
-  if (isHeadBranchAdmin(req.user) && !["admin", "counsellor", "teacher", "operations_executive"].includes(role)) return sendError(res, 403, "Head admin can create only head office staff");
-  if (isCenterAdmin(req.user) && !["admin", "counsellor", "teacher", "operations_executive"].includes(role)) return sendError(res, 403, "Center admin can create only branch staff");
+  if (!["superadmin", "center_admin", "admin", "branch_admin_counsellor", "counsellor", "teacher", "operations_executive", "franchise_superadmin", "franchise_admin_counsellor", "franchise_counsellor", "franchise_teacher", "franchise_operations_executive"].includes(role)) return sendError(res, 400, "Invalid staff role");
+  if (isFranchiseSuperAdmin(req.user) && !["franchise_admin_counsellor", "franchise_counsellor", "franchise_teacher", "franchise_operations_executive"].includes(role)) return sendError(res, 403, "Franchise super admin can create only franchise staff");
+  if (isHeadBranchAdmin(req.user) && !["admin", "branch_admin_counsellor", "counsellor", "teacher", "operations_executive"].includes(role)) return sendError(res, 403, "Head admin can create only head office staff");
+  if (isCenterAdmin(req.user) && !["admin", "branch_admin_counsellor", "counsellor", "teacher", "operations_executive"].includes(role)) return sendError(res, 403, "Center admin can create only branch staff");
   if (role === "superadmin" && !isHeadSuperAdmin(req.user)) return sendError(res, 403, "Head super admin access required");
   if (role === "center_admin" && !isHeadSuperAdmin(req.user)) return sendError(res, 403, "Only super admin can create center admin accounts");
-  if (!isHeadAdmin(req.user) && ["superadmin", "center_admin", "admin", "counsellor", "teacher", "operations_executive", "franchise_superadmin"].includes(role)) return sendError(res, 403, "Head admin access required");
+  if (!isHeadAdmin(req.user) && ["superadmin", "center_admin", "admin", "branch_admin_counsellor", "counsellor", "teacher", "operations_executive", "franchise_superadmin", "franchise_admin_counsellor"].includes(role)) return sendError(res, 403, "Head admin access required");
   const assignedFranchiseId = isFranchiseSuperAdmin(req.user) || isHeadBranchAdmin(req.user) ? req.user.franchiseId : franchiseId;
   // center_admin needs a parent centre (type not restricted — could be any Centre record acting as parent)
-  const needsAssignedCentre = ["center_admin", "admin", "counsellor", "teacher", "operations_executive", "franchise_superadmin", "franchise_counsellor", "franchise_teacher", "franchise_operations_executive"].includes(role);
-  if (needsAssignedCentre && !mongoose.isValidObjectId(String(assignedFranchiseId || ""))) return sendError(res, 400, ["admin", "counsellor", "teacher", "operations_executive"].includes(role) ? "Branch is required" : role === "center_admin" ? "Parent centre is required" : "Franchise is required");
+  const needsAssignedCentre = ["center_admin", "admin", "branch_admin_counsellor", "counsellor", "teacher", "operations_executive", "franchise_superadmin", "franchise_admin_counsellor", "franchise_counsellor", "franchise_teacher", "franchise_operations_executive"].includes(role);
+  if (needsAssignedCentre && !mongoose.isValidObjectId(String(assignedFranchiseId || ""))) return sendError(res, 400, ["admin", "branch_admin_counsellor", "counsellor", "teacher", "operations_executive"].includes(role) ? "Branch is required" : role === "center_admin" ? "Parent centre is required" : "Franchise is required");
   if (needsAssignedCentre && !["center_admin"].includes(role)) {
-    const expectedType = ["admin", "counsellor", "teacher", "operations_executive"].includes(role) ? "branch" : "franchise";
+    const expectedType = ["admin", "branch_admin_counsellor", "counsellor", "teacher", "operations_executive"].includes(role) ? "branch" : "franchise";
     const centre = await Centre.findOne({ _id: assignedFranchiseId, type: expectedType }).lean();
     if (!centre) return sendError(res, 404, expectedType === "branch" ? "Branch not found" : "Franchise not found");
   }
@@ -1976,10 +1976,10 @@ app.patch("/api/admin/counsellors/:id", requireAuth, requireFranchiseManager, as
   if (name && String(name).trim()) staff.name = String(name).trim();
 
   if (role) {
-    if (!["superadmin", "center_admin", "admin", "counsellor", "teacher", "operations_executive", "franchise_superadmin", "franchise_counsellor", "franchise_teacher", "franchise_operations_executive"].includes(role)) {
+    if (!["superadmin", "center_admin", "admin", "branch_admin_counsellor", "counsellor", "teacher", "operations_executive", "franchise_superadmin", "franchise_admin_counsellor", "franchise_counsellor", "franchise_teacher", "franchise_operations_executive"].includes(role)) {
       return sendError(res, 400, "Invalid staff role");
     }
-    if (isCenterAdmin(req.user) && !["admin", "counsellor", "teacher", "operations_executive"].includes(role)) {
+    if (isCenterAdmin(req.user) && !["admin", "branch_admin_counsellor", "counsellor", "teacher", "operations_executive"].includes(role)) {
       return sendError(res, 403, "Center admin can create or update only branch staff");
     }
     staff.role = role;

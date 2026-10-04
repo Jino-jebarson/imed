@@ -490,11 +490,38 @@ function openLeadPamphlet(lead: Lead, pamphlet: LeadPamphletKey) {
 }
 
 function roleLabel(role = "") {
-  return role === "superadmin" ? "Super Admin" : role === "center_admin" ? "Center Admin" : role === "admin" ? "Branch Admin" : role === "operations_executive" ? "Operations Executive" : role === "franchise_operations_executive" ? "Franchise Operations Executive" : role === "teacher" ? "Teacher" : role === "franchise_superadmin" ? "Franchise Super Admin" : role === "franchise_counsellor" ? "Franchise Counsellor" : role === "franchise_teacher" ? "Franchise Teacher" : "Counsellor";
+  return role === "superadmin"
+    ? "Super Admin"
+    : role === "center_admin"
+    ? "Center Admin"
+    : role === "admin"
+    ? "Branch Admin"
+    : role === "branch_admin_counsellor"
+    ? "Branch Admin + Counsellor"
+    : role === "franchise_admin_counsellor"
+    ? "Franchise Admin + Counsellor"
+    : role === "operations_executive"
+    ? "Operations Executive"
+    : role === "franchise_operations_executive"
+    ? "Franchise Operations Executive"
+    : role === "teacher"
+    ? "Teacher"
+    : role === "franchise_superadmin"
+    ? "Franchise Super Admin"
+    : role === "franchise_counsellor"
+    ? "Franchise Counsellor"
+    : role === "franchise_teacher"
+    ? "Franchise Teacher"
+    : "Counsellor";
 }
 
 function isCounsellorStaffRole(role = "") {
-  return role === "counsellor" || role === "franchise_counsellor";
+  return (
+    role === "counsellor" ||
+    role === "franchise_counsellor" ||
+    role === "branch_admin_counsellor" ||
+    role === "franchise_admin_counsellor"
+  );
 }
 
 function attendanceStatusLabel(status: AttendanceStatus) {
@@ -1106,11 +1133,11 @@ export default function AdminCrm() {
 
   const isHeadSuperAdmin = user?.role === "superadmin";
   const isCenterAdmin = user?.role === "center_admin";
-  const isHeadAdmin = user?.role === "superadmin" || user?.role === "center_admin" || user?.role === "admin";
-  const isHeadBranchAdmin = user?.role === "admin";
+  const isHeadAdmin = user?.role === "superadmin" || user?.role === "center_admin" || user?.role === "admin" || user?.role === "branch_admin_counsellor";
+  const isHeadBranchAdmin = user?.role === "admin" || user?.role === "branch_admin_counsellor";
   const isOperationsAccount = user?.role === "operations_executive" || user?.role === "franchise_operations_executive";
-  const isFranchiseSuperAdmin = user?.role === "franchise_superadmin";
-  const isFranchiseUser = user?.role === "franchise_superadmin" || user?.role === "franchise_counsellor" || user?.role === "franchise_teacher" || user?.role === "franchise_operations_executive";
+  const isFranchiseSuperAdmin = user?.role === "franchise_superadmin" || user?.role === "franchise_admin_counsellor";
+  const isFranchiseUser = user?.role === "franchise_superadmin" || user?.role === "franchise_admin_counsellor" || user?.role === "franchise_counsellor" || user?.role === "franchise_teacher" || user?.role === "franchise_operations_executive";
   const isCounsellorAccount = user?.role === "counsellor" || user?.role === "franchise_counsellor";
   const isTeacherAccount = user?.role === "teacher" || user?.role === "franchise_teacher";
   const actualCounsellors = useMemo(
@@ -2395,6 +2422,18 @@ export default function AdminCrm() {
     }
   };
 
+  const previewPaymentProof = async (student: Student, payment: PaymentRecord, index: number, proofIndex = 0) => {
+    const proofList = (payment.proofs && payment.proofs.length > 0) ? payment.proofs : (payment.proof?.storedName ? [payment.proof] : []);
+    const targetProof = proofList[proofIndex] || payment.proof;
+    if (!targetProof?.storedName) return toast.message("No payment proof uploaded");
+    const label = proofList.length > 1 ? `Payment Proof #${proofIndex + 1}` : "Payment Proof";
+    await openSecurePreview(
+      `/api/admin/students/${student._id}/payments/${index}/proof?proofIndex=${proofIndex}`,
+      `${label} (${formatCurrency(payment.amount || 0)}) - ${student.fullName}`,
+      targetProof.originalName || "payment-proof"
+    );
+  };
+
   const recordCashDeposit = async (event: FormEvent<HTMLFormElement>, student: Student, payment: PaymentRecord, paymentIndex: number) => {
     event.preventDefault();
     const form = event.currentTarget;
@@ -2460,6 +2499,15 @@ export default function AdminCrm() {
     } catch (error) {
       toast.error(error instanceof Error ? error.message : "Unable to download deposit proof");
     }
+  };
+
+  const previewCashDepositProof = async (student: Student, paymentIndex: number, deposit: CashDeposit, depositIndex: number) => {
+    if (!deposit.proof?.storedName) return toast.message("No deposit proof uploaded");
+    await openSecurePreview(
+      `/api/admin/students/${student._id}/payments/${paymentIndex}/cash-deposits/${depositIndex}/proof`,
+      `Cash Deposit Proof (${formatCurrency(deposit.amount || 0)}) - ${student.fullName}`,
+      deposit.proof.originalName || "cash-deposit-proof"
+    );
   };
 
   const addStudentFeedback = async (event: FormEvent<HTMLFormElement>, student: Student) => {
@@ -3268,7 +3316,7 @@ export default function AdminCrm() {
             {panel === "internship" && canUseInternship && <InternshipPanel students={visibleStudents} user={user} onPreviewPhoto={openInternshipPhotoPreview} onReviewLogbook={reviewLogbookEntry} />}
             {panel === "nps" && (canManageNps || isTeacherAccount) && <NpsPanel dashboard={npsDashboard} responses={npsResponses} meta={npsMeta} filters={npsFilters} setFilters={(next) => { setNpsFilters(next); setNpsPage(1); }} courses={courseOptions} batches={visibleBatches} canManage={canManageNps} onPage={setNpsPage} onFollowUp={saveNpsFollowUp} onExport={exportNps} />}
             {panel === "alumni" && <AlumniPanel students={isTeacherAccount ? visibleStudents : students} meta={studentMeta} canManage={!isTeacherAccount && !isCounsellorAccount} onPage={setStudentPage} onPatch={patchStudent} onOpen={(student) => openProfile({ type: "student", data: student }, "alumni")} />}
-            {panel === "finance" && <FinancePanel students={students} meta={studentMeta} user={user} onPage={setStudentPage} onOpen={(student) => openProfile({ type: "student", data: student }, "finance")} onCashDeposit={recordCashDeposit} onDownloadCashDepositProof={downloadCashDepositProof} />}
+            {panel === "finance" && <FinancePanel students={students} meta={studentMeta} user={user} onPage={setStudentPage} onOpen={(student) => openProfile({ type: "student", data: student }, "finance")} onCashDeposit={recordCashDeposit} onDownloadCashDepositProof={downloadCashDepositProof} onPreviewCashDepositProof={previewCashDepositProof} />}
             {panel === "emi" && <EmiPanel students={students} meta={studentMeta} onPage={setStudentPage} onOpen={(student) => openProfile({ type: "student", data: student }, "emi")} />}
             {panel === "receipts" && canManageFees && <ReceiptsPanel students={visibleStudents} meta={studentMeta} onPage={setStudentPage} onOpen={(student) => { setReceiptStudent(student); setReceiptSelection({ type: "invoice" }); }} />}
             {panel === "cert" && canManageCertificates && <CertificatePanel students={students} meta={studentMeta} onPage={setStudentPage} onIssue={issueCertificate} onOpen={(student) => openProfile({ type: "student", data: student }, "cert")} />}
@@ -3294,7 +3342,7 @@ export default function AdminCrm() {
                 onOpenStudent={(student) => openProfile({ type: "student", data: student }, "inventory")}
               />
             )}
-            {panel === "profile" && <ProfilePanel profile={profile} user={user} accessCount={visibleNavGroups.reduce((sum, group) => sum + group.items.length, 0)} canManageFees={canManageFees} canManageSettings={canManageSettings} canAssignTeachers={canAssignTeachers} canManageCertificates={canManageCertificates} canManageInternships={canManageInternships} canManageInventory={canManageInventory} onIssueKit={(st) => { setIssueKitTargetStudent(st); setIssueKitTargetTablet(null); setIssueKitModalOpen(true); }} centres={centreOptions} courses={courseOptions} allCourses={courses} batches={visibleBatches} teachers={teachers} counsellors={actualCounsellors} onBack={closeProfile} onGoSettings={() => setPanel("settings")} onLeadPatch={patchLead} onStudentPatch={patchStudent} onGenerateStudentLmsAccess={generateStudentLmsAccess} onInternshipSave={saveStudentInternship} onInternshipDelete={deleteStudentInternship} onPayment={addPayment} onDownloadPaymentProof={downloadPaymentProof} onFeedback={addStudentFeedback} onIssue={issueCertificate} onPreviewDocument={openDocumentPreview} onPreviewInternshipPhoto={openInternshipPhotoPreview} />}
+            {panel === "profile" && <ProfilePanel profile={profile} user={user} accessCount={visibleNavGroups.reduce((sum, group) => sum + group.items.length, 0)} canManageFees={canManageFees} canManageSettings={canManageSettings} canAssignTeachers={canAssignTeachers} canManageCertificates={canManageCertificates} canManageInternships={canManageInternships} canManageInventory={canManageInventory} onIssueKit={(st) => { setIssueKitTargetStudent(st); setIssueKitTargetTablet(null); setIssueKitModalOpen(true); }} centres={centreOptions} courses={courseOptions} allCourses={courses} batches={visibleBatches} teachers={teachers} counsellors={actualCounsellors} onBack={closeProfile} onGoSettings={() => setPanel("settings")} onLeadPatch={patchLead} onStudentPatch={patchStudent} onGenerateStudentLmsAccess={generateStudentLmsAccess} onInternshipSave={saveStudentInternship} onInternshipDelete={deleteStudentInternship} onPayment={addPayment} onDownloadPaymentProof={downloadPaymentProof} onPreviewPaymentProof={previewPaymentProof} onFeedback={addStudentFeedback} onIssue={issueCertificate} onPreviewDocument={openDocumentPreview} onPreviewInternshipPhoto={openInternshipPhotoPreview} />}
           </section>
         </div>
       </div>
@@ -5732,7 +5780,7 @@ function AttendanceDetailPanel({ summary, logs, filters, setFilters, onBack }: {
   );
 }
 
-function FinancePanel({ students, meta, user, onPage, onOpen, onCashDeposit, onDownloadCashDepositProof }: { students: Student[]; meta: PaginationMeta | null; user: AdminUser | null; onPage: (page: number) => void; onOpen: (student: Student) => void; onCashDeposit: (event: FormEvent<HTMLFormElement>, student: Student, payment: PaymentRecord, paymentIndex: number) => void; onDownloadCashDepositProof: (student: Student, paymentIndex: number, deposit: CashDeposit, depositIndex: number) => void }) {
+function FinancePanel({ students, meta, user, onPage, onOpen, onCashDeposit, onDownloadCashDepositProof, onPreviewCashDepositProof }: { students: Student[]; meta: PaginationMeta | null; user: AdminUser | null; onPage: (page: number) => void; onOpen: (student: Student) => void; onCashDeposit: (event: FormEvent<HTMLFormElement>, student: Student, payment: PaymentRecord, paymentIndex: number) => void; onDownloadCashDepositProof: (student: Student, paymentIndex: number, deposit: CashDeposit, depositIndex: number) => void; onPreviewCashDepositProof?: (student: Student, paymentIndex: number, deposit: CashDeposit, depositIndex: number) => void }) {
   const billed = students.reduce((sum, student) => sum + (student.totalFee || 0), 0);
   const collected = students.reduce((sum, student) => sum + (student.paidAmount || 0), 0);
   const discount = students.reduce((sum, student) => sum + (student.discountAmount || 0), 0);
@@ -5782,7 +5830,12 @@ function FinancePanel({ students, meta, user, onPage, onOpen, onCashDeposit, onD
                         </form>
                       )}
                     </td>
-                    <td>{(payment.cashDeposits || []).some((deposit) => deposit.proof?.storedName) ? <div className="action-icons">{(payment.cashDeposits || []).map((deposit, depositIndex) => deposit.proof?.storedName ? <button key={`${deposit.proof.storedName}-${depositIndex}`} type="button" className="action-icon-btn action-icon-primary" title={deposit.proof.originalName || "Download deposit proof"} onClick={() => onDownloadCashDepositProof(student, index, deposit, depositIndex)}><Download size={14} /></button> : null)}</div> : <span className="cell-sub">Missing</span>}</td>
+                    <td>{(payment.cashDeposits || []).some((deposit) => deposit.proof?.storedName) ? <div className="action-icons">{(payment.cashDeposits || []).map((deposit, depositIndex) => deposit.proof?.storedName ? (
+                      <div key={`${deposit.proof.storedName}-${depositIndex}`} style={{ display: "inline-flex", gap: "3px", alignItems: "center" }}>
+                        <button type="button" className="action-icon-btn action-icon-primary" title={deposit.proof.originalName ? `Preview: ${deposit.proof.originalName}` : "Preview deposit proof"} onClick={() => onPreviewCashDepositProof?.(student, index, deposit, depositIndex)}><Eye size={14} /></button>
+                        <button type="button" className="action-icon-btn" title={deposit.proof.originalName || "Download deposit proof"} onClick={() => onDownloadCashDepositProof(student, index, deposit, depositIndex)}><Download size={14} /></button>
+                      </div>
+                    ) : null)}</div> : <span className="cell-sub">Missing</span>}</td>
                   </tr>
                 );
               })}
@@ -8269,12 +8322,14 @@ function SettingsPanel({ isHeadSuperAdmin, isCenterAdmin = false, isHeadBranchAd
     ...(isHeadSuperAdmin ? [{ value: "center_admin", label: "Center admin (multi-branch)" }] : []),
     ...(isHeadSuperAdmin || isHeadBranchAdmin || isCenterAdmin ? [
       { value: "admin", label: "Branch admin" },
+      { value: "branch_admin_counsellor", label: "Branch Admin + Counsellor" },
       { value: "operations_executive", label: "Operations Executive" },
       { value: "counsellor", label: "Counsellor" },
       { value: "teacher", label: "Teacher" },
     ] : []),
     ...(isHeadSuperAdmin ? [{ value: "franchise_superadmin", label: "Franchise super admin" }] : []),
     ...(isHeadSuperAdmin || isFranchiseSuperAdmin ? [
+      { value: "franchise_admin_counsellor", label: "Franchise Admin + Counsellor" },
       { value: "franchise_operations_executive", label: "Franchise Operations Executive" },
       { value: "franchise_counsellor", label: "Franchise counsellor" },
       { value: "franchise_teacher", label: "Franchise teacher" },
@@ -8284,10 +8339,11 @@ function SettingsPanel({ isHeadSuperAdmin, isCenterAdmin = false, isHeadBranchAd
   useEffect(() => {
     if (!staffRoleOptions.some((role) => role.value === staffRole)) setStaffRole(staffRoleOptions[0]?.value || "counsellor");
   }, [staffRole, staffRoleOptions]);
-  const staffNeedsLocation = ["center_admin", "admin", "counsellor", "teacher", "operations_executive", "franchise_superadmin", "franchise_counsellor", "franchise_teacher", "franchise_operations_executive"].includes(staffRole);
+  const staffNeedsLocation = ["center_admin", "admin", "branch_admin_counsellor", "counsellor", "teacher", "operations_executive", "franchise_superadmin", "franchise_admin_counsellor", "franchise_counsellor", "franchise_teacher", "franchise_operations_executive"].includes(staffRole);
   // center_admin is assigned to a parent centre (any centre in the list)
-  const staffLocationOptions = staffRole === "center_admin" ? centres : ["admin", "counsellor", "teacher", "operations_executive"].includes(staffRole) ? branchOptions : franchiseOptions;
-  const staffLocationLabel = staffRole === "center_admin" ? "Parent centre" : ["admin", "counsellor", "teacher", "operations_executive"].includes(staffRole) ? "Branch" : "Franchise";
+  const isBranchStaffRole = ["admin", "branch_admin_counsellor", "counsellor", "teacher", "operations_executive"].includes(staffRole);
+  const staffLocationOptions = staffRole === "center_admin" ? centres : isBranchStaffRole ? branchOptions : franchiseOptions;
+  const staffLocationLabel = staffRole === "center_admin" ? "Parent centre" : isBranchStaffRole ? "Branch" : "Franchise";
   useEffect(() => {
     setEditingBatchCentreDraft(editingBatch?.centre || "");
     setEditingBatchCourseDraft(editingBatch?.course || "");
@@ -8466,7 +8522,7 @@ function SettingsPanel({ isHeadSuperAdmin, isCenterAdmin = false, isHeadBranchAd
   );
 }
 
-function ProfilePanel({ profile, user, accessCount, canManageFees, canManageSettings, canAssignTeachers, canManageCertificates, canManageInternships, canManageInventory, onIssueKit, centres, courses, allCourses = [], batches, teachers, counsellors = [], onBack, onGoSettings, onLeadPatch, onStudentPatch, onGenerateStudentLmsAccess, onInternshipSave, onInternshipDelete, onPayment, onDownloadPaymentProof, onFeedback, onIssue, onPreviewDocument, onPreviewInternshipPhoto }: { profile: ProfileTarget; user: AdminUser | null; accessCount: number; canManageFees: boolean; canManageSettings: boolean; canAssignTeachers: boolean; canManageCertificates: boolean; canManageInternships: boolean; canManageInventory?: boolean; onIssueKit?: (student: Student) => void; centres: string[]; courses: string[]; allCourses?: Course[]; batches: Batch[]; teachers: Counsellor[]; counsellors?: Counsellor[]; onBack: () => void; onGoSettings: () => void; onLeadPatch: (id: string, updates: Partial<Lead>) => void; onStudentPatch: (id: string, updates: Partial<Student>) => void; onGenerateStudentLmsAccess: (student: Student) => void; onInternshipSave: (event: FormEvent<HTMLFormElement>, student: Student) => void; onInternshipDelete: (student: Student) => void; onPayment: (event: FormEvent<HTMLFormElement>, student: Student, proofFiles?: File[]) => Promise<boolean> | void; onDownloadPaymentProof: (student: Student, payment: PaymentRecord, index: number, proofIndex?: number) => void; onFeedback: (event: FormEvent<HTMLFormElement>, student: Student) => void; onIssue: (student: Student) => void; onPreviewDocument: (request: DocumentPreviewRequest) => void; onPreviewInternshipPhoto: (student: Student, log: InternshipLog, photoType: "login" | "logout") => void }) {
+function ProfilePanel({ profile, user, accessCount, canManageFees, canManageSettings, canAssignTeachers, canManageCertificates, canManageInternships, canManageInventory, onIssueKit, centres, courses, allCourses = [], batches, teachers, counsellors = [], onBack, onGoSettings, onLeadPatch, onStudentPatch, onGenerateStudentLmsAccess, onInternshipSave, onInternshipDelete, onPayment, onDownloadPaymentProof, onPreviewPaymentProof, onFeedback, onIssue, onPreviewDocument, onPreviewInternshipPhoto }: { profile: ProfileTarget; user: AdminUser | null; accessCount: number; canManageFees: boolean; canManageSettings: boolean; canAssignTeachers: boolean; canManageCertificates: boolean; canManageInternships: boolean; canManageInventory?: boolean; onIssueKit?: (student: Student) => void; centres: string[]; courses: string[]; allCourses?: Course[]; batches: Batch[]; teachers: Counsellor[]; counsellors?: Counsellor[]; onBack: () => void; onGoSettings: () => void; onLeadPatch: (id: string, updates: Partial<Lead>) => void; onStudentPatch: (id: string, updates: Partial<Student>) => void; onGenerateStudentLmsAccess: (student: Student) => void; onInternshipSave: (event: FormEvent<HTMLFormElement>, student: Student) => void; onInternshipDelete: (student: Student) => void; onPayment: (event: FormEvent<HTMLFormElement>, student: Student, proofFiles?: File[]) => Promise<boolean> | void; onDownloadPaymentProof: (student: Student, payment: PaymentRecord, index: number, proofIndex?: number) => void; onPreviewPaymentProof?: (student: Student, payment: PaymentRecord, index: number, proofIndex?: number) => void; onFeedback: (event: FormEvent<HTMLFormElement>, student: Student) => void; onIssue: (student: Student) => void; onPreviewDocument: (request: DocumentPreviewRequest) => void; onPreviewInternshipPhoto: (student: Student, log: InternshipLog, photoType: "login" | "logout") => void }) {
   const isSuperAdmin = user?.role === "superadmin";
   const currentCourse = profile?.type === "student" ? (profile.data.course || "") : (profile?.type === "lead" ? (profile.data.course || "") : "");
   const studentCourseObj = allCourses.find((c) =>
@@ -9311,14 +9367,28 @@ function ProfilePanel({ profile, user, accessCount, canManageFees, canManageSett
             const proofs = (payment.proofs && payment.proofs.length > 0) ? payment.proofs : (payment.proof?.storedName ? [payment.proof] : []);
             if (!proofs.length) return <span className="cell-sub">Missing</span>;
             if (proofs.length === 1) {
-              return <button type="button" className="action-icon-btn action-icon-primary" title={proofs[0].originalName || "Download proof"} onClick={() => onDownloadPaymentProof(student, payment, index, 0)}><Download size={14} /></button>;
+              return (
+                <div className="action-icons" style={{ display: "inline-flex", gap: "4px", alignItems: "center" }}>
+                  <button type="button" className="action-icon-btn action-icon-primary" title={proofs[0].originalName ? `Preview: ${proofs[0].originalName}` : "Preview proof"} onClick={() => onPreviewPaymentProof?.(student, payment, index, 0)}>
+                    <Eye size={14} />
+                  </button>
+                  <button type="button" className="action-icon-btn" title={proofs[0].originalName || "Download proof"} onClick={() => onDownloadPaymentProof(student, payment, index, 0)}>
+                    <Download size={14} />
+                  </button>
+                </div>
+              );
             }
             return (
               <div style={{ display: "flex", gap: "4px", flexWrap: "wrap", alignItems: "center" }}>
                 {proofs.map((p, pIdx) => (
-                  <button key={pIdx} type="button" className="btn btn-sm btn-ghost" style={{ padding: "2px 6px", fontSize: "11px", height: "auto" }} title={p.originalName || `Proof ${pIdx + 1}`} onClick={() => onDownloadPaymentProof(student, payment, index, pIdx)}>
-                    <Download size={12} style={{ marginRight: 2 }} /> #{pIdx + 1}
-                  </button>
+                  <div key={pIdx} style={{ display: "inline-flex", alignItems: "center", border: "1px solid var(--border-color, #e2e8f0)", borderRadius: "6px", overflow: "hidden" }}>
+                    <button type="button" className="btn btn-sm btn-ghost" style={{ padding: "2px 6px", fontSize: "11px", height: "24px", display: "inline-flex", alignItems: "center", gap: "3px", borderRadius: 0 }} title={`Preview: ${p.originalName || `#${pIdx + 1}`}`} onClick={() => onPreviewPaymentProof?.(student, payment, index, pIdx)}>
+                      <Eye size={12} /> #{pIdx + 1}
+                    </button>
+                    <button type="button" className="btn btn-sm btn-ghost" style={{ padding: "2px 5px", fontSize: "11px", height: "24px", borderLeft: "1px solid var(--border-color, #e2e8f0)", borderRadius: 0 }} title={`Download: ${p.originalName || `#${pIdx + 1}`}`} onClick={() => onDownloadPaymentProof(student, payment, index, pIdx)}>
+                      <Download size={11} />
+                    </button>
+                  </div>
                 ))}
               </div>
             );

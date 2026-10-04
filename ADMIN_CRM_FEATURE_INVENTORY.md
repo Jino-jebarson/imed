@@ -23,10 +23,17 @@ Source reviewed:
 - Change password from Settings.
 - Roles:
   - `superadmin`
+  - `center_admin`
   - `admin`
+  - `branch_admin_counsellor`
   - `counsellor`
+  - `teacher`
+  - `operations_executive`
   - `franchise_superadmin`
+  - `franchise_admin_counsellor`
   - `franchise_counsellor`
+  - `franchise_teacher`
+  - `franchise_operations_executive`
 - Role scope behavior:
   - Head super admin can switch between all branches/franchises or a specific location.
   - Head admin/admin and counsellor can be branch scoped.

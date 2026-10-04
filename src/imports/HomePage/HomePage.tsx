@@ -2535,7 +2535,7 @@ function Frame47() {
       subtitle: "Advanced Healthcare Administration Program",
       duration: "6 Months",
       roleLabel: "60+ Job Roles",
-      description: "3 Months Classroom & Practical Training + 3 Months Hospital Internship",
+      description: "4 Months Classroom & Practical Training + 2 Months Hospital Internship",
       highlights: [
         "GCC Readiness Track + Advance Professional Skills Training",
         "NSDC + HSSC-aligned curriculum",
@@ -6590,7 +6590,7 @@ function MobileCareerPath() {
       subtitle: "Advanced Healthcare Administration Program",
       duration: "6 Months",
       roleLabel: "60+ Job Roles",
-      description: "3 Months Classroom & Practical Training + 3 Months Hospital Internship",
+      description: "4 Months Classroom & Practical Training + 2 Months Hospital Internship",
       highlights: [
         "GCC Readiness Track + Advance Professional Skills Training",
         "NSDC + HSSC-aligned curriculum",
