@@ -2,17 +2,21 @@ import { ChangeEvent, FormEvent, ReactNode, useEffect, useMemo, useRef, useState
 import html2canvas from "html2canvas";
 import { jsPDF } from "jspdf";
 import { Toaster, toast } from "sonner";
+import { FiUpload, FiRefreshCw, FiEye } from "react-icons/fi";
 import IMedCertificate from "./IMedCertificate";
 import {
+  Activity,
   AlertCircle,
   AlertTriangle,
   ArrowRight,
   Award,
   BadgeIndianRupee,
+  BadgePercent,
   BarChart3,
   Bell,
   BookOpen,
   Boxes,
+  Building2,
   Calendar,
   CalendarDays,
   CheckCircle2,
@@ -27,9 +31,12 @@ import {
   EyeOff,
   ExternalLink,
   FileText,
+  Filter,
   GraduationCap,
   History,
+  Hourglass,
   LayoutDashboard,
+  Lock,
   LogOut,
   MessageCircle,
   Package,
@@ -38,6 +45,7 @@ import {
   ReceiptText,
   RefreshCw,
   Search,
+  ShieldAlert,
   ShieldCheck,
   Shirt,
   ShoppingBag,
@@ -53,6 +61,7 @@ import {
   Clock,
   UserCheck,
   X,
+  XCircle,
 } from "lucide-react";
 
 const API_BASE_URL = import.meta.env.PROD
@@ -60,8 +69,19 @@ const API_BASE_URL = import.meta.env.PROD
   : ((import.meta.env.VITE_API_BASE_URL as string | undefined) || "");
 
 const stages = ["New Lead", "Contacted", "Counselling", "Demo / Visit", "Admission", "Enrolled", "Alumni"];
-const studentStatuses = ["Enrolled", "Admission Completed", "Fees Decided", "Fees Collected", "Active Student", "Classroom Complete", "Course Completed", "Alumni"];
-const studentJourneyStages = ["Enrolled", "Admission Completed", "Fees Decided", "Fees Collected", "Active Student", "Classroom Complete", "Course Completed", "Alumni"];
+const studentStatuses = ["Enrolled", "Admission Completed", "Fees Decided", "Fees Collected", "Active Student", "Dropped", "Classroom Complete", "Course Completed", "Alumni"];
+const studentJourneyStages = ["Enrolled", "Admission Completed", "Fees Decided", "Fees Collected", "Active Student", "Dropped", "Classroom Complete", "Course Completed", "Alumni"];
+const dropoutReasonOptions = [
+  "Financial Constraints",
+  "Relocation / Shifted City",
+  "Medical / Health Issues",
+  "Opted for Another Course / College",
+  "Secured Alternate Job / Employment",
+  "Personal / Family Emergency",
+  "Attendance & Discipline Issues",
+  "Course Difficulty / Lack of Interest",
+  "Other",
+];
 const attendanceStatuses: AttendanceStatus[] = ["Present", "Absent", "Late", "Leave"];
 const sources = ["Meta", "BTL", "College", "Referral", "Purchased Leads"];
 const leadDocumentAccept = ".pdf,.jpg,.jpeg,.png,.webp";
@@ -126,7 +146,59 @@ type LeadFollowUp = { type?: string; status?: string; scheduledAt?: string; note
 type LeadActivity = { type: string; message: string; by?: string; at?: string };
 type Lead = { _id: string; fullName: string; phone: string; parentMobile?: string; email?: string; governmentProof?: DocumentFile; highestQualificationCertificate?: DocumentFile; source?: string; counsellorName?: string; scholarName?: string; refereeName?: string; referralAmount?: number; centre?: string; franchiseId?: string; course?: string; counsellor?: string; stage: string; priority?: string; leadFeedback?: string; city?: string; studentLocation?: string; expectedFee?: number; nextFollowUp?: string; followUps?: LeadFollowUp[]; notes?: string; activities?: LeadActivity[]; ipAddress?: string; userAgent?: string; isSuspectedConsultancy?: boolean; consultancyFlagReason?: string; assignedAt?: string; assignedBy?: string; createdAt?: string; updatedAt?: string };
 type CashDeposit = { amount?: number; bank?: string; referenceNumber?: string; note?: string; proof?: DocumentFile; depositedBy?: string; by?: string; depositedAt?: string; createdAt?: string };
-type PaymentRecord = { amount?: number; mode?: string; paymentPurpose?: string; transactionId?: string; emiReference?: string; loanProviderName?: string; note?: string; proof?: DocumentFile; proofs?: DocumentFile[]; cashDeposits?: CashDeposit[]; by?: string; paidAt?: string };
+type PaymentRecord = {
+  _id?: string;
+  amount?: number;
+  mode?: string;
+  paymentPurpose?: string;
+  transactionId?: string;
+  emiReference?: string;
+  loanProviderName?: string;
+  note?: string;
+  proof?: DocumentFile;
+  proofs?: DocumentFile[];
+  cashDeposits?: CashDeposit[];
+  status?: "pending" | "approved" | "rejected";
+  requestedBy?: string;
+  requestedByRole?: string;
+  requestedAt?: string;
+  reviewedBy?: string;
+  reviewedByRole?: string;
+  reviewedAt?: string;
+  rejectionReason?: string;
+  by?: string;
+  paidAt?: string;
+};
+type PaymentApprovalItem = {
+  studentId: string;
+  studentName: string;
+  studentPhone?: string;
+  admissionNumber?: string;
+  centre?: string;
+  course?: string;
+  totalFee?: number;
+  paidAmount?: number;
+  paymentId: string;
+  paymentIndex: number;
+  amount: number;
+  mode: string;
+  paymentPurpose: string;
+  transactionId?: string;
+  emiReference?: string;
+  loanProviderName?: string;
+  note?: string;
+  proof?: DocumentFile;
+  proofs?: DocumentFile[];
+  status: "pending" | "approved" | "rejected";
+  requestedBy?: string;
+  requestedByRole?: string;
+  requestedAt?: string;
+  reviewedBy?: string;
+  reviewedByRole?: string;
+  reviewedAt?: string;
+  rejectionReason?: string;
+  paidAt?: string;
+};
 type StudentFeedback = { type?: string; status?: string; note?: string; nextFollowUpDate?: string; by?: string; at?: string };
 type InternshipAssignment = { _id?: string; facilityName?: string; facilityLocation?: string; supervisorName?: string; supervisorContact?: string; supervisorEmail?: string; facilityLatitude?: number; facilityLongitude?: number; allowedRadiusMeters?: number; startDate?: string; durationValue?: number; durationUnit?: string; expectedEndDate?: string; actualEndDate?: string; status?: string; departmentRotation?: string; assignedBy?: string; updatedAt?: string };
 type InternshipLog = { _id: string; date?: string; loginAt?: string; logoutAt?: string; loginPhoto?: DocumentFile; logoutPhoto?: DocumentFile; loginGps?: string; logoutGps?: string; hours?: number; flagged?: boolean; flagReason?: string };
@@ -149,7 +221,22 @@ type KitDistribution = {
   issuedBy?: string;
   notes?: string;
 };
-type Student = { _id: string; leadId?: string; fullName: string; phone: string; parentMobile?: string; email?: string; studentLocation?: string; centre?: string; franchiseId?: string; course?: string; counsellor?: string; counsellorName?: string; callerName?: string; teacher?: string; batch?: string; batchCommenceDate?: string; status: string; totalFee?: number; paidAmount?: number; admissionNumber?: string; lmsAccessEnabled?: boolean; lmsAccessGeneratedAt?: string; lmsAccessGeneratedBy?: string; admissionPaymentMode?: string; admissionUpfrontAmount?: number; admissionFinalizedAt?: string; admissionFinalizedBy?: string; discountAmount?: number; emiEnabled?: boolean; emiMonths?: number; emiAmount?: number; nextEmiDate?: string; certificateNumber?: string; certificateIssuedAt?: string; certificateStatus?: string; placementStatus?: string; placementCompany?: string; placementRole?: string; placementJoiningDate?: string; placementSalary?: number; placementHrContact?: string; placementOfferLetterUrl?: string; placementRemarks?: string; testimonialText?: string; testimonialVideoUrl?: string; testimonialRating?: number; testimonialApproved?: boolean; referralName?: string; referralPhone?: string; referralStatus?: string; payments?: PaymentRecord[]; feedbacks?: StudentFeedback[]; internshipAssignment?: InternshipAssignment | null; internshipLogs?: InternshipLog[]; logbookEntries?: LogbookEntry[]; kitDistribution?: KitDistribution; createdAt?: string; updatedAt?: string };
+type FeeApprovalStatus = "none" | "pending" | "approved" | "rejected";
+type FeeApprovalRecord = {
+  status: FeeApprovalStatus;
+  standardCourseFee?: number;
+  requestedFee?: number;
+  requestedDiscount?: number;
+  reason?: string;
+  requestedBy?: string;
+  requestedByRole?: string;
+  requestedAt?: string;
+  reviewedBy?: string;
+  reviewedByRole?: string;
+  reviewedAt?: string;
+  rejectionReason?: string;
+};
+type Student = { _id: string; leadId?: string; fullName: string; phone: string; parentMobile?: string; email?: string; studentLocation?: string; centre?: string; franchiseId?: string; course?: string; counsellor?: string; counsellorName?: string; callerName?: string; teacher?: string; batch?: string; batchCommenceDate?: string; status: string; dropoutReason?: string; dropoutDate?: string | Date; dropoutNotes?: string; totalFee?: number; paidAmount?: number; admissionNumber?: string; lmsAccessEnabled?: boolean; lmsAccessGeneratedAt?: string; lmsAccessGeneratedBy?: string; admissionPaymentMode?: string; admissionUpfrontAmount?: number; admissionFinalizedAt?: string; admissionFinalizedBy?: string; discountAmount?: number; feeApproval?: FeeApprovalRecord; emiEnabled?: boolean; emiMonths?: number; emiAmount?: number; nextEmiDate?: string; certificateNumber?: string; certificateIssuedAt?: string; certificateStatus?: string; placementStatus?: string; placementCompany?: string; placementRole?: string; placementJoiningDate?: string; placementSalary?: number; placementHrContact?: string; placementOfferLetterUrl?: string; placementRemarks?: string; testimonialText?: string; testimonialVideoUrl?: string; testimonialRating?: number; testimonialApproved?: boolean; referralName?: string; referralPhone?: string; referralStatus?: string; payments?: PaymentRecord[]; feedbacks?: StudentFeedback[]; internshipAssignment?: InternshipAssignment | null; internshipLogs?: InternshipLog[]; logbookEntries?: LogbookEntry[]; kitDistribution?: KitDistribution; createdAt?: string; updatedAt?: string };
 type Centre = { _id: string; name: string; type?: "branch" | "franchise"; parentCentreId?: string; city?: string; billingLegalName?: string; billingAddress?: string; billingGstin?: string; billingStateName?: string; billingStateCode?: string; billingEmail?: string; billingPhone?: string; bankAccountName?: string; bankName?: string; bankAccountNumber?: string; bankIfsc?: string; bankBranch?: string };
 type Course = { _id: string; name: string; code?: string; fee?: number; duration?: string; franchiseId?: string };
 type Counsellor = { _id?: string; name: string; email: string; role: string; franchiseId?: string };
@@ -222,7 +309,41 @@ type InventoryTransaction = {
   date?: string;
   notes?: string;
 };
-type Panel = "dashboard" | "leads" | "addlead" | "admissions" | "batch" | "mystudents" | "attendance" | "logs" | "attdetail" | "allstudents" | "finance" | "emi" | "receipts" | "cert" | "alumni" | "internship" | "nps" | "inventory" | "settings" | "profile";
+type StatusReportSummary = {
+  centre: string;
+  enrolled: number;
+  inTraining: number;
+  classroomComplete: number;
+  courseCompleted: number;
+  placed: number;
+  dropped: number;
+  total: number;
+  dropoutRate: number;
+  retentionRate: number;
+  completionRate: number;
+};
+
+type StatusReportCourseItem = {
+  course: string;
+  enrolled: number;
+  inTraining: number;
+  classroomComplete: number;
+  courseCompleted: number;
+  placed: number;
+  dropped: number;
+  total: number;
+};
+
+type StatusReportData = {
+  summary: StatusReportSummary;
+  matrix: StatusReportSummary[];
+  grandTotal: StatusReportSummary;
+  courseBreakdown: StatusReportCourseItem[];
+  students: Student[];
+  filters?: Record<string, string>;
+};
+
+type Panel = "dashboard" | "statusreport" | "leads" | "addlead" | "admissions" | "batch" | "mystudents" | "attendance" | "logs" | "attdetail" | "allstudents" | "finance" | "emi" | "receipts" | "cert" | "alumni" | "internship" | "nps" | "inventory" | "settings" | "profile";
 type AcademicTab = "batches" | "overview" | "students" | "timetable" | "attendance" | "markAttendance" | "topics" | "practicals" | "notes" | "logs" | "detail";
 type RoleScope = "all" | string;
 type ProfileTarget = { type: "lead"; data: Lead; mode?: "view" | "edit" } | { type: "student"; data: Student; mode?: "view" | "edit" } | null;
@@ -233,20 +354,134 @@ type LeadImportResult = { inserted: number; skipped?: { row: number; reason: str
 type DocumentFieldName = "governmentProof" | "highestQualificationCertificate";
 type DocumentPreviewRequest = { type: "lead" | "student"; id: string; field: DocumentFieldName; title: string; fileName?: string };
 type DocumentPreviewState = { title: string; url: string; mimeType: string; fileName: string } | { title: string; loading: true } | null;
+const documentUploaded = (doc?: DocumentFile) => Boolean(doc && (doc.storedName || doc.originalName));
 
-const documentUploaded = (doc?: DocumentFile) => Boolean(doc?.originalName || doc?.storedName);
+type FeeTimeframe = "all" | "today" | "yesterday" | "this_month" | "last_month" | "last_3_months" | "this_year" | "custom";
+type FeePeriodStat = { total: number; count: number };
+type FeeMonthlyTrend = { key: string; label: string; amount: number; count: number };
+type FeeShareStat = { centre?: string; mode?: string; course?: string; amount: number; count: number; share: number };
+type FeeRecentPayment = {
+  studentId: string;
+  studentName: string;
+  studentPhone: string;
+  admissionNumber: string;
+  centre: string;
+  course: string;
+  amount: number;
+  mode: string;
+  paymentPurpose: string;
+  transactionId: string;
+  by: string;
+  paidAt: string;
+};
+type FeeCollectionStats = {
+  today: FeePeriodStat;
+  yesterday: FeePeriodStat;
+  thisMonth: FeePeriodStat;
+  lastMonth: FeePeriodStat;
+  momGrowth: number;
+  allTime: FeePeriodStat;
+  filtered: { total: number; count: number; timeframe: string; dateFrom?: string; dateTo?: string };
+  totals: { billed: number; collected: number; due: number };
+  monthlyTrend: FeeMonthlyTrend[];
+  byCentre: FeeShareStat[];
+  byMode: FeeShareStat[];
+  byCourse: FeeShareStat[];
+  recentPayments: FeeRecentPayment[];
+  totalTransactions: number;
+};
 
-function LeadDocumentRow({ label, doc, type, id, field, onPreview }: { label: string; doc?: DocumentFile; type: "lead" | "student"; id: string; field: DocumentFieldName; onPreview: (request: DocumentPreviewRequest) => void }) {
+function LeadDocumentRow({
+  label,
+  doc,
+  type,
+  id,
+  field,
+  onPreview,
+  onUpload,
+}: {
+  label: string;
+  doc?: DocumentFile;
+  type: "lead" | "student";
+  id: string;
+  field: DocumentFieldName;
+  onPreview: (request: DocumentPreviewRequest) => void;
+  onUpload?: (field: DocumentFieldName, file: File) => Promise<void>;
+}) {
   const uploaded = documentUploaded(doc);
+  const [isUploading, setIsUploading] = useState(false);
+  const fileInputRef = useRef<HTMLInputElement>(null);
+
+  const handleFileSelect = async (e: ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    e.target.value = "";
+    if (!file || !onUpload) return;
+    const validType = leadDocumentTypes.includes(file.type) || /\.(pdf|jpe?g|png|webp)$/i.test(file.name);
+    if (!validType) {
+      toast.error("Upload PDF, JPG, PNG or WEBP documents only");
+      return;
+    }
+    if (file.size > leadDocumentMaxSize) {
+      toast.error("Document size must be under 2 MB");
+      return;
+    }
+    setIsUploading(true);
+    try {
+      await onUpload(field, file);
+    } catch {
+      // Error toasted in handler
+    } finally {
+      setIsUploading(false);
+    }
+  };
+
   return (
-    <div className="kv-row">
+    <div className="kv-row" style={{ alignItems: "center" }}>
       <span className="k">{label}</span>
       <span className="v document-actions">
-        <span className={`badge ${uploaded ? "badge-green" : "badge-gray"}`}>{uploaded ? (doc?.originalName || "Uploaded") : "Not uploaded"}</span>
+        <span className={`badge ${uploaded ? "badge-green" : "badge-gray"}`}>
+          {uploaded ? (doc?.originalName || "Uploaded") : "Not uploaded"}
+        </span>
         {uploaded && (
-          <button type="button" className="btn btn-ghost btn-sm" onClick={() => onPreview({ type, id, field, title: label, fileName: doc?.originalName || "document" })}>
-            <Eye size={14} /> Preview
+          <button
+            type="button"
+            className="btn btn-ghost btn-sm"
+            onClick={() => onPreview({ type, id, field, title: label, fileName: doc?.originalName || "document" })}
+          >
+            <FiEye size={13} style={{ marginRight: "4px" }} /> Preview
           </button>
+        )}
+        {onUpload && (
+          <>
+            <input
+              type="file"
+              ref={fileInputRef}
+              style={{ display: "none" }}
+              accept={leadDocumentAccept}
+              onChange={handleFileSelect}
+            />
+            <button
+              type="button"
+              className="btn btn-soft btn-sm"
+              disabled={isUploading}
+              onClick={() => fileInputRef.current?.click()}
+              title={uploaded ? "Upload a new document to replace the current one" : "Upload document"}
+            >
+              {isUploading ? (
+                <>
+                  <FiRefreshCw size={13} style={{ marginRight: "4px", animation: "spin 1s linear infinite" }} /> Uploading...
+                </>
+              ) : uploaded ? (
+                <>
+                  <FiRefreshCw size={13} style={{ marginRight: "4px" }} /> Replace
+                </>
+              ) : (
+                <>
+                  <FiUpload size={13} style={{ marginRight: "4px" }} /> Upload
+                </>
+              )}
+            </button>
+          </>
         )}
       </span>
     </div>
@@ -254,38 +489,55 @@ function LeadDocumentRow({ label, doc, type, id, field, onPreview }: { label: st
 }
 
 const navGroups: { group: string; items: { key: Panel; label: string; icon: ReactNode }[] }[] = [
-  { group: "Overview", items: [{ key: "dashboard", label: "Dashboard", icon: <LayoutDashboard /> }] },
-  { group: "Admissions", items: [
-    { key: "leads", label: "Leads", icon: <Users /> },
-    { key: "addlead", label: "Add lead", icon: <UserPlus /> },
-    { key: "admissions", label: "Admissions", icon: <ClipboardList /> },
-  ] },
+  {
+    group: "Overview", items: [
+      { key: "dashboard", label: "Dashboard", icon: <LayoutDashboard /> },
+      { key: "statusreport", label: "Status & Branch Report", icon: <BarChart3 /> },
+    ]
+  },
+  {
+    group: "Admissions", items: [
+      { key: "leads", label: "Leads", icon: <Users /> },
+      { key: "addlead", label: "Add lead", icon: <UserPlus /> },
+      { key: "admissions", label: "Admissions", icon: <ClipboardList /> },
+    ]
+  },
   { group: "Academics", items: [{ key: "batch", label: "Batches", icon: <BookOpen /> }] },
-  { group: "Students", items: [
-    { key: "mystudents", label: "My candidates", icon: <UserRound /> },
-    { key: "allstudents", label: "All candidates", icon: <GraduationCap /> },
-  ] },
-  { group: "Attendance", items: [
-    { key: "attendance", label: "Attendance", icon: <CheckCircle2 /> },
-    { key: "logs", label: "Attendance logs", icon: <FileText /> },
-  ] },
-  { group: "Finance", items: [
-    { key: "finance", label: "Finance", icon: <BadgeIndianRupee /> },
-    { key: "emi", label: "EMI reminders", icon: <CalendarDays /> },
-    { key: "receipts", label: "Receipts", icon: <ReceiptText /> },
-  ] },
+  {
+    group: "Students", items: [
+      { key: "mystudents", label: "My candidates", icon: <UserRound /> },
+      { key: "allstudents", label: "All candidates", icon: <GraduationCap /> },
+    ]
+  },
+  {
+    group: "Attendance", items: [
+      { key: "attendance", label: "Attendance", icon: <CheckCircle2 /> },
+      { key: "logs", label: "Attendance logs", icon: <FileText /> },
+    ]
+  },
+  {
+    group: "Finance", items: [
+      { key: "finance", label: "Finance", icon: <BadgeIndianRupee /> },
+      { key: "emi", label: "EMI reminders", icon: <CalendarDays /> },
+      { key: "receipts", label: "Receipts", icon: <ReceiptText /> },
+    ]
+  },
   { group: "Certification", items: [{ key: "cert", label: "Certificates", icon: <Award /> }] },
   { group: "Alumni", items: [{ key: "alumni", label: "Alumni", icon: <Star /> }] },
   { group: "Internship", items: [{ key: "internship", label: "Internship", icon: <Stethoscope /> }] },
+  { group: "Quality & NPS", items: [{ key: "nps", label: "NPS", icon: <MessageCircle /> }] },
   { group: "Operations", items: [{ key: "inventory", label: "Inventory & Kits", icon: <Package /> }] },
-  { group: "Workspace", items: [
-    { key: "settings", label: "Settings", icon: <ShieldCheck /> },
-    { key: "profile", label: "Profile", icon: <UserRound /> },
-  ] },
+  {
+    group: "Workspace", items: [
+      { key: "settings", label: "Settings", icon: <ShieldCheck /> },
+      { key: "profile", label: "Profile", icon: <UserRound /> },
+    ]
+  },
 ];
 
 const panelTitles: Record<Panel, [string, string]> = {
   dashboard: ["Dashboard", "Overview across your scope"],
+  statusreport: ["Status & Branch Report", "Branch-wise student lifecycle, dropout and retention analytics"],
   leads: ["Leads", "Track and convert prospective students"],
   addlead: ["Add lead", "Create a new prospective student record"],
   admissions: ["Admissions", "Assign batches and enroll admission-ready leads"],
@@ -354,8 +606,10 @@ function getCourseDurationMonths(courseName: string | undefined, courses?: (Cour
   return 6; // default fallback
 }
 
-function formatCurrency(value = 0) {
-  return new Intl.NumberFormat("en-IN", { style: "currency", currency: "INR", maximumFractionDigits: 0 }).format(value || 0);
+function formatCurrency(value: number | string | undefined | null = 0) {
+  const num = Number(value);
+  const safeNum = Number.isFinite(num) ? num : 0;
+  return new Intl.NumberFormat("en-IN", { style: "currency", currency: "INR", maximumFractionDigits: 0 }).format(safeNum);
 }
 
 function formatInvoiceAmount(value = 0) {
@@ -493,26 +747,26 @@ function roleLabel(role = "") {
   return role === "superadmin"
     ? "Super Admin"
     : role === "center_admin"
-    ? "Center Admin"
-    : role === "admin"
-    ? "Branch Admin"
-    : role === "branch_admin_counsellor"
-    ? "Branch Admin + Counsellor"
-    : role === "franchise_admin_counsellor"
-    ? "Franchise Admin + Counsellor"
-    : role === "operations_executive"
-    ? "Operations Executive"
-    : role === "franchise_operations_executive"
-    ? "Franchise Operations Executive"
-    : role === "teacher"
-    ? "Teacher"
-    : role === "franchise_superadmin"
-    ? "Franchise Super Admin"
-    : role === "franchise_counsellor"
-    ? "Franchise Counsellor"
-    : role === "franchise_teacher"
-    ? "Franchise Teacher"
-    : "Counsellor";
+      ? "Center Admin"
+      : role === "admin"
+        ? "Branch Admin"
+        : role === "branch_admin_counsellor"
+          ? "Branch Admin + Counsellor"
+          : role === "franchise_admin_counsellor"
+            ? "Franchise Admin + Counsellor"
+            : role === "operations_executive"
+              ? "Operations Executive"
+              : role === "franchise_operations_executive"
+                ? "Franchise Operations Executive"
+                : role === "teacher"
+                  ? "Teacher"
+                  : role === "franchise_superadmin"
+                    ? "Franchise Super Admin"
+                    : role === "franchise_counsellor"
+                      ? "Franchise Counsellor"
+                      : role === "franchise_teacher"
+                        ? "Franchise Teacher"
+                        : "Counsellor";
 }
 
 function isCounsellorStaffRole(role = "") {
@@ -529,15 +783,29 @@ function attendanceStatusLabel(status: AttendanceStatus) {
 }
 
 function courseShortCode(course = "") {
-  const normalized = course.trim().toUpperCase();
+  const raw = String(course || "").trim();
+  const normalized = raw.toUpperCase();
   if (!normalized) return "-";
   if (normalized === "AAHP") return "AHAP";
-  if (["HA", "EMT", "GDA", "OCHA", "AHAP", "GCA"].includes(normalized)) return normalized;
-  if (normalized.includes("EMERGENCY")) return "EMT";
-  if (normalized.includes("GENERAL")) return "GDA";
-  if (normalized.includes("HEALTHCARE") || normalized.includes("APPLY NOW") || normalized.includes("DEGREE") || normalized.includes("GRADUATE")) return "AHAP";
-  if (normalized.includes("HOSPITAL")) return "HA";
-  return course;
+  if (["HA", "EMT", "GDA", "OCHA", "AHAP", "GCA", "MLT", "RADIOLOGY", "FCH-BRAC", "CHO-BRAC", "CHA-BRAC", "ACHM-BRAC", "FCH", "CHO", "CHA", "ACHM"].includes(normalized)) {
+    return normalized;
+  }
+  if (normalized.includes("BRAC") || normalized.includes("FOUNDATION") || normalized.includes("OPERATIONS") || normalized.includes("ADVANCED CERTIFICATE")) {
+    if (normalized.includes("FOUNDATION") || normalized.includes("FCH")) return "FCH-BRAC";
+    if (normalized.includes("OPERATIONS") || normalized.includes("CHO")) return "CHO-BRAC";
+    if (normalized.includes("ADMINISTRATION") && (normalized.includes("BRAC") || normalized.includes("CHA"))) return "CHA-BRAC";
+    if (normalized.includes("ADVANCED CERTIFICATE") || normalized.includes("ACHM") || normalized.includes("MANAGEMENT")) return "ACHM-BRAC";
+    if (normalized.includes("BRAC")) return raw;
+  }
+  if (normalized.includes("EMERGENCY") || normalized.includes("EMT")) return "EMT";
+  if (normalized.includes("GENERAL DUTY") || normalized.includes("GDA")) return "GDA";
+  if (normalized.includes("GERIATRIC") || normalized.includes("GCA")) return "GCA";
+  if (normalized.includes("MEDICAL LABORATORY") || normalized.includes("MLT")) return "MLT";
+  if (normalized.includes("RADIOLOGY") || normalized.includes("X-RAY")) return "RADIOLOGY";
+  if (normalized.includes("ONLINE") || normalized === "OCHA") return "OCHA";
+  if (normalized.includes("ADVANCED HEALTHCARE") || normalized.includes("AHAP")) return "AHAP";
+  if (normalized.includes("HOSPITAL ADMINISTRATION") || normalized === "HA") return "HA";
+  return raw;
 }
 
 function certificateCourseName(course = "") {
@@ -550,6 +818,12 @@ function certificateCourseName(course = "") {
     AAHP: "Advanced Healthcare Administration Program (AHAP)",
     AHAP: "Advanced Healthcare Administration Program (AHAP)",
     GCA: "Geriatric Care Assistant (GCA)",
+    MLT: "Medical Laboratory Technician (MLT)",
+    RADIOLOGY: "Radiology X-Ray Technician",
+    "FCH-BRAC": "Foundation Certificate in Healthcare - BRAC",
+    "CHO-BRAC": "Certificate in Hospital Operations - BRAC",
+    "CHA-BRAC": "Certificate in Hospital Administration - BRAC",
+    "ACHM-BRAC": "Advanced Certificate in Healthcare Management - BRAC",
   };
   return courseNames[normalized] || course || "Healthcare Skill Development Course";
 }
@@ -658,6 +932,7 @@ function isPartialEmiPaymentMode(mode = "") {
 function normalizeStudentStatus(status = "") {
   if (status === "Admission") return "Admission Completed";
   if (status === "In Training") return "Active Student";
+  if (status === "Dropout") return "Dropped";
   if (status === "Course Complete") return "Course Completed";
   if (status === "Classroom Completed") return "Classroom Complete";
   if (status === "Placed") return "Alumni";
@@ -666,6 +941,7 @@ function normalizeStudentStatus(status = "") {
 
 function studentStatusLabel(status = "") {
   const normalized = normalizeStudentStatus(status);
+  if (normalized === "Dropped") return "Dropout";
   if (normalized === "Classroom Complete") return "Classroom Completed";
   if (normalized === "Course Complete") return "Course Completed";
   return normalized;
@@ -811,30 +1087,30 @@ function receiptWhatsAppUrl(student: Student, selection: ReceiptSelection) {
   const balanceAfterPayment = Math.max(0, (student.totalFee || 0) - (student.discountAmount || 0) - paidBefore - Number(selectedPayment?.amount || 0));
   const message = selectedPayment
     ? [
-        `Hi ${student.fullName}, your payment receipt from iMED Academy is ready.`,
-        "",
-        `Receipt No: ${paymentReceiptNumber(student, selection.index)}`,
-        `Amount Paid: ${formatCurrency(Number(selectedPayment.amount || 0))}`,
-        `Payment Mode: ${selectedPayment.mode || "Cash"}`,
-        ...(selectedPayment.loanProviderName ? [`Loan Provider: ${selectedPayment.loanProviderName}`] : []),
-        ...(selectedPayment.transactionId ? [`Reference: ${selectedPayment.transactionId}`] : []),
-        `Balance: ${formatCurrency(balanceAfterPayment)}`,
-        "",
-        "Regards,",
-        "iMED Academy",
-      ].join("\n")
+      `Hi ${student.fullName}, your payment receipt from iMED Academy is ready.`,
+      "",
+      `Receipt No: ${paymentReceiptNumber(student, selection.index)}`,
+      `Amount Paid: ${formatCurrency(Number(selectedPayment.amount || 0))}`,
+      `Payment Mode: ${selectedPayment.mode || "Cash"}`,
+      ...(selectedPayment.loanProviderName ? [`Loan Provider: ${selectedPayment.loanProviderName}`] : []),
+      ...(selectedPayment.transactionId ? [`Reference: ${selectedPayment.transactionId}`] : []),
+      `Balance: ${formatCurrency(balanceAfterPayment)}`,
+      "",
+      "Regards,",
+      "iMED Academy",
+    ].join("\n")
     : [
-        `Hi ${student.fullName}, your tax invoice from iMED Academy is ready.`,
-        "",
-        `Invoice No: ${invoiceNumber(student)}`,
-        `Course: ${certificateCourseName(student.course)}`,
-        `Total Fee: ${formatCurrency(student.totalFee || 0)}`,
-        `Paid: ${formatCurrency(student.paidAmount || 0)}`,
-        `Due: ${formatCurrency(dueAmount(student))}`,
-        "",
-        "Regards,",
-        "iMED Academy",
-      ].join("\n");
+      `Hi ${student.fullName}, your tax invoice from iMED Academy is ready.`,
+      "",
+      `Invoice No: ${invoiceNumber(student)}`,
+      `Course: ${certificateCourseName(student.course)}`,
+      `Total Fee: ${formatCurrency(student.totalFee || 0)}`,
+      `Paid: ${formatCurrency(student.paidAmount || 0)}`,
+      `Due: ${formatCurrency(dueAmount(student))}`,
+      "",
+      "Regards,",
+      "iMED Academy",
+    ].join("\n");
   const encodedMessage = encodeURIComponent(message);
   return phone ? `https://wa.me/${phone}?text=${encodedMessage}` : `https://wa.me/?text=${encodedMessage}`;
 }
@@ -894,6 +1170,7 @@ function numberToIndianWords(value = 0) {
 }
 
 function stageTag(stage = "") {
+  if (stage === "Dropped" || stage === "Dropout") return "red";
   if (stage.includes("Completed") || stage === "Alumni" || stage === "Placed" || stage === "Enrolled") return "green";
   if (stage === "Fees Collected") return "green";
   if (stage.includes("Training") || stage === "Active Student") return "purple";
@@ -1116,9 +1393,38 @@ export default function AdminCrm() {
   const [admissionLeads, setAdmissionLeads] = useState<Lead[]>([]);
   const [receiptStudent, setReceiptStudent] = useState<Student | null>(null);
   const [receiptSelection, setReceiptSelection] = useState<ReceiptSelection>({ type: "invoice" });
+  const [reportLoading, setReportLoading] = useState(false);
+  const [reportFilters, setReportFilters] = useState({
+    timeframe: "all",
+    dateFrom: "",
+    dateTo: "",
+    centre: "all",
+    course: "all",
+    status: "all",
+    q: "",
+  });
+  const [reportData, setReportData] = useState<StatusReportData | null>(null);
   const [deletePrompt, setDeletePrompt] = useState<DeletePrompt | null>(null);
   const [logbookReviewPrompt, setLogbookReviewPrompt] = useState<LogbookReviewPrompt | null>(null);
   const [documentPreview, setDocumentPreview] = useState<DocumentPreviewState>(null);
+  const [feeStats, setFeeStats] = useState<FeeCollectionStats | null>(null);
+  const [feeStatsLoading, setFeeStatsLoading] = useState(false);
+  const [feeApprovals, setFeeApprovals] = useState<Student[]>([]);
+  const [pendingFeeApprovalsCount, setPendingFeeApprovalsCount] = useState(0);
+  const [feeApprovalsLoading, setFeeApprovalsLoading] = useState(false);
+  const [feeApprovalReviewingId, setFeeApprovalReviewingId] = useState<string | null>(null);
+  const [feeApprovalRejectPrompt, setFeeApprovalRejectPrompt] = useState<{ student: Student; note?: string } | null>(null);
+  const [feeApprovalRequestModal, setFeeApprovalRequestModal] = useState<{ student: Student; requestedFee: string; requestedDiscount: string; reason: string; standardCourseFee: number } | null>(null);
+  const [paymentApprovals, setPaymentApprovals] = useState<PaymentApprovalItem[]>([]);
+  const [pendingPaymentApprovalsCount, setPendingPaymentApprovalsCount] = useState(0);
+  const [paymentApprovalsLoading, setPaymentApprovalsLoading] = useState(false);
+  const [paymentApprovalReviewingId, setPaymentApprovalReviewingId] = useState<string | null>(null);
+  const [paymentApprovalRejectPrompt, setPaymentApprovalRejectPrompt] = useState<{ item: PaymentApprovalItem; note?: string } | null>(null);
+  const [feeTimeframe, setFeeTimeframe] = useState<FeeTimeframe>("this_month");
+  const [feeDateFrom, setFeeDateFrom] = useState("");
+  const [feeDateTo, setFeeDateTo] = useState("");
+  const [feeCentreFilter, setFeeCentreFilter] = useState("all");
+  const [feeCourseFilter, setFeeCourseFilter] = useState("all");
   const [forgotPasswordOpen, setForgotPasswordOpen] = useState(false);
   const [showLoginPassword, setShowLoginPassword] = useState(false);
   const [showResetPassword, setShowResetPassword] = useState(false);
@@ -1128,7 +1434,7 @@ export default function AdminCrm() {
   const [batchResumeTab, setBatchResumeTab] = useState<AcademicTab>("batches");
   const [loading, setLoading] = useState(false);
   const [notifOpen, setNotifOpen] = useState(false);
-  const [notifTab, setNotifTab] = useState<"assigned" | "followups">("assigned");
+  const [notifTab, setNotifTab] = useState<"assigned" | "followups" | "approvals">("assigned");
   const notifRef = useRef<HTMLDivElement>(null);
 
   const isHeadSuperAdmin = user?.role === "superadmin";
@@ -1158,12 +1464,35 @@ export default function AdminCrm() {
   const canManageNps = isHeadAdmin || isFranchiseSuperAdmin || isOperationsAccount;
   const canManageInventory = isHeadAdmin || isFranchiseSuperAdmin || isOperationsAccount;
   const canDeleteRecords = isHeadAdmin || isFranchiseSuperAdmin;
-  // Only global superadmin can use the scope filter across all centres
+  const canViewReports = isHeadSuperAdmin;
   const canUseScopeFilter = isHeadSuperAdmin;
   const selectedFranchise = canUseScopeFilter && roleScope !== "all" ? centres.find((centre) => centre._id === roleScope) : undefined;
   const scopedFranchiseId = isCenterAdmin ? "" : user?.franchiseId || (canUseScopeFilter ? selectedFranchise?._id || "" : "");
   const authedHeaders = { Authorization: `Bearer ${token}`, "Content-Type": "application/json" };
-  const centreOptions = centres.length ? centres.map((centre) => centre.name) : fallbackCentres;
+  const parentCentreIds = useMemo(() => new Set(centres.map((c) => c.parentCentreId).filter(Boolean) as string[]), [centres]);
+  const operationalCentres = useMemo(() => {
+    const leaf = centres.filter((c) => !parentCentreIds.has(c._id));
+    return leaf.length ? leaf : centres;
+  }, [centres, parentCentreIds]);
+  const userScopedCentres = useMemo(() => {
+    if (isHeadSuperAdmin) {
+      if (canUseScopeFilter && roleScope !== "all") {
+        const found = operationalCentres.find((c) => c._id === roleScope);
+        return found ? [found] : operationalCentres;
+      }
+      return operationalCentres;
+    }
+    if (isCenterAdmin && user?.franchiseId) {
+      const childBranches = operationalCentres.filter((c) => c.parentCentreId === user.franchiseId || c._id === user.franchiseId);
+      return childBranches.length ? childBranches : operationalCentres;
+    }
+    if (user?.franchiseId) {
+      const userCentre = centres.find((c) => c._id === user.franchiseId);
+      if (userCentre) return [userCentre];
+    }
+    return operationalCentres;
+  }, [isHeadSuperAdmin, canUseScopeFilter, roleScope, isCenterAdmin, user?.franchiseId, centres, operationalCentres]);
+  const centreOptions = userScopedCentres.length ? userScopedCentres.map((centre) => centre.name) : fallbackCentres;
   const courseOptions = courses.length ? courses.map((course) => course.code || course.name) : fallbackCourses;
   const visibleBatches = useMemo(() => {
     if (isHeadSuperAdmin && roleScope === "all") return batches;
@@ -1189,7 +1518,7 @@ export default function AdminCrm() {
       : students;
   const pendingLogbookReviewCount = visibleStudents.reduce((total, student) => total + (student.logbookEntries || []).filter((entry) => !entry.verified).length, 0);
   const [pageTitle, defaultPageSub] = panelTitles[panel];
-  const pageSub = panel === "nps" && isTeacherAccount ? "Batch feedback summary" : defaultPageSub;
+  const pageSub = defaultPageSub;
   const scopeFilterPanels: Panel[] = ["dashboard", "leads", "admissions", "allstudents", "mystudents", "finance", "emi", "receipts", "cert", "alumni", "attendance", "logs", "batch", "internship", "nps", "inventory"];
   const dateFilterPanels: Panel[] = ["dashboard", "leads", "admissions", "allstudents", "mystudents", "finance", "receipts", "cert", "alumni"];
   const searchPanels: Panel[] = ["dashboard", "leads", "admissions"];
@@ -1261,8 +1590,10 @@ export default function AdminCrm() {
     return followUpLeads.filter((lead) => new Date(lead.nextFollowUp || "").getTime() <= endToday).length;
   }, [followUpLeads]);
 
-  const totalNotifCount = followUpLeads.length + newAssignedLeads.length;
-  const urgentNotifCount = dueFollowUpCount + newAssignedLeads.length;
+  const canSeeFeeApprovalsNotif = isHeadSuperAdmin || isCenterAdmin || canManageFees;
+  const pendingApprovalsCountTotal = canSeeFeeApprovalsNotif ? ((pendingFeeApprovalsCount || 0) + (pendingPaymentApprovalsCount || 0)) : 0;
+  const totalNotifCount = (canUseLeads ? (followUpLeads.length + newAssignedLeads.length) : 0) + pendingApprovalsCountTotal;
+  const urgentNotifCount = (canUseLeads ? (dueFollowUpCount + newAssignedLeads.length) : 0) + pendingApprovalsCountTotal;
 
   useEffect(() => {
     if (!notifOpen) return;
@@ -1560,7 +1891,7 @@ export default function AdminCrm() {
   };
 
   const loadNps = async (page = npsPage) => {
-    if (!(canManageNps || isTeacherAccount)) {
+    if (!canManageNps) {
       setNpsDashboard(null);
       setNpsResponses([]);
       setNpsMeta(null);
@@ -1609,6 +1940,148 @@ export default function AdminCrm() {
     link.download = `imed-nps-${dateInputValue()}.csv`;
     link.click();
     URL.revokeObjectURL(url);
+  };
+
+  const loadFeeStats = async () => {
+    if (!token || !canManageFees) return;
+    setFeeStatsLoading(true);
+    try {
+      const queryParams: Record<string, string | undefined> = {
+        timeframe: feeTimeframe,
+        dateFrom: feeDateFrom || undefined,
+        dateTo: feeDateTo || undefined,
+        centre: feeCentreFilter !== "all" ? feeCentreFilter : undefined,
+        course: feeCourseFilter !== "all" ? feeCourseFilter : undefined,
+        franchiseId: scopedFranchiseId,
+      };
+      const res = await api<FeeCollectionStats>(`/api/admin/finance/collection-stats${queryString(queryParams)}`, {
+        headers: authedHeaders,
+      });
+      if (res.data) setFeeStats(res.data);
+    } catch (error) {
+      console.error("Unable to load fee collection stats", error);
+    } finally {
+      setFeeStatsLoading(false);
+    }
+  };
+
+  const loadFeeApprovals = async (statusFilter = "pending") => {
+    if (!token || !canManageFees) return;
+    setFeeApprovalsLoading(true);
+    try {
+      const res = await api<{ ok: boolean; data: Student[]; pendingCount: number }>(
+        `/api/admin/finance/fee-approvals?status=${statusFilter}${feeCentreFilter !== "all" ? `&centre=${encodeURIComponent(feeCentreFilter)}` : ""}`,
+        { headers: authedHeaders }
+      );
+      if (res.ok && Array.isArray(res.data)) {
+        setFeeApprovals(res.data);
+        setPendingFeeApprovalsCount((res as any).pendingCount || 0);
+      }
+    } catch (error) {
+      console.error("Unable to load fee approvals", error);
+    } finally {
+      setFeeApprovalsLoading(false);
+    }
+  };
+
+  const reviewFeeApproval = async (studentId: string, action: "approve" | "reject", note?: string) => {
+    if (!token) return;
+    setFeeApprovalReviewingId(studentId);
+    try {
+      const res = await api<Student>(
+        `/api/admin/finance/fee-approvals/${studentId}/review`,
+        {
+          method: "POST",
+          headers: authedHeaders,
+          body: JSON.stringify({ action, note }),
+        }
+      );
+      if (res.ok) {
+        toast.success(action === "approve" ? "Fee plan approved successfully!" : "Fee concession rejected.");
+        await Promise.all([loadFeeApprovals(), loadFeeStats(), loadStudents(1)]);
+        if (profile?.type === "student" && profile.data._id === studentId && res.data) {
+          setProfile({ type: "student", data: res.data });
+        }
+      } else {
+        toast.error((res as any).message || "Failed to review fee plan");
+      }
+    } catch (error: any) {
+      toast.error(error?.message || "Failed to review fee plan");
+    } finally {
+      setFeeApprovalReviewingId(null);
+    }
+  };
+
+  const loadPaymentApprovals = async (statusFilter = "pending") => {
+    if (!token || !canManageFees) return;
+    setPaymentApprovalsLoading(true);
+    try {
+      const res = await api<{ ok: boolean; data: PaymentApprovalItem[]; pendingCount: number }>(
+        `/api/admin/finance/payment-approvals?status=${statusFilter}${feeCentreFilter !== "all" ? `&centre=${encodeURIComponent(feeCentreFilter)}` : ""}`,
+        { headers: authedHeaders }
+      );
+      if (res.ok && Array.isArray(res.data)) {
+        setPaymentApprovals(res.data);
+        setPendingPaymentApprovalsCount((res as any).pendingCount || 0);
+      }
+    } catch (error) {
+      console.error("Unable to load payment approvals", error);
+    } finally {
+      setPaymentApprovalsLoading(false);
+    }
+  };
+
+  const reviewPaymentApproval = async (studentId: string, paymentId: string, action: "approve" | "reject", note?: string) => {
+    if (!token) return;
+    setPaymentApprovalReviewingId(paymentId);
+    try {
+      const res = await api<Student>(
+        `/api/admin/finance/payment-approvals/${studentId}/${paymentId}/review`,
+        {
+          method: "POST",
+          headers: authedHeaders,
+          body: JSON.stringify({ action, note }),
+        }
+      );
+      if (res.ok) {
+        toast.success(action === "approve" ? "Payment approved and credited successfully!" : "Payment rejected.");
+        await Promise.all([loadPaymentApprovals(), loadFeeApprovals(), loadFeeStats(), loadStudents(1)]);
+        if (profile?.type === "student" && profile.data._id === studentId && res.data) {
+          setProfile({ type: "student", data: res.data });
+        }
+      } else {
+        toast.error((res as any).message || "Failed to review payment");
+      }
+    } catch (error: any) {
+      toast.error(error?.message || "Failed to review payment");
+    } finally {
+      setPaymentApprovalReviewingId(null);
+    }
+  };
+
+  const requestFeeApproval = async (studentId: string, payload: { requestedFee: number; requestedDiscount: number; reason: string; standardCourseFee?: number }) => {
+    if (!token) return;
+    try {
+      const res = await api<Student>(
+        `/api/admin/students/${studentId}/request-fee-approval`,
+        {
+          method: "POST",
+          headers: authedHeaders,
+          body: JSON.stringify(payload),
+        }
+      );
+      if (res.ok) {
+        toast.success(isHeadSuperAdmin ? "Fee updated successfully!" : "Fee concession request submitted! It is now pending review by Super Admin / Center Admin.");
+        await Promise.all([loadFeeApprovals(), loadFeeStats(), loadStudents(1)]);
+        if (profile?.type === "student" && profile.data._id === studentId && res.data) {
+          setProfile({ type: "student", data: res.data });
+        }
+      } else {
+        toast.error((res as any).message || "Failed to submit fee concession request");
+      }
+    } catch (error: any) {
+      toast.error(error?.message || "Failed to submit fee concession request");
+    }
   };
 
   const loadGoogleCalendarStatus = async () => {
@@ -1666,6 +2139,32 @@ export default function AdminCrm() {
 
   const refreshInventory = async () => {
     await Promise.all([loadInventorySummary(), loadInventoryItems(), loadTablets(), loadInventoryTransactions()]);
+  };
+
+  const loadStatusReport = async (filters = reportFilters) => {
+    if (!token || !canViewReports) return;
+    setReportLoading(true);
+    try {
+      const params = new URLSearchParams();
+      if (filters.timeframe && filters.timeframe !== "all") params.set("timeframe", filters.timeframe);
+      if (filters.dateFrom) params.set("dateFrom", filters.dateFrom);
+      if (filters.dateTo) params.set("dateTo", filters.dateTo);
+      if (filters.centre && filters.centre !== "all") params.set("centre", filters.centre);
+      if (filters.course && filters.course !== "all") params.set("course", filters.course);
+      if (filters.status && filters.status !== "all") params.set("status", filters.status);
+      if (filters.q && filters.q.trim()) params.set("q", filters.q.trim());
+      if (scopedFranchiseId) params.set("scopeFranchiseId", scopedFranchiseId);
+
+      const suffix = params.toString() ? `?${params.toString()}` : "";
+      const res = await api<StatusReportData>(`/api/admin/reports/student-status${suffix}`, { headers: authedHeaders });
+      if (res?.ok && res.data) {
+        setReportData(res.data);
+      }
+    } catch {
+      toast.error("Failed to load status report");
+    } finally {
+      setReportLoading(false);
+    }
   };
 
   const handleStockIn = async (payload: { itemType: string; size?: string; quantity?: number; vendorChallan?: string; notes?: string; franchiseId?: string; tablets?: { assetId: string; serialNumber: string; brandModel: string; remarks?: string }[] }) => {
@@ -1745,7 +2244,7 @@ export default function AdminCrm() {
   const refreshAll = async () => {
     if (!token) return;
     try {
-      await Promise.all([loadMeta(), loadDashboard(), canUseLeads ? Promise.all([loadLeads(1), loadAdmissionPendingCount(), loadAdmissions(), loadFollowUps(), loadAssignedLeads()]) : Promise.resolve(), loadStudents(1), loadCounsellors(), loadTeachers(), isTeacherAccount ? loadGoogleCalendarStatus() : Promise.resolve(), canUseAcademics ? Promise.all([loadClassSchedules(), loadTopicProgress(), loadPracticalRecords(), loadStudyNotes()]) : Promise.resolve(), (canManageNps || isTeacherAccount) ? loadNps(1) : Promise.resolve(), canManageInventory ? refreshInventory() : Promise.resolve()]);
+      await Promise.all([loadMeta(), loadDashboard(), canUseLeads ? Promise.all([loadLeads(1), loadAdmissionPendingCount(), loadAdmissions(), loadFollowUps(), loadAssignedLeads()]) : Promise.resolve(), loadStudents(1), loadCounsellors(), loadTeachers(), isTeacherAccount ? loadGoogleCalendarStatus() : Promise.resolve(), canUseAcademics ? Promise.all([loadClassSchedules(), loadTopicProgress(), loadPracticalRecords(), loadStudyNotes()]) : Promise.resolve(), canManageNps ? loadNps(1) : Promise.resolve(), canManageInventory ? refreshInventory() : Promise.resolve(), canManageFees ? Promise.all([loadFeeStats(), loadFeeApprovals(), loadPaymentApprovals()]) : Promise.resolve()]);
     } catch (error) {
       toast.error(error instanceof Error ? error.message : "Unable to load CRM data");
     }
@@ -1767,40 +2266,58 @@ export default function AdminCrm() {
   useEffect(() => { if (token && canUseLeads && (panel === "admissions" || panel === "leads" || panel === "dashboard")) void loadAdmissions(); }, [token, canUseLeads, scopedFranchiseId, panel]);
   useEffect(() => { if (token && canUseLeads) void loadFollowUps(); }, [token, canUseLeads, scopedFranchiseId]);
   useEffect(() => { if (token && canUseLeads) void loadAssignedLeads(); }, [token, canUseLeads, scopedFranchiseId]);
+  useEffect(() => { if (token && canManageFees && (panel === "finance" || panel === "dashboard")) { void loadFeeStats(); void loadFeeApprovals(); void loadPaymentApprovals(); } }, [token, panel, canManageFees, feeTimeframe, feeDateFrom, feeDateTo, feeCentreFilter, feeCourseFilter, scopedFranchiseId]);
 
-  // Periodic polling every 20 seconds so center admin gets real-time notification when superadmin assigns leads
+  // Periodic polling every 20 seconds so admins get real-time notifications when leads are assigned or fee/payment approvals are requested
   useEffect(() => {
-    if (!token || !canUseLeads) return;
+    if (!token) return;
     const interval = setInterval(() => {
-      void loadAssignedLeads();
-      void loadFollowUps();
-      void loadAdmissionPendingCount();
-      if (panel === "admissions") void loadAdmissions();
+      if (canUseLeads) {
+        void loadAssignedLeads();
+        void loadFollowUps();
+        void loadAdmissionPendingCount();
+        if (panel === "admissions") void loadAdmissions();
+      }
+      if (canManageFees) {
+        void loadFeeApprovals();
+        void loadPaymentApprovals();
+      }
     }, 20000);
     return () => clearInterval(interval);
-  }, [token, canUseLeads, scopedFranchiseId, panel]);
+  }, [token, canUseLeads, canManageFees, scopedFranchiseId, panel]);
 
   // Refresh notifications immediately when window/tab regains focus
   useEffect(() => {
-    if (!token || !canUseLeads) return;
+    if (!token) return;
     const onFocus = () => {
-      void loadAssignedLeads();
-      void loadFollowUps();
-      void loadAdmissionPendingCount();
-      if (panel === "admissions") void loadAdmissions();
+      if (canUseLeads) {
+        void loadAssignedLeads();
+        void loadFollowUps();
+        void loadAdmissionPendingCount();
+        if (panel === "admissions") void loadAdmissions();
+      }
+      if (canManageFees) {
+        void loadFeeApprovals();
+        void loadPaymentApprovals();
+      }
     };
     window.addEventListener("focus", onFocus);
     return () => window.removeEventListener("focus", onFocus);
-  }, [token, canUseLeads, scopedFranchiseId, panel]);
+  }, [token, canUseLeads, canManageFees, scopedFranchiseId, panel]);
   useEffect(() => { if (token) void loadStudents(studentPage); }, [studentPage, panel]);
   useEffect(() => { if (token && canManageSettings) void loadCounsellors(); }, [token, canManageSettings]);
   useEffect(() => { if (token && (canManageSettings || isCounsellorAccount)) void loadTeachers(); }, [token, canManageSettings, isCounsellorAccount]);
   useEffect(() => { if (token && (panel === "attendance" || (isTeacherAccount && panel === "dashboard"))) void loadAttendance(); }, [panel, isTeacherAccount, attendanceDateValue, visibleStudents.length]);
   useEffect(() => { if (token && (panel === "batch" || (isTeacherAccount && panel === "dashboard"))) { void loadClassSchedules(); void loadClassSessions(); void loadAttendanceLogs(); void loadTopicProgress(); void loadPracticalRecords(); void loadStudyNotes(); } }, [token, panel, scopedFranchiseId, classWeek, canUseAcademics, isTeacherAccount]);
-  useEffect(() => { if (token && panel === "nps" && (canManageNps || isTeacherAccount)) void loadNps(npsPage); }, [token, panel, canManageNps, isTeacherAccount, scopedFranchiseId, npsPage, npsFilters.q, npsFilters.touchpoint, npsFilters.course, npsFilters.batch, npsFilters.category]);
+  useEffect(() => { if (token && panel === "nps" && canManageNps) void loadNps(npsPage); }, [token, panel, canManageNps, scopedFranchiseId, npsPage, npsFilters.q, npsFilters.touchpoint, npsFilters.course, npsFilters.batch, npsFilters.category]);
   useEffect(() => { if (token && panel === "logs") void loadAttendanceLogs(); }, [panel, scopedFranchiseId]);
   useEffect(() => { if (token && (panel === "attdetail" || panel === "batch") && selectedAttendanceSummary) void loadAttendanceDetail(); }, [panel, selectedAttendanceSummary?.studentId, attendanceDetailFilters.dateFrom, attendanceDetailFilters.dateTo, attendanceDetailFilters.status, attendanceDetailFilters.nature, scopedFranchiseId]);
   useEffect(() => { if (token && (panel === "inventory" || panel === "dashboard") && canManageInventory) void refreshInventory(); }, [token, panel, canManageInventory, scopedFranchiseId, tabletSearchQuery]);
+  useEffect(() => {
+    if (token && panel === "statusreport" && canViewReports) {
+      void loadStatusReport(reportFilters);
+    }
+  }, [token, panel, canViewReports, scopedFranchiseId, reportFilters.timeframe, reportFilters.dateFrom, reportFilters.dateTo, reportFilters.centre, reportFilters.course, reportFilters.status]);
   useEffect(() => {
     const session = classSessions.find((item) => item._id === selectedClassSessionId);
     if (!session) return;
@@ -1811,7 +2328,7 @@ export default function AdminCrm() {
   }, [selectedClassSessionId, classSessions.length, students.length, batches.length, isTeacherAccount, user?.name]);
   useEffect(() => {
     const counsellorPanels = ["dashboard", "leads", "addlead", "admissions", "mystudents", "profile"];
-    const teacherPanels = ["dashboard", "batch", "mystudents", "alumni", "internship", "nps", "profile"];
+    const teacherPanels = ["dashboard", "batch", "mystudents", "alumni", "internship", "profile"];
     const operationsPanels = ["dashboard", "allstudents", "mystudents", "finance", "emi", "receipts", "cert", "alumni", "internship", "nps", "inventory", "profile"];
     if (isCounsellorAccount && !counsellorPanels.includes(panel)) setPanel("dashboard");
     if (isTeacherAccount && !teacherPanels.includes(panel)) setPanel("dashboard");
@@ -1820,15 +2337,17 @@ export default function AdminCrm() {
     if (!canManageFees && ["finance", "emi", "receipts"].includes(panel)) setPanel("dashboard");
     if (!canManageCertificates && panel === "cert") setPanel("dashboard");
     if (!canUseInternship && panel === "internship") setPanel("dashboard");
-    if (!(canManageNps || isTeacherAccount || isOperationsAccount) && panel === "nps") setPanel("dashboard");
+    if (!(canManageNps || isOperationsAccount) && panel === "nps") setPanel("dashboard");
     if (!canManageInventory && panel === "inventory") setPanel("dashboard");
-  }, [panel, isCounsellorAccount, isTeacherAccount, isOperationsAccount, canManageFees, canManageCertificates, canUseInternship, canManageNps, canManageInventory]);
+    if (!canViewReports && panel === "statusreport") setPanel("dashboard");
+  }, [panel, isCounsellorAccount, isTeacherAccount, isOperationsAccount, canManageFees, canManageCertificates, canUseInternship, canManageNps, canManageInventory, canViewReports]);
 
   const visibleNavGroups = useMemo(() => navGroups.map((group) => ({
     ...group,
     items: group.items.filter((item) => {
+      if (item.key === "statusreport") return canViewReports;
       if (isCounsellorAccount) return ["dashboard", "leads", "addlead", "admissions", "mystudents", "profile"].includes(item.key);
-      if (isTeacherAccount) return ["dashboard", "batch", "alumni", "internship", "nps", "profile"].includes(item.key);
+      if (isTeacherAccount) return ["dashboard", "batch", "alumni", "internship", "profile"].includes(item.key);
       if (isOperationsAccount) return ["dashboard", "allstudents", "finance", "emi", "receipts", "cert", "alumni", "internship", "nps", "inventory", "profile"].includes(item.key);
       if (item.key === "batch") return false;
       if (item.key === "attendance" || item.key === "logs") return false;
@@ -1838,12 +2357,12 @@ export default function AdminCrm() {
       if (["finance", "emi", "receipts"].includes(item.key) && !canManageFees) return false;
       if (item.key === "cert" && !canManageCertificates) return false;
       if (item.key === "internship") return canUseInternship;
-      if (item.key === "nps") return canManageNps || isTeacherAccount;
+      if (item.key === "nps") return canManageNps;
       if (item.key === "inventory") return canManageInventory;
       if (item.key === "settings") return canManageSettings;
       return true;
     }),
-  })).filter((group) => group.items.length), [isCounsellorAccount, isTeacherAccount, isOperationsAccount, isStudentStaffAccount, canUseAcademics, canUseAttendance, canManageSettings, canManageFees, canManageCertificates, canUseInternship, canManageNps, canManageInventory]);
+  })).filter((group) => group.items.length), [isCounsellorAccount, isTeacherAccount, isOperationsAccount, isStudentStaffAccount, canUseAcademics, canUseAttendance, canManageSettings, canManageFees, canManageCertificates, canUseInternship, canManageNps, canManageInventory, canViewReports]);
 
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);
@@ -2238,6 +2757,35 @@ export default function AdminCrm() {
     });
   };
 
+  const uploadDocument = async (type: "lead" | "student", id: string, field: DocumentFieldName, file: File) => {
+    try {
+      const formData = new FormData();
+      formData.append("file", file);
+      const res = await api<Lead | Student>(`/api/admin/documents/${type}/${id}/${field}`, {
+        method: "POST",
+        headers: { Authorization: `Bearer ${token}` },
+        body: formData,
+      });
+      if (res.data) {
+        if (type === "lead") {
+          const updatedLead = res.data as Lead;
+          if (leadDrawer?._id === id) setLeadDrawer(updatedLead);
+          if (profile?.type === "lead" && profile.data._id === id) setProfile({ type: "lead", data: updatedLead, mode: profile.mode });
+          setLeads((current) => current.map((l) => (l._id === id ? updatedLead : l)));
+        } else {
+          const updatedStudent = res.data as Student;
+          if (profile?.type === "student" && profile.data._id === id) setProfile({ type: "student", data: updatedStudent, mode: profile.mode });
+          setStudents((current) => current.map((s) => (s._id === id ? updatedStudent : s)));
+        }
+      }
+      toast.success(`${field === "governmentProof" ? "Government Proof" : "Qualification Certificate"} uploaded successfully`);
+      void refreshAll();
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : "Unable to upload document");
+      throw error;
+    }
+  };
+
   const patchStudent = async (id: string, updates: Partial<Student>) => {
     if (Object.prototype.hasOwnProperty.call(updates, "status")) {
       const currentStudent = profile?.type === "student" && profile.data._id === id ? profile.data : students.find((student) => student._id === id);
@@ -2261,7 +2809,7 @@ export default function AdminCrm() {
     try {
       const res = await api<Student>(`/api/admin/students/${student._id}/lms-access`, { method: "POST", headers: authedHeaders });
       if (profile?.type === "student" && profile.data._id === student._id && res.data) setProfile({ type: "student", data: res.data });
-      toast.success("Student LMS login generated");
+      toast.success("Student LMS login generated & status moved to Active Student");
       await refreshAll();
     } catch (error) {
       toast.error(error instanceof Error ? error.message : "Unable to generate Student LMS login");
@@ -2385,11 +2933,17 @@ export default function AdminCrm() {
       if (res.data) {
         const paymentIndex = Math.max(0, (res.data.payments || []).length - 1);
         setProfile({ type: "student", data: res.data });
-        setReceiptStudent(res.data);
-        setReceiptSelection({ type: "payment", index: paymentIndex });
+        if (isHeadSuperAdmin) {
+          setReceiptStudent(res.data);
+          setReceiptSelection({ type: "payment", index: paymentIndex });
+        }
       }
       form.reset();
-      toast.success("Payment recorded. Generate receipt next.");
+      toast.success(
+        isHeadSuperAdmin
+          ? "Payment recorded and approved. Generate receipt next."
+          : "Payment submitted for approval. Receipt will be available once approved."
+      );
       await refreshAll();
       return true;
     } catch (error) {
@@ -3053,6 +3607,7 @@ export default function AdminCrm() {
                     {item.key === "leads" && newAssignedLeads.length > 0 && <em className="nav-badge" style={{ background: "#4f46e5", color: "#ffffff", fontWeight: 800 }}>{newAssignedLeads.length}</em>}
                     {item.key === "admissions" && admissionPendingCount > 0 && <em className="nav-badge nav-badge-admission">{admissionPendingCount}</em>}
                     {item.key === "internship" && pendingLogbookReviewCount > 0 && <em className="nav-badge">{pendingLogbookReviewCount}</em>}
+                    {item.key === "finance" && (pendingFeeApprovalsCount + pendingPaymentApprovalsCount) > 0 && <em className="nav-badge" style={{ background: "#dc2626", color: "#ffffff", fontWeight: 700 }}>{pendingFeeApprovalsCount + pendingPaymentApprovalsCount}</em>}
                   </button>
                 ))}
               </div>
@@ -3094,18 +3649,18 @@ export default function AdminCrm() {
               </>
             )}
             {showTopbarSearch && <div className="search-box"><Search size={14} /><input value={filters.q} onChange={(event) => setFilters({ ...filters, q: event.target.value })} onKeyDown={(event) => { if (event.key === "Enter") void loadLeads(1); }} placeholder="Search leads..." /></div>}
-            {canUseLeads && (
+            {(canUseLeads || canSeeFeeApprovalsNotif) && (
               <div className="notif-wrap" ref={notifRef}>
                 <button
                   type="button"
                   className={`icon-btn notif-btn ${notifOpen ? "active" : ""}`}
                   onClick={() => setNotifOpen((prev) => !prev)}
-                  title="Lead notifications & reminders"
-                  aria-label="Lead notifications & reminders"
+                  title="Notifications & reminders"
+                  aria-label="Notifications & reminders"
                 >
                   <Bell size={15} />
                   {totalNotifCount > 0 && (
-                    <span className={`notif-badge ${newAssignedLeads.length > 0 ? "urgent notif-pulse" : urgentNotifCount > 0 ? "urgent" : ""}`}>
+                    <span className={`notif-badge ${(newAssignedLeads.length > 0 || (canSeeFeeApprovalsNotif && pendingFeeApprovalsCount > 0)) ? "urgent notif-pulse" : urgentNotifCount > 0 ? "urgent" : ""}`}>
                       {totalNotifCount > 99 ? "99+" : totalNotifCount}
                     </span>
                   )}
@@ -3121,24 +3676,49 @@ export default function AdminCrm() {
                         <span className="notif-count-pill">{totalNotifCount} total</span>
                       </div>
                       <div className="notif-tabs" style={{ display: "flex", gap: "6px", marginTop: "10px" }}>
-                        <button
-                          type="button"
-                          className={`btn ${notifTab === "assigned" ? "btn-primary" : "btn-ghost"}`}
-                          style={{ flex: 1, padding: "5px 8px", fontSize: "11.5px", height: "auto" }}
-                          onClick={() => setNotifTab("assigned")}
-                        >
-                          <UserCheck size={13} />
-                          <span>Assign ({newAssignedLeads.length})</span>
-                        </button>
-                        <button
-                          type="button"
-                          className={`btn ${notifTab === "followups" ? "btn-primary" : "btn-ghost"}`}
-                          style={{ flex: 1, padding: "5px 8px", fontSize: "11.5px", height: "auto" }}
-                          onClick={() => setNotifTab("followups")}
-                        >
-                          <Clock size={13} />
-                          <span>Follow-ups ({followUpLeads.length})</span>
-                        </button>
+                        {canUseLeads && (
+                          <>
+                            <button
+                              type="button"
+                              className={`btn ${notifTab === "assigned" ? "btn-primary" : "btn-ghost"}`}
+                              style={{ flex: 1, padding: "5px 6px", fontSize: "11px", height: "auto" }}
+                              onClick={() => setNotifTab("assigned")}
+                            >
+                              <UserCheck size={13} />
+                              <span>Assign ({newAssignedLeads.length})</span>
+                            </button>
+                            <button
+                              type="button"
+                              className={`btn ${notifTab === "followups" ? "btn-primary" : "btn-ghost"}`}
+                              style={{ flex: 1, padding: "5px 6px", fontSize: "11px", height: "auto" }}
+                              onClick={() => setNotifTab("followups")}
+                            >
+                              <Clock size={13} />
+                              <span>Follow-ups ({followUpLeads.length})</span>
+                            </button>
+                          </>
+                        )}
+                        {canSeeFeeApprovalsNotif && (
+                          <button
+                            type="button"
+                            className={`btn ${notifTab === "approvals" ? "btn-primary" : "btn-ghost"}`}
+                            style={{
+                              flex: 1,
+                              padding: "5px 6px",
+                              fontSize: "11px",
+                              height: "auto",
+                              background: notifTab === "approvals" ? (pendingFeeApprovalsCount > 0 ? "#b91c1c" : undefined) : undefined,
+                              borderColor: notifTab === "approvals" ? (pendingFeeApprovalsCount > 0 ? "#991b1b" : undefined) : undefined,
+                            }}
+                            onClick={() => {
+                              setNotifTab("approvals");
+                              void loadFeeApprovals();
+                            }}
+                          >
+                            <ShieldAlert size={13} style={{ color: pendingFeeApprovalsCount > 0 && notifTab !== "approvals" ? "#dc2626" : undefined }} />
+                            <span>Approvals ({pendingFeeApprovalsCount})</span>
+                          </button>
+                        )}
                       </div>
                       {notifTab === "assigned" && newAssignedLeads.length > 0 && (
                         <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginTop: "8px", gap: "6px" }}>
@@ -3163,6 +3743,12 @@ export default function AdminCrm() {
                         <div className="notif-alert-banner">
                           <AlertTriangle size={14} />
                           <span><strong>{dueFollowUpCount}</strong> follow-up{dueFollowUpCount > 1 ? "s" : ""} due today or overdue!</span>
+                        </div>
+                      )}
+                      {notifTab === "approvals" && pendingFeeApprovalsCount > 0 && (
+                        <div className="notif-alert-banner" style={{ background: "#FEF2F2", borderColor: "#FECACA", color: "#991B1B", marginTop: "8px" }}>
+                          <ShieldAlert size={14} style={{ color: "#DC2626" }} />
+                          <span><strong>{pendingFeeApprovalsCount}</strong> fee approval request{pendingFeeApprovalsCount > 1 ? "s" : ""} awaiting review!</span>
                         </div>
                       )}
                     </div>
@@ -3228,7 +3814,7 @@ export default function AdminCrm() {
                             })}
                           </div>
                         )
-                      ) : (
+                      ) : notifTab === "followups" ? (
                         followUpLeads.length === 0 ? (
                           <div className="notif-empty">
                             <div className="notif-empty-icon"><Bell size={24} /></div>
@@ -3281,6 +3867,223 @@ export default function AdminCrm() {
                             ))}
                           </div>
                         )
+                      ) : (
+                        feeApprovals.filter((st) => (st.feeApproval?.status || "pending") === "pending").length === 0 ? (
+                          <div className="notif-empty">
+                            <div className="notif-empty-icon" style={{ background: "#F0FDF4", color: "#16A34A" }}><ShieldCheck size={24} /></div>
+                            <div className="notif-empty-text">No pending fee approvals</div>
+                            <div className="notif-empty-sub">All fee concession and discount requests have been reviewed.</div>
+                          </div>
+                        ) : (
+                          <div className="notif-list">
+                            {feeApprovals
+                              .filter((st) => (st.feeApproval?.status || "pending") === "pending")
+                              .slice(0, 15)
+                              .map((st) => {
+                                const approval = st.feeApproval || { status: "pending" };
+                                const standardFee = approval.standardCourseFee || st.totalFee || 0;
+                                const requestedFee = approval.requestedFee ?? st.totalFee ?? 0;
+                                const requestedDiscount = approval.requestedDiscount ?? st.discountAmount ?? 0;
+                                const isReviewing = feeApprovalReviewingId === st._id;
+                                const canReview = isHeadSuperAdmin || isCenterAdmin;
+
+                                return (
+                                  <div
+                                    key={st._id}
+                                    className="notif-item-wrap"
+                                    style={{
+                                      flexDirection: "column",
+                                      alignItems: "stretch",
+                                      padding: "10px 12px",
+                                      borderBottom: "1px solid #f1f5f9",
+                                      background: "#FFFFFF",
+                                    }}
+                                  >
+                                    <div
+                                      style={{ display: "flex", gap: "10px", alignItems: "flex-start", cursor: "pointer" }}
+                                      onClick={() => {
+                                        setProfile({ type: "student", data: st });
+                                        setPanel("profile");
+                                        setNotifOpen(false);
+                                      }}
+                                      title="Click to view full student profile"
+                                    >
+                                      <div
+                                        className="notif-avatar"
+                                        style={{
+                                          background: "#FEF2F2",
+                                          color: "#DC2626",
+                                          fontWeight: 700,
+                                          flexShrink: 0,
+                                        }}
+                                      >
+                                        {initials(st.fullName)}
+                                      </div>
+                                      <div style={{ flex: 1, minWidth: 0 }}>
+                                        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: 6 }}>
+                                          <span
+                                            style={{
+                                              fontWeight: 700,
+                                              fontSize: "13px",
+                                              color: "var(--text-main)",
+                                              overflow: "hidden",
+                                              textOverflow: "ellipsis",
+                                              whiteSpace: "nowrap",
+                                            }}
+                                          >
+                                            {st.fullName}
+                                          </span>
+                                          <span
+                                            className="tag amber"
+                                            style={{ fontSize: "10px", padding: "1px 6px", fontWeight: 700, flexShrink: 0 }}
+                                          >
+                                            Pending
+                                          </span>
+                                        </div>
+
+                                        <div
+                                          style={{
+                                            fontSize: "11px",
+                                            color: "var(--text-muted)",
+                                            marginTop: "2px",
+                                            display: "flex",
+                                            gap: "6px",
+                                            flexWrap: "wrap",
+                                          }}
+                                        >
+                                          <span>{st.centre || "Main Centre"}</span>
+                                          <span>•</span>
+                                          <span>{courseShortCode(st.course)}</span>
+                                          {st.phone && (
+                                            <>
+                                              <span>•</span>
+                                              <span>{st.phone}</span>
+                                            </>
+                                          )}
+                                        </div>
+
+                                        <div
+                                          style={{
+                                            display: "flex",
+                                            alignItems: "center",
+                                            gap: "8px",
+                                            marginTop: "6px",
+                                            background: "#F8FAFC",
+                                            padding: "4px 8px",
+                                            borderRadius: "6px",
+                                            border: "1px solid #E2E8F0",
+                                          }}
+                                        >
+                                          <div style={{ fontSize: "11px" }}>
+                                            <span style={{ color: "var(--text-muted)" }}>Fee: </span>
+                                            <span
+                                              style={{
+                                                textDecoration: requestedFee < standardFee ? "line-through" : "none",
+                                                color: "var(--text-muted)",
+                                                marginRight: "4px",
+                                              }}
+                                            >
+                                              {formatCurrency(standardFee)}
+                                            </span>
+                                            <strong style={{ color: "#4F46E5", fontSize: "12px" }}>
+                                              {formatCurrency(requestedFee)}
+                                            </strong>
+                                          </div>
+                                          {requestedDiscount > 0 && (
+                                            <span
+                                              style={{
+                                                fontSize: "11px",
+                                                color: "#16A34A",
+                                                fontWeight: 700,
+                                                marginLeft: "auto",
+                                              }}
+                                            >
+                                              -₹{requestedDiscount.toLocaleString("en-IN")} Off
+                                            </span>
+                                          )}
+                                        </div>
+
+                                        {approval.reason && (
+                                          <div
+                                            style={{
+                                              fontSize: "11px",
+                                              color: "#475569",
+                                              marginTop: "5px",
+                                              fontStyle: "italic",
+                                              background: "#FFFBEB",
+                                              padding: "3px 6px",
+                                              borderRadius: "4px",
+                                              border: "1px solid #FEF3C7",
+                                            }}
+                                          >
+                                            "{approval.reason}"
+                                          </div>
+                                        )}
+
+                                        <div style={{ fontSize: "10.5px", color: "var(--text-muted)", marginTop: "4px" }}>
+                                          Req by: <b>{approval.requestedBy || "Staff"}</b>{" "}
+                                          {approval.requestedAt ? `• ${formatDate(approval.requestedAt)}` : ""}
+                                        </div>
+                                      </div>
+                                    </div>
+
+                                    {canReview && (
+                                      <div style={{ display: "flex", gap: "6px", marginTop: "8px", justifyContent: "flex-end" }}>
+                                        <button
+                                          type="button"
+                                          className="btn btn-xs"
+                                          style={{
+                                            background: "#DC2626",
+                                            color: "#FFFFFF",
+                                            border: "none",
+                                            padding: "4px 10px",
+                                            borderRadius: "5px",
+                                            fontSize: "11px",
+                                            fontWeight: 600,
+                                            display: "inline-flex",
+                                            alignItems: "center",
+                                            gap: "4px",
+                                            cursor: "pointer",
+                                          }}
+                                          disabled={isReviewing}
+                                          onClick={(e) => {
+                                            e.stopPropagation();
+                                            setFeeApprovalRejectPrompt({ student: st });
+                                          }}
+                                        >
+                                          <X size={12} /> Reject
+                                        </button>
+                                        <button
+                                          type="button"
+                                          className="btn btn-xs btn-primary"
+                                          style={{
+                                            background: "#16A34A",
+                                            borderColor: "#15803D",
+                                            color: "#FFFFFF",
+                                            padding: "4px 12px",
+                                            borderRadius: "5px",
+                                            fontSize: "11px",
+                                            fontWeight: 700,
+                                            display: "inline-flex",
+                                            alignItems: "center",
+                                            gap: "4px",
+                                            cursor: "pointer",
+                                          }}
+                                          disabled={isReviewing}
+                                          onClick={async (e) => {
+                                            e.stopPropagation();
+                                            await reviewFeeApproval(st._id, "approve");
+                                          }}
+                                        >
+                                          <Check size={12} /> {isReviewing ? "Approving..." : "Approve Fee"}
+                                        </button>
+                                      </div>
+                                    )}
+                                  </div>
+                                );
+                              })}
+                          </div>
+                        )
                       )}
                     </div>
                     <div className="notif-footer">
@@ -3288,11 +4091,15 @@ export default function AdminCrm() {
                         type="button"
                         className="notif-view-all-btn"
                         onClick={() => {
-                          setPanel("leads");
+                          if (notifTab === "approvals") {
+                            setPanel("finance");
+                          } else {
+                            setPanel("leads");
+                          }
                           setNotifOpen(false);
                         }}
                       >
-                        <span>View all leads</span>
+                        <span>{notifTab === "approvals" ? "View all fee approvals in Finance" : "View all leads"}</span>
                         <ArrowRight size={13} />
                       </button>
                     </div>
@@ -3304,6 +4111,53 @@ export default function AdminCrm() {
 
           <section className="content">
             {panel === "dashboard" && (isCounsellorAccount ? <SalesCounsellorDashboardPanel leads={leads} students={visibleStudents} onOpenLead={openLeadDrawer} onGoLeads={() => setPanel("leads")} onGoAddLead={() => setPanel("addlead")} onGoAdmissions={() => setPanel("admissions")} onOpenStudent={(student) => openProfile({ type: "student", data: student }, "dashboard")} /> : isTeacherAccount ? <TeacherDashboardPanel batches={visibleBatches} students={visibleStudents} sessions={classSessions} schedules={classSchedulesState} topicProgress={topicProgress} practicalRecords={practicalRecords} user={user} googleCalendarStatus={googleCalendarStatus} calendarSyncing={calendarSyncing} onConnectCalendar={connectGoogleCalendar} onDisconnectCalendar={disconnectGoogleCalendar} onSyncCalendar={syncGoogleCalendar} onOpenStudent={(student) => openProfile({ type: "student", data: student }, "dashboard")} onOpenBatch={(batchId, sessionId) => { setSelectedBatchId(batchId); setSelectedClassSessionId(sessionId || ""); setPanel("batch"); }} /> : isOperationsAccount ? <OperationsDashboardPanel students={students} batches={visibleBatches} onOpenStudent={(student) => openProfile({ type: "student", data: student }, "dashboard")} onGoStudents={() => setPanel("allstudents")} onGoFinance={() => setPanel("finance")} onGoEmi={() => setPanel("emi")} onGoCert={() => setPanel("cert")} onGoInternship={() => setPanel("internship")} onGoInventory={() => setPanel("inventory")} inventorySummary={inventorySummary} /> : <DashboardPanel summary={summary} funnel={funnel} centreStats={centreStats} students={students} leads={leads} onOpenLead={openLeadDrawer} />)}
+            {panel === "statusreport" && canViewReports && (
+              <StudentStatusReportPanel
+                data={reportData}
+                loading={reportLoading}
+                filters={reportFilters}
+                setFilters={setReportFilters}
+                centreOptions={centreOptions}
+                courseOptions={courseOptions}
+                onRefresh={() => loadStatusReport(reportFilters)}
+                onOpenStudent={(st) => openProfile({ type: "student", data: st }, "statusreport")}
+                onExport={() => {
+                  if (!reportData || !reportData.students.length) {
+                    toast.message("No candidate data to export");
+                    return;
+                  }
+                  const headers = [
+                    "Admission No",
+                    "Candidate Name",
+                    "Phone",
+                    "Email",
+                    "Branch / Centre",
+                    "Course",
+                    "Batch",
+                    "Counsellor",
+                    "Current Status",
+                    "Total Fee",
+                    "Paid Amount",
+                    "Registered Date",
+                  ];
+                  const rows = reportData.students.map((st) => [
+                    st.admissionNumber || "—",
+                    st.fullName,
+                    st.phone,
+                    st.email || "—",
+                    st.centre || "—",
+                    st.course || "—",
+                    st.batch || "—",
+                    st.counsellorName || st.counsellor || "—",
+                    st.status || "Enrolled",
+                    st.totalFee || 0,
+                    st.paidAmount || 0,
+                    st.createdAt ? new Date(st.createdAt).toLocaleDateString("en-IN") : "—",
+                  ]);
+                  downloadExcelFile(headers, rows, `candidate-status-report-${reportFilters.timeframe || "all"}`);
+                }}
+              />
+            )}
             {panel === "leads" && <LeadsPanel leads={leads} students={students} batches={visibleBatches} meta={leadMeta} filters={filters} setFilters={setFilters} centres={centreOptions} courses={courseOptions} canAssign={canAssignCounsellors} canDelete={canDeleteRecords} counsellors={actualCounsellors} onSearch={() => loadLeads(1)} onPage={setLeadPage} onPatch={patchLead} onDelete={deleteLead} onEdit={(lead) => openProfile({ type: "lead", data: lead, mode: "edit" }, "leads")} onAddLead={() => setPanel("addlead")} onImportExcel={importLeadExcel} onOpen={openLeadDrawer} onBulkAssignCentre={bulkAssignLeadCentre} onBulkDelete={bulkDeleteLeads} />}
             {panel === "addlead" && <AddLeadPanel centres={centreOptions} courses={courseOptions} allCourses={courses} counsellors={actualCounsellors} onSubmit={addLead} isSuperAdmin={isHeadSuperAdmin} />}
             {panel === "admissions" && <AdmissionsPanel leads={admissionLeads} batches={visibleBatches} canAssign={canAssignCounsellors} counsellors={actualCounsellors} centres={centreOptions} onPatch={patchLead} onConvert={convertLead} onOpen={openLeadDrawer} />}
@@ -3314,12 +4168,72 @@ export default function AdminCrm() {
             {panel === "logs" && <LogsPanel logs={attendanceSummaries} onSelect={(summary) => { setSelectedAttendanceSummary(summary); setPanel("attdetail"); }} />}
             {panel === "attdetail" && <AttendanceDetailPanel summary={selectedAttendanceSummary} logs={attendanceDetailLogs} filters={attendanceDetailFilters} setFilters={setAttendanceDetailFilters} onBack={() => setPanel("logs")} />}
             {panel === "internship" && canUseInternship && <InternshipPanel students={visibleStudents} user={user} onPreviewPhoto={openInternshipPhotoPreview} onReviewLogbook={reviewLogbookEntry} />}
-            {panel === "nps" && (canManageNps || isTeacherAccount) && <NpsPanel dashboard={npsDashboard} responses={npsResponses} meta={npsMeta} filters={npsFilters} setFilters={(next) => { setNpsFilters(next); setNpsPage(1); }} courses={courseOptions} batches={visibleBatches} canManage={canManageNps} onPage={setNpsPage} onFollowUp={saveNpsFollowUp} onExport={exportNps} />}
-            {panel === "alumni" && <AlumniPanel students={isTeacherAccount ? visibleStudents : students} meta={studentMeta} canManage={!isTeacherAccount && !isCounsellorAccount} onPage={setStudentPage} onPatch={patchStudent} onOpen={(student) => openProfile({ type: "student", data: student }, "alumni")} />}
-            {panel === "finance" && <FinancePanel students={students} meta={studentMeta} user={user} onPage={setStudentPage} onOpen={(student) => openProfile({ type: "student", data: student }, "finance")} onCashDeposit={recordCashDeposit} onDownloadCashDepositProof={downloadCashDepositProof} onPreviewCashDepositProof={previewCashDepositProof} />}
-            {panel === "emi" && <EmiPanel students={students} meta={studentMeta} onPage={setStudentPage} onOpen={(student) => openProfile({ type: "student", data: student }, "emi")} />}
+            {panel === "nps" && canManageNps && <NpsPanel dashboard={npsDashboard} responses={npsResponses} meta={npsMeta} filters={npsFilters} setFilters={(next) => { setNpsFilters(next); setNpsPage(1); }} courses={courseOptions} batches={visibleBatches} canManage={canManageNps} onPage={setNpsPage} onFollowUp={saveNpsFollowUp} onExport={exportNps} />}
+            {panel === "finance" && (
+              <FinancePanel
+                students={students}
+                meta={studentMeta}
+                user={user}
+                isHeadSuperAdmin={isHeadSuperAdmin}
+                isCenterAdmin={isCenterAdmin}
+                centres={centreOptions}
+                courses={courseOptions}
+                feeStats={feeStats}
+                feeStatsLoading={feeStatsLoading}
+                feeApprovals={feeApprovals}
+                pendingFeeApprovalsCount={pendingFeeApprovalsCount}
+                feeApprovalsLoading={feeApprovalsLoading}
+                feeApprovalReviewingId={feeApprovalReviewingId}
+                paymentApprovals={paymentApprovals}
+                pendingPaymentApprovalsCount={pendingPaymentApprovalsCount}
+                paymentApprovalsLoading={paymentApprovalsLoading}
+                paymentApprovalReviewingId={paymentApprovalReviewingId}
+                onReviewFeeApproval={reviewFeeApproval}
+                onLoadFeeApprovals={loadFeeApprovals}
+                onRejectPrompt={(student) => setFeeApprovalRejectPrompt({ student })}
+                onReviewPaymentApproval={reviewPaymentApproval}
+                onLoadPaymentApprovals={loadPaymentApprovals}
+                onRejectPaymentPrompt={(item) => setPaymentApprovalRejectPrompt({ item })}
+                onRequestFeeApprovalModal={(student) => {
+                  const studentCourseObj = courses.find((c) => [c.code, c.name].map((s) => String(s || "").toLowerCase()).includes(String(student.course || "").toLowerCase()));
+                  const standardFee = studentCourseObj ? feeWithGst(studentCourseObj.fee || 0) : (student.totalFee || 0);
+                  setFeeApprovalRequestModal({
+                    student,
+                    requestedFee: String(student.totalFee || standardFee || 0),
+                    requestedDiscount: String(student.discountAmount || 0),
+                    reason: student.feeApproval?.reason || "",
+                    standardCourseFee: standardFee,
+                  });
+                }}
+                feeTimeframe={feeTimeframe}
+                setFeeTimeframe={setFeeTimeframe}
+                feeDateFrom={feeDateFrom}
+                setFeeDateFrom={setFeeDateFrom}
+                feeDateTo={feeDateTo}
+                setFeeDateTo={setFeeDateTo}
+                feeCentreFilter={feeCentreFilter}
+                setFeeCentreFilter={setFeeCentreFilter}
+                feeCourseFilter={feeCourseFilter}
+                setFeeCourseFilter={setFeeCourseFilter}
+                onRefreshStats={loadFeeStats}
+                onPage={setStudentPage}
+                onOpen={(student) => openProfile({ type: "student", data: student }, "finance")}
+                onCashDeposit={recordCashDeposit}
+                onDownloadCashDepositProof={downloadCashDepositProof}
+                onPreviewCashDepositProof={previewCashDepositProof}
+              />
+            )}
+            {panel === "emi" && canManageFees && (
+              <EmiPanel
+                students={visibleStudents}
+                meta={studentMeta}
+                onPage={setStudentPage}
+                onOpen={(student) => openProfile({ type: "student", data: student }, "emi")}
+              />
+            )}
             {panel === "receipts" && canManageFees && <ReceiptsPanel students={visibleStudents} meta={studentMeta} onPage={setStudentPage} onOpen={(student) => { setReceiptStudent(student); setReceiptSelection({ type: "invoice" }); }} />}
             {panel === "cert" && canManageCertificates && <CertificatePanel students={students} meta={studentMeta} onPage={setStudentPage} onIssue={issueCertificate} onOpen={(student) => openProfile({ type: "student", data: student }, "cert")} />}
+            {panel === "alumni" && <AlumniPanel students={visibleStudents} meta={studentMeta} canManage={canManageCertificates || isHeadAdmin || isFranchiseSuperAdmin || isOperationsAccount} onPage={setStudentPage} onPatch={patchStudent} onOpen={(student) => openProfile({ type: "student", data: student }, "alumni")} />}
             {panel === "settings" && canManageSettings && <SettingsPanel isHeadSuperAdmin={isHeadSuperAdmin} isCenterAdmin={isCenterAdmin} isHeadBranchAdmin={isHeadBranchAdmin} isFranchiseSuperAdmin={isFranchiseSuperAdmin} centres={centres} courses={courses} batches={visibleBatches} counsellors={counsellors} teachers={teachers} user={user} centreOptions={centreOptions} courseOptions={courseOptions} onAddStaff={addCounsellor} onUpdateStaff={updateCounsellor} onAddCentre={(event) => addCentreOrCourse(event, "centres")} onUpdateCentreBilling={updateCentreBilling} onAddCourse={(event) => addCentreOrCourse(event, "courses")} onUpdateCourse={updateCourse} onDeleteCourse={deleteCourse} onAddBatch={addBatch} onUpdateBatch={updateBatch} onDeleteBatch={deleteBatch} onUpdatePassword={updatePassword} />}
             {panel === "inventory" && canManageInventory && (
               <InventoryPanel
@@ -3342,7 +4256,7 @@ export default function AdminCrm() {
                 onOpenStudent={(student) => openProfile({ type: "student", data: student }, "inventory")}
               />
             )}
-            {panel === "profile" && <ProfilePanel profile={profile} user={user} accessCount={visibleNavGroups.reduce((sum, group) => sum + group.items.length, 0)} canManageFees={canManageFees} canManageSettings={canManageSettings} canAssignTeachers={canAssignTeachers} canManageCertificates={canManageCertificates} canManageInternships={canManageInternships} canManageInventory={canManageInventory} onIssueKit={(st) => { setIssueKitTargetStudent(st); setIssueKitTargetTablet(null); setIssueKitModalOpen(true); }} centres={centreOptions} courses={courseOptions} allCourses={courses} batches={visibleBatches} teachers={teachers} counsellors={actualCounsellors} onBack={closeProfile} onGoSettings={() => setPanel("settings")} onLeadPatch={patchLead} onStudentPatch={patchStudent} onGenerateStudentLmsAccess={generateStudentLmsAccess} onInternshipSave={saveStudentInternship} onInternshipDelete={deleteStudentInternship} onPayment={addPayment} onDownloadPaymentProof={downloadPaymentProof} onPreviewPaymentProof={previewPaymentProof} onFeedback={addStudentFeedback} onIssue={issueCertificate} onPreviewDocument={openDocumentPreview} onPreviewInternshipPhoto={openInternshipPhotoPreview} />}
+            {panel === "profile" && <ProfilePanel profile={profile} user={user} accessCount={visibleNavGroups.reduce((sum, group) => sum + group.items.length, 0)} isHeadSuperAdmin={isHeadSuperAdmin} isCenterAdmin={isCenterAdmin} feeApprovalReviewingId={feeApprovalReviewingId} onReviewFeeApproval={reviewFeeApproval} onRejectPrompt={(student) => setFeeApprovalRejectPrompt({ student })} paymentApprovalReviewingId={paymentApprovalReviewingId} onReviewPaymentApproval={reviewPaymentApproval} onRejectPaymentPrompt={(item) => setPaymentApprovalRejectPrompt({ item })} onRequestFeeApprovalModal={(student) => { const studentCourseObj = courses.find((c) => [c.code, c.name].map((s) => String(s || "").toLowerCase()).includes(String(student.course || "").toLowerCase())); const standardFee = studentCourseObj ? feeWithGst(studentCourseObj.fee || 0) : (student.totalFee || 0); setFeeApprovalRequestModal({ student, requestedFee: String(student.totalFee || standardFee || 0), requestedDiscount: String(student.discountAmount || 0), reason: student.feeApproval?.reason || "", standardCourseFee: standardFee }); }} canManageFees={canManageFees} canManageSettings={canManageSettings} canAssignTeachers={canAssignTeachers} canManageCertificates={canManageCertificates} canManageInternships={canManageInternships} canManageInventory={canManageInventory} onIssueKit={(st) => { setIssueKitTargetStudent(st); setIssueKitTargetTablet(null); setIssueKitModalOpen(true); }} centres={centreOptions} courses={courseOptions} allCourses={courses} batches={visibleBatches} teachers={teachers} counsellors={actualCounsellors} onBack={closeProfile} onGoSettings={() => setPanel("settings")} onLeadPatch={patchLead} onStudentPatch={patchStudent} onGenerateStudentLmsAccess={generateStudentLmsAccess} onInternshipSave={saveStudentInternship} onInternshipDelete={deleteStudentInternship} onPayment={addPayment} onDownloadPaymentProof={downloadPaymentProof} onPreviewPaymentProof={previewPaymentProof} onFeedback={addStudentFeedback} onIssue={issueCertificate} onPreviewDocument={openDocumentPreview} onPreviewInternshipPhoto={openInternshipPhotoPreview} onUploadDocument={uploadDocument} onStudentRefresh={async (studentId) => { try { const res = await api<Student>(`/api/admin/students/${studentId}`, { headers: authedHeaders }); if (res.data) { setProfile((curr) => curr?.type === "student" && curr.data._id === studentId ? { ...curr, data: res.data } : curr); await Promise.all([loadPaymentApprovals(), loadFeeApprovals(), loadFeeStats()]); } } catch { await refreshAll(); } }} />}
           </section>
         </div>
       </div>
@@ -3361,6 +4275,7 @@ export default function AdminCrm() {
         onClearReminder={clearLeadReminder}
         onPreviewDocument={openDocumentPreview}
         onAddActivity={addLeadActivity}
+        onUploadDocument={uploadDocument}
       />
       <ReceiptDrawer
         student={receiptStudent}
@@ -3402,6 +4317,29 @@ export default function AdminCrm() {
           setIssueKitTargetTablet(null);
         }}
         onSubmit={handleIssueKit}
+      />
+      <FeeApprovalRejectModal
+        prompt={feeApprovalRejectPrompt}
+        onCancel={() => setFeeApprovalRejectPrompt(null)}
+        onSubmit={async (student, note) => {
+          await reviewFeeApproval(student._id, "reject", note);
+          setFeeApprovalRejectPrompt(null);
+        }}
+      />
+      <FeeApprovalRequestModal
+        data={feeApprovalRequestModal}
+        onClose={() => setFeeApprovalRequestModal(null)}
+        onSubmit={async (studentId, payload) => {
+          await requestFeeApproval(studentId, payload);
+        }}
+      />
+      <PaymentApprovalRejectModal
+        prompt={paymentApprovalRejectPrompt}
+        onCancel={() => setPaymentApprovalRejectPrompt(null)}
+        onSubmit={async (item, note) => {
+          await reviewPaymentApproval(item.studentId, item.paymentId, "reject", note);
+          setPaymentApprovalRejectPrompt(null);
+        }}
       />
     </main>
   );
@@ -3713,6 +4651,818 @@ function OperationsDashboardPanel({ students, batches, onOpenStudent, onGoStuden
         </div>
       </div>
     </>
+  );
+}
+
+function StudentStatusReportPanel({
+  data,
+  loading,
+  filters,
+  setFilters,
+  centreOptions,
+  courseOptions,
+  onRefresh,
+  onOpenStudent,
+  onExport,
+}: {
+  data: StatusReportData | null;
+  loading: boolean;
+  filters: {
+    timeframe: string;
+    dateFrom: string;
+    dateTo: string;
+    centre: string;
+    course: string;
+    status: string;
+    q: string;
+  };
+  setFilters: React.Dispatch<React.SetStateAction<{
+    timeframe: string;
+    dateFrom: string;
+    dateTo: string;
+    centre: string;
+    course: string;
+    status: string;
+    q: string;
+  }>>;
+  centreOptions: string[];
+  courseOptions: string[];
+  onRefresh: () => void;
+  onOpenStudent: (student: Student) => void;
+  onExport: () => void;
+}) {
+  const [activeTab, setActiveTab] = useState<"overview" | "branches" | "courses" | "candidates">("overview");
+
+  const summary = data?.summary || {
+    centre: "All",
+    enrolled: 0,
+    inTraining: 0,
+    classroomComplete: 0,
+    courseCompleted: 0,
+    placed: 0,
+    dropped: 0,
+    total: 0,
+    dropoutRate: 0,
+    retentionRate: 100,
+    completionRate: 0,
+  };
+
+  const matrix = data?.matrix || [];
+  const grandTotal = data?.grandTotal || summary;
+  const courseBreakdown = data?.courseBreakdown || [];
+  const students = data?.students || [];
+
+  const timePresets = [
+    { key: "all", label: "All Time" },
+    { key: "today", label: "Today" },
+    { key: "yesterday", label: "Yesterday" },
+    { key: "this_week", label: "This Week" },
+    { key: "last_week", label: "Last Week" },
+    { key: "this_month", label: "This Month" },
+    { key: "last_month", label: "Last Month" },
+    { key: "this_year", label: "This Year" },
+    { key: "custom", label: "Custom Range" },
+  ];
+
+  const [studentSearch, setStudentSearch] = useState("");
+  const filteredStudents = useMemo(() => {
+    if (!studentSearch.trim()) return students;
+    const query = studentSearch.toLowerCase().trim();
+    return students.filter((s) =>
+      (s.fullName || "").toLowerCase().includes(query) ||
+      (s.phone || "").includes(query) ||
+      (s.admissionNumber || "").toLowerCase().includes(query) ||
+      (s.centre || "").toLowerCase().includes(query) ||
+      (s.course || "").toLowerCase().includes(query)
+    );
+  }, [students, studentSearch]);
+
+  const [page, setPage] = useState(1);
+  const pageSize = 12;
+  const totalPages = Math.ceil(filteredStudents.length / pageSize) || 1;
+  const pagedStudents = filteredStudents.slice((page - 1) * pageSize, page * pageSize);
+
+  const hasActiveFilters = filters.centre !== "all" || filters.course !== "all" || filters.status !== "all" || filters.timeframe !== "all";
+
+  const clearAllFilters = () => {
+    setFilters({
+      timeframe: "all",
+      dateFrom: "",
+      dateTo: "",
+      centre: "all",
+      course: "all",
+      status: "all",
+      q: "",
+    });
+    setStudentSearch("");
+    setPage(1);
+  };
+
+  return (
+    <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
+      {/* Global Filter Bar - Matching Project Leads, Finance & Admissions toolbar */}
+      <div className="filter-bar" style={{ marginBottom: 0 }}>
+
+        <select
+          className="fbtn"
+          value={filters.centre}
+          onChange={(e) => {
+            setFilters((prev) => ({ ...prev, centre: e.target.value }));
+            setPage(1);
+          }}
+        >
+          <option value="all">All Branches</option>
+          {centreOptions.map((c) => (
+            <option key={c} value={c}>{c}</option>
+          ))}
+        </select>
+
+        <select
+          className="fbtn"
+          value={filters.course}
+          onChange={(e) => {
+            setFilters((prev) => ({ ...prev, course: e.target.value }));
+            setPage(1);
+          }}
+        >
+          <option value="all">All Courses</option>
+          {courseOptions.map((c) => (
+            <option key={c} value={c}>{c}</option>
+          ))}
+        </select>
+
+        <select
+          className="fbtn"
+          value={filters.status}
+          onChange={(e) => {
+            setFilters((prev) => ({ ...prev, status: e.target.value }));
+            setPage(1);
+          }}
+        >
+          <option value="all">All Statuses</option>
+          <option value="Enrolled">Enrolled / New Admission</option>
+          <option value="In Training">In Training / Active</option>
+          <option value="Classroom Complete">Classroom Complete</option>
+          <option value="Course Completed">Course Completed</option>
+          <option value="Placed">Placed / Alumni</option>
+          <option value="Dropped">Dropped Out</option>
+        </select>
+
+        <select
+          className="fbtn"
+          value={filters.timeframe}
+          onChange={(e) => {
+            setFilters((prev) => ({
+              ...prev,
+              timeframe: e.target.value,
+              ...(e.target.value !== "custom" ? { dateFrom: "", dateTo: "" } : {}),
+            }));
+            setPage(1);
+          }}
+        >
+          {timePresets.map((p) => (
+            <option key={p.key} value={p.key}>{p.label}</option>
+          ))}
+        </select>
+
+        {filters.timeframe === "custom" && (
+          <div style={{ display: "inline-flex", alignItems: "center", gap: 6 }}>
+            <input
+              type="date"
+              value={filters.dateFrom}
+              onChange={(e) => setFilters((p) => ({ ...p, dateFrom: e.target.value }))}
+              className="fbtn"
+              style={{ height: 34, padding: "4px 8px" }}
+            />
+            <span style={{ color: "var(--text-400)", fontSize: 11 }}>to</span>
+            <input
+              type="date"
+              value={filters.dateTo}
+              onChange={(e) => setFilters((p) => ({ ...p, dateTo: e.target.value }))}
+              className="fbtn"
+              style={{ height: 34, padding: "4px 8px" }}
+            />
+          </div>
+        )}
+
+        {hasActiveFilters && (
+          <button
+            type="button"
+            className="btn btn-ghost btn-sm"
+            onClick={clearAllFilters}
+            style={{ color: "var(--red-700)" }}
+          >
+            <X size={12} /> Reset
+          </button>
+        )}
+
+        <div className="filter-spacer" style={{ flex: 1 }} />
+
+        <button
+          type="button"
+          className="btn btn-ghost"
+          onClick={onRefresh}
+          disabled={loading}
+          title="Refresh report data"
+        >
+          <RefreshCw size={13} className={loading ? "spin-icon" : ""} />
+          <span>Refresh</span>
+        </button>
+
+        <button
+          type="button"
+          className="btn btn-primary"
+          onClick={onExport}
+          disabled={loading || !students.length}
+          title="Export all candidates to Excel"
+        >
+          <Download size={13} />
+          <span>Export Excel</span>
+        </button>
+      </div>
+
+      {/* Navigation Pill Tabs - Matching Admissions & Inventory Pill Tabs */}
+      <div className="pill-tabs" style={{ marginBottom: 4 }}>
+        <button
+          type="button"
+          className={`pill-tab ${activeTab === "overview" ? "active" : ""}`}
+          onClick={() => setActiveTab("overview")}
+        >
+          <LayoutDashboard size={13} />
+          <span>Overview & Matrix</span>
+        </button>
+        <button
+          type="button"
+          className={`pill-tab ${activeTab === "branches" ? "active" : ""}`}
+          onClick={() => setActiveTab("branches")}
+        >
+          <Building2 size={13} />
+          <span>Branch Performance ({matrix.length})</span>
+        </button>
+        <button
+          type="button"
+          className={`pill-tab ${activeTab === "courses" ? "active" : ""}`}
+          onClick={() => setActiveTab("courses")}
+        >
+          <GraduationCap size={13} />
+          <span>Course Distribution ({courseBreakdown.length})</span>
+        </button>
+        <button
+          type="button"
+          className={`pill-tab ${activeTab === "candidates" ? "active" : ""}`}
+          onClick={() => setActiveTab("candidates")}
+        >
+          <Users size={13} />
+          <span>Candidate Directory ({filteredStudents.length})</span>
+        </button>
+      </div>
+
+      {/* TAB 1: OVERVIEW & MATRIX */}
+      {activeTab === "overview" && (
+        <>
+          {/* Primary 4 Metric Cards - Matching Project Dashboard Metric Card Design */}
+          <div className="grid-metrics" style={{ marginBottom: 0 }}>
+            {/* Total Candidates */}
+            <div className="metric-card">
+              <div className="m-label">
+                <span className="m-dot" style={{ background: "var(--indigo-500)" }} />
+                Total Candidates
+              </div>
+              <div className="m-value">
+                {summary.total}
+              </div>
+              <div className="m-delta">
+                {filters.timeframe === "all" ? "All-time Scope" : filters.timeframe.replace("_", " ")}
+              </div>
+            </div>
+
+            {/* Active in Training */}
+            <div className="metric-card">
+              <div className="m-label">
+                <span className="m-dot" style={{ background: "var(--purple-500)" }} />
+                Active in Training
+              </div>
+              <div className="m-value">
+                {summary.inTraining}
+              </div>
+              <div className="m-delta" style={{ color: "var(--purple-700)" }}>
+                Active Classroom / Lab
+              </div>
+            </div>
+
+            {/* Placed & Alumni */}
+            <div className="metric-card">
+              <div className="m-label">
+                <span className="m-dot" style={{ background: "var(--amber-500)" }} />
+                Placed / Alumni
+              </div>
+              <div className="m-value">
+                {summary.placed}
+              </div>
+              <div className="m-delta" style={{ color: "var(--amber-700)" }}>
+                Graduated & Placed
+              </div>
+            </div>
+
+            {/* Retention Health */}
+            <div className="metric-card">
+              <div className="m-label">
+                <span className="m-dot" style={{ background: summary.dropped > 0 ? "var(--red-500)" : "var(--green-500)" }} />
+                Retention Health
+              </div>
+              <div className="m-value" style={{ color: summary.total > 0 && summary.retentionRate >= 90 ? "var(--green-700)" : undefined }}>
+                {summary.total === 0 ? "N/A" : `${summary.retentionRate}%`}
+              </div>
+              <div className={`m-delta ${summary.dropped > 0 ? "down" : "up"}`}>
+                {summary.total === 0 ? "No candidate records" : `${summary.dropped} dropped (${summary.dropoutRate}%)`}
+              </div>
+            </div>
+          </div>
+
+          {/* Secondary Quick-Status Ribbon - Project Metric Cards */}
+          <div className="grid-metrics" style={{ gridTemplateColumns: "repeat(auto-fit, minmax(160px, 1fr))", gap: 12, marginBottom: 0 }}>
+            <div className="metric-card" style={{ padding: "12px 16px" }}>
+              <div className="m-label" style={{ fontSize: 11.5 }}>
+                <span className="m-dot" style={{ background: "var(--green-500)" }} />
+                New Enrolled
+              </div>
+              <div className="m-value" style={{ fontSize: 20, marginTop: 4 }}>{summary.enrolled}</div>
+              <div className="m-delta">Newly admitted</div>
+            </div>
+
+            <div className="metric-card" style={{ padding: "12px 16px" }}>
+              <div className="m-label" style={{ fontSize: 11.5 }}>
+                <span className="m-dot" style={{ background: "var(--indigo-500)" }} />
+                Classroom Done
+              </div>
+              <div className="m-value" style={{ fontSize: 20, marginTop: 4 }}>{summary.classroomComplete}</div>
+              <div className="m-delta">Theory phase completed</div>
+            </div>
+
+            <div className="metric-card" style={{ padding: "12px 16px" }}>
+              <div className="m-label" style={{ fontSize: 11.5 }}>
+                <span className="m-dot" style={{ background: "var(--teal-500)" }} />
+                Course Completed
+              </div>
+              <div className="m-value" style={{ fontSize: 20, marginTop: 4 }}>{summary.courseCompleted}</div>
+              <div className="m-delta">Certified graduates</div>
+            </div>
+
+            <div className="metric-card" style={{ padding: "12px 16px" }}>
+              <div className="m-label" style={{ fontSize: 11.5, color: summary.dropped > 0 ? "var(--red-700)" : undefined }}>
+                <span className="m-dot" style={{ background: summary.dropped > 0 ? "var(--red-500)" : "var(--text-400)" }} />
+                Total Dropouts
+              </div>
+              <div className="m-value" style={{ fontSize: 20, marginTop: 4, color: summary.dropped > 0 ? "var(--red-700)" : undefined }}>{summary.dropped}</div>
+              <div className="m-delta" style={{ color: summary.dropped > 0 ? "var(--red-700)" : undefined }}>
+                {summary.total === 0 ? "0%" : `${summary.dropoutRate}% dropout rate`}
+              </div>
+            </div>
+          </div>
+
+          {/* Branch Cross-Tabulation Matrix Card - Matching Standard Table Wrap */}
+          <div className="card" style={{ borderRadius: 14, overflow: "hidden" }}>
+            <div className="card-head">
+              <div>
+                <h3>Branch vs. Status Cross-Tabulation Matrix</h3>
+                <div className="sub">Candidate lifecycle distribution grouped by branch location</div>
+              </div>
+              <span className="badge badge-blue">
+                {matrix.length} Locations Operating
+              </span>
+            </div>
+
+            <div className="table-wrap">
+              <table>
+                <thead>
+                  <tr>
+                    <th style={{ width: "160px" }}>Branch / Centre</th>
+                    <th style={{ textAlign: "center" }}>Enrolled</th>
+                    <th style={{ textAlign: "center" }}>In Training</th>
+                    <th style={{ textAlign: "center" }}>Theory Done</th>
+                    <th style={{ textAlign: "center" }}>Course Done</th>
+                    <th style={{ textAlign: "center" }}>Placed</th>
+                    <th style={{ textAlign: "center" }}>Dropped</th>
+                    <th style={{ textAlign: "center" }}>Total</th>
+                    <th style={{ textAlign: "center" }}>Retention %</th>
+                    <th style={{ textAlign: "center" }}>Dropout %</th>
+                    <th style={{ textAlign: "right", width: "110px" }}>Drill-down</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {matrix.map((row) => (
+                    <tr key={row.centre}>
+                      <td>
+                        <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+                          <span style={{ width: 8, height: 8, borderRadius: "50%", background: "var(--indigo-500)", flexShrink: 0 }} />
+                          <span className="cell-name">{row.centre}</span>
+                        </div>
+                      </td>
+                      <td style={{ textAlign: "center" }}>{row.enrolled}</td>
+                      <td style={{ textAlign: "center", fontWeight: 600, color: "var(--purple-700)" }}>{row.inTraining}</td>
+                      <td style={{ textAlign: "center" }}>{row.classroomComplete}</td>
+                      <td style={{ textAlign: "center" }}>{row.courseCompleted}</td>
+                      <td style={{ textAlign: "center" }}>
+                        {row.placed > 0 ? (
+                          <span className="badge badge-green">
+                            {row.placed}
+                          </span>
+                        ) : (
+                          <span style={{ color: "var(--text-400)" }}>0</span>
+                        )}
+                      </td>
+                      <td style={{ textAlign: "center" }}>
+                        {row.dropped > 0 ? (
+                          <span className="badge badge-red">
+                            {row.dropped}
+                          </span>
+                        ) : (
+                          <span style={{ color: "var(--text-400)" }}>0</span>
+                        )}
+                      </td>
+                      <td style={{ textAlign: "center", fontWeight: 700, color: "var(--text-900)" }}>
+                        {row.total}
+                      </td>
+                      <td style={{ textAlign: "center" }}>
+                        {row.total === 0 ? (
+                          <span className="badge badge-gray">N/A</span>
+                        ) : (
+                          <span className={`badge ${row.retentionRate >= 90 ? "badge-green" : "badge-amber"}`}>
+                            {row.retentionRate}%
+                          </span>
+                        )}
+                      </td>
+                      <td style={{ textAlign: "center" }}>
+                        {row.total === 0 ? (
+                          <span className="badge badge-gray">N/A</span>
+                        ) : (
+                          <span className={`badge ${row.dropoutRate > 5 ? "badge-red" : "badge-gray"}`}>
+                            {row.dropoutRate}%
+                          </span>
+                        )}
+                      </td>
+                      <td style={{ textAlign: "right" }}>
+                        <button
+                          type="button"
+                          className="btn btn-ghost btn-sm"
+                          onClick={() => {
+                            setFilters((prev) => ({ ...prev, centre: row.centre }));
+                            setActiveTab("candidates");
+                            setPage(1);
+                          }}
+                        >
+                          View ({row.total})
+                        </button>
+                      </td>
+                    </tr>
+                  ))}
+                  {matrix.length === 0 && (
+                    <tr>
+                      <td colSpan={11} className="empty-state">
+                        No branch records found for the selected time filter
+                      </td>
+                    </tr>
+                  )}
+                </tbody>
+                {matrix.length > 0 && (
+                  <tfoot>
+                    <tr style={{ background: "#FAFBFD", borderTop: "2px solid var(--border)", fontWeight: 700 }}>
+                      <td style={{ padding: "11px 12px", verticalAlign: "middle" }}>
+                        <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+                          <span style={{ width: 8, height: 8, borderRadius: "50%", background: "var(--indigo-600)", flexShrink: 0 }} />
+                          <span className="cell-name" style={{ fontWeight: 800 }}>{grandTotal.centre}</span>
+                        </div>
+                      </td>
+                      <td style={{ textAlign: "center", padding: "11px 12px", verticalAlign: "middle" }}>{grandTotal.enrolled}</td>
+                      <td style={{ textAlign: "center", color: "var(--purple-700)", padding: "11px 12px", verticalAlign: "middle" }}>{grandTotal.inTraining}</td>
+                      <td style={{ textAlign: "center", padding: "11px 12px", verticalAlign: "middle" }}>{grandTotal.classroomComplete}</td>
+                      <td style={{ textAlign: "center", padding: "11px 12px", verticalAlign: "middle" }}>{grandTotal.courseCompleted}</td>
+                      <td style={{ textAlign: "center", padding: "11px 12px", verticalAlign: "middle" }}>
+                        {grandTotal.placed > 0 ? (
+                          <span className="badge badge-green">{grandTotal.placed}</span>
+                        ) : (
+                          <span style={{ color: "var(--text-400)" }}>0</span>
+                        )}
+                      </td>
+                      <td style={{ textAlign: "center", padding: "11px 12px", verticalAlign: "middle" }}>
+                        {grandTotal.dropped > 0 ? (
+                          <span className="badge badge-red">{grandTotal.dropped}</span>
+                        ) : (
+                          <span style={{ color: "var(--text-400)" }}>0</span>
+                        )}
+                      </td>
+                      <td style={{ textAlign: "center", fontWeight: 800, color: "var(--indigo-600)", fontSize: 13.5, padding: "11px 12px", verticalAlign: "middle" }}>
+                        {grandTotal.total}
+                      </td>
+                      <td style={{ textAlign: "center", padding: "11px 12px", verticalAlign: "middle" }}>
+                        <span className="badge badge-green">{grandTotal.total === 0 ? "N/A" : `${grandTotal.retentionRate}%`}</span>
+                      </td>
+                      <td style={{ textAlign: "center", padding: "11px 12px", verticalAlign: "middle" }}>
+                        <span className={`badge ${grandTotal.dropoutRate > 5 ? "badge-red" : "badge-gray"}`}>{grandTotal.total === 0 ? "N/A" : `${grandTotal.dropoutRate}%`}</span>
+                      </td>
+                      <td style={{ textAlign: "right", padding: "11px 12px", verticalAlign: "middle" }}>
+                        <button
+                          type="button"
+                          className="btn btn-ghost btn-sm"
+                          onClick={() => {
+                            setFilters((prev) => ({ ...prev, centre: "all" }));
+                            setActiveTab("candidates");
+                            setPage(1);
+                          }}
+                          style={{ fontWeight: 700 }}
+                        >
+                          View All ({grandTotal.total})
+                        </button>
+                      </td>
+                    </tr>
+                  </tfoot>
+                )}
+              </table>
+            </div>
+          </div>
+        </>
+      )}
+
+      {/* TAB 2: BRANCH PERFORMANCE CARDS */}
+      {activeTab === "branches" && (
+        <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(320px, 1fr))", gap: 16 }}>
+          {matrix.map((branch) => (
+            <div key={branch.centre} className="card" style={{ borderRadius: 14 }}>
+              <div className="card-head" style={{ justifyContent: "space-between" }}>
+                <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+                  <div className="avatar lead-avatar" style={{ fontWeight: 800 }}>
+                    {branch.centre.slice(0, 2).toUpperCase()}
+                  </div>
+                  <div>
+                    <h3 style={{ margin: 0 }}>{branch.centre}</h3>
+                    <div className="sub">{branch.total} Candidates</div>
+                  </div>
+                </div>
+                {branch.total === 0 ? (
+                  <span className="badge badge-gray">No Data</span>
+                ) : (
+                  <span className={`badge ${branch.retentionRate >= 90 ? "badge-green" : "badge-amber"}`}>
+                    {branch.retentionRate}% Retention
+                  </span>
+                )}
+              </div>
+
+              <div className="card-body">
+                {/* Retention Progress Bar */}
+                <div style={{ marginBottom: 14 }}>
+                  <div style={{ display: "flex", justifyContent: "space-between", fontSize: 11, fontWeight: 700, color: "var(--text-600)", marginBottom: 6 }}>
+                    <span>Retention Health</span>
+                    <span>{branch.total === 0 ? "N/A" : `${branch.retentionRate}%`}</span>
+                  </div>
+                  <div className="progress-track" style={{ width: "100%", height: 7 }}>
+                    <div
+                      className="progress-fill"
+                      style={{
+                        width: `${branch.total === 0 ? 0 : branch.retentionRate}%`,
+                        background: branch.retentionRate >= 90 ? "var(--green-500)" : "var(--amber-500)",
+                      }}
+                    />
+                  </div>
+                </div>
+
+                {/* Status Breakdown Grid */}
+                <div style={{ display: "grid", gridTemplateColumns: "repeat(4, 1fr)", gap: 6, padding: "10px 0", borderTop: "1px solid var(--border-soft)", borderBottom: "1px solid var(--border-soft)", textAlign: "center" }}>
+                  <div>
+                    <div className="cell-sub" style={{ textTransform: "uppercase", fontSize: 10, fontWeight: 700 }}>Enrolled</div>
+                    <div style={{ fontSize: 14, fontWeight: 800, color: "var(--text-900)", marginTop: 2 }}>{branch.enrolled}</div>
+                  </div>
+                  <div>
+                    <div className="cell-sub" style={{ textTransform: "uppercase", fontSize: 10, fontWeight: 700 }}>Training</div>
+                    <div style={{ fontSize: 14, fontWeight: 800, color: "var(--purple-700)", marginTop: 2 }}>{branch.inTraining}</div>
+                  </div>
+                  <div>
+                    <div className="cell-sub" style={{ textTransform: "uppercase", fontSize: 10, fontWeight: 700 }}>Placed</div>
+                    <div style={{ fontSize: 14, fontWeight: 800, color: "var(--green-700)", marginTop: 2 }}>{branch.placed}</div>
+                  </div>
+                  <div>
+                    <div className="cell-sub" style={{ textTransform: "uppercase", fontSize: 10, fontWeight: 700 }}>Dropped</div>
+                    <div style={{ fontSize: 14, fontWeight: 800, color: branch.dropped > 0 ? "var(--red-700)" : "var(--text-400)", marginTop: 2 }}>{branch.dropped}</div>
+                  </div>
+                </div>
+
+                <div style={{ marginTop: 14 }}>
+                  <button
+                    type="button"
+                    className="btn btn-ghost btn-sm"
+                    onClick={() => {
+                      setFilters((prev) => ({ ...prev, centre: branch.centre }));
+                      setActiveTab("candidates");
+                      setPage(1);
+                    }}
+                    style={{ width: "100%", justifyContent: "center" }}
+                  >
+                    Inspect {branch.centre} Candidates ({branch.total})
+                  </button>
+                </div>
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
+
+      {/* TAB 3: COURSE SPECIALIZATION */}
+      {activeTab === "courses" && (
+        <div className="card" style={{ borderRadius: 14, overflow: "hidden" }}>
+          <div className="card-head">
+            <div>
+              <h3>Medical Course Specialization Breakdown</h3>
+              <div className="sub">Candidate distribution and completion health across active programs</div>
+            </div>
+            <span className="badge badge-purple">{courseBreakdown.length} Courses Offered</span>
+          </div>
+
+          <div className="table-wrap">
+            <table>
+              <thead>
+                <tr>
+                  <th>Medical Course</th>
+                  <th style={{ textAlign: "center" }}>Active in Training</th>
+                  <th style={{ textAlign: "center" }}>Graduated / Placed</th>
+                  <th style={{ textAlign: "center" }}>Dropped Out</th>
+                  <th style={{ textAlign: "center" }}>Total Enrolled</th>
+                  <th style={{ textAlign: "right" }}>Filter Course</th>
+                </tr>
+              </thead>
+              <tbody>
+                {courseBreakdown.map((c) => (
+                  <tr key={c.course}>
+                    <td>
+                      <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+                        <GraduationCap size={15} color="var(--indigo-500)" />
+                        <span className="cell-name">{c.course}</span>
+                      </div>
+                    </td>
+                    <td style={{ textAlign: "center", fontWeight: 600, color: "var(--purple-700)" }}>{c.inTraining}</td>
+                    <td style={{ textAlign: "center" }}>
+                      <span className="badge badge-green">{c.courseCompleted + c.placed}</span>
+                    </td>
+                    <td style={{ textAlign: "center" }}>
+                      {c.dropped > 0 ? (
+                        <span className="badge badge-red">{c.dropped}</span>
+                      ) : (
+                        <span style={{ color: "var(--text-400)" }}>0</span>
+                      )}
+                    </td>
+                    <td style={{ textAlign: "center", fontWeight: 700, color: "var(--text-900)" }}>
+                      {c.total}
+                    </td>
+                    <td style={{ textAlign: "right" }}>
+                      <button
+                        type="button"
+                        className="btn btn-ghost btn-sm"
+                        onClick={() => {
+                          setFilters((prev) => ({ ...prev, course: c.course }));
+                          setActiveTab("candidates");
+                          setPage(1);
+                        }}
+                      >
+                        Filter ({c.total})
+                      </button>
+                    </td>
+                  </tr>
+                ))}
+                {courseBreakdown.length === 0 && (
+                  <tr>
+                    <td colSpan={6} className="empty-state">
+                      No course records found for the selected filter
+                    </td>
+                  </tr>
+                )}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      )}
+
+      {/* TAB 4: CANDIDATE DIRECTORY & DRILL-DOWN */}
+      {activeTab === "candidates" && (
+        <div className="card" style={{ borderRadius: 14, overflow: "hidden" }}>
+          <div className="card-head" style={{ flexWrap: "wrap", gap: 10 }}>
+            <div>
+              <h3>Candidate Directory & Profile Drill-Down</h3>
+              <div className="sub">Showing {filteredStudents.length} candidate record(s) matching active criteria</div>
+            </div>
+            <div className="search-box" style={{ width: 220 }}>
+              <Search size={14} />
+              <input
+                type="text"
+                placeholder="Filter table..."
+                value={studentSearch}
+                onChange={(e) => {
+                  setStudentSearch(e.target.value);
+                  setPage(1);
+                }}
+              />
+            </div>
+          </div>
+
+          <div className="table-wrap">
+            <table>
+              <thead>
+                <tr>
+                  <th>Candidate</th>
+                  <th>Branch & Batch</th>
+                  <th>Course</th>
+                  <th>Lifecycle Status</th>
+                  <th>Fees Paid</th>
+                  <th>Admission Date</th>
+                  <th style={{ textAlign: "right" }}>Action</th>
+                </tr>
+              </thead>
+              <tbody>
+                {pagedStudents.map((st) => (
+                  <tr
+                    key={st._id}
+                    className="clickable"
+                    onClick={() => onOpenStudent(st)}
+                  >
+                    <td>
+                      <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+                        <div className="avatar lead-avatar">
+                          {initials(st.fullName)}
+                        </div>
+                        <div>
+                          <div className="cell-name">{st.fullName}</div>
+                          <div className="cell-sub">{st.phone} {st.admissionNumber ? `• ${st.admissionNumber}` : ""}</div>
+                        </div>
+                      </div>
+                    </td>
+                    <td>
+                      <div className="cell-name">{st.centre || "—"}</div>
+                      <div className="cell-sub">{st.batch || "No batch assigned"}</div>
+                    </td>
+                    <td>
+                      <span className="badge badge-gray">{st.course || "—"}</span>
+                    </td>
+                    <td>
+                      <span className={`badge ${st.status === "Dropped"
+                          ? "badge-red"
+                          : ["Placed", "Alumni"].includes(st.status || "")
+                            ? "badge-green"
+                            : st.status === "Course Completed"
+                              ? "badge-blue"
+                              : ["In Training", "Active Student"].includes(st.status || "")
+                                ? "badge-purple"
+                                : "badge-gray"
+                        }`}>
+                        {studentStatusLabel(st.status || "Enrolled")}
+                      </span>
+                      {st.status === "Dropped" && st.dropoutReason && (
+                        <div style={{ fontSize: 10.5, color: "var(--red-700)", fontWeight: 600, marginTop: 2 }}>
+                          {st.dropoutReason}
+                        </div>
+                      )}
+                    </td>
+                    <td>
+                      <div style={{ fontWeight: 600, color: "var(--text-900)" }}>{formatCurrency(st.paidAmount || 0)}</div>
+                      <div className="cell-sub">of {formatCurrency(st.totalFee || 0)}</div>
+                    </td>
+                    <td className="cell-sub">
+                      {st.createdAt ? new Date(st.createdAt).toLocaleDateString("en-IN") : "—"}
+                    </td>
+                    <td style={{ textAlign: "right" }}>
+                      <button
+                        type="button"
+                        className="btn btn-ghost btn-sm"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          onOpenStudent(st);
+                        }}
+                      >
+                        Profile
+                      </button>
+                    </td>
+                  </tr>
+                ))}
+                {pagedStudents.length === 0 && (
+                  <tr>
+                    <td colSpan={7} className="empty-state">
+                      No candidates found matching the criteria
+                    </td>
+                  </tr>
+                )}
+              </tbody>
+            </table>
+          </div>
+
+          {totalPages > 1 && (
+            <div className="pager">
+              <span>Page {page} of {totalPages} ({filteredStudents.length} candidates)</span>
+              <div className="pager-btns">
+                <button type="button" disabled={page <= 1} onClick={() => setPage((p) => p - 1)}>Prev</button>
+                <button type="button" className="active">{page}</button>
+                <button type="button" disabled={page >= totalPages} onClick={() => setPage((p) => p + 1)}>Next</button>
+              </div>
+            </div>
+          )}
+        </div>
+      )}
+    </div>
   );
 }
 
@@ -4493,55 +6243,55 @@ function LeadTable({
             const hasCounsellorOption = !displayOwner || counsellorStaff.some((counsellor) => counsellor.name === displayOwner);
             const isSelected = selectedLeadIds.includes(lead._id);
             return (
-            <tr key={lead._id} className={`clickable ${isSelected ? "row-selected" : ""}`} onClick={() => onOpen(lead)}>
-              <td className="col-select" onClick={(e) => e.stopPropagation()}>
-                <input
-                  type="checkbox"
-                  className="lead-checkbox"
-                  checked={isSelected}
-                  onChange={() => onToggleSelect && onToggleSelect(lead._id)}
-                />
-              </td>
-              <td><div className="lead-name-cell"><span className="avatar lead-avatar">{initials(lead.fullName)}</span><div><div className="cell-name">{lead.fullName}{lead.isSuspectedConsultancy && <span title={lead.consultancyFlagReason || "Suspected Consultancy / Bulk Upload from same IP"} style={{ background: "#fee2e2", color: "#dc2626", border: "1px solid #f87171", fontSize: "10px", fontWeight: "bold", padding: "1px 5px", borderRadius: "4px", marginLeft: "6px", display: "inline-block", verticalAlign: "middle" }}>⚠️ Suspected Consultancy</span>}</div><div className="cell-sub">{lead._id.slice(-8).toUpperCase()}</div></div></div></td>
-              <td className="mono" style={{ whiteSpace: "nowrap" }}>
-                <div>{formatDate(lead.createdAt || lead.updatedAt)}</div>
-                {(lead.createdAt || lead.updatedAt) && (
-                  <div className="cell-sub" style={{ fontSize: "10.5px" }}>
-                    {new Intl.DateTimeFormat("en-IN", { hour: "2-digit", minute: "2-digit" }).format(new Date(lead.createdAt || lead.updatedAt || ""))}
-                  </div>
-                )}
-              </td>
-              <td>{lead.phone}<div className="cell-sub">{lead.studentLocation || lead.city || lead.email || "-"}</div></td>
-              <td>{courseShortCode(lead.course)}</td>
-              <td>
-                <span className="badge badge-gray">{lead.source || "-"}</span>
-                {lead.source === "BTL" && (lead.counsellorName || lead.scholarName) && (
-                  <div className="cell-sub" style={{ fontSize: "10.5px", marginTop: "2px" }}>
-                    {lead.counsellorName && <div>C: {lead.counsellorName}</div>}
-                    {lead.scholarName && <div>S: {lead.scholarName}</div>}
-                  </div>
-                )}
-                {String(lead.source || "").trim().toLowerCase() === "referral" && (lead.refereeName || (lead.referralAmount !== undefined && lead.referralAmount > 0)) && (
-                  <div className="cell-sub" style={{ fontSize: "10.5px", marginTop: "2px" }}>
-                    {lead.refereeName && <div>Ref: {lead.refereeName}</div>}
-                    {Boolean(lead.referralAmount) && <div>Amt: {formatCurrency(lead.referralAmount || 0)}</div>}
-                  </div>
-                )}
-              </td>
-              <td>{canAssign ? <select className="mini-select" value={lead.centre || ""} onClick={(e) => e.stopPropagation()} onChange={(event) => onPatch(lead._id, { centre: event.target.value })}><option value="">Assign centre</option>{centres.map((centre) => <option key={centre}>{centre}</option>)}</select> : lead.centre || "-"}</td>
-              <td>{canAssign ? <select className="mini-select" value={displayOwner} onClick={(e) => e.stopPropagation()} onChange={(event) => onPatch(lead._id, { counsellor: event.target.value })}><option value="">Unassigned</option>{!hasCounsellorOption && <option value={displayOwner}>{displayOwner}</option>}{counsellorStaff.map((counsellor) => <option key={counsellor.email || counsellor._id || counsellor.name} value={counsellor.name}>{counsellor.name}</option>)}</select> : displayOwner || "-"}</td>
-              <td onClick={(event) => event.stopPropagation()}><select className="fbtn stage-select" value={leadStages.includes(lead.stage) ? lead.stage : "New Lead"} onChange={(event) => onPatch(lead._id, { stage: event.target.value })}>{leadStages.map((stage) => <option key={stage}>{stage}</option>)}</select></td>
-              <td onClick={(event) => event.stopPropagation()}><select className={`fbtn stage-select feedback-select ${leadFeedbackBadgeClass(lead.leadFeedback)}`} value={normalizeLeadFeedbackStatus(lead.leadFeedback)} onChange={(event) => onPatch(lead._id, { leadFeedback: event.target.value })}>{leadFeedbackOptions.map((feedback) => <option key={feedback}>{feedback}</option>)}</select></td>
-              <td><span className={`badge ${priorityBadgeClass(lead.priority)}`}>{leadPriorityLabel(lead.priority)}</span></td>
-              <td>{formatDateTime(lead.nextFollowUp)}</td>
-              <td onClick={(event) => event.stopPropagation()}><div className="action-icons">
-                <LeadPamphletSelect lead={lead} compact />
-                <button className="action-icon-btn" title="View" onClick={() => onOpen(lead)}><Eye size={14} /></button>
-                {whatsappLeadUrl(lead.phone, lead.fullName) && <a className="action-icon-btn action-icon-whatsapp" title="WhatsApp lead" href={whatsappLeadUrl(lead.phone, lead.fullName)} target="_blank" rel="noreferrer"><MessageCircle size={14} /></a>}
-                <button className="action-icon-btn action-icon-primary" title={showAction ? "Open admissions to enroll" : "Update lead"} onClick={() => onEdit ? onEdit(lead) : onOpen(lead)}>{showAction ? <Eye size={14} /> : <Pencil size={14} />}</button>
-                {canDelete && onDelete && <button className="action-icon-btn action-icon-danger" title="Delete lead" onClick={() => onDelete(lead)}><Trash2 size={14} /></button>}
-              </div></td>
-            </tr>
+              <tr key={lead._id} className={`clickable ${isSelected ? "row-selected" : ""}`} onClick={() => onOpen(lead)}>
+                <td className="col-select" onClick={(e) => e.stopPropagation()}>
+                  <input
+                    type="checkbox"
+                    className="lead-checkbox"
+                    checked={isSelected}
+                    onChange={() => onToggleSelect && onToggleSelect(lead._id)}
+                  />
+                </td>
+                <td><div className="lead-name-cell"><span className="avatar lead-avatar">{initials(lead.fullName)}</span><div><div className="cell-name">{lead.fullName}{lead.isSuspectedConsultancy && <span title={lead.consultancyFlagReason || "Suspected Consultancy / Bulk Upload from same IP"} style={{ background: "#fee2e2", color: "#dc2626", border: "1px solid #f87171", fontSize: "10px", fontWeight: "bold", padding: "1px 5px", borderRadius: "4px", marginLeft: "6px", display: "inline-block", verticalAlign: "middle" }}>⚠️ Suspected Consultancy</span>}</div><div className="cell-sub">{lead._id.slice(-8).toUpperCase()}</div></div></div></td>
+                <td className="mono" style={{ whiteSpace: "nowrap" }}>
+                  <div>{formatDate(lead.createdAt || lead.updatedAt)}</div>
+                  {(lead.createdAt || lead.updatedAt) && (
+                    <div className="cell-sub" style={{ fontSize: "10.5px" }}>
+                      {new Intl.DateTimeFormat("en-IN", { hour: "2-digit", minute: "2-digit" }).format(new Date(lead.createdAt || lead.updatedAt || ""))}
+                    </div>
+                  )}
+                </td>
+                <td>{lead.phone}<div className="cell-sub">{lead.studentLocation || lead.city || lead.email || "-"}</div></td>
+                <td>{courseShortCode(lead.course)}</td>
+                <td>
+                  <span className="badge badge-gray">{lead.source || "-"}</span>
+                  {lead.source === "BTL" && (lead.counsellorName || lead.scholarName) && (
+                    <div className="cell-sub" style={{ fontSize: "10.5px", marginTop: "2px" }}>
+                      {lead.counsellorName && <div>C: {lead.counsellorName}</div>}
+                      {lead.scholarName && <div>S: {lead.scholarName}</div>}
+                    </div>
+                  )}
+                  {String(lead.source || "").trim().toLowerCase() === "referral" && (lead.refereeName || (lead.referralAmount !== undefined && lead.referralAmount > 0)) && (
+                    <div className="cell-sub" style={{ fontSize: "10.5px", marginTop: "2px" }}>
+                      {lead.refereeName && <div>Ref: {lead.refereeName}</div>}
+                      {Boolean(lead.referralAmount) && <div>Amt: {formatCurrency(lead.referralAmount || 0)}</div>}
+                    </div>
+                  )}
+                </td>
+                <td>{canAssign ? <select className="mini-select" value={lead.centre || ""} onClick={(e) => e.stopPropagation()} onChange={(event) => onPatch(lead._id, { centre: event.target.value })}><option value="">Assign centre</option>{centres.map((centre) => <option key={centre}>{centre}</option>)}</select> : lead.centre || "-"}</td>
+                <td>{canAssign ? <select className="mini-select" value={displayOwner} onClick={(e) => e.stopPropagation()} onChange={(event) => onPatch(lead._id, { counsellor: event.target.value })}><option value="">Unassigned</option>{!hasCounsellorOption && <option value={displayOwner}>{displayOwner}</option>}{counsellorStaff.map((counsellor) => <option key={counsellor.email || counsellor._id || counsellor.name} value={counsellor.name}>{counsellor.name}</option>)}</select> : displayOwner || "-"}</td>
+                <td onClick={(event) => event.stopPropagation()}><select className="fbtn stage-select" value={leadStages.includes(lead.stage) ? lead.stage : "New Lead"} onChange={(event) => onPatch(lead._id, { stage: event.target.value })}>{leadStages.map((stage) => <option key={stage}>{stage}</option>)}</select></td>
+                <td onClick={(event) => event.stopPropagation()}><select className={`fbtn stage-select feedback-select ${leadFeedbackBadgeClass(lead.leadFeedback)}`} value={normalizeLeadFeedbackStatus(lead.leadFeedback)} onChange={(event) => onPatch(lead._id, { leadFeedback: event.target.value })}>{leadFeedbackOptions.map((feedback) => <option key={feedback}>{feedback}</option>)}</select></td>
+                <td><span className={`badge ${priorityBadgeClass(lead.priority)}`}>{leadPriorityLabel(lead.priority)}</span></td>
+                <td>{formatDateTime(lead.nextFollowUp)}</td>
+                <td onClick={(event) => event.stopPropagation()}><div className="action-icons">
+                  <LeadPamphletSelect lead={lead} compact />
+                  <button className="action-icon-btn" title="View" onClick={() => onOpen(lead)}><Eye size={14} /></button>
+                  {whatsappLeadUrl(lead.phone, lead.fullName) && <a className="action-icon-btn action-icon-whatsapp" title="WhatsApp lead" href={whatsappLeadUrl(lead.phone, lead.fullName)} target="_blank" rel="noreferrer"><MessageCircle size={14} /></a>}
+                  <button className="action-icon-btn action-icon-primary" title={showAction ? "Open admissions to enroll" : "Update lead"} onClick={() => onEdit ? onEdit(lead) : onOpen(lead)}>{showAction ? <Eye size={14} /> : <Pencil size={14} />}</button>
+                  {canDelete && onDelete && <button className="action-icon-btn action-icon-danger" title="Delete lead" onClick={() => onDelete(lead)}><Trash2 size={14} /></button>}
+                </div></td>
+              </tr>
             );
           })}
           {!leads.length && <tr><td colSpan={13}><div className="empty-state"><h4>No leads found</h4><p>Try clearing filters or add a new lead.</p></div></td></tr>}
@@ -4552,9 +6302,16 @@ function LeadTable({
 }
 
 function AddLeadPanel({ centres, courses, allCourses = [], counsellors = [], onSubmit, isSuperAdmin = false }: { centres: string[]; courses: string[]; allCourses?: Course[]; counsellors?: Counsellor[]; onSubmit: (event: FormEvent<HTMLFormElement>) => void; isSuperAdmin?: boolean }) {
-  const [centreDraft, setCentreDraft] = useState("");
+  const [centreDraft, setCentreDraft] = useState(centres.length === 1 ? centres[0] : "");
   const [courseDraft, setCourseDraft] = useState("");
   const [sourceDraft, setSourceDraft] = useState("");
+
+  useEffect(() => {
+    if (centres.length === 1 && !centreDraft) {
+      setCentreDraft(centres[0]);
+    }
+  }, [centres, centreDraft]);
+
   const availableCourses = courseOptionsForCentre(centreDraft, courses, isSuperAdmin);
   const selectedCourseObj = allCourses.find((c) => [c.code, c.name].map((s) => String(s || "").toLowerCase()).includes(courseDraft.toLowerCase()));
   const selectedCoursePayable = selectedCourseObj ? feeWithGst(selectedCourseObj.fee || 0) : 0;
@@ -4636,9 +6393,84 @@ function AddLeadPanel({ centres, courses, allCourses = [], counsellors = [], onS
   );
 }
 
+function DropoutModal({
+  student,
+  onConfirm,
+  onClose,
+}: {
+  student: Student;
+  onConfirm: (reason: string, notes: string) => void;
+  onClose: () => void;
+}) {
+  const [reason, setReason] = useState(student.dropoutReason || "");
+  const [notes, setNotes] = useState(student.dropoutNotes || "");
+
+  const handleSubmit = (e: FormEvent) => {
+    e.preventDefault();
+    if (!reason.trim()) {
+      toast.error("Dropout reason is mandatory");
+      return;
+    }
+    onConfirm(reason, notes);
+  };
+
+  return (
+    <div className="modal-overlay show" onClick={onClose}>
+      <div className="modal delete-modal" style={{ width: 440 }} onClick={(event) => event.stopPropagation()}>
+        <div className="modal-head">
+          <h3>Record student dropout</h3>
+          <button type="button" className="close-x" onClick={onClose}>x</button>
+        </div>
+        <form onSubmit={handleSubmit}>
+          <div className="modal-body" style={{ display: "grid", gap: 14 }}>
+            <p style={{ margin: 0, fontSize: "12.5px", color: "var(--text-700)", lineHeight: 1.45 }}>
+              Select the reason for moving <strong>{student.fullName}</strong> to Dropout.
+            </p>
+
+            <div className="field">
+              <RequiredLabel required>Dropout reason</RequiredLabel>
+              <select
+                value={reason}
+                onChange={(e) => setReason(e.target.value)}
+                required
+                autoFocus
+              >
+                <option value="">Select dropout reason...</option>
+                {dropoutReasonOptions.map((opt) => (
+                  <option key={opt} value={opt}>{opt}</option>
+                ))}
+              </select>
+            </div>
+
+            <div className="field">
+              <label>Dropout remarks</label>
+              <textarea
+                value={notes}
+                onChange={(e) => setNotes(e.target.value)}
+                placeholder="Optional counsellor remarks..."
+                rows={3}
+              />
+            </div>
+          </div>
+
+          <div className="modal-actions delete-modal-actions">
+            <button type="button" className="btn btn-ghost" onClick={onClose}>
+              Cancel
+            </button>
+            <button type="submit" className="btn btn-danger">
+              Confirm Dropout
+            </button>
+          </div>
+        </form>
+      </div>
+    </div>
+  );
+}
+
 function StudentsPanel({ title, students, meta, batches = [], canAssign = false, canDelete = false, teachers = [], onPage, onPatch, onDelete, onEdit, onOpen }: { title: string; students: Student[]; meta: PaginationMeta | null; batches?: Batch[]; canAssign?: boolean; canDelete?: boolean; teachers?: Counsellor[]; onPage: (page: number) => void; onPatch: (id: string, updates: Partial<Student>) => void; onDelete: (student: Student) => void; onEdit: (student: Student) => void; onOpen: (student: Student) => void }) {
   const [search, setSearch] = useState("");
   const [statusFilter, setStatusFilter] = useState("");
+  const [dropoutStudentTarget, setDropoutStudentTarget] = useState<Student | null>(null);
   const normalized = search.trim().toLowerCase();
   const filteredStudents = students.filter((student) => {
     const matchesSearch = !normalized || [student.fullName, student.admissionNumber, student.phone, student.studentLocation, student.course, student.centre, student.batch].some((value) => String(value || "").toLowerCase().includes(normalized));
@@ -4652,23 +6484,35 @@ function StudentsPanel({ title, students, meta, batches = [], canAssign = false,
         <input className="fbtn" value={search} onChange={(event) => setSearch(event.target.value)} placeholder={title === "My candidates" ? "Search my candidates..." : "Search all candidates..."} />
         {canAssign && <select className="fbtn" value={statusFilter} onChange={(event) => setStatusFilter(event.target.value)}><option value="">All statuses</option>{studentStatuses.map((status) => <option key={status} value={status}>{studentStatusLabel(status)}</option>)}</select>}
         <div className="filter-spacer" />
-        <button className="btn btn-ghost" onClick={() => downloadExcelFile(["Candidate", "Course", "Centre", "Batch", "Counsellor", "Caller", "Teacher", "Fee", "Paid", "Status"], filteredStudents.map((student) => [student.fullName, student.course, student.centre, student.batch, student.counsellorName || student.counsellor || "-", student.callerName || "-", batchFacultyForStudent(student, batches) || "Unassigned", student.totalFee, student.paidAmount, studentStatusLabel(student.status)]), "imed-candidates")}><Download size={15} /> Download Excel</button>
+        <button className="btn btn-ghost" onClick={() => downloadExcelFile(["Candidate", "Admission No", "Admission Date", "Course", "Centre", "Batch", "Counsellor", "Caller", "Teacher", "Fee", "Paid", "Status", "Dropout Reason"], filteredStudents.map((student) => [student.fullName, student.admissionNumber || "-", student.createdAt ? formatDate(student.createdAt) : "-", student.course, student.centre, student.batch, student.counsellorName || student.counsellor || "-", student.callerName || "-", batchFacultyForStudent(student, batches) || "Unassigned", student.totalFee, student.paidAmount, studentStatusLabel(student.status), student.dropoutReason || "-"]), "imed-candidates")}><Download size={15} /> Download Excel</button>
       </div>
       <div className="card students-card">
         <div className="card-body students-table-body">
-          <StudentPrototypeTable students={filteredStudents} batches={batches} canAssign={canAssign} canDelete={canDelete} teachers={teachers} onPatch={onPatch} onDelete={onDelete} onEdit={onEdit} onOpen={onOpen} />
+          <StudentPrototypeTable students={filteredStudents} batches={batches} canAssign={canAssign} canDelete={canDelete} teachers={teachers} onPatch={onPatch} onDelete={onDelete} onEdit={onEdit} onOpen={onOpen} onPromptDropout={(st) => setDropoutStudentTarget(st)} />
         </div>
         <Pager meta={meta} label="students" onPage={onPage} />
       </div>
+
+      {dropoutStudentTarget && (
+        <DropoutModal
+          student={dropoutStudentTarget}
+          onConfirm={(reason, notes) => {
+            onPatch(dropoutStudentTarget._id, { status: "Dropped", dropoutReason: reason, dropoutNotes: notes });
+            setDropoutStudentTarget(null);
+            toast.success(`${dropoutStudentTarget.fullName} marked as Dropped Out`);
+          }}
+          onClose={() => setDropoutStudentTarget(null)}
+        />
+      )}
     </div>
   );
 }
 
-function StudentPrototypeTable({ students, batches, canAssign, canDelete, teachers, onPatch, onDelete, onEdit, onOpen }: { students: Student[]; batches: Batch[]; canAssign: boolean; canDelete: boolean; teachers: Counsellor[]; onPatch: (id: string, updates: Partial<Student>) => void; onDelete: (student: Student) => void; onEdit: (student: Student) => void; onOpen: (student: Student) => void }) {
+function StudentPrototypeTable({ students, batches, canAssign, canDelete, teachers, onPatch, onDelete, onEdit, onOpen, onPromptDropout }: { students: Student[]; batches: Batch[]; canAssign: boolean; canDelete: boolean; teachers: Counsellor[]; onPatch: (id: string, updates: Partial<Student>) => void; onDelete: (student: Student) => void; onEdit: (student: Student) => void; onOpen: (student: Student) => void; onPromptDropout: (student: Student) => void }) {
   return (
     <div className="table-wrap students-table-wrap">
       <table className="students-table">
-        <thead><tr><th>Candidate</th><th>Course</th><th>Centre</th><th>Batch</th><th>Teacher</th><th>Fee</th><th>Paid</th><th>Status</th><th /></tr></thead>
+        <thead><tr><th>Candidate</th><th>Course</th><th>Centre</th><th>Admission Date</th><th>Batch</th><th>Teacher</th><th>Fee</th><th>Paid</th><th>Status</th><th /></tr></thead>
         <tbody>
           {students.map((student) => {
             const netFee = Math.max(1, (student.totalFee || 0) - (student.discountAmount || 0));
@@ -4680,11 +6524,34 @@ function StudentPrototypeTable({ students, batches, canAssign, canDelete, teache
                 <td><div className="lead-name-cell"><span className="avatar lead-avatar">{initials(student.fullName)}</span><div><div className="cell-name">{student.fullName}</div><div className="cell-sub">{student.admissionNumber || student.studentLocation || student.phone}</div></div></div></td>
                 <td>{courseShortCode(student.course)}</td>
                 <td>{student.centre || "-"}</td>
+                <td className="mono" style={{ whiteSpace: "nowrap", fontSize: "12px" }}>{student.createdAt ? formatDate(student.createdAt) : "-"}</td>
                 <td>{student.batch || <span className="cell-sub">Unassigned</span>}</td>
                 <td onClick={(event) => event.stopPropagation()}>{canAssign ? <select className="fbtn student-mini-select" value={displayTeacher} onChange={(event) => onPatch(student._id, { teacher: event.target.value })}><option value="">Unassigned</option>{!hasTeacherOption && <option value={displayTeacher}>{displayTeacher}</option>}{teachers.map((teacher) => <option key={teacher.email}>{teacher.name}</option>)}</select> : displayTeacher || "-"}</td>
                 <td className="mono">{formatCurrency(student.totalFee || 0)}</td>
                 <td><span className="progress-track"><span className="progress-fill" style={{ width: `${paidPct}%` }} /></span> <span className="cell-sub">{paidPct}%</span></td>
-                <td onClick={(event) => event.stopPropagation()}><select className="fbtn student-mini-select" value={normalizeStudentStatus(student.status)} onChange={(event) => { const reason = studentStatusBlockReason(student, event.target.value); if (reason) { toast.error(reason); return; } onPatch(student._id, { status: event.target.value }); }}>{studentStatuses.map((status) => <option key={status} value={status}>{studentStatusLabel(status)}</option>)}</select></td>
+                <td onClick={(event) => event.stopPropagation()}>
+                  <select
+                    className="fbtn student-mini-select"
+                    value={normalizeStudentStatus(student.status)}
+                    onChange={(event) => {
+                      const nextVal = event.target.value;
+                      if (nextVal === "Dropped") {
+                        onPromptDropout(student);
+                        return;
+                      }
+                      const reason = studentStatusBlockReason(student, nextVal);
+                      if (reason) {
+                        toast.error(reason);
+                        return;
+                      }
+                      onPatch(student._id, { status: nextVal });
+                    }}
+                  >
+                    {studentStatuses.map((status) => (
+                      <option key={status} value={status}>{studentStatusLabel(status)}</option>
+                    ))}
+                  </select>
+                </td>
                 <td onClick={(event) => event.stopPropagation()}><div className="action-icons">
                   <button className="action-icon-btn" title="View" onClick={() => onOpen(student)}><Eye size={14} /></button>
                   <button className="action-icon-btn action-icon-primary" title="Update student" onClick={() => onEdit(student)}><Pencil size={14} /></button>
@@ -4693,7 +6560,7 @@ function StudentPrototypeTable({ students, batches, canAssign, canDelete, teache
               </tr>
             );
           })}
-          {!students.length && <tr><td colSpan={9}><div className="empty-state"><h4>No candidates found</h4><p>Adjust filters or check back later.</p></div></td></tr>}
+          {!students.length && <tr><td colSpan={10}><div className="empty-state"><h4>No candidates found</h4><p>Adjust filters or check back later.</p></div></td></tr>}
         </tbody>
       </table>
     </div>
@@ -5780,7 +7647,102 @@ function AttendanceDetailPanel({ summary, logs, filters, setFilters, onBack }: {
   );
 }
 
-function FinancePanel({ students, meta, user, onPage, onOpen, onCashDeposit, onDownloadCashDepositProof, onPreviewCashDepositProof }: { students: Student[]; meta: PaginationMeta | null; user: AdminUser | null; onPage: (page: number) => void; onOpen: (student: Student) => void; onCashDeposit: (event: FormEvent<HTMLFormElement>, student: Student, payment: PaymentRecord, paymentIndex: number) => void; onDownloadCashDepositProof: (student: Student, paymentIndex: number, deposit: CashDeposit, depositIndex: number) => void; onPreviewCashDepositProof?: (student: Student, paymentIndex: number, deposit: CashDeposit, depositIndex: number) => void }) {
+function FinancePanel({
+  students,
+  meta,
+  user,
+  isHeadSuperAdmin = false,
+  isCenterAdmin = false,
+  centres = [],
+  courses = [],
+  feeStats,
+  feeStatsLoading = false,
+  feeApprovals = [],
+  pendingFeeApprovalsCount = 0,
+  feeApprovalsLoading = false,
+  feeApprovalReviewingId = null,
+  paymentApprovals = [],
+  pendingPaymentApprovalsCount = 0,
+  paymentApprovalsLoading = false,
+  paymentApprovalReviewingId = null,
+  onReviewFeeApproval,
+  onLoadFeeApprovals,
+  onRejectPrompt,
+  onReviewPaymentApproval,
+  onLoadPaymentApprovals,
+  onRejectPaymentPrompt,
+  onRequestFeeApprovalModal,
+  feeTimeframe,
+  setFeeTimeframe,
+  feeDateFrom,
+  setFeeDateFrom,
+  feeDateTo,
+  setFeeDateTo,
+  feeCentreFilter,
+  setFeeCentreFilter,
+  feeCourseFilter,
+  setFeeCourseFilter,
+  onRefreshStats,
+  onPage,
+  onOpen,
+  onCashDeposit,
+  onDownloadCashDepositProof,
+  onPreviewCashDepositProof,
+}: {
+  students: Student[];
+  meta: PaginationMeta | null;
+  user: AdminUser | null;
+  isHeadSuperAdmin?: boolean;
+  isCenterAdmin?: boolean;
+  centres?: string[];
+  courses?: string[];
+  feeStats: FeeCollectionStats | null;
+  feeStatsLoading?: boolean;
+  feeApprovals?: Student[];
+  pendingFeeApprovalsCount?: number;
+  feeApprovalsLoading?: boolean;
+  feeApprovalReviewingId?: string | null;
+  paymentApprovals?: PaymentApprovalItem[];
+  pendingPaymentApprovalsCount?: number;
+  paymentApprovalsLoading?: boolean;
+  paymentApprovalReviewingId?: string | null;
+  onReviewFeeApproval?: (studentId: string, action: "approve" | "reject", note?: string) => Promise<void>;
+  onLoadFeeApprovals?: (status?: string) => void;
+  onRejectPrompt?: (student: Student) => void;
+  onReviewPaymentApproval?: (studentId: string, paymentId: string, action: "approve" | "reject", note?: string) => Promise<void>;
+  onLoadPaymentApprovals?: (status?: string) => void;
+  onRejectPaymentPrompt?: (item: PaymentApprovalItem) => void;
+  onRequestFeeApprovalModal?: (student: Student) => void;
+  feeTimeframe: FeeTimeframe;
+  setFeeTimeframe: (tf: FeeTimeframe) => void;
+  feeDateFrom: string;
+  setFeeDateFrom: (d: string) => void;
+  feeDateTo: string;
+  setFeeDateTo: (d: string) => void;
+  feeCentreFilter: string;
+  setFeeCentreFilter: (c: string) => void;
+  feeCourseFilter: string;
+  setFeeCourseFilter: (c: string) => void;
+  onRefreshStats: () => void;
+  onPage: (page: number) => void;
+  onOpen: (student: Student) => void;
+  onCashDeposit: (event: FormEvent<HTMLFormElement>, student: Student, payment: PaymentRecord, paymentIndex: number) => void;
+  onDownloadCashDepositProof: (student: Student, paymentIndex: number, deposit: CashDeposit, depositIndex: number) => void;
+  onPreviewCashDepositProof?: (student: Student, paymentIndex: number, deposit: CashDeposit, depositIndex: number) => void;
+}) {
+  const showAnalytics = Boolean(isHeadSuperAdmin || isCenterAdmin);
+  const [subTab, setSubTab] = useState<"analytics" | "cash" | "ledger" | "approvals" | "paymentApprovals">(showAnalytics ? "analytics" : "cash");
+  const [approvalStatusFilter, setApprovalStatusFilter] = useState<"pending" | "approved" | "rejected" | "all">("pending");
+  const [approvalSearch, setApprovalSearch] = useState("");
+  const [paymentApprovalStatusFilter, setPaymentApprovalStatusFilter] = useState<"pending" | "approved" | "rejected" | "all">("pending");
+  const [paymentApprovalSearch, setPaymentApprovalSearch] = useState("");
+  const [breakdownTab, setBreakdownTab] = useState<"centre" | "mode" | "course">("centre");
+  const [recentSearch, setRecentSearch] = useState("");
+  const [recentModeFilter, setRecentModeFilter] = useState("all");
+  const [recentPage, setRecentPage] = useState(1);
+  const [recentPageSize, setRecentPageSize] = useState(10);
+  const [hoveredMonth, setHoveredMonth] = useState<FeeMonthlyTrend | null>(null);
+
   const billed = students.reduce((sum, student) => sum + (student.totalFee || 0), 0);
   const collected = students.reduce((sum, student) => sum + (student.paidAmount || 0), 0);
   const discount = students.reduce((sum, student) => sum + (student.discountAmount || 0), 0);
@@ -5793,98 +7755,1829 @@ function FinancePanel({ students, meta, user, onPage, onOpen, onCashDeposit, onD
     { label: "Collected", value: collected, color: "#4F6BFF" },
     { label: "Outstanding", value: due, color: "#F5A524" },
   ];
+
+  // Peak monthly amount for trend scaling
+  const maxMonthlyAmount = useMemo(() => {
+    if (!feeStats?.monthlyTrend?.length) return 1;
+    const max = Math.max(...feeStats.monthlyTrend.map((m) => m.amount));
+    return max > 0 ? max : 1;
+  }, [feeStats]);
+
+  const total12MonthRevenue = useMemo(() => {
+    if (!feeStats?.monthlyTrend?.length) return 0;
+    return feeStats.monthlyTrend.reduce((sum, m) => sum + m.amount, 0);
+  }, [feeStats]);
+
+  const filteredRecentPayments = useMemo(() => {
+    if (!feeStats?.recentPayments) return [];
+    let list = feeStats.recentPayments;
+    if (recentModeFilter !== "all") {
+      list = list.filter((p) => p.mode?.toLowerCase() === recentModeFilter.toLowerCase());
+    }
+    if (recentSearch.trim()) {
+      const q = recentSearch.toLowerCase().trim();
+      list = list.filter((p) =>
+        p.studentName.toLowerCase().includes(q) ||
+        p.admissionNumber.toLowerCase().includes(q) ||
+        p.centre.toLowerCase().includes(q) ||
+        p.course.toLowerCase().includes(q) ||
+        p.mode.toLowerCase().includes(q) ||
+        p.transactionId.toLowerCase().includes(q) ||
+        p.studentPhone.toLowerCase().includes(q)
+      );
+    }
+    return list;
+  }, [feeStats, recentSearch, recentModeFilter]);
+
+  // Reset pagination to first page when search, filter or timeframe change
+  useEffect(() => {
+    setRecentPage(1);
+  }, [recentSearch, recentModeFilter, feeTimeframe]);
+
+  const recentTotal = filteredRecentPayments.length;
+  const recentTotalPages = Math.max(1, Math.ceil(recentTotal / recentPageSize));
+  const safeRecentPage = Math.min(Math.max(1, recentPage), recentTotalPages);
+
+  const paginatedRecentPayments = useMemo(() => {
+    const start = (safeRecentPage - 1) * recentPageSize;
+    return filteredRecentPayments.slice(start, start + recentPageSize);
+  }, [filteredRecentPayments, safeRecentPage, recentPageSize]);
+
+  const recentFromIndex = recentTotal === 0 ? 0 : (safeRecentPage - 1) * recentPageSize + 1;
+  const recentToIndex = Math.min(safeRecentPage * recentPageSize, recentTotal);
+
+  const exportFeeReport = () => {
+    if (!feeStats?.recentPayments?.length) {
+      toast.error("No fee collection transactions to export");
+      return;
+    }
+    const headers = [
+      "Candidate Name",
+      "Admission No",
+      "Phone",
+      "Branch / Centre",
+      "Course",
+      "Amount Paid (₹)",
+      "Payment Mode",
+      "Payment Purpose",
+      "Reference / Transaction ID",
+      "Collected By",
+      "Payment Date",
+    ];
+    const rows = feeStats.recentPayments.map((p) => [
+      p.studentName,
+      p.admissionNumber || "—",
+      p.studentPhone,
+      p.centre,
+      p.course,
+      p.amount,
+      p.mode,
+      p.paymentPurpose,
+      p.transactionId || "—",
+      p.by,
+      formatDate(p.paidAt),
+    ]);
+    downloadExcelFile(headers, rows, `fee-collections-statement-${feeTimeframe}`);
+  };
+
+  const timeframeOptions: { key: FeeTimeframe; label: string; badge?: string }[] = [
+    { key: "this_month", label: "This Month" },
+    { key: "last_month", label: "Last Month" },
+    { key: "today", label: "Today" },
+    { key: "yesterday", label: "Yesterday" },
+    { key: "last_3_months", label: "Last 3 Months" },
+    { key: "this_year", label: "This Year" },
+    { key: "all", label: "All Time" },
+    { key: "custom", label: "Custom Range" },
+  ];
+
   return (
     <>
-      <div className="grid-metrics finance-metrics">
-        <MetricCard label="Total billed (incl. GST)" value={formatCurrency(billed)} dot="#4F6BFF" delta="" />
-        <MetricCard label="Collected" value={formatCurrency(collected)} dot="#17A673" delta="" />
-        <MetricCard label="Cash pending deposit" value={formatCurrency(pendingCash)} dot="#F5A524" delta="" down />
-        <MetricCard label="Cash deposited" value={formatCurrency(cashDeposited)} dot="#14B8A6" delta="" />
+      {/* Top Sub-Navigation Bar */}
+      <div className="filter-bar" style={{ marginBottom: 14, justifyContent: "space-between" }}>
+        <div className="pill-tabs">
+          {showAnalytics && (
+            <button
+              type="button"
+              className={`pill-tab ${subTab === "analytics" ? "active" : ""}`}
+              onClick={() => setSubTab("analytics")}
+            >
+              <BarChart3 size={14} /> <span>Collection Analytics</span>
+            </button>
+          )}
+          <button
+            type="button"
+            className={`pill-tab ${subTab === "cash" ? "active" : ""}`}
+            onClick={() => setSubTab("cash")}
+          >
+            <BadgeIndianRupee size={14} /> <span>Cash Deposits</span> <span className="badge badge-gray" style={{ fontSize: 10, padding: "1px 5px", borderRadius: 999 }}>{cashItems.length}</span>
+          </button>
+          <button
+            type="button"
+            className={`pill-tab ${subTab === "ledger" ? "active" : ""}`}
+            onClick={() => setSubTab("ledger")}
+          >
+            <FileText size={14} /> <span>Candidate Ledger</span>
+          </button>
+          <button
+            type="button"
+            className={`pill-tab ${subTab === "approvals" ? "active" : ""}`}
+            onClick={() => {
+              setSubTab("approvals");
+              onLoadFeeApprovals?.(approvalStatusFilter);
+            }}
+          >
+            <ShieldCheck size={14} /> <span>Fee Approvals</span>
+            {pendingFeeApprovalsCount > 0 && (
+              <span className="badge badge-red" style={{ fontSize: 10, padding: "1px 5px", borderRadius: 999 }}>
+                {pendingFeeApprovalsCount}
+              </span>
+            )}
+          </button>
+          <button
+            type="button"
+            className={`pill-tab ${subTab === "paymentApprovals" ? "active" : ""}`}
+            onClick={() => {
+              setSubTab("paymentApprovals");
+              onLoadPaymentApprovals?.(paymentApprovalStatusFilter);
+            }}
+          >
+            <CreditCard size={14} /> <span>Payment Approvals</span>
+            {pendingPaymentApprovalsCount > 0 && (
+              <span className="badge badge-red" style={{ fontSize: 10, padding: "1px 5px", borderRadius: 999 }}>
+                {pendingPaymentApprovalsCount}
+              </span>
+            )}
+          </button>
+        </div>
+
+        {/* Quick Actions */}
+        {showAnalytics && subTab === "analytics" && (
+          <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+            <button
+              type="button"
+              className="btn btn-ghost btn-sm"
+              onClick={onRefreshStats}
+              disabled={feeStatsLoading}
+              title="Refresh Collection Analytics"
+            >
+              <RefreshCw size={13} className={feeStatsLoading ? "spin-icon" : ""} />
+              <span>{feeStatsLoading ? "Refreshing..." : "Refresh"}</span>
+            </button>
+            <button
+              type="button"
+              className="btn btn-primary btn-sm"
+              onClick={exportFeeReport}
+              disabled={!feeStats?.recentPayments?.length}
+            >
+              <Download size={13} />
+              <span>Export Report</span>
+            </button>
+          </div>
+        )}
       </div>
-      <div className="card finance-card cash-deposit-card">
-        <div className="card-head"><div><h3>Cash collected - deposit</h3><div className="sub">Track cash in hand and bank deposits</div></div></div>
-        <div className="table-wrap finance-table-wrap cash-deposit-wrap">
-          <table className="finance-table cash-deposit-table">
-            <thead><tr><th>Student</th><th>Collected</th><th>Deposited</th><th>Pending</th><th>Deposit details</th><th>Proof</th></tr></thead>
-            <tbody>
-              {cashItems.map(({ student, payment, index }) => {
-                const deposited = depositedCashAmount(payment);
-                const pending = pendingCashDepositAmount(payment);
+
+      {showAnalytics && subTab === "analytics" && (
+        <>
+          {/* Global Filter Toolbar */}
+          <div className="filter-bar" style={{ marginBottom: 16 }}>
+            <div className="date-filter">
+              {timeframeOptions.map((tf) => {
+                const isActive = feeTimeframe === tf.key;
                 return (
-                  <tr key={`${student._id}-${index}`}>
-                    <td><button type="button" className="row-button" onClick={() => onOpen(student)}><div className="lead-name-cell"><span className="avatar lead-avatar">{initials(student.fullName)}</span><div><div className="cell-name">{student.fullName}</div><div className="cell-sub">{paymentReceiptNumber(student, index)} | {formatDate(payment.paidAt)}</div></div></div></button></td>
-                    <td className="mono">{formatCurrency(payment.amount || 0)}</td>
-                    <td className="mono">{formatCurrency(deposited)}</td>
-                    <td><span className={`tag ${pending <= 0 ? "green" : "amber"}`}>{pending <= 0 ? "Deposited" : formatCurrency(pending)}</span></td>
-                    <td>
-                      {pending <= 0 ? <div className="cash-deposit-history">{(payment.cashDeposits || []).map((deposit, depositIndex) => <div key={`${deposit.referenceNumber || depositIndex}-${deposit.amount || 0}`}><b>{formatCurrency(deposit.amount || 0)}</b><span>{deposit.bank || "-"} | {deposit.referenceNumber || "-"} | {formatDate(deposit.depositedAt)} | By {deposit.depositedBy || deposit.by || "-"}</span></div>)}</div> : (
-                        <form className="cash-deposit-form" onSubmit={(event) => onCashDeposit(event, student, payment, index)}>
-                          <input name="amount" type="number" min="1" max={pending} step="1" required placeholder="Amount" />
-                          <input name="depositedAt" type="date" defaultValue={dateInputValue()} required />
-                          <input name="bank" required maxLength={100} placeholder="Bank / account" />
-                          <input name="referenceNumber" required maxLength={paymentReferenceMaxLength} pattern="[A-Za-z0-9][A-Za-z0-9 ._/@:-]*" placeholder="Slip / reference no." />
-                          <input name="depositedBy" required maxLength={80} defaultValue={user?.name || ""} placeholder="Deposited by" />
-                          <input name="note" maxLength={paymentNoteMaxLength} placeholder="Note" />
-                          <input name="depositProof" type="file" accept={leadDocumentAccept} required />
-                          <button className="btn btn-primary btn-sm">Deposit</button>
-                        </form>
-                      )}
-                    </td>
-                    <td>{(payment.cashDeposits || []).some((deposit) => deposit.proof?.storedName) ? <div className="action-icons">{(payment.cashDeposits || []).map((deposit, depositIndex) => deposit.proof?.storedName ? (
-                      <div key={`${deposit.proof.storedName}-${depositIndex}`} style={{ display: "inline-flex", gap: "3px", alignItems: "center" }}>
-                        <button type="button" className="action-icon-btn action-icon-primary" title={deposit.proof.originalName ? `Preview: ${deposit.proof.originalName}` : "Preview deposit proof"} onClick={() => onPreviewCashDepositProof?.(student, index, deposit, depositIndex)}><Eye size={14} /></button>
-                        <button type="button" className="action-icon-btn" title={deposit.proof.originalName || "Download deposit proof"} onClick={() => onDownloadCashDepositProof(student, index, deposit, depositIndex)}><Download size={14} /></button>
-                      </div>
-                    ) : null)}</div> : <span className="cell-sub">Missing</span>}</td>
-                  </tr>
+                  <button
+                    key={tf.key}
+                    type="button"
+                    className={`df-btn ${isActive ? "active" : ""}`}
+                    onClick={() => setFeeTimeframe(tf.key)}
+                  >
+                    {tf.label}
+                  </button>
                 );
               })}
-              {!cashItems.length && <tr><td colSpan={6}><div className="empty-state"><h4>No cash collections</h4><p>Cash payments will appear here after recording.</p></div></td></tr>}
-            </tbody>
-          </table>
-        </div>
-      </div>
-      <div className="two-col finance-grid">
-        <div className="card finance-card">
-          <div className="card-head"><div><h3>Fee ledger</h3><div className="sub">Per-student billing summary</div></div></div>
-          <div className="table-wrap finance-table-wrap">
-            <table className="finance-table">
-              <thead><tr><th>Student</th><th>Centre</th><th>Course</th><th>Fee (incl. GST)</th><th>Paid</th><th>Due</th><th>Status</th></tr></thead>
+            </div>
+
+            {feeTimeframe === "custom" && (
+              <div style={{ display: "inline-flex", alignItems: "center", gap: 6 }}>
+                <input
+                  type="date"
+                  className="df-date show"
+                  value={feeDateFrom}
+                  onChange={(e) => setFeeDateFrom(e.target.value)}
+                />
+                <span style={{ fontSize: 11, color: "var(--text-400)" }}>to</span>
+                <input
+                  type="date"
+                  className="df-date show"
+                  value={feeDateTo}
+                  onChange={(e) => setFeeDateTo(e.target.value)}
+                />
+              </div>
+            )}
+
+            <select
+              className="fbtn"
+              value={feeCentreFilter}
+              onChange={(e) => setFeeCentreFilter(e.target.value)}
+            >
+              <option value="all">All Branches</option>
+              {centres.map((c) => (
+                <option key={c} value={c}>{c}</option>
+              ))}
+            </select>
+
+            <select
+              className="fbtn"
+              value={feeCourseFilter}
+              onChange={(e) => setFeeCourseFilter(e.target.value)}
+            >
+              <option value="all">All Courses</option>
+              {courses.map((c) => (
+                <option key={c} value={c}>{c}</option>
+              ))}
+            </select>
+          </div>
+
+          {/* KPI Metrics Cards Grid */}
+          <div className="grid-metrics finance-metrics" style={{ marginBottom: 18 }}>
+            {/* Card 1: Today's Collection */}
+            <div
+              className="metric-card clickable"
+              onClick={() => setFeeTimeframe("today")}
+              style={feeTimeframe === "today" ? { borderColor: "var(--indigo-500)", boxShadow: "0 4px 12px rgba(79,107,255,.18)" } : undefined}
+              title="Filter by Today"
+            >
+              <div className="m-label">
+                <span className="m-dot" style={{ background: "var(--green-500)" }} />
+                Today's Collection
+                {feeTimeframe === "today" && <span className="badge badge-green" style={{ fontSize: 9, padding: "0 5px", marginLeft: "auto" }}>Active</span>}
+              </div>
+              <div className="m-value">
+                {formatCurrency(feeStats?.today.total || 0)}
+              </div>
+              <div className="m-delta up">
+                {feeStats?.today.count || 0} {(feeStats?.today.count || 0) === 1 ? "receipt" : "receipts"} recorded today
+              </div>
+            </div>
+
+            {/* Card 2: This Month (M-T-D) */}
+            <div
+              className="metric-card clickable"
+              onClick={() => setFeeTimeframe("this_month")}
+              style={feeTimeframe === "this_month" ? { borderColor: "var(--indigo-500)", boxShadow: "0 4px 12px rgba(79,107,255,.18)" } : undefined}
+              title="Filter by This Month"
+            >
+              <div className="m-label">
+                <span className="m-dot" style={{ background: "var(--indigo-500)" }} />
+                This Month (M-T-D)
+                {feeTimeframe === "this_month" && <span className="badge badge-blue" style={{ fontSize: 9, padding: "0 5px", marginLeft: "auto" }}>Active</span>}
+              </div>
+              <div className="m-value">
+                {formatCurrency(feeStats?.thisMonth.total || 0)}
+              </div>
+              <div className="m-delta" style={{ display: "flex", alignItems: "center", gap: 6 }}>
+                <span>{feeStats?.thisMonth.count || 0} collections</span>
+                {feeStats && (
+                  <span
+                    className={`badge ${feeStats.momGrowth >= 0 ? "badge-green" : "badge-red"}`}
+                    style={{ fontSize: 10, padding: "0 5px" }}
+                    title="Growth compared to last month"
+                  >
+                    {feeStats.momGrowth >= 0 ? `+${feeStats.momGrowth}%` : `${feeStats.momGrowth}%`} vs last mo
+                  </span>
+                )}
+              </div>
+            </div>
+
+            {/* Card 3: Last Month */}
+            <div
+              className="metric-card clickable"
+              onClick={() => setFeeTimeframe("last_month")}
+              style={feeTimeframe === "last_month" ? { borderColor: "var(--indigo-500)", boxShadow: "0 4px 12px rgba(79,107,255,.18)" } : undefined}
+              title="Filter by Last Month"
+            >
+              <div className="m-label">
+                <span className="m-dot" style={{ background: "var(--purple-500)" }} />
+                Last Month
+                {feeTimeframe === "last_month" && <span className="badge badge-purple" style={{ fontSize: 9, padding: "0 5px", marginLeft: "auto" }}>Active</span>}
+              </div>
+              <div className="m-value">
+                {formatCurrency(feeStats?.lastMonth.total || 0)}
+              </div>
+              <div className="m-delta">
+                {feeStats?.lastMonth.count || 0} collections in previous cycle
+              </div>
+            </div>
+
+            {/* Card 4: Selected Period / All Time Total & Outstanding */}
+            <div
+              className="metric-card clickable"
+              onClick={() => setFeeTimeframe("all")}
+              style={feeTimeframe === "all" ? { borderColor: "var(--indigo-500)", boxShadow: "0 4px 12px rgba(79,107,255,.18)" } : undefined}
+              title="Filter by All Time"
+            >
+              <div className="m-label">
+                <span className="m-dot" style={{ background: "var(--amber-500)" }} />
+                {feeTimeframe === "this_month" ? "All Time Total" : `Total Collection (${feeTimeframe.replace("_", " ")})`}
+                {feeTimeframe === "all" && <span className="badge badge-amber" style={{ fontSize: 9, padding: "0 5px", marginLeft: "auto" }}>Active</span>}
+              </div>
+              <div className="m-value">
+                {formatCurrency(feeTimeframe === "this_month" ? (feeStats?.allTime.total || feeStats?.filtered.total || 0) : (feeStats?.filtered.total || feeStats?.allTime.total || 0))}
+              </div>
+              <div className="m-delta">
+                Total Outstanding due: <b style={{ color: "var(--text-900)" }}>{formatCurrency(feeStats?.totals?.due || 0)}</b>
+              </div>
+            </div>
+          </div>
+
+          {/* 2-Column Analytics Grid: Trend Chart & Breakdown */}
+          <div className="two-col finance-grid" style={{ marginBottom: 18 }}>
+            {/* Monthly Trend Chart */}
+            <div className="card">
+              <div className="card-head">
+                <div>
+                  <h3>Monthly Fee Collection Trend</h3>
+                  <div className="sub">Revenue trajectory over the past 12 calendar months</div>
+                </div>
+                <span className="badge badge-blue">
+                  Peak: {formatCurrency(maxMonthlyAmount)}
+                </span>
+              </div>
+              <div className="card-body" style={{ display: "flex", flexDirection: "column", justifyContent: "space-between" }}>
+                <div style={{ display: "flex", alignItems: "flex-end", justifyContent: "space-between", gap: 8, height: 185, paddingTop: 10, position: "relative" }}>
+                  {(feeStats?.monthlyTrend || []).map((m, idx) => {
+                    const hasData = m.amount > 0;
+                    const heightPercent = maxMonthlyAmount > 0 && hasData ? Math.max(14, Math.round((m.amount / maxMonthlyAmount) * 100)) : 0;
+                    const isCurrentMonth = idx === (feeStats?.monthlyTrend.length || 0) - 1;
+                    const isPeak = m.amount === maxMonthlyAmount && m.amount > 0;
+                    const isHovered = hoveredMonth?.key === m.key;
+
+                    return (
+                      <div
+                        key={m.key}
+                        onMouseEnter={() => setHoveredMonth(m)}
+                        onMouseLeave={() => setHoveredMonth(null)}
+                        style={{
+                          flex: 1,
+                          display: "flex",
+                          flexDirection: "column",
+                          alignItems: "center",
+                          height: "100%",
+                          justifyContent: "flex-end",
+                          minWidth: 0,
+                          position: "relative",
+                          cursor: "pointer",
+                        }}
+                      >
+                        {/* Hover Tooltip / Top Label */}
+                        {hasData ? (
+                          <div style={{ fontSize: 10, fontWeight: 700, fontFamily: "JetBrains Mono, monospace", color: isPeak ? "var(--green-700)" : isCurrentMonth ? "var(--indigo-600)" : "var(--text-400)", marginBottom: 6, whiteSpace: "nowrap" }}>
+                            {m.amount >= 100000 ? `₹${(m.amount / 100000).toFixed(1)}L` : m.amount >= 1000 ? `₹${(m.amount / 1000).toFixed(0)}k` : `₹${m.amount}`}
+                          </div>
+                        ) : (
+                          <div style={{ height: 16 }} />
+                        )}
+
+                        {/* Bar Pillar */}
+                        {hasData ? (
+                          <div
+                            style={{
+                              width: "72%",
+                              maxWidth: 36,
+                              height: `${heightPercent}%`,
+                              background: isPeak
+                                ? "linear-gradient(180deg, var(--green-500) 0%, var(--green-700) 100%)"
+                                : isCurrentMonth
+                                  ? "linear-gradient(180deg, var(--indigo-500) 0%, var(--indigo-600) 100%)"
+                                  : "linear-gradient(180deg, #9bb0ff 0%, var(--indigo-500) 100%)",
+                              borderRadius: "6px 6px 2px 2px",
+                              transition: "all 0.25s ease",
+                              boxShadow: isPeak
+                                ? "0 4px 10px rgba(23, 166, 115, 0.3)"
+                                : isCurrentMonth
+                                  ? "0 4px 10px rgba(79, 107, 255, 0.3)"
+                                  : isHovered
+                                    ? "0 4px 8px rgba(79, 107, 255, 0.25)"
+                                    : "none",
+                              transform: isHovered ? "scaleY(1.04)" : "none",
+                              transformOrigin: "bottom",
+                            }}
+                          />
+                        ) : (
+                          <div
+                            style={{
+                              width: "55%",
+                              maxWidth: 24,
+                              height: 2,
+                              background: "var(--border-soft)",
+                              borderRadius: 1,
+                              marginBottom: 2,
+                              opacity: 0.8,
+                            }}
+                          />
+                        )}
+
+                        {/* Month Label */}
+                        <div style={{ fontSize: 11, color: isCurrentMonth ? "var(--indigo-600)" : "var(--text-400)", marginTop: 8, fontWeight: isCurrentMonth ? 700 : 500, whiteSpace: "nowrap" }}>
+                          {m.label.split(" ")[0]}
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+
+                {/* Footer Legend */}
+                <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginTop: 14, paddingTop: 10, borderTop: "1px solid var(--border-soft)", fontSize: 11, color: "var(--text-400)", flexWrap: "wrap", gap: 8 }}>
+                  <div style={{ display: "flex", gap: 14 }}>
+                    <span style={{ display: "inline-flex", alignItems: "center", gap: 5 }}>
+                      <span style={{ width: 8, height: 8, borderRadius: "50%", background: "#9bb0ff" }} /> Past Months
+                    </span>
+                    <span style={{ display: "inline-flex", alignItems: "center", gap: 5 }}>
+                      <span style={{ width: 8, height: 8, borderRadius: "50%", background: "var(--indigo-500)" }} /> Current Month
+                    </span>
+                    <span style={{ display: "inline-flex", alignItems: "center", gap: 5 }}>
+                      <span style={{ width: 8, height: 8, borderRadius: "50%", background: "var(--green-500)" }} /> Peak Month
+                    </span>
+                  </div>
+                  <span>12-Mo Total: <b className="mono" style={{ color: "var(--text-900)" }}>{formatCurrency(total12MonthRevenue)}</b></span>
+                </div>
+              </div>
+            </div>
+
+            {/* Collections Breakdown by Branch / Mode / Course */}
+            <div className="card">
+              <div className="card-head" style={{ display: "flex", alignItems: "center", justifyContent: "space-between", flexWrap: "wrap", gap: 10 }}>
+                <div>
+                  <h3 style={{ whiteSpace: "nowrap" }}>Collections Distribution</h3>
+                  <div className="sub">
+                    Breakdown for {feeTimeframe.replace("_", " ")}
+                  </div>
+                </div>
+                <div className="pill-tabs" style={{ flexShrink: 0, padding: 3, gap: 3 }}>
+                  <button
+                    type="button"
+                    className={`pill-tab ${breakdownTab === "centre" ? "active" : ""}`}
+                    onClick={() => setBreakdownTab("centre")}
+                    style={{ padding: "5px 12px", fontSize: 11.5 }}
+                  >
+                    Branch
+                  </button>
+                  <button
+                    type="button"
+                    className={`pill-tab ${breakdownTab === "mode" ? "active" : ""}`}
+                    onClick={() => setBreakdownTab("mode")}
+                    style={{ padding: "5px 12px", fontSize: 11.5 }}
+                  >
+                    Mode
+                  </button>
+                  <button
+                    type="button"
+                    className={`pill-tab ${breakdownTab === "course" ? "active" : ""}`}
+                    onClick={() => setBreakdownTab("course")}
+                    style={{ padding: "5px 12px", fontSize: 11.5 }}
+                  >
+                    Course
+                  </button>
+                </div>
+              </div>
+
+              <div className="card-body">
+                {breakdownTab === "centre" && (
+                  <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
+                    {(feeStats?.byCentre || []).map((c) => (
+                      <div key={c.centre} style={{ background: "var(--bg)", padding: "10px 14px", borderRadius: 10, border: "1px solid var(--border-soft)" }}>
+                        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 6, fontSize: 12 }}>
+                          <span style={{ fontWeight: 600, display: "inline-flex", alignItems: "center", gap: 6, color: "var(--text-900)" }}>
+                            <Building2 size={13} style={{ color: "var(--indigo-500)" }} />
+                            {c.centre || "Unassigned"}
+                          </span>
+                          <span className="mono" style={{ fontWeight: 700, color: "var(--indigo-600)" }}>
+                            {formatCurrency(c.amount)} <span style={{ color: "var(--text-400)", fontWeight: 500, fontSize: 11 }}>({c.share}%)</span>
+                          </span>
+                        </div>
+                        <div style={{ width: "100%", height: 7, background: "var(--border-soft)", borderRadius: 999, overflow: "hidden" }}>
+                          <div style={{ width: `${Math.min(100, Math.max(3, c.share))}%`, height: "100%", background: "linear-gradient(90deg, var(--indigo-500) 0%, #8A6BFF 100%)", borderRadius: 999 }} />
+                        </div>
+                        <div className="cell-sub" style={{ marginTop: 4 }}>{c.count} {c.count === 1 ? "collection receipt" : "collection receipts"}</div>
+                      </div>
+                    ))}
+                    {!feeStats?.byCentre?.length && (
+                      <div className="empty-state" style={{ padding: "30px 16px", textAlign: "center" }}>
+                        <Building2 size={30} style={{ color: "var(--text-400)", opacity: 0.5, marginBottom: 8 }} />
+                        <h4>No branch collections in {feeTimeframe.replace("_", " ")}</h4>
+                        <p style={{ margin: "0 0 12px" }}>Select another period to view branch revenue breakdown</p>
+                        <div style={{ display: "flex", gap: 8, justifyContent: "center", flexWrap: "wrap" }}>
+                          <button
+                            type="button"
+                            className="btn btn-sm btn-primary"
+                            onClick={() => setFeeTimeframe("this_month")}
+                          >
+                            View This Month ({formatCurrency(feeStats?.thisMonth.total || 0)})
+                          </button>
+                          <button
+                            type="button"
+                            className="btn btn-sm btn-ghost"
+                            onClick={() => setFeeTimeframe("all")}
+                          >
+                            View All Time
+                          </button>
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                )}
+
+                {breakdownTab === "mode" && (
+                  <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
+                    {(feeStats?.byMode || []).map((m) => (
+                      <div key={m.mode} style={{ background: "var(--bg)", padding: "10px 14px", borderRadius: 10, border: "1px solid var(--border-soft)" }}>
+                        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 6, fontSize: 12 }}>
+                          <span style={{ fontWeight: 600, display: "inline-flex", alignItems: "center", gap: 6 }}>
+                            <span className={`tag ${m.mode === "UPI" ? "green" : m.mode === "Cash" ? "amber" : m.mode === "Card" ? "blue" : "purple"}`} style={{ fontSize: 10, padding: "2px 7px", borderRadius: 4, fontWeight: 700 }}>
+                              {m.mode}
+                            </span>
+                          </span>
+                          <span className="mono" style={{ fontWeight: 700, color: "var(--green-700)" }}>
+                            {formatCurrency(m.amount)} <span style={{ color: "var(--text-400)", fontWeight: 500, fontSize: 11 }}>({m.share}%)</span>
+                          </span>
+                        </div>
+                        <div style={{ width: "100%", height: 7, background: "var(--border-soft)", borderRadius: 999, overflow: "hidden" }}>
+                          <div style={{ width: `${Math.min(100, Math.max(3, m.share))}%`, height: "100%", background: "linear-gradient(90deg, var(--green-500) 0%, var(--green-700) 100%)", borderRadius: 999 }} />
+                        </div>
+                        <div className="cell-sub" style={{ marginTop: 4 }}>{m.count} {m.count === 1 ? "transaction" : "transactions"}</div>
+                      </div>
+                    ))}
+                    {!feeStats?.byMode?.length && (
+                      <div className="empty-state" style={{ padding: "30px 16px", textAlign: "center" }}>
+                        <CreditCard size={30} style={{ color: "var(--text-400)", opacity: 0.5, marginBottom: 8 }} />
+                        <h4>No payment mode data in {feeTimeframe.replace("_", " ")}</h4>
+                        <p style={{ margin: "0 0 12px" }}>Explore payment methods across a wider date range</p>
+                        <div style={{ display: "flex", gap: 8, justifyContent: "center", flexWrap: "wrap" }}>
+                          <button
+                            type="button"
+                            className="btn btn-sm btn-primary"
+                            onClick={() => setFeeTimeframe("this_month")}
+                          >
+                            View This Month ({formatCurrency(feeStats?.thisMonth.total || 0)})
+                          </button>
+                          <button
+                            type="button"
+                            className="btn btn-sm btn-ghost"
+                            onClick={() => setFeeTimeframe("all")}
+                          >
+                            View All Time
+                          </button>
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                )}
+
+                {breakdownTab === "course" && (
+                  <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
+                    {(feeStats?.byCourse || []).map((crs) => (
+                      <div key={crs.course} style={{ background: "var(--bg)", padding: "10px 14px", borderRadius: 10, border: "1px solid var(--border-soft)" }}>
+                        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 6, fontSize: 12 }}>
+                          <span style={{ fontWeight: 600, display: "inline-flex", alignItems: "center", gap: 6, color: "var(--text-900)" }}>
+                            <GraduationCap size={13} style={{ color: "var(--purple-500)" }} />
+                            {crs.course || "Other"}
+                          </span>
+                          <span className="mono" style={{ fontWeight: 700, color: "var(--purple-700)" }}>
+                            {formatCurrency(crs.amount)} <span style={{ color: "var(--text-400)", fontWeight: 500, fontSize: 11 }}>({crs.share}%)</span>
+                          </span>
+                        </div>
+                        <div style={{ width: "100%", height: 7, background: "var(--border-soft)", borderRadius: 999, overflow: "hidden" }}>
+                          <div style={{ width: `${Math.min(100, Math.max(3, crs.share))}%`, height: "100%", background: "linear-gradient(90deg, var(--purple-500) 0%, var(--purple-700) 100%)", borderRadius: 999 }} />
+                        </div>
+                        <div className="cell-sub" style={{ marginTop: 4 }}>{crs.count} candidate {crs.count === 1 ? "fee" : "fees"}</div>
+                      </div>
+                    ))}
+                    {!feeStats?.byCourse?.length && (
+                      <div className="empty-state" style={{ padding: "30px 16px", textAlign: "center" }}>
+                        <GraduationCap size={30} style={{ color: "var(--text-400)", opacity: 0.5, marginBottom: 8 }} />
+                        <h4>No course collection data in {feeTimeframe.replace("_", " ")}</h4>
+                        <p style={{ margin: "0 0 12px" }}>Explore course revenues across this month or all-time</p>
+                        <div style={{ display: "flex", gap: 8, justifyContent: "center", flexWrap: "wrap" }}>
+                          <button
+                            type="button"
+                            className="btn btn-sm btn-primary"
+                            onClick={() => setFeeTimeframe("this_month")}
+                          >
+                            View This Month ({formatCurrency(feeStats?.thisMonth.total || 0)})
+                          </button>
+                          <button
+                            type="button"
+                            className="btn btn-sm btn-ghost"
+                            onClick={() => setFeeTimeframe("all")}
+                          >
+                            View All Time
+                          </button>
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                )}
+              </div>
+            </div>
+          </div>
+
+          {/* Recent Fee Transactions Table */}
+          <div className="card" style={{ marginBottom: 20 }}>
+            <div className="card-head" style={{ flexWrap: "wrap", gap: 10 }}>
+              <div>
+                <h3>Recent Fee Collections Feed</h3>
+                <div className="sub">
+                  Showing {recentTotal === 0 ? "0" : recentFromIndex === recentToIndex ? recentFromIndex : `${recentFromIndex}–${recentToIndex}`} of {recentTotal} verified collections ({feeTimeframe.replace("_", " ")})
+                </div>
+              </div>
+              <div style={{ display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap" }}>
+                {/* Mode Filter Pills */}
+                <div className="pill-tabs">
+                  {["all", "UPI", "Cash", "Bank Transfer", "Card"].map((m) => (
+                    <button
+                      key={m}
+                      type="button"
+                      className={`pill-tab ${recentModeFilter === m ? "active" : ""}`}
+                      onClick={() => {
+                        setRecentModeFilter(m);
+                        setRecentPage(1);
+                      }}
+                    >
+                      {m === "all" ? "All Modes" : m}
+                    </button>
+                  ))}
+                </div>
+
+                <div className="search-box">
+                  <Search size={14} />
+                  <input
+                    type="text"
+                    placeholder="Search name, phone, txn..."
+                    value={recentSearch}
+                    onChange={(e) => {
+                      setRecentSearch(e.target.value);
+                      setRecentPage(1);
+                    }}
+                  />
+                </div>
+              </div>
+            </div>
+
+            <div className="table-wrap">
+              <table>
+                <thead>
+                  <tr>
+                    <th>Candidate</th>
+                    <th>Branch</th>
+                    <th>Course</th>
+                    <th>Amount Paid</th>
+                    <th>Mode & Purpose</th>
+                    <th>Ref / Txn ID</th>
+                    <th>Received By</th>
+                    <th>Date & Time</th>
+                    <th style={{ textAlign: "right" }}>Action</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {paginatedRecentPayments.map((p, pIdx) => {
+                    const studentObj = students.find((s) => s._id === p.studentId);
+                    return (
+                      <tr key={`${p.studentId}-${pIdx}-${p.paidAt}`}>
+                        <td>
+                          <button
+                            type="button"
+                            className="row-button"
+                            onClick={() => {
+                              if (studentObj) onOpen(studentObj);
+                            }}
+                            style={{ textAlign: "left", background: "none", border: "none", padding: 0, cursor: "pointer" }}
+                          >
+                            <div className="lead-name-cell">
+                              <span className="avatar lead-avatar">
+                                {initials(p.studentName)}
+                              </span>
+                              <div>
+                                <div className="cell-name">{p.studentName}</div>
+                                <div className="cell-sub">{p.admissionNumber || p.studentPhone}</div>
+                              </div>
+                            </div>
+                          </button>
+                        </td>
+                        <td>
+                          <span style={{ display: "inline-flex", alignItems: "center", gap: 4, fontSize: 12, fontWeight: 500 }}>
+                            <Building2 size={12} style={{ color: "var(--indigo-500)" }} />
+                            {p.centre || "—"}
+                          </span>
+                        </td>
+                        <td><span className="tag blue">{courseShortCode(p.course)}</span></td>
+                        <td className="mono" style={{ fontWeight: 800, color: "var(--green-700)", fontSize: 13 }}>
+                          + {formatCurrency(p.amount)}
+                        </td>
+                        <td>
+                          <span className={`tag ${p.mode === "UPI" ? "green" : p.mode === "Cash" ? "amber" : p.mode === "Card" ? "blue" : "purple"}`} style={{ marginRight: 6 }}>
+                            {p.mode}
+                          </span>
+                          <span className="cell-sub" style={{ display: "inline", fontWeight: 500 }}>{p.paymentPurpose}</span>
+                        </td>
+                        <td className="mono" style={{ fontSize: 11, color: "var(--text-400)" }}>{p.transactionId || "—"}</td>
+                        <td><span className="cell-sub" style={{ fontWeight: 500 }}>{p.by || "Admin"}</span></td>
+                        <td className="mono" style={{ fontSize: 11, color: "var(--text-400)" }}>{formatDate(p.paidAt)}</td>
+                        <td style={{ textAlign: "right" }}>
+                          {studentObj ? (
+                            <button
+                              type="button"
+                              className="btn btn-sm btn-ghost"
+                              onClick={() => onOpen(studentObj)}
+                              style={{ padding: "3px 10px", fontSize: 11 }}
+                            >
+                              Ledger
+                            </button>
+                          ) : (
+                            <span className="cell-sub">—</span>
+                          )}
+                        </td>
+                      </tr>
+                    );
+                  })}
+                  {!filteredRecentPayments.length && (
+                    <tr>
+                      <td colSpan={9}>
+                        <div className="empty-state" style={{ padding: "30px 0", textAlign: "center" }}>
+                          <CheckCircle2 size={32} style={{ color: "var(--text-400)", opacity: 0.5, marginBottom: 8 }} />
+                          <h4>No matching fee transactions found</h4>
+                          <p>Try adjusting your search filter or selecting another time range.</p>
+                        </div>
+                      </td>
+                    </tr>
+                  )}
+                </tbody>
+              </table>
+            </div>
+
+            {/* Pagination Controls */}
+            {recentTotal > 0 && (
+              <div className="pager" style={{ display: "flex", alignItems: "center", justifyContent: "space-between", flexWrap: "wrap", gap: 12 }}>
+                <div style={{ display: "flex", alignItems: "center", gap: 14 }}>
+                  <span>
+                    Showing <b>{recentFromIndex === recentToIndex ? recentFromIndex : `${recentFromIndex}–${recentToIndex}`}</b> of <b>{recentTotal}</b> collections
+                  </span>
+                  <div style={{ display: "inline-flex", alignItems: "center", gap: 6, fontSize: 12, color: "var(--text-400)" }}>
+                    <span>Rows:</span>
+                    <select
+                      value={recentPageSize}
+                      onChange={(e) => {
+                        setRecentPageSize(Number(e.target.value));
+                        setRecentPage(1);
+                      }}
+                      style={{
+                        border: "1px solid var(--border)",
+                        borderRadius: 7,
+                        padding: "3px 8px",
+                        fontSize: 12,
+                        color: "var(--text-700)",
+                        background: "#fff",
+                        cursor: "pointer",
+                        fontWeight: 600,
+                        outline: "none",
+                      }}
+                    >
+                      <option value={10}>10</option>
+                      <option value={20}>20</option>
+                      <option value={50}>50</option>
+                      <option value={100}>100</option>
+                    </select>
+                  </div>
+                </div>
+
+                <div className="pager-btns">
+                  <button
+                    type="button"
+                    disabled={safeRecentPage <= 1}
+                    onClick={() => setRecentPage((p) => Math.max(1, p - 1))}
+                    title="Previous page"
+                  >
+                    Prev
+                  </button>
+
+                  {Array.from({ length: recentTotalPages }, (_, i) => i + 1)
+                    .filter((p) => {
+                      if (recentTotalPages <= 7) return true;
+                      if (p === 1 || p === recentTotalPages) return true;
+                      if (Math.abs(p - safeRecentPage) <= 1) return true;
+                      return false;
+                    })
+                    .reduce<(number | string)[]>((acc, p, idx, arr) => {
+                      if (idx > 0 && typeof arr[idx - 1] === "number" && (p as number) - (arr[idx - 1] as number) > 1) {
+                        acc.push(`ellipsis-${p}`);
+                      }
+                      acc.push(p);
+                      return acc;
+                    }, [])
+                    .map((item) => {
+                      if (typeof item === "string") {
+                        return (
+                          <span
+                            key={item}
+                            style={{
+                              display: "inline-flex",
+                              alignItems: "center",
+                              justifyContent: "center",
+                              minWidth: 28,
+                              height: 28,
+                              color: "var(--text-400)",
+                              fontSize: 13,
+                              userSelect: "none",
+                            }}
+                          >
+                            …
+                          </span>
+                        );
+                      }
+                      return (
+                        <button
+                          key={item}
+                          type="button"
+                          className={item === safeRecentPage ? "active" : ""}
+                          onClick={() => setRecentPage(item)}
+                        >
+                          {item}
+                        </button>
+                      );
+                    })}
+
+                  <button
+                    type="button"
+                    disabled={safeRecentPage >= recentTotalPages}
+                    onClick={() => setRecentPage((p) => Math.min(recentTotalPages, p + 1))}
+                    title="Next page"
+                  >
+                    Next
+                  </button>
+                </div>
+              </div>
+            )}
+          </div>
+        </>
+      )}
+
+      {subTab === "cash" && (
+        <div className="card finance-card cash-deposit-card">
+          <div className="card-head">
+            <div>
+              <h3>Cash collected - Bank Deposit</h3>
+              <div className="sub">Track cash in hand and verified bank deposits</div>
+            </div>
+          </div>
+          <div className="table-wrap finance-table-wrap cash-deposit-wrap">
+            <table className="finance-table cash-deposit-table">
+              <thead>
+                <tr>
+                  <th>Student</th>
+                  <th>Collected</th>
+                  <th>Deposited</th>
+                  <th>Pending</th>
+                  <th>Deposit details</th>
+                  <th>Proof</th>
+                </tr>
+              </thead>
               <tbody>
-                {students.map((student) => {
-                  const due = dueAmount(student);
-                  const status = due <= 0 ? "Paid" : (student.paidAmount || 0) > 0 ? "Partial" : "Due";
+                {cashItems.map(({ student, payment, index }) => {
+                  const deposited = depositedCashAmount(payment);
+                  const pending = pendingCashDepositAmount(payment);
                   return (
-                    <tr className="clickable" key={student._id} onClick={() => onOpen(student)}>
-                      <td><div className="lead-name-cell"><span className="avatar lead-avatar">{initials(student.fullName)}</span><div><div className="cell-name">{student.fullName}</div><div className="cell-sub">{student.admissionNumber || student.phone}</div></div></div></td>
-                      <td>{student.centre || "-"}</td>
-                      <td>{courseShortCode(student.course)}</td>
-                      <td className="mono">{formatCurrency(student.totalFee || 0)}</td>
-                      <td className="mono">{formatCurrency(student.paidAmount || 0)}</td>
-                      <td className="mono">{formatCurrency(due)}</td>
-                      <td><span className={`tag ${status === "Paid" ? "green" : status === "Partial" ? "amber" : "red"}`}>{status}</span></td>
+                    <tr key={`${student._id}-${index}`}>
+                      <td>
+                        <button type="button" className="row-button" onClick={() => onOpen(student)}>
+                          <div className="lead-name-cell">
+                            <span className="avatar lead-avatar">{initials(student.fullName)}</span>
+                            <div>
+                              <div className="cell-name">{student.fullName}</div>
+                              <div className="cell-sub">{paymentReceiptNumber(student, index)} | {formatDate(payment.paidAt)}</div>
+                            </div>
+                          </div>
+                        </button>
+                      </td>
+                      <td className="mono">{formatCurrency(payment.amount || 0)}</td>
+                      <td className="mono">{formatCurrency(deposited)}</td>
+                      <td>
+                        <span className={`tag ${pending <= 0 ? "green" : "amber"}`}>
+                          {pending <= 0 ? "Deposited" : formatCurrency(pending)}
+                        </span>
+                      </td>
+                      <td>
+                        {pending <= 0 ? (
+                          <div className="cash-deposit-history">
+                            {(payment.cashDeposits || []).map((deposit, depositIndex) => (
+                              <div key={`${deposit.referenceNumber || depositIndex}-${deposit.amount || 0}`}>
+                                <b>{formatCurrency(deposit.amount || 0)}</b>
+                                <span>{deposit.bank || "-"} | {deposit.referenceNumber || "-"} | {formatDate(deposit.depositedAt)} | By {deposit.depositedBy || deposit.by || "-"}</span>
+                              </div>
+                            ))}
+                          </div>
+                        ) : (
+                          <form className="cash-deposit-form" onSubmit={(event) => onCashDeposit(event, student, payment, index)}>
+                            <input name="amount" type="number" min="1" max={pending} step="1" required placeholder="Amount" />
+                            <input name="depositedAt" type="date" defaultValue={dateInputValue()} required />
+                            <input name="bank" required maxLength={100} placeholder="Bank / account" />
+                            <input name="referenceNumber" required maxLength={paymentReferenceMaxLength} pattern="[A-Za-z0-9][A-Za-z0-9 ._/@:-]*" placeholder="Slip / reference no." />
+                            <input name="depositedBy" required maxLength={80} defaultValue={user?.name || ""} placeholder="Deposited by" />
+                            <input name="note" maxLength={paymentNoteMaxLength} placeholder="Note" />
+                            <input name="depositProof" type="file" accept={leadDocumentAccept} required />
+                            <button className="btn btn-primary btn-sm">Deposit</button>
+                          </form>
+                        )}
+                      </td>
+                      <td>
+                        {(payment.cashDeposits || []).some((deposit) => deposit.proof?.storedName) ? (
+                          <div className="action-icons">
+                            {(payment.cashDeposits || []).map((deposit, depositIndex) => deposit.proof?.storedName ? (
+                              <div key={`${deposit.proof.storedName}-${depositIndex}`} style={{ display: "inline-flex", gap: "3px", alignItems: "center" }}>
+                                <button type="button" className="action-icon-btn action-icon-primary" title={deposit.proof.originalName ? `Preview: ${deposit.proof.originalName}` : "Preview deposit proof"} onClick={() => onPreviewCashDepositProof?.(student, index, deposit, depositIndex)}><Eye size={14} /></button>
+                                <button type="button" className="action-icon-btn" title={deposit.proof.originalName || "Download deposit proof"} onClick={() => onDownloadCashDepositProof(student, index, deposit, depositIndex)}><Download size={14} /></button>
+                              </div>
+                            ) : null)}
+                          </div>
+                        ) : <span className="cell-sub">Missing</span>}
+                      </td>
                     </tr>
                   );
                 })}
-                {!students.length && <tr><td colSpan={7}><div className="empty-state"><h4>No finance records</h4><p>Students will appear here after admission.</p></div></td></tr>}
+                {!cashItems.length && (
+                  <tr>
+                    <td colSpan={6}>
+                      <div className="empty-state">
+                        <h4>No cash collections</h4>
+                        <p>Cash payments will appear here after recording.</p>
+                      </div>
+                    </td>
+                  </tr>
+                )}
               </tbody>
             </table>
           </div>
-          <Pager meta={meta} label="students" onPage={onPage} />
         </div>
-        <div className="card finance-card">
-          <div className="card-head"><div><h3>Billed vs collected</h3><div className="sub">Paid against outstanding</div></div></div>
-          <div className="card-body finance-chart-body">
-            <DonutChart data={slices} size={200} thickness={34} centerValue={formatCurrency(Math.max(billed - discount, 0))} centerLabel="Net billed" />
-            <DonutLegend data={slices} formatValue={formatCurrency} />
+      )}
+
+      {subTab === "ledger" && (
+        <div className="two-col finance-grid">
+          <div className="card finance-card">
+            <div className="card-head">
+              <div>
+                <h3>Candidate Fee Ledger</h3>
+                <div className="sub">Per-student billing and payment summary</div>
+              </div>
+            </div>
+            <div className="table-wrap finance-table-wrap">
+              <table className="finance-table">
+                <thead>
+                  <tr>
+                    <th>Student</th>
+                    <th>Centre</th>
+                    <th>Course</th>
+                    <th>Fee (incl. GST)</th>
+                    <th>Paid</th>
+                    <th>Due</th>
+                    <th>Status</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {students.map((student) => {
+                    const stDue = dueAmount(student);
+                    const status = stDue <= 0 ? "Paid" : (student.paidAmount || 0) > 0 ? "Partial" : "Due";
+                    return (
+                      <tr className="clickable" key={student._id} onClick={() => onOpen(student)}>
+                        <td>
+                          <div className="lead-name-cell">
+                            <span className="avatar lead-avatar">{initials(student.fullName)}</span>
+                            <div>
+                              <div className="cell-name">{student.fullName}</div>
+                              <div className="cell-sub">{student.admissionNumber || student.phone}</div>
+                            </div>
+                          </div>
+                        </td>
+                        <td>{student.centre || "-"}</td>
+                        <td>{courseShortCode(student.course)}</td>
+                        <td className="mono">{formatCurrency(student.totalFee || 0)}</td>
+                        <td className="mono">{formatCurrency(student.paidAmount || 0)}</td>
+                        <td className="mono">{formatCurrency(stDue)}</td>
+                        <td><span className={`tag ${status === "Paid" ? "green" : status === "Partial" ? "amber" : "red"}`}>{status}</span></td>
+                      </tr>
+                    );
+                  })}
+                  {!students.length && (
+                    <tr>
+                      <td colSpan={7}>
+                        <div className="empty-state">
+                          <h4>No finance records</h4>
+                          <p>Students will appear here after admission.</p>
+                        </div>
+                      </td>
+                    </tr>
+                  )}
+                </tbody>
+              </table>
+            </div>
+            <Pager meta={meta} label="students" onPage={onPage} />
+          </div>
+
+          <div className="card finance-card">
+            <div className="card-head">
+              <div>
+                <h3>Billed vs Collected</h3>
+                <div className="sub">Paid against outstanding total</div>
+              </div>
+            </div>
+            <div className="card-body finance-chart-body">
+              <DonutChart data={slices} size={200} thickness={34} centerValue={formatCurrency(Math.max(billed - discount, 0))} centerLabel="Net billed" />
+              <DonutLegend data={slices} formatValue={formatCurrency} />
+            </div>
           </div>
         </div>
-      </div>
+      )}
+
+      {subTab === "approvals" && (
+        <div className="card" style={{ marginBottom: 20 }}>
+          <div className="card-head" style={{ flexWrap: "wrap", gap: 12 }}>
+            <div>
+              <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+                <h3>Fee Concession Approvals</h3>
+                {pendingFeeApprovalsCount > 0 && (
+                  <span className="badge badge-amber">{pendingFeeApprovalsCount} pending</span>
+                )}
+              </div>
+              <div className="sub">
+                Review and approve student fee discount and concession requests
+              </div>
+            </div>
+
+            <div style={{ display: "flex", alignItems: "center", gap: 10, flexWrap: "wrap" }}>
+              {/* Status Filter Tabs */}
+              <div className="pill-tabs">
+                {[
+                  { key: "pending" as const, label: "Pending", count: pendingFeeApprovalsCount },
+                  { key: "approved" as const, label: "Approved" },
+                  { key: "rejected" as const, label: "Rejected" },
+                  { key: "all" as const, label: "All Requests" },
+                ].map((tab) => (
+                  <button
+                    key={tab.key}
+                    type="button"
+                    className={`pill-tab ${approvalStatusFilter === tab.key ? "active" : ""}`}
+                    onClick={() => {
+                      setApprovalStatusFilter(tab.key);
+                      onLoadFeeApprovals?.(tab.key);
+                    }}
+                  >
+                    {tab.label}
+                    {tab.count !== undefined && tab.count > 0 && (
+                      <span className="badge badge-red" style={{ fontSize: 10, padding: "0 5px", marginLeft: 4 }}>
+                        {tab.count}
+                      </span>
+                    )}
+                  </button>
+                ))}
+              </div>
+
+              {/* Search */}
+              <div className="search-box">
+                <Search size={14} />
+                <input
+                  type="text"
+                  placeholder="Search candidate, phone..."
+                  value={approvalSearch}
+                  onChange={(e) => setApprovalSearch(e.target.value)}
+                />
+              </div>
+
+              <button
+                type="button"
+                className="btn btn-ghost btn-sm"
+                onClick={() => onLoadFeeApprovals?.(approvalStatusFilter)}
+                disabled={feeApprovalsLoading}
+                title="Refresh fee approvals"
+              >
+                <RefreshCw size={13} className={feeApprovalsLoading ? "spin-icon" : ""} />
+                <span>Refresh</span>
+              </button>
+            </div>
+          </div>
+
+          <div className="table-wrap">
+            <table className="approvals-table">
+              <thead>
+                <tr>
+                  <th>Candidate</th>
+                  <th>Branch / Centre</th>
+                  <th>Course</th>
+                  <th>Standard Fee</th>
+                  <th>Proposed Fee &amp; Concession</th>
+                  <th style={{ minWidth: 260, maxWidth: 340 }}>Justification &amp; Requested By</th>
+                  <th style={{ minWidth: 160 }}>Approval Status</th>
+                  <th style={{ minWidth: 150, textAlign: "right" }}>Review Action</th>
+                </tr>
+              </thead>
+              <tbody>
+                {feeApprovals
+                  .filter((item) => {
+                    if (!approvalSearch.trim()) return true;
+                    const q = approvalSearch.toLowerCase().trim();
+                    return (
+                      item.fullName.toLowerCase().includes(q) ||
+                      (item.phone && item.phone.toLowerCase().includes(q)) ||
+                      (item.admissionNumber && item.admissionNumber.toLowerCase().includes(q)) ||
+                      (item.centre && item.centre.toLowerCase().includes(q)) ||
+                      (item.course && item.course.toLowerCase().includes(q)) ||
+                      (item.feeApproval?.reason && item.feeApproval.reason.toLowerCase().includes(q))
+                    );
+                  })
+                  .map((st) => {
+                    const approval = st.feeApproval || { status: "pending" };
+                    const standardFee = approval.standardCourseFee || st.totalFee || 0;
+                    const requestedFee = approval.requestedFee ?? st.totalFee ?? 0;
+                    const requestedDiscount = approval.requestedDiscount ?? st.discountAmount ?? 0;
+                    const isReviewing = feeApprovalReviewingId === st._id;
+                    const canReview = (isHeadSuperAdmin || isCenterAdmin) && approval.status === "pending";
+
+                    return (
+                      <tr key={st._id}>
+                        <td style={{ verticalAlign: "middle" }}>
+                          <div className="cell-name">{st.fullName}</div>
+                          <div className="cell-sub mono">{st.admissionNumber || st.phone}</div>
+                        </td>
+                        <td style={{ verticalAlign: "middle" }}>
+                          <span className="badge badge-gray">{st.centre || "—"}</span>
+                        </td>
+                        <td style={{ verticalAlign: "middle" }}>
+                          <span className="tag blue">{courseShortCode(st.course)}</span>
+                        </td>
+                        <td style={{ verticalAlign: "middle" }}>
+                          <span className="mono" style={{ color: "var(--text-400)", textDecoration: requestedFee < standardFee ? "line-through" : "none" }}>
+                            {formatCurrency(standardFee)}
+                          </span>
+                        </td>
+                        <td style={{ verticalAlign: "middle" }}>
+                          <div className="mono" style={{ fontWeight: 800, color: "var(--text-900)", fontSize: 13 }}>
+                            {formatCurrency(requestedFee)}
+                          </div>
+                          {requestedDiscount > 0 && (
+                            <div className="cell-sub" style={{ color: "var(--green-700)", fontWeight: 600 }}>
+                              Discount: {formatCurrency(requestedDiscount)}
+                            </div>
+                          )}
+                        </td>
+                        <td style={{ minWidth: 260, maxWidth: 340, verticalAlign: "middle", whiteSpace: "normal" }}>
+                          <div style={{ fontSize: 12, color: "var(--text-700)", fontWeight: 500, whiteSpace: "normal", lineHeight: 1.45 }}>
+                            "{approval.reason || "Fee concession requested"}"
+                          </div>
+                          <div className="cell-sub" style={{ marginTop: 4, whiteSpace: "normal", lineHeight: 1.35 }}>
+                            Requested by: <b>{approval.requestedBy || "Staff"}</b> ({approval.requestedByRole || "admin"}) {approval.requestedAt ? `• ${formatDate(approval.requestedAt)}` : ""}
+                          </div>
+                        </td>
+                        <td style={{ minWidth: 160, verticalAlign: "middle" }}>
+                          {approval.status === "pending" && (
+                            <span className="tag amber" style={{ display: "inline-flex", alignItems: "center", gap: 5, padding: "5px 10px", fontSize: 11.5, fontWeight: 700 }}>
+                              <Clock size={12} /> Pending Approval
+                            </span>
+                          )}
+                          {approval.status === "approved" && (
+                            <div>
+                              <span className="tag green" style={{ display: "inline-flex", alignItems: "center", gap: 5, padding: "5px 10px", fontSize: 11.5, fontWeight: 700 }}>
+                                <Check size={12} /> Approved
+                              </span>
+                              <div className="cell-sub" style={{ marginTop: 4 }}>
+                                By {approval.reviewedBy || "Admin"} • {approval.reviewedAt ? formatDate(approval.reviewedAt) : ""}
+                              </div>
+                            </div>
+                          )}
+                          {approval.status === "rejected" && (
+                            <div>
+                              <span className="tag red" style={{ display: "inline-flex", alignItems: "center", gap: 5, padding: "5px 10px", fontSize: 11.5, fontWeight: 700 }}>
+                                <X size={12} /> Rejected
+                              </span>
+                              {approval.rejectionReason && (
+                                <div className="cell-sub" style={{ color: "var(--red-700)", marginTop: 4, whiteSpace: "normal", maxWidth: 200 }}>
+                                  "{approval.rejectionReason}"
+                                </div>
+                              )}
+                            </div>
+                          )}
+                        </td>
+                        <td style={{ minWidth: 150, textAlign: "right", verticalAlign: "middle" }}>
+                          <div style={{ display: "inline-flex", gap: 6, alignItems: "center", justifyContent: "flex-end" }}>
+                            {canReview && (
+                              <>
+                                <button
+                                  type="button"
+                                  className="btn btn-sm btn-green"
+                                  disabled={isReviewing}
+                                  onClick={() => onReviewFeeApproval?.(st._id, "approve")}
+                                  title="Approve requested fee and discount"
+                                >
+                                  <Check size={12} /> {isReviewing ? "..." : "Approve"}
+                                </button>
+                                <button
+                                  type="button"
+                                  className="btn btn-sm btn-danger"
+                                  disabled={isReviewing}
+                                  onClick={() => onRejectPrompt?.(st)}
+                                  title="Reject fee concession"
+                                >
+                                  <X size={12} /> Reject
+                                </button>
+                              </>
+                            )}
+                            <button
+                              type="button"
+                              className="btn btn-sm btn-ghost"
+                              onClick={() => onOpen(st)}
+                              title="View student profile"
+                              style={{ padding: "4px 8px" }}
+                            >
+                              <Eye size={13} />
+                            </button>
+                          </div>
+                        </td>
+                      </tr>
+                    );
+                  })}
+                {!feeApprovals.length && (
+                  <tr>
+                    <td colSpan={8}>
+                      <div className="empty-state" style={{ padding: "36px 16px", textAlign: "center" }}>
+                        <ShieldCheck size={36} style={{ color: "var(--text-400)", opacity: 0.5, marginBottom: 8 }} />
+                        <h4>No fee approval requests in this view</h4>
+                        <p style={{ margin: 0, fontSize: 12 }}>
+                          {approvalStatusFilter === "pending"
+                            ? "All candidate fee concession requests have been reviewed!"
+                            : "No concession history matching your criteria."}
+                        </p>
+                      </div>
+                    </td>
+                  </tr>
+                )}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      )}
+
+      {subTab === "paymentApprovals" && (
+        <div className="card" style={{ marginBottom: 20 }}>
+          <div className="card-head" style={{ flexWrap: "wrap", gap: 12 }}>
+            <div>
+              <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+                <h3>Payment Approvals</h3>
+                {pendingPaymentApprovalsCount > 0 && (
+                  <span className="badge badge-amber">{pendingPaymentApprovalsCount} pending</span>
+                )}
+              </div>
+              <div className="sub">
+                Verify and approve candidate fee collections before crediting to balance
+              </div>
+            </div>
+            <div style={{ display: "flex", gap: 8, alignItems: "center", flexWrap: "wrap" }}>
+              <div className="pill-tabs">
+                {[
+                  { key: "pending" as const, label: "Pending", count: pendingPaymentApprovalsCount },
+                  { key: "approved" as const, label: "Approved" },
+                  { key: "rejected" as const, label: "Rejected" },
+                  { key: "all" as const, label: "All Payments" },
+                ].map((tab) => (
+                  <button
+                    key={tab.key}
+                    type="button"
+                    className={`pill-tab ${paymentApprovalStatusFilter === tab.key ? "active" : ""}`}
+                    onClick={() => {
+                      setPaymentApprovalStatusFilter(tab.key);
+                      onLoadPaymentApprovals?.(tab.key);
+                    }}
+                  >
+                    <span>{tab.label}</span>
+                    {typeof tab.count === "number" && tab.count > 0 && (
+                      <span className="badge badge-red" style={{ fontSize: 10, padding: "0 5px", marginLeft: 4 }}>
+                        {tab.count}
+                      </span>
+                    )}
+                  </button>
+                ))}
+              </div>
+
+              <div className="search-box">
+                <Search size={14} />
+                <input
+                  type="text"
+                  placeholder="Search candidate, UTR, mode..."
+                  value={paymentApprovalSearch}
+                  onChange={(e) => setPaymentApprovalSearch(e.target.value)}
+                />
+              </div>
+
+              <button
+                type="button"
+                className="btn btn-ghost btn-sm"
+                onClick={() => onLoadPaymentApprovals?.(paymentApprovalStatusFilter)}
+                title="Refresh payment approvals"
+                disabled={paymentApprovalsLoading}
+              >
+                <RefreshCw size={13} className={paymentApprovalsLoading ? "spin-icon" : ""} />
+                <span>Refresh</span>
+              </button>
+            </div>
+          </div>
+          <div className="table-wrap">
+            <table className="approvals-table">
+              <thead>
+                <tr>
+                  <th>Candidate</th>
+                  <th>Branch / Centre</th>
+                  <th>Course</th>
+                  <th>Amount</th>
+                  <th>Mode &amp; Purpose</th>
+                  <th>Reference / UTR</th>
+                  <th>Requested By &amp; Date</th>
+                  <th style={{ textAlign: "center" }}>Proof</th>
+                  <th style={{ minWidth: 160 }}>Status</th>
+                  <th style={{ width: 140, textAlign: "center" }}>Actions</th>
+                </tr>
+              </thead>
+              <tbody>
+                {paymentApprovals
+                  .filter((item) => {
+                    if (paymentApprovalStatusFilter !== "all" && (item.status || "approved") !== paymentApprovalStatusFilter) return false;
+                    if (!paymentApprovalSearch.trim()) return true;
+                    const q = paymentApprovalSearch.toLowerCase().trim();
+                    return (
+                      (item.studentName || "").toLowerCase().includes(q) ||
+                      (item.studentPhone || "").toLowerCase().includes(q) ||
+                      (item.admissionNumber || "").toLowerCase().includes(q) ||
+                      (item.centre || "").toLowerCase().includes(q) ||
+                      (item.course || "").toLowerCase().includes(q) ||
+                      (item.mode || "").toLowerCase().includes(q) ||
+                      (item.transactionId || "").toLowerCase().includes(q) ||
+                      (item.emiReference || "").toLowerCase().includes(q)
+                    );
+                  })
+                  .map((item) => {
+                    const pStatus = item.status || "approved";
+                    const isReviewing = paymentApprovalReviewingId === item.paymentId;
+                    const canReview = isHeadSuperAdmin || isCenterAdmin;
+                    const proofs = (item.proofs && item.proofs.length > 0) ? item.proofs : (item.proof?.storedName ? [item.proof] : []);
+
+                    return (
+                      <tr key={`${item.studentId}-${item.paymentId}`}>
+                        <td style={{ verticalAlign: "middle" }}>
+                          <div className="lead-name-cell">
+                            <span className="avatar lead-avatar">{initials(item.studentName)}</span>
+                            <div>
+                              <div className="cell-name">{item.studentName}</div>
+                              <div className="cell-sub">{item.admissionNumber || item.studentPhone || "Candidate"}</div>
+                            </div>
+                          </div>
+                        </td>
+                        <td style={{ verticalAlign: "middle" }}>
+                          <span className="badge badge-gray">{item.centre || "—"}</span>
+                        </td>
+                        <td style={{ verticalAlign: "middle" }}>
+                          <span className="tag blue">{courseShortCode(item.course)}</span>
+                        </td>
+                        <td style={{ verticalAlign: "middle" }}>
+                          <div className="mono" style={{ fontWeight: 800, color: "var(--green-700)", fontSize: 13 }}>
+                            {formatCurrency(item.amount)}
+                          </div>
+                          {item.totalFee ? (
+                            <div className="cell-sub mono">
+                              Total: {formatCurrency(item.totalFee)} | Paid: {formatCurrency(item.paidAmount || 0)}
+                            </div>
+                          ) : null}
+                        </td>
+                        <td style={{ verticalAlign: "middle" }}>
+                          <span className={`tag ${item.mode === "Cash" ? "amber" : "blue"}`}>
+                            {item.mode}
+                          </span>
+                          <div className="cell-sub" style={{ marginTop: 2 }}>
+                            {item.paymentPurpose}
+                          </div>
+                        </td>
+                        <td style={{ verticalAlign: "middle" }}>
+                          <div className="mono" style={{ fontSize: 12 }}>
+                            {item.transactionId || item.emiReference || item.loanProviderName || "—"}
+                          </div>
+                          {item.note && (
+                            <div className="cell-sub" style={{ maxWidth: 160, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }} title={item.note}>
+                              "{item.note}"
+                            </div>
+                          )}
+                        </td>
+                        <td style={{ verticalAlign: "middle" }}>
+                          <div style={{ fontSize: 12, fontWeight: 600 }}>{item.requestedBy || "Staff"}</div>
+                          <div className="cell-sub">
+                            {formatDateTime(item.requestedAt || item.paidAt)}
+                          </div>
+                        </td>
+                        <td style={{ verticalAlign: "middle", textAlign: "center" }}>
+                          {proofs.length > 0 ? (
+                            <div style={{ display: "inline-flex", gap: 4, justifyContent: "center" }}>
+                              <button
+                                type="button"
+                                className="action-icon-btn action-icon-primary"
+                                title="Preview proof"
+                                onClick={() => {
+                                  const targetStudent = students.find((s) => s._id === item.studentId);
+                                  if (targetStudent) {
+                                    onPreviewCashDepositProof?.(targetStudent, item.paymentIndex, { proof: proofs[0] }, 0);
+                                  }
+                                }}
+                              >
+                                <Eye size={13} />
+                              </button>
+                              <button
+                                type="button"
+                                className="action-icon-btn"
+                                title="Download proof"
+                                onClick={() => {
+                                  const targetStudent = students.find((s) => s._id === item.studentId);
+                                  if (targetStudent) {
+                                    onDownloadCashDepositProof?.(targetStudent, item.paymentIndex, { proof: proofs[0] }, 0);
+                                  }
+                                }}
+                              >
+                                <Download size={13} />
+                              </button>
+                            </div>
+                          ) : (
+                            <span className="cell-sub">{item.mode === "Cash" ? "Cash slip" : "None"}</span>
+                          )}
+                        </td>
+                        <td style={{ minWidth: 160, verticalAlign: "middle" }}>
+                          <span
+                            className={`tag ${pStatus === "approved" ? "green" : pStatus === "rejected" ? "red" : "amber"}`}
+                            style={{ display: "inline-flex", alignItems: "center", gap: 5, padding: "5px 10px", fontSize: 11.5, fontWeight: 700 }}
+                            title={pStatus === "rejected" ? item.rejectionReason : undefined}
+                          >
+                            {pStatus === "approved" ? <><Check size={12} /> Approved</> : pStatus === "rejected" ? <><X size={12} /> Rejected</> : <><Clock size={12} /> Pending Verification</>}
+                          </span>
+                          {pStatus === "rejected" && item.rejectionReason && (
+                            <div className="cell-sub" style={{ color: "var(--red-700)", maxWidth: 160, marginTop: 4, whiteSpace: "normal" }}>
+                              {item.rejectionReason}
+                            </div>
+                          )}
+                        </td>
+                        <td style={{ verticalAlign: "middle" }}>
+                          <div style={{ display: "inline-flex", gap: 4, alignItems: "center", justifyContent: "center", width: "100%" }}>
+                            {canReview && pStatus === "pending" && (
+                              <>
+                                <button
+                                  type="button"
+                                  className="btn btn-sm btn-green"
+                                  disabled={isReviewing}
+                                  onClick={() => onReviewPaymentApproval?.(item.studentId, item.paymentId, "approve")}
+                                  title="Approve payment &amp; credit to candidate balance"
+                                >
+                                  <Check size={12} /> {isReviewing ? "..." : "Approve"}
+                                </button>
+                                <button
+                                  type="button"
+                                  className="btn btn-sm btn-danger"
+                                  disabled={isReviewing}
+                                  onClick={() => onRejectPaymentPrompt?.(item)}
+                                  title="Reject payment"
+                                >
+                                  <X size={12} /> Reject
+                                </button>
+                              </>
+                            )}
+                            <button
+                              type="button"
+                              className="btn btn-sm btn-ghost"
+                              onClick={() => {
+                                const targetStudent = students.find((s) => s._id === item.studentId);
+                                if (targetStudent) onOpen(targetStudent);
+                              }}
+                              title="View student profile"
+                              style={{ padding: "4px 8px" }}
+                            >
+                              <Eye size={13} />
+                            </button>
+                          </div>
+                        </td>
+                      </tr>
+                    );
+                  })}
+                {paymentApprovals.filter((item) => paymentApprovalStatusFilter === "all" || (item.status || "approved") === paymentApprovalStatusFilter).length === 0 && (
+                  <tr>
+                    <td colSpan={10}>
+                      <div className="empty-state" style={{ padding: "36px 16px", textAlign: "center" }}>
+                        <ShieldCheck size={36} style={{ color: "var(--text-400)", opacity: 0.5, marginBottom: 8 }} />
+                        <h4>No payment requests in this view</h4>
+                        <p style={{ margin: 0, fontSize: 12 }}>
+                          {paymentApprovalStatusFilter === "pending"
+                            ? "All candidate payments have been verified and approved!"
+                            : "No payment history matching your criteria."}
+                        </p>
+                      </div>
+                    </td>
+                  </tr>
+                )}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      )}
     </>
   );
 }
 
+function FeeApprovalRejectModal({
+  prompt,
+  onCancel,
+  onSubmit,
+}: {
+  prompt: { student: Student; note?: string } | null;
+  onCancel: () => void;
+  onSubmit: (student: Student, note: string) => Promise<void>;
+}) {
+  const [note, setNote] = useState("");
+  const [submitting, setSubmitting] = useState(false);
+
+  useEffect(() => {
+    if (prompt) setNote(prompt.note || "");
+  }, [prompt]);
+
+  if (!prompt) return null;
+
+  return (
+    <div
+      className="modal-overlay show"
+      style={{ position: "fixed", inset: 0, zIndex: 1300, display: "flex", alignItems: "center", justifyContent: "center", background: "rgba(15, 23, 42, 0.65)", backdropFilter: "blur(4px)" }}
+      onClick={onCancel}
+    >
+      <div
+        className="modal"
+        style={{ background: "#FFFFFF", maxWidth: 460, width: "92%", padding: 24, borderRadius: 14, boxShadow: "0 25px 50px -12px rgba(0, 0, 0, 0.35)", position: "relative" }}
+        onClick={(e) => e.stopPropagation()}
+      >
+        <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 16 }}>
+          <div style={{ width: 38, height: 38, borderRadius: 10, background: "#FEE2E2", color: "#DC2626", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
+            <AlertTriangle size={20} />
+          </div>
+          <div>
+            <h3 style={{ margin: 0, fontSize: 16, fontWeight: 700, color: "var(--text-main)" }}>Reject Fee Concession</h3>
+            <p style={{ margin: 0, fontSize: 12, color: "var(--text-muted)" }}>{prompt.student.fullName} ({prompt.student.admissionNumber || prompt.student.phone})</p>
+          </div>
+        </div>
+        <p style={{ fontSize: 13, color: "var(--text-main)", marginBottom: 14, lineHeight: 1.4 }}>
+          Please specify the reason for rejecting this fee concession request so the branch staff can review and revise.
+        </p>
+        <div className="field" style={{ marginBottom: 16 }}>
+          <label style={{ fontSize: 12, fontWeight: 600 }}>Rejection Reason / Remarks</label>
+          <textarea
+            value={note}
+            onChange={(e) => setNote(e.target.value)}
+            placeholder="e.g. Concession exceeds branch threshold, or requires prior management discussion..."
+            rows={3}
+            style={{ width: "100%", borderRadius: 8, padding: 10, fontSize: 13, border: "1px solid var(--border-soft, #cbd5e1)", background: "#FFFFFF", color: "var(--text-main)" }}
+          />
+        </div>
+        <div style={{ display: "flex", justifyContent: "flex-end", gap: 10 }}>
+          <button type="button" className="btn btn-ghost" onClick={onCancel} disabled={submitting}>Cancel</button>
+          <button
+            type="button"
+            className="btn btn-danger"
+            disabled={submitting}
+            onClick={async () => {
+              setSubmitting(true);
+              try {
+                await onSubmit(prompt.student, note);
+              } finally {
+                setSubmitting(false);
+              }
+            }}
+          >
+            {submitting ? "Rejecting..." : "Confirm Rejection"}
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function PaymentApprovalRejectModal({
+  prompt,
+  onCancel,
+  onSubmit,
+}: {
+  prompt: { item: PaymentApprovalItem; note?: string } | null;
+  onCancel: () => void;
+  onSubmit: (item: PaymentApprovalItem, note: string) => Promise<void>;
+}) {
+  const [note, setNote] = useState("");
+  const [submitting, setSubmitting] = useState(false);
+
+  useEffect(() => {
+    if (prompt) setNote(prompt.note || "");
+  }, [prompt]);
+
+  if (!prompt) return null;
+
+  return (
+    <div
+      className="modal-overlay show"
+      style={{ position: "fixed", inset: 0, zIndex: 1300, display: "flex", alignItems: "center", justifyContent: "center", background: "rgba(15, 23, 42, 0.65)", backdropFilter: "blur(4px)" }}
+      onClick={onCancel}
+    >
+      <div
+        className="modal"
+        style={{ background: "#FFFFFF", maxWidth: 460, width: "92%", padding: 24, borderRadius: 14, boxShadow: "0 25px 50px -12px rgba(0, 0, 0, 0.35)", position: "relative" }}
+        onClick={(e) => e.stopPropagation()}
+      >
+        <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 16 }}>
+          <div style={{ width: 38, height: 38, borderRadius: 10, background: "#FEE2E2", color: "#DC2626", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
+            <AlertTriangle size={20} />
+          </div>
+          <div>
+            <h3 style={{ margin: 0, fontSize: 16, fontWeight: 700, color: "var(--text-main)" }}>Reject Payment Entry</h3>
+            <p style={{ margin: 0, fontSize: 12, color: "var(--text-muted)" }}>
+              {prompt.item.studentName} • ₹{Number(prompt.item.amount || 0).toLocaleString("en-IN")} ({prompt.item.mode?.toUpperCase() || "PAYMENT"})
+            </p>
+          </div>
+        </div>
+        <p style={{ fontSize: 13, color: "var(--text-main)", marginBottom: 14, lineHeight: 1.4 }}>
+          Please specify the reason for rejecting this payment entry so branch staff can review and rectify receipt details.
+        </p>
+        <div className="field" style={{ marginBottom: 16 }}>
+          <label style={{ fontSize: 12, fontWeight: 600 }}>Rejection Reason / Remarks</label>
+          <textarea
+            value={note}
+            onChange={(e) => setNote(e.target.value)}
+            placeholder="e.g. Transaction ID not found in bank statement, amount mismatch, invalid slip..."
+            rows={3}
+            style={{ width: "100%", borderRadius: 8, padding: 10, fontSize: 13, border: "1px solid var(--border-soft, #cbd5e1)", background: "#FFFFFF", color: "var(--text-main)" }}
+          />
+        </div>
+        <div style={{ display: "flex", justifyContent: "flex-end", gap: 10 }}>
+          <button type="button" className="btn btn-ghost" onClick={onCancel} disabled={submitting}>Cancel</button>
+          <button
+            type="button"
+            className="btn btn-danger"
+            disabled={submitting}
+            onClick={async () => {
+              setSubmitting(true);
+              try {
+                await onSubmit(prompt.item, note);
+              } finally {
+                setSubmitting(false);
+              }
+            }}
+          >
+            {submitting ? "Rejecting..." : "Confirm Rejection"}
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function FeeApprovalRequestModal({
+  data,
+  onClose,
+  onSubmit,
+}: {
+  data: { student: Student; requestedFee: string; requestedDiscount: string; reason: string; standardCourseFee: number } | null;
+  onClose: () => void;
+  onSubmit: (studentId: string, payload: { requestedFee: number; requestedDiscount: number; reason: string; standardCourseFee: number }) => Promise<void>;
+}) {
+  const [requestedFee, setRequestedFee] = useState("");
+  const [requestedDiscount, setRequestedDiscount] = useState("");
+  const [reason, setReason] = useState("");
+  const [submitting, setSubmitting] = useState(false);
+
+  useEffect(() => {
+    if (data) {
+      setRequestedFee(data.requestedFee);
+      setRequestedDiscount(data.requestedDiscount || "0");
+      setReason(data.reason || "");
+    }
+  }, [data]);
+
+  if (!data) return null;
+
+  const standardFee = data.standardCourseFee || Number(data.student.totalFee || 0);
+  const netReq = Math.max(0, Number(requestedFee || 0) - Number(requestedDiscount || 0));
+
+  const handleSubmit = async (e: FormEvent) => {
+    e.preventDefault();
+    const reqFeeNum = Number(requestedFee);
+    const reqDiscNum = Number(requestedDiscount || 0);
+    if (isNaN(reqFeeNum) || reqFeeNum <= 0) {
+      toast.error("Please enter a valid requested total fee");
+      return;
+    }
+    if (!reason.trim()) {
+      toast.error("Please provide a reason / justification for the concession");
+      return;
+    }
+    setSubmitting(true);
+    try {
+      await onSubmit(data.student._id, {
+        requestedFee: reqFeeNum,
+        requestedDiscount: reqDiscNum,
+        reason: reason.trim(),
+        standardCourseFee: standardFee,
+      });
+      onClose();
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
+  return (
+    <div
+      className="modal-overlay show"
+      style={{ position: "fixed", inset: 0, zIndex: 1300, display: "flex", alignItems: "center", justifyContent: "center", background: "rgba(15, 23, 42, 0.65)", backdropFilter: "blur(4px)" }}
+      onClick={onClose}
+    >
+      <div
+        className="modal"
+        style={{ background: "#FFFFFF", maxWidth: 520, width: "92%", padding: 24, borderRadius: 14, boxShadow: "0 25px 50px -12px rgba(0, 0, 0, 0.35)", position: "relative" }}
+        onClick={(e) => e.stopPropagation()}
+      >
+        <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 16 }}>
+          <div style={{ width: 38, height: 38, borderRadius: 10, background: "#EEF2FF", color: "#4F46E5", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
+            <BadgePercent size={20} />
+          </div>
+          <div>
+            <h3 style={{ margin: 0, fontSize: 16, fontWeight: 700, color: "var(--text-main)" }}>Request Fee Concession</h3>
+            <p style={{ margin: 0, fontSize: 12, color: "var(--text-muted)" }}>{data.student.fullName} • {data.student.course || "General"} ({data.student.centre || "Branch"})</p>
+          </div>
+        </div>
+
+        <div style={{ background: "#F8FAFC", borderRadius: 10, padding: 12, marginBottom: 16, border: "1px solid var(--border-soft, #e2e8f0)", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+          <div>
+            <div style={{ fontSize: 11, color: "var(--text-muted)", textTransform: "uppercase", fontWeight: 600 }}>Standard Course Fee</div>
+            <div style={{ fontSize: 16, fontWeight: 700, color: "var(--text-main)" }}>{formatCurrency(standardFee)}</div>
+          </div>
+          <div style={{ textAlign: "right" }}>
+            <div style={{ fontSize: 11, color: "var(--text-muted)", textTransform: "uppercase", fontWeight: 600 }}>Net Proposed Payable</div>
+            <div style={{ fontSize: 16, fontWeight: 700, color: "var(--indigo-600, #4f46e5)" }}>{formatCurrency(netReq)}</div>
+          </div>
+        </div>
+
+        <form onSubmit={handleSubmit}>
+          <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12, marginBottom: 12 }}>
+            <div className="field" style={{ margin: 0 }}>
+              <label style={{ fontSize: 12, fontWeight: 600 }}>Proposed Total Fee (₹)</label>
+              <input
+                type="number"
+                min="0"
+                step="1"
+                required
+                value={requestedFee}
+                onChange={(e) => setRequestedFee(e.target.value)}
+                placeholder="e.g. 45000"
+                style={{ background: "#FFFFFF", color: "var(--text-main)" }}
+              />
+            </div>
+            <div className="field" style={{ margin: 0 }}>
+              <label style={{ fontSize: 12, fontWeight: 600 }}>Proposed Concession / Discount (₹)</label>
+              <input
+                type="number"
+                min="0"
+                step="1"
+                value={requestedDiscount}
+                onChange={(e) => setRequestedDiscount(e.target.value)}
+                placeholder="e.g. 5000"
+                style={{ background: "#FFFFFF", color: "var(--text-main)" }}
+              />
+            </div>
+          </div>
+
+          <div className="field" style={{ marginBottom: 18 }}>
+            <label style={{ fontSize: 12, fontWeight: 600 }}>Justification Reason <span style={{ color: "#EF4444" }}>*</span></label>
+            <textarea
+              required
+              rows={3}
+              value={reason}
+              onChange={(e) => setReason(e.target.value)}
+              placeholder="e.g. Economically weaker background / Referral concession / Early bird special approved by branch manager..."
+              style={{ width: "100%", borderRadius: 8, padding: 10, fontSize: 13, border: "1px solid var(--border-soft, #cbd5e1)", background: "#FFFFFF", color: "var(--text-main)" }}
+            />
+          </div>
+
+          <div style={{ display: "flex", justifyContent: "flex-end", gap: 10 }}>
+            <button type="button" className="btn btn-ghost" onClick={onClose} disabled={submitting}>Cancel</button>
+            <button type="submit" className="btn btn-primary" disabled={submitting}>
+              {submitting ? "Submitting..." : "Submit for Approval"}
+            </button>
+          </div>
+        </form>
+      </div>
+    </div>
+  );
+}
+
 function EmiPanel({ students, meta, onPage, onOpen }: { students: Student[]; meta: PaginationMeta | null; onPage: (page: number) => void; onOpen: (student: Student) => void }) {
+  const [search, setSearch] = useState("");
+  const [filterType, setFilterType] = useState<"all" | "overdue" | "upcoming" | "shortfall">("all");
   const today = dateInputValue();
   const month = today.slice(0, 7);
   const emiStudents = students
@@ -5904,26 +9597,52 @@ function EmiPanel({ students, meta, onPage, onOpen }: { students: Student[]; met
   const overdueCount = emiStudents.filter((item) => item.overdue || item.breakdown.shortfall > 0).length;
   const upcomingThisMonth = emiStudents.filter((item) => !item.overdue && item.breakdown.shortfall <= 0 && (item.student.nextEmiDate || "").startsWith(month)).length;
   const totalDue = emiStudents.reduce((sum, item) => sum + item.amount, 0);
+
+  const query = search.trim().toLowerCase();
+  const filtered = emiStudents.filter(({ student, overdue, breakdown }) => {
+    if (filterType === "overdue" && !overdue && breakdown.shortfall <= 0) return false;
+    if (filterType === "upcoming" && (overdue || breakdown.shortfall > 0)) return false;
+    if (filterType === "shortfall" && breakdown.shortfall <= 0) return false;
+    if (!query) return true;
+    return [student.fullName, student.phone, student.admissionNumber, student.course, student.centre].some((v) =>
+      String(v || "").toLowerCase().includes(query)
+    );
+  });
+
   return (
     <>
       <div className="grid-metrics emi-metrics">
-        <MetricCard label="Due / overdue" value={overdueCount} dot="#E5484D" delta="" down />
+        <MetricCard label="Due / overdue" value={overdueCount} dot="#E5484D" delta="" down={overdueCount > 0} />
         <MetricCard label="Upcoming this month" value={upcomingThisMonth} dot="#F59E0B" delta="" />
         <MetricCard label="Total due amount" value={formatCurrency(totalDue)} dot="#4F6BFF" delta="" />
       </div>
       <div className="filter-bar emi-filter-bar">
+        <div className="search-box">
+          <Search size={14} />
+          <input
+            value={search}
+            onChange={(event) => setSearch(event.target.value)}
+            placeholder="Search candidate, phone, admission no..."
+          />
+        </div>
+        <select className="fbtn" value={filterType} onChange={(event) => setFilterType(event.target.value as any)}>
+          <option value="all">All EMI candidates</option>
+          <option value="overdue">Overdue / Shortfall</option>
+          <option value="upcoming">Upcoming</option>
+          <option value="shortfall">Shortfall carried</option>
+        </select>
         <div className="filter-spacer" />
-        <button className="btn btn-ghost" onClick={() => downloadExcelFile(["Student", "Course", "Next EMI date", "Amount due", "Shortfall", "Status"], emiStudents.map(({ student, overdue, breakdown, amount }) => [student.fullName, student.course, formatDate(student.nextEmiDate), amount, breakdown.shortfall || 0, overdue ? "Overdue" : breakdown.shortfall > 0 ? "Shortfall" : "Due"]), "imed-emi-reminders")}><Download size={15} /> Download Excel</button>
+        <button className="btn btn-ghost" onClick={() => downloadExcelFile(["Student", "Phone", "Admission No", "Centre", "Course", "Next EMI date", "Amount due", "Shortfall", "Status"], filtered.map(({ student, overdue, breakdown, amount }) => [student.fullName, student.phone, student.admissionNumber || "—", student.centre || "—", student.course || "—", formatDate(student.nextEmiDate), amount, breakdown.shortfall || 0, overdue ? "Overdue" : breakdown.shortfall > 0 ? "Shortfall" : "Due"]), "imed-emi-reminders")}><Download size={15} /> Download Excel</button>
       </div>
       <div className="card emi-card">
         <div className="table-wrap emi-table-wrap">
           <table className="emi-table">
-            <thead><tr><th>Student</th><th>Course</th><th>Next EMI date</th><th>Amount due</th><th>Status</th><th /></tr></thead>
+            <thead><tr><th>Student</th><th>Course & Branch</th><th>Next EMI date</th><th>Amount due</th><th>Status</th><th /></tr></thead>
             <tbody>
-              {emiStudents.map(({ student, overdue, breakdown, amount }) => (
+              {filtered.map(({ student, overdue, breakdown, amount }) => (
                 <tr className="clickable" key={student._id} onClick={() => onOpen(student)}>
                   <td><div className="lead-name-cell"><span className="avatar lead-avatar">{initials(student.fullName)}</span><div><div className="cell-name">{student.fullName}</div><div className="cell-sub">{student.admissionNumber || student.phone}</div></div></div></td>
-                  <td>{courseShortCode(student.course)}</td>
+                  <td>{courseShortCode(student.course)}<div className="cell-sub">{student.centre || "—"}</div></td>
                   <td className="mono">{formatDate(student.nextEmiDate)}</td>
                   <td className="mono">
                     <b>{formatCurrency(amount)}</b>
@@ -5951,7 +9670,7 @@ function EmiPanel({ students, meta, onPage, onOpen }: { students: Student[]; met
                   </td>
                 </tr>
               ))}
-              {!emiStudents.length && <tr><td colSpan={6}><div className="empty-state"><h4>No pending EMIs</h4></div></td></tr>}
+              {!filtered.length && <tr><td colSpan={6}><div className="empty-state"><h4>No pending EMIs found</h4><p>{search || filterType !== "all" ? "Try clearing your filters or search." : "No candidates currently have pending EMI instalments or dues."}</p></div></td></tr>}
             </tbody>
           </table>
         </div>
@@ -5980,12 +9699,21 @@ function ReceiptsPanel({ students, meta, onPage, onOpen }: { students: Student[]
             <tbody>
               {filteredStudents.map((student) => {
                 const due = dueAmount(student);
+                const approvedCount = (student.payments || []).filter((p) => (p.status || "approved") === "approved").length;
+                const pendingCount = (student.payments || []).filter((p) => p.status === "pending").length;
                 return (
                   <tr className="clickable" key={student._id} onClick={() => onOpen(student)}>
                     <td><div className="lead-name-cell"><span className="avatar lead-avatar">{initials(student.fullName)}</span><div><div className="cell-name">{student.fullName}</div><div className="cell-sub">{student.phone || "-"}</div></div></div></td>
                     <td className="mono">{student.admissionNumber || "-"}</td>
                     <td>{courseShortCode(student.course)}</td>
-                    <td className="mono">{student.payments?.length || 0}</td>
+                    <td>
+                      <div className="mono" style={{ fontWeight: 600 }}>{approvedCount} issued</div>
+                      {pendingCount > 0 && (
+                        <div className="cell-sub" style={{ color: "#D97706", fontWeight: 600 }}>
+                          +{pendingCount} pending
+                        </div>
+                      )}
+                    </td>
                     <td className="mono">{formatCurrency(student.paidAmount || 0)} / {formatCurrency(due)}</td>
                     <td><button className="btn btn-sm btn-soft" onClick={(event) => { event.stopPropagation(); onOpen(student); }}>View receipts</button></td>
                   </tr>
@@ -7606,7 +11334,14 @@ function ReceiptDrawer({ student, centres, selection, setSelection, onClose }: {
   const receiptRef = useRef<HTMLDivElement | null>(null);
   const payments = student?.payments || [];
   const selectedPayment = selection.type === "payment" ? payments[selection.index] : undefined;
+  const isSelectedPaymentPending = Boolean(selectedPayment && (selectedPayment.status || "approved") === "pending");
+  const isSelectedPaymentRejected = Boolean(selectedPayment && selectedPayment.status === "rejected");
+  const isFeePending = Boolean(selection.type === "invoice" && student?.feeApproval?.status === "pending");
+  const isFeeRejected = Boolean(selection.type === "invoice" && student?.feeApproval?.status === "rejected");
+  const isLocked = isSelectedPaymentPending || isSelectedPaymentRejected || isFeePending || isFeeRejected;
+
   const createReceiptPdfBlob = async () => {
+    if (isLocked) throw new Error("Receipt / invoice is locked awaiting administrative approval");
     if (!student || !receiptRef.current) throw new Error("Receipt is not ready");
     const invoiceNode = receiptRef.current.querySelector(".tax-invoice") as HTMLElement | null;
     if (!invoiceNode) throw new Error("Receipt is not ready");
@@ -7647,6 +11382,10 @@ function ReceiptDrawer({ student, centres, selection, setSelection, onClose }: {
   };
   const printReceiptPdf = async () => {
     if (!student) return;
+    if (isLocked) {
+      toast.error("Receipt / invoice cannot be printed until approved");
+      return;
+    }
     const toastId = toast.loading("Preparing PDF...");
     try {
       const { blob, fileName } = await createReceiptPdfBlob();
@@ -7663,6 +11402,10 @@ function ReceiptDrawer({ student, centres, selection, setSelection, onClose }: {
   };
   const shareReceiptPdf = async () => {
     if (!student) return;
+    if (isLocked) {
+      toast.error("Receipt / invoice cannot be shared until approved");
+      return;
+    }
     const toastId = toast.loading("Preparing PDF...");
     try {
       const { blob, fileName } = await createReceiptPdfBlob();
@@ -7706,20 +11449,102 @@ function ReceiptDrawer({ student, centres, selection, setSelection, onClose }: {
               <button className="close-x" onClick={onClose}>x</button>
             </div>
             <div className="dtabs receipt-tabs">
-              <button className={`dtab ${selection.type === "invoice" ? "active" : ""}`} onClick={() => setSelection({ type: "invoice" })}>Tax invoice</button>
-              {payments.map((payment, index) => (
-                <button className={`dtab ${selection.type === "payment" && selection.index === index ? "active" : ""}`} key={`${payment.paidAt || index}-${index}`} onClick={() => setSelection({ type: "payment", index })}>
-                  {payment.mode === "EMI" ? "EMI receipt" : "Payment receipt"} {index + 1}
-                </button>
-              ))}
+              <button
+                className={`dtab ${selection.type === "invoice" ? "active" : ""}`}
+                onClick={() => setSelection({ type: "invoice" })}
+                style={isFeePending ? { color: "#B45309" } : isFeeRejected ? { color: "#DC2626" } : undefined}
+              >
+                <span style={{ display: "inline-flex", alignItems: "center", gap: 5 }}>
+                  Tax invoice
+                  {student.feeApproval?.status === "pending" && <Hourglass size={12} style={{ color: "#D97706" }} />}
+                  {student.feeApproval?.status === "rejected" && <XCircle size={12} style={{ color: "#DC2626" }} />}
+                </span>
+              </button>
+              {payments.map((payment, index) => {
+                const pStatus = payment.status || "approved";
+                return (
+                  <button
+                    className={`dtab ${selection.type === "payment" && selection.index === index ? "active" : ""}`}
+                    key={`${payment.paidAt || index}-${index}`}
+                    onClick={() => setSelection({ type: "payment", index })}
+                    style={pStatus === "pending" ? { color: "#B45309" } : pStatus === "rejected" ? { color: "#DC2626" } : undefined}
+                  >
+                    <span style={{ display: "inline-flex", alignItems: "center", gap: 5 }}>
+                      {payment.mode === "EMI" ? "EMI receipt" : "Receipt"} {index + 1}
+                      {pStatus === "pending" && <Hourglass size={12} style={{ color: "#D97706" }} />}
+                      {pStatus === "rejected" && <XCircle size={12} style={{ color: "#DC2626" }} />}
+                    </span>
+                  </button>
+                );
+              })}
             </div>
             <div className="drawer-body receipt-drawer-body">
-              <div ref={receiptRef} className="invoice-card receipt-print-target">
-                {selectedPayment ? <PaymentReceipt student={student} payment={selectedPayment} paymentIndex={selection.type === "payment" ? selection.index : 0} centres={centres} /> : <TaxInvoice student={student} paymentMode={payments[payments.length - 1]?.mode || "Cash"} centres={centres} />}
-              </div>
+              {isFeePending ? (
+                <div className="empty-state" style={{ background: "#FFFBEB", border: "1px solid #FCD34D", borderRadius: 14, padding: "36px 20px", textAlign: "center", margin: "16px" }}>
+                  <Clock size={40} style={{ color: "#D97706", marginBottom: 10 }} />
+                  <h4 style={{ color: "#92400E", margin: "0 0 6px 0", fontSize: 15, fontWeight: 700 }}>Tax Invoice Locked</h4>
+                  <p style={{ color: "#B45309", margin: "0 auto 10px", fontSize: 13, maxWidth: 440, lineHeight: 1.45 }}>
+                    The candidate's fee plan concession is awaiting approval by Super Admin / Center Admin. Tax Invoices cannot be issued or shared until approved.
+                  </p>
+                  <span className="badge" style={{ background: "#FEF3C7", color: "#92400E", fontWeight: 700, padding: "4px 12px", borderRadius: 6, fontSize: 11.5 }}>
+                    Pending Fee Authorization
+                  </span>
+                </div>
+              ) : isFeeRejected ? (
+                <div className="empty-state" style={{ background: "#FEF2F2", border: "1px solid #FECACA", borderRadius: 14, padding: "36px 20px", textAlign: "center", margin: "16px" }}>
+                  <X size={40} style={{ color: "#DC2626", marginBottom: 10 }} />
+                  <h4 style={{ color: "#991B1B", margin: "0 0 6px 0", fontSize: 15, fontWeight: 700 }}>Tax Invoice Not Available</h4>
+                  <p style={{ color: "#B91C1C", margin: "0 auto", fontSize: 13, maxWidth: 440, lineHeight: 1.45 }}>
+                    The proposed fee plan was rejected: "{student.feeApproval?.rejectionReason || "Declined by management"}". A revised fee plan must be submitted before invoicing.
+                  </p>
+                </div>
+              ) : isSelectedPaymentPending ? (
+                <div className="empty-state" style={{ background: "#FFFBEB", border: "1px solid #FCD34D", borderRadius: 14, padding: "36px 20px", textAlign: "center", margin: "16px" }}>
+                  <Clock size={40} style={{ color: "#D97706", marginBottom: 10 }} />
+                  <h4 style={{ color: "#92400E", margin: "0 0 6px 0", fontSize: 15, fontWeight: 700 }}>Payment Receipt Locked</h4>
+                  <p style={{ color: "#B45309", margin: "0 auto 10px", fontSize: 13, maxWidth: 460, lineHeight: 1.45 }}>
+                    This payment of <b>₹{Number(selectedPayment?.amount || 0).toLocaleString("en-IN")}</b> ({selectedPayment?.mode?.toUpperCase()}) recorded by {selectedPayment?.requestedBy || selectedPayment?.by || "staff"} is <b>awaiting verification</b>.
+                    <br />
+                    Receipts can only be printed or shared after approval by Super Admin or Center Admin.
+                  </p>
+                  <span className="badge" style={{ background: "#FEF3C7", color: "#92400E", fontWeight: 700, padding: "4px 12px", borderRadius: 6, fontSize: 11.5 }}>
+                    Pending Payment Review
+                  </span>
+                </div>
+              ) : isSelectedPaymentRejected ? (
+                <div className="empty-state" style={{ background: "#FEF2F2", border: "1px solid #FECACA", borderRadius: 14, padding: "36px 20px", textAlign: "center", margin: "16px" }}>
+                  <X size={40} style={{ color: "#DC2626", marginBottom: 10 }} />
+                  <h4 style={{ color: "#991B1B", margin: "0 0 6px 0", fontSize: 15, fontWeight: 700 }}>Payment Receipt Rejected</h4>
+                  <p style={{ color: "#B91C1C", margin: "0 auto", fontSize: 13, maxWidth: 440, lineHeight: 1.45 }}>
+                    This payment of ₹{Number(selectedPayment?.amount || 0).toLocaleString("en-IN")} was rejected: "{selectedPayment?.rejectionReason || "Payment rejected"}". No receipt can be issued.
+                  </p>
+                </div>
+              ) : (
+                <div ref={receiptRef} className="invoice-card receipt-print-target">
+                  {selectedPayment ? (
+                    <PaymentReceipt student={student} payment={selectedPayment} paymentIndex={selection.type === "payment" ? selection.index : 0} centres={centres} />
+                  ) : (
+                    <TaxInvoice student={student} paymentMode={payments.filter(p => (p.status || "approved") === "approved").slice(-1)[0]?.mode || "Cash"} centres={centres} />
+                  )}
+                </div>
+              )}
               <div className="invoice-actions">
-                <button className="btn btn-ghost" onClick={shareReceiptPdf}><MessageCircle size={15} /> Share WhatsApp</button>
-                <button className="btn btn-primary" onClick={printReceiptPdf}><Download size={15} /> Print / Save PDF</button>
+                <button
+                  className="btn btn-ghost"
+                  disabled={isLocked}
+                  onClick={shareReceiptPdf}
+                  title={isLocked ? "Receipt / invoice is locked pending approval" : "Share via WhatsApp"}
+                >
+                  <MessageCircle size={15} /> Share WhatsApp
+                </button>
+                <button
+                  className="btn btn-primary"
+                  disabled={isLocked}
+                  onClick={printReceiptPdf}
+                  title={isLocked ? "Receipt / invoice is locked pending approval" : "Print or save PDF"}
+                >
+                  <Download size={15} /> Print / Save PDF
+                </button>
               </div>
               {!payments.length && selection.type !== "invoice" && <div className="empty-state"><h4>No payment receipts yet</h4></div>}
             </div>
@@ -7973,6 +11798,7 @@ function LeadDrawer({
   onClearReminder,
   onPreviewDocument,
   onAddActivity,
+  onUploadDocument,
 }: {
   lead: Lead | null;
   tab: "info" | "follow" | "docs" | "act";
@@ -7988,6 +11814,7 @@ function LeadDrawer({
   onClearReminder: (lead: Lead) => Promise<void>;
   onPreviewDocument: (request: DocumentPreviewRequest) => void;
   onAddActivity?: (leadId: string, message: string, type?: string) => Promise<void>;
+  onUploadDocument?: (type: "lead" | "student", id: string, field: DocumentFieldName, file: File) => Promise<void>;
 }) {
   const followUps = lead?.followUps || [];
   const activities = lead?.activities || [];
@@ -7996,12 +11823,18 @@ function LeadDrawer({
   const [formStatus, setFormStatus] = useState("Scheduled");
   const [newNote, setNewNote] = useState("");
   const [addingNote, setAddingNote] = useState(false);
+  const [editingNotes, setEditingNotes] = useState(false);
+
+  useEffect(() => {
+    setEditingNotes(false);
+  }, [lead?._id]);
 
   const saveNotes = (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
     if (!lead) return;
     const notes = String(new FormData(event.currentTarget).get("notes") || "");
     onPatch(lead._id, { notes });
+    setEditingNotes(false);
   };
 
   const handlePostNote = async (event: FormEvent<HTMLFormElement>) => {
@@ -8137,10 +11970,61 @@ function LeadDrawer({
                     )}
                   </span>
                 </div>
-                <form onSubmit={saveNotes}>
-                  <div className="field drawer-notes"><label>Notes</label><textarea name="notes" rows={3} defaultValue={lead.notes || ""} /></div>
-                  <button className="btn btn-primary drawer-full-btn">Save changes</button>
-                </form>
+                {lead.notes && !editingNotes ? (
+                  <div className="field drawer-notes">
+                    <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: "6px" }}>
+                      <label style={{ margin: 0 }}>Notes</label>
+                      <button
+                        type="button"
+                        onClick={() => setEditingNotes(true)}
+                        className="btn btn-ghost"
+                        style={{ fontSize: "11.5px", padding: "2px 8px", height: "auto", display: "inline-flex", alignItems: "center", gap: "4px" }}
+                      >
+                        <Pencil size={12} /> Edit
+                      </button>
+                    </div>
+                    <div style={{ padding: "10px 12px", background: "var(--bg-card, #f8fafc)", border: "1px solid var(--border-soft, #e2e8f0)", borderRadius: "8px", fontSize: "12.5px", lineHeight: "1.6", color: "var(--text-900, #1e293b)" }}>
+                      {lead.notes.split("\n").filter(Boolean).map((line: string, idx: number) => {
+                        const clean = line.replace(/^[🎓⚠️📘📗📙🏆]\s*/gu, "").trim();
+                        let icon = <FileText size={14} style={{ color: "#64748b", flexShrink: 0 }} />;
+                        if (/college/i.test(clean)) icon = <GraduationCap size={14} style={{ color: "#2563eb", flexShrink: 0 }} />;
+                        else if (/roll/i.test(clean)) icon = <FileText size={14} style={{ color: "#4f46e5", flexShrink: 0 }} />;
+                        else if (/stream/i.test(clean)) icon = <BookOpen size={14} style={{ color: "#0891b2", flexShrink: 0 }} />;
+                        else if (/parent/i.test(clean)) icon = <Users size={14} style={{ color: "#059669", flexShrink: 0 }} />;
+                        else if (/course/i.test(clean)) icon = <Award size={14} style={{ color: "#d97706", flexShrink: 0 }} />;
+                        else if (/campaign|utm/i.test(clean)) icon = <Activity size={14} style={{ color: "#7c3aed", flexShrink: 0 }} />;
+                        else if (/re-enquiry/i.test(clean)) icon = <RefreshCw size={14} style={{ color: "#ea580c", flexShrink: 0 }} />;
+
+                        return (
+                          <div key={idx} style={{ display: "flex", alignItems: "flex-start", gap: "8px", margin: "3px 0" }}>
+                            <span style={{ marginTop: "3px", display: "inline-flex" }}>{icon}</span>
+                            <span style={{ wordBreak: "break-word" }}>{clean}</span>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  </div>
+                ) : (
+                  <form onSubmit={saveNotes}>
+                    <div className="field drawer-notes">
+                      <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: "6px" }}>
+                        <label style={{ margin: 0 }}>Notes</label>
+                        {lead.notes && (
+                          <button
+                            type="button"
+                            onClick={() => setEditingNotes(false)}
+                            className="btn btn-ghost"
+                            style={{ fontSize: "11.5px", padding: "2px 8px", height: "auto" }}
+                          >
+                            Cancel
+                          </button>
+                        )}
+                      </div>
+                      <textarea name="notes" rows={4} defaultValue={lead.notes || ""} placeholder="Add notes here..." autoFocus={editingNotes} />
+                    </div>
+                    <button className="btn btn-primary drawer-full-btn">Save changes</button>
+                  </form>
+                )}
               </div>
               <div className={`dpane ${tab === "follow" ? "active" : ""}`}>
                 {lead.nextFollowUp && (
@@ -8243,8 +12127,27 @@ function LeadDrawer({
                 </div>
               </div>
               <div className={`dpane ${tab === "docs" ? "active" : ""}`}>
-                <LeadDocumentRow label="Government proof" doc={lead.governmentProof} type="lead" id={lead._id} field="governmentProof" onPreview={onPreviewDocument} />
-                <LeadDocumentRow label="Qualification certificate" doc={lead.highestQualificationCertificate} type="lead" id={lead._id} field="highestQualificationCertificate" onPreview={onPreviewDocument} />
+                <div style={{ marginBottom: "14px", background: "#FAFBFD", padding: "10px 12px", borderRadius: "8px", border: "1px solid var(--border-soft)", fontSize: "12px", color: "var(--text-600)" }}>
+                  Attach KYC & educational documents for this lead. Supported: PDF, JPG, PNG, WEBP (Max 2 MB).
+                </div>
+                <LeadDocumentRow
+                  label="Government proof"
+                  doc={lead.governmentProof}
+                  type="lead"
+                  id={lead._id}
+                  field="governmentProof"
+                  onPreview={onPreviewDocument}
+                  onUpload={onUploadDocument ? (field, file) => onUploadDocument("lead", lead._id, field, file) : undefined}
+                />
+                <LeadDocumentRow
+                  label="Qualification certificate"
+                  doc={lead.highestQualificationCertificate}
+                  type="lead"
+                  id={lead._id}
+                  field="highestQualificationCertificate"
+                  onPreview={onPreviewDocument}
+                  onUpload={onUploadDocument ? (field, file) => onUploadDocument("lead", lead._id, field, file) : undefined}
+                />
               </div>
               <div className={`dpane ${tab === "act" ? "active" : ""}`}>
                 <div style={{ marginBottom: "14px" }}>
@@ -8315,8 +12218,13 @@ function SettingsPanel({ isHeadSuperAdmin, isCenterAdmin = false, isHeadBranchAd
   const [batchCourseDraft, setBatchCourseDraft] = useState("");
   const [editingBatchCentreDraft, setEditingBatchCentreDraft] = useState("");
   const [editingBatchCourseDraft, setEditingBatchCourseDraft] = useState("");
-  const branchOptions = centres.filter((centre) => centre.type === "branch");
-  const franchiseOptions = centres.filter((centre) => centre.type !== "branch");
+  const parentCentreIds = useMemo(() => new Set(centres.map((c) => c.parentCentreId).filter(Boolean) as string[]), [centres]);
+  const branchOptions = useMemo(() => centres.filter((centre) => centre.type === "branch" && !parentCentreIds.has(centre._id)), [centres, parentCentreIds]);
+  const parentCentreOptions = useMemo(() => {
+    const parents = centres.filter((centre) => parentCentreIds.has(centre._id));
+    return parents.length ? parents : centres;
+  }, [centres, parentCentreIds]);
+  const franchiseOptions = useMemo(() => centres.filter((centre) => centre.type !== "branch" && !parentCentreIds.has(centre._id)), [centres, parentCentreIds]);
   const staffRoleOptions = [
     ...(isHeadSuperAdmin ? [{ value: "superadmin", label: "Head super admin" }] : []),
     ...(isHeadSuperAdmin ? [{ value: "center_admin", label: "Center admin (multi-branch)" }] : []),
@@ -8335,6 +12243,10 @@ function SettingsPanel({ isHeadSuperAdmin, isCenterAdmin = false, isHeadBranchAd
       { value: "franchise_teacher", label: "Franchise teacher" },
     ] : []),
   ];
+  const [editingStaffRole, setEditingStaffRole] = useState(staffRoleOptions[0]?.value || "counsellor");
+  useEffect(() => {
+    if (editingStaff) setEditingStaffRole(editingStaff.role);
+  }, [editingStaff?._id, editingStaff?.role]);
   const [staffRole, setStaffRole] = useState(isFranchiseSuperAdmin ? "franchise_counsellor" : isHeadSuperAdmin ? "franchise_superadmin" : staffRoleOptions[0]?.value || "counsellor");
   useEffect(() => {
     if (!staffRoleOptions.some((role) => role.value === staffRole)) setStaffRole(staffRoleOptions[0]?.value || "counsellor");
@@ -8342,8 +12254,12 @@ function SettingsPanel({ isHeadSuperAdmin, isCenterAdmin = false, isHeadBranchAd
   const staffNeedsLocation = ["center_admin", "admin", "branch_admin_counsellor", "counsellor", "teacher", "operations_executive", "franchise_superadmin", "franchise_admin_counsellor", "franchise_counsellor", "franchise_teacher", "franchise_operations_executive"].includes(staffRole);
   // center_admin is assigned to a parent centre (any centre in the list)
   const isBranchStaffRole = ["admin", "branch_admin_counsellor", "counsellor", "teacher", "operations_executive"].includes(staffRole);
-  const staffLocationOptions = staffRole === "center_admin" ? centres : isBranchStaffRole ? branchOptions : franchiseOptions;
+  const staffLocationOptions = staffRole === "center_admin" ? (parentCentreOptions.length ? parentCentreOptions : centres) : isBranchStaffRole ? branchOptions : franchiseOptions;
   const staffLocationLabel = staffRole === "center_admin" ? "Parent centre" : isBranchStaffRole ? "Branch" : "Franchise";
+
+  const isEditingBranchStaffRole = ["admin", "branch_admin_counsellor", "counsellor", "teacher", "operations_executive"].includes(editingStaffRole);
+  const editingStaffLocationOptions = editingStaffRole === "center_admin" ? (parentCentreOptions.length ? parentCentreOptions : centres) : isEditingBranchStaffRole ? branchOptions : franchiseOptions;
+  const editingStaffLocationLabel = editingStaffRole === "center_admin" ? "Parent centre" : isEditingBranchStaffRole ? "Branch" : "Branch / franchise";
   useEffect(() => {
     setEditingBatchCentreDraft(editingBatch?.centre || "");
     setEditingBatchCourseDraft(editingBatch?.course || "");
@@ -8395,7 +12311,7 @@ function SettingsPanel({ isHeadSuperAdmin, isCenterAdmin = false, isHeadBranchAd
         {active === "fees" && <div className="spane active">
           <div className="card settings-card">
             <div className="card-head"><div><h3>Course fees</h3><div className="sub">Base fee before GST - global or location-specific</div></div><button className="btn btn-primary btn-sm" onClick={() => setShowAddCourse((value) => !value)}><Plus size={14} /> Add course</button></div>
-            {showAddCourse && <form className="card-body field-grid settings-add-form" onSubmit={onAddCourse}><Field name="name" label="Course name" required /><Field name="code" label="Code" /><Field name="fee" label="Base fee" type="number" /><button className="btn btn-primary">Add course</button></form>}
+            {showAddCourse && <form className="card-body field-grid settings-add-form" onSubmit={onAddCourse}><Field name="name" label="Course name" required /><Field name="code" label="Code" /><Field name="fee" label="Base fee" type="number" step="any" /><button className="btn btn-primary">Add course</button></form>}
             <div className="table-wrap settings-table-wrap"><table className="settings-table"><thead><tr><th>Code</th><th>Course</th><th>Base fee</th><th>GST (18%)</th><th>Payable</th><th /></tr></thead><tbody>{courses.map((course) => <tr key={course._id}><td className="mono cell-name">{course.code || courseShortCode(course.name)}</td><td>{course.name}<div className="cell-sub">{course.duration || "-"}</div></td><td className="mono">{formatCurrency(course.fee || 0)}</td><td className="mono">{formatCurrency(Math.round((course.fee || 0) * GST_RATE))}</td><td className="mono">{formatCurrency(feeWithGst(course.fee || 0))}</td><td><div className="action-icons"><button className="action-icon-btn action-icon-primary" title="Edit course" onClick={() => setEditingCourse(course)}><Pencil size={14} /></button><button className="action-icon-btn action-icon-danger" title="Delete course" onClick={() => onDeleteCourse(course)}><Trash2 size={14} /></button></div></td></tr>)}{!courses.length && <tr><td colSpan={6}><div className="empty-state"><h4>No courses</h4></div></td></tr>}</tbody></table></div>
           </div>
         </div>}
@@ -8432,13 +12348,13 @@ function SettingsPanel({ isHeadSuperAdmin, isCenterAdmin = false, isHeadBranchAd
               <div className="modal-body field-grid">
                 <Field name="name" label="Name" defaultValue={editingStaff.name} required />
                 <div className="field"><label>Email</label><input value={editingStaff.email} disabled /></div>
-                <div className="field"><RequiredLabel required>Role</RequiredLabel><select name="role" defaultValue={editingStaff.role}>{staffRoleOptions.map((role) => <option key={role.value} value={role.value}>{role.label}</option>)}</select></div>
+                <div className="field"><RequiredLabel required>Role</RequiredLabel><select name="role" value={editingStaffRole} onChange={(event) => setEditingStaffRole(event.target.value)}>{staffRoleOptions.map((role) => <option key={role.value} value={role.value}>{role.label}</option>)}</select></div>
                 {(isHeadSuperAdmin || isCenterAdmin) && (
                   <div className="field">
-                    <RequiredLabel required>{isCenterAdmin ? "Branch" : "Branch / franchise"}</RequiredLabel>
-                    <select name="franchiseId" defaultValue={editingStaff.franchiseId || ""}>
-                      <option value="" disabled>Select {isCenterAdmin ? "branch" : "branch / franchise"}</option>
-                      {staffLocationOptions.map((centre) => (
+                    <RequiredLabel required>{isCenterAdmin ? "Branch" : editingStaffLocationLabel}</RequiredLabel>
+                    <select key={editingStaffRole} name="franchiseId" defaultValue={editingStaff.franchiseId || ""}>
+                      <option value="" disabled>Select {isCenterAdmin ? "branch" : editingStaffLocationLabel.toLowerCase()}</option>
+                      {editingStaffLocationOptions.map((centre) => (
                         <option key={centre._id} value={centre._id}>{centre.name}</option>
                       ))}
                     </select>
@@ -8490,13 +12406,13 @@ function SettingsPanel({ isHeadSuperAdmin, isCenterAdmin = false, isHeadBranchAd
           </form>
         </div>} */}
 
-          {editingCourse && <div className="modal" onClick={(event) => event.stopPropagation()}>
+        {editingCourse && <div className="modal" onClick={(event) => event.stopPropagation()}>
           <div className="modal-head"><h3>Edit course</h3><button className="close-x" onClick={() => setEditingCourse(null)}>x</button></div>
           <form onSubmit={async (event) => { const saved = await onUpdateCourse(event, editingCourse._id); if (saved) setEditingCourse(null); }}>
             <div className="modal-body field-grid">
               <Field name="name" label="Course name" defaultValue={editingCourse.name} required />
               <Field name="code" label="Code" defaultValue={editingCourse.code || ""} />
-              <Field name="fee" label="Base fee" type="number" defaultValue={editingCourse.fee || 0} />
+              <Field name="fee" label="Base fee" type="number" step="any" defaultValue={editingCourse.fee || 0} />
               <Field name="duration" label="Duration" defaultValue={editingCourse.duration || ""} />
             </div>
             <div className="modal-actions"><button type="button" className="btn btn-ghost" onClick={() => setEditingCourse(null)}>Cancel</button><button className="btn btn-primary">Save course</button></div>
@@ -8522,18 +12438,103 @@ function SettingsPanel({ isHeadSuperAdmin, isCenterAdmin = false, isHeadBranchAd
   );
 }
 
-function ProfilePanel({ profile, user, accessCount, canManageFees, canManageSettings, canAssignTeachers, canManageCertificates, canManageInternships, canManageInventory, onIssueKit, centres, courses, allCourses = [], batches, teachers, counsellors = [], onBack, onGoSettings, onLeadPatch, onStudentPatch, onGenerateStudentLmsAccess, onInternshipSave, onInternshipDelete, onPayment, onDownloadPaymentProof, onPreviewPaymentProof, onFeedback, onIssue, onPreviewDocument, onPreviewInternshipPhoto }: { profile: ProfileTarget; user: AdminUser | null; accessCount: number; canManageFees: boolean; canManageSettings: boolean; canAssignTeachers: boolean; canManageCertificates: boolean; canManageInternships: boolean; canManageInventory?: boolean; onIssueKit?: (student: Student) => void; centres: string[]; courses: string[]; allCourses?: Course[]; batches: Batch[]; teachers: Counsellor[]; counsellors?: Counsellor[]; onBack: () => void; onGoSettings: () => void; onLeadPatch: (id: string, updates: Partial<Lead>) => void; onStudentPatch: (id: string, updates: Partial<Student>) => void; onGenerateStudentLmsAccess: (student: Student) => void; onInternshipSave: (event: FormEvent<HTMLFormElement>, student: Student) => void; onInternshipDelete: (student: Student) => void; onPayment: (event: FormEvent<HTMLFormElement>, student: Student, proofFiles?: File[]) => Promise<boolean> | void; onDownloadPaymentProof: (student: Student, payment: PaymentRecord, index: number, proofIndex?: number) => void; onPreviewPaymentProof?: (student: Student, payment: PaymentRecord, index: number, proofIndex?: number) => void; onFeedback: (event: FormEvent<HTMLFormElement>, student: Student) => void; onIssue: (student: Student) => void; onPreviewDocument: (request: DocumentPreviewRequest) => void; onPreviewInternshipPhoto: (student: Student, log: InternshipLog, photoType: "login" | "logout") => void }) {
+function ProfilePanel({
+  profile,
+  user,
+  accessCount,
+  isHeadSuperAdmin = false,
+  isCenterAdmin = false,
+  feeApprovalReviewingId = null,
+  paymentApprovalReviewingId = null,
+  onReviewFeeApproval,
+  onRejectPrompt,
+  onReviewPaymentApproval,
+  onRejectPaymentPrompt,
+  onRequestFeeApprovalModal,
+  canManageFees,
+  canManageSettings,
+  canAssignTeachers,
+  canManageCertificates,
+  canManageInternships,
+  canManageInventory,
+  onIssueKit,
+  centres,
+  courses,
+  allCourses = [],
+  batches,
+  teachers,
+  counsellors = [],
+  onBack,
+  onGoSettings,
+  onLeadPatch,
+  onStudentPatch,
+  onGenerateStudentLmsAccess,
+  onInternshipSave,
+  onInternshipDelete,
+  onPayment,
+  onDownloadPaymentProof,
+  onPreviewPaymentProof,
+  onFeedback,
+  onIssue,
+  onPreviewDocument,
+  onPreviewInternshipPhoto,
+  onUploadDocument,
+  onStudentRefresh,
+}: {
+  profile: ProfileTarget;
+  user: AdminUser | null;
+  accessCount: number;
+  isHeadSuperAdmin?: boolean;
+  isCenterAdmin?: boolean;
+  feeApprovalReviewingId?: string | null;
+  paymentApprovalReviewingId?: string | null;
+  onReviewFeeApproval?: (studentId: string, action: "approve" | "reject", note?: string) => Promise<void>;
+  onRejectPrompt?: (student: Student) => void;
+  onReviewPaymentApproval?: (studentId: string, paymentId: string, action: "approve" | "reject", note?: string) => Promise<void>;
+  onRejectPaymentPrompt?: (item: PaymentApprovalItem) => void;
+  onRequestFeeApprovalModal?: (student: Student) => void;
+  canManageFees: boolean;
+  canManageSettings: boolean;
+  canAssignTeachers: boolean;
+  canManageCertificates: boolean;
+  canManageInternships: boolean;
+  canManageInventory?: boolean;
+  onIssueKit?: (student: Student) => void;
+  centres: string[];
+  courses: string[];
+  allCourses?: Course[];
+  batches: Batch[];
+  teachers: Counsellor[];
+  counsellors?: Counsellor[];
+  onBack: () => void;
+  onGoSettings: () => void;
+  onLeadPatch: (id: string, updates: Partial<Lead>) => void;
+  onStudentPatch: (id: string, updates: Partial<Student>) => void;
+  onGenerateStudentLmsAccess: (student: Student) => void;
+  onInternshipSave: (event: FormEvent<HTMLFormElement>, student: Student) => void;
+  onInternshipDelete: (student: Student) => void;
+  onPayment: (event: FormEvent<HTMLFormElement>, student: Student, proofFiles?: File[]) => Promise<boolean> | void;
+  onDownloadPaymentProof: (student: Student, payment: PaymentRecord, index: number, proofIndex?: number) => void;
+  onPreviewPaymentProof?: (student: Student, payment: PaymentRecord, index: number, proofIndex?: number) => void;
+  onFeedback: (event: FormEvent<HTMLFormElement>, student: Student) => void;
+  onIssue: (student: Student) => void;
+  onPreviewDocument: (request: DocumentPreviewRequest) => void;
+  onPreviewInternshipPhoto: (student: Student, log: InternshipLog, photoType: "login" | "logout") => void;
+  onUploadDocument: (type: "lead" | "student", id: string, field: DocumentFieldName, file: File) => Promise<void>;
+  onStudentRefresh?: (studentId: string) => Promise<void>;
+}) {
   const isSuperAdmin = user?.role === "superadmin";
   const currentCourse = profile?.type === "student" ? (profile.data.course || "") : (profile?.type === "lead" ? (profile.data.course || "") : "");
   const studentCourseObj = allCourses.find((c) =>
     [c.code, c.name].map((s) => String(s || "").toLowerCase()).includes(String(currentCourse || "").toLowerCase())
   );
   const dynamicCoursePayable = studentCourseObj ? feeWithGst(studentCourseObj.fee || 0) : 0;
-  const [studentTab, setStudentTab] = useState<"sum" | "journey" | "admission" | "pay" | "emi" | "internship" | "feedback" | "cert">("sum");
+  const [studentTab, setStudentTab] = useState<"sum" | "docs" | "journey" | "admission" | "pay" | "emi" | "internship" | "feedback" | "cert">("sum");
   const [leadTab, setLeadTab] = useState<"info" | "docs" | "act">("info");
   const [editMode, setEditMode] = useState(profile?.mode === "edit");
   const [paymentModeDraft, setPaymentModeDraft] = useState("Cash");
   const [paymentPurposeDraft, setPaymentPurposeDraft] = useState("Fees Installment");
+  const [paymentAmountDraft, setPaymentAmountDraft] = useState("");
   const profileStudent = profile?.type === "student" ? profile.data : null;
   const profileNetFee = profileStudent ? Math.max(0, (profileStudent.totalFee || 0) - (profileStudent.discountAmount || 0)) : 0;
   const profileDue = profileStudent ? dueAmount(profileStudent) : 0;
@@ -8554,22 +12555,47 @@ function ProfilePanel({ profile, user, accessCount, canManageFees, canManageSett
   const [editBatchDraft, setEditBatchDraft] = useState("");
   const [editTotalFeeDraft, setEditTotalFeeDraft] = useState("0");
   const [editExpectedFeeDraft, setEditExpectedFeeDraft] = useState("0");
+  const [editStatusDraft, setEditStatusDraft] = useState("");
+  const [editDropoutReasonDraft, setEditDropoutReasonDraft] = useState("");
+  const [editDropoutNotesDraft, setEditDropoutNotesDraft] = useState("");
+  const [dropoutModalOpen, setDropoutModalOpen] = useState(false);
   const [internshipStartDraft, setInternshipStartDraft] = useState(dateInputValue());
   const [internshipEndDraft, setInternshipEndDraft] = useState(dateInputValueFromDuration(dateInputValue(), 3, "months"));
   const [internshipDurationDraft, setInternshipDurationDraft] = useState("3");
   const [internshipDurationUnitDraft, setInternshipDurationUnitDraft] = useState("months");
   const [paymentProofFiles, setPaymentProofFiles] = useState<File[]>([]);
+  const [refreshingPaymentStatus, setRefreshingPaymentStatus] = useState(false);
   const profileId = profile?.data._id;
+
+  const handleRefreshPaymentStatus = async () => {
+    const studentId = profile?.type === "student" ? profile.data._id : undefined;
+    if (refreshingPaymentStatus || !studentId) return;
+    setRefreshingPaymentStatus(true);
+    try {
+      if (onStudentRefresh) {
+        await onStudentRefresh(studentId);
+        toast.success("Payment verification status updated");
+      }
+    } catch {
+      toast.error("Unable to refresh payment status");
+    } finally {
+      setRefreshingPaymentStatus(false);
+    }
+  };
   useEffect(() => {
     setStudentTab("sum");
     setLeadTab("info");
     setEditMode(profile?.mode === "edit");
     setPaymentProofFiles([]);
+    setDropoutModalOpen(false);
     const initCourse = profile ? profile.data.course || "" : "";
     setEditCourseDraft(initCourse);
     setEditCentreDraft(profile ? profile.data.centre || "" : "");
     setEditSourceDraft(profile?.type === "lead" ? (profile.data.source || "") : "");
     setEditBatchDraft(profile?.type === "student" ? profile.data.batch || "" : "");
+    setEditStatusDraft(profile?.type === "student" ? normalizeStudentStatus(profile.data.status) : "");
+    setEditDropoutReasonDraft(profile?.type === "student" ? (profile.data.dropoutReason || "") : "");
+    setEditDropoutNotesDraft(profile?.type === "student" ? (profile.data.dropoutNotes || "") : "");
     const initCourseObj = allCourses.find((c) => [c.code, c.name].map((s) => String(s || "").toLowerCase()).includes(initCourse.toLowerCase()));
     const initCourseFee = initCourseObj ? feeWithGst(initCourseObj.fee || 0) : 0;
     setEditTotalFeeDraft(String(profile?.type === "student" ? (profile.data.totalFee || initCourseFee || 0) : 0));
@@ -8582,10 +12608,10 @@ function ProfilePanel({ profile, user, accessCount, canManageFees, canManageSett
   useEffect(() => {
     if (!profileStudent) return;
     const courseDurationMonths = Math.max(1, getCourseDurationMonths(profileStudent.course, allCourses.length ? allCourses : courses));
-    const months = courseDurationMonths;
+    const months = profileStudent.emiMonths || courseDurationMonths;
     const baseAmount = profileDue || profileNetFee || 0;
     setEmiMonthsDraft(String(months));
-    setEmiAmountDraft(String(months > 0 ? Math.floor(baseAmount / months) : 0));
+    setEmiAmountDraft(String(profileStudent.emiAmount || (months > 0 ? Math.floor(baseAmount / months) : 0)));
     setPaymentPurposeDraft(Number(profileStudent.paidAmount || 0) <= 0 ? "Seat Booking Amount" : "Fees Installment");
   }, [profileId, allCourses]);
   useEffect(() => {
@@ -8772,11 +12798,40 @@ function ProfilePanel({ profile, user, accessCount, canManageFees, canManageSett
             <div className="kv-row"><span className="k">City</span><span className="v">{lead.city || "-"}</span></div>
             <div className="kv-row"><span className="k">Expected fee</span><span className="v">{formatCurrency(lead.expectedFee || 0)}</span></div>
             <div className="field drawer-notes"><label>Stage</label><select value={lead.stage} onChange={(event) => onLeadPatch(lead._id, { stage: event.target.value })}>{stages.map((stage) => <option key={stage}>{stage}</option>)}</select></div>
-            <div className="field drawer-notes"><label>Notes</label><textarea value={lead.notes || ""} onChange={(event) => onLeadPatch(lead._id, { notes: event.target.value })} /></div>
+            <div className="field drawer-notes">
+              <label>Notes</label>
+              <div style={{ padding: "10px 12px", background: "var(--bg-card, #f8fafc)", border: "1px solid var(--border-soft, #e2e8f0)", borderRadius: "8px", fontSize: "12.5px", lineHeight: "1.6", color: "var(--text-900, #1e293b)" }}>
+                {lead.notes ? (
+                  lead.notes.split("\n").filter(Boolean).map((line: string, idx: number) => {
+                    const clean = line.replace(/^[🎓⚠️📘📗📙🏆]\s*/gu, "").trim();
+                    let icon = <FileText size={14} style={{ color: "#64748b", flexShrink: 0 }} />;
+                    if (/college/i.test(clean)) icon = <GraduationCap size={14} style={{ color: "#2563eb", flexShrink: 0 }} />;
+                    else if (/roll/i.test(clean)) icon = <FileText size={14} style={{ color: "#4f46e5", flexShrink: 0 }} />;
+                    else if (/stream/i.test(clean)) icon = <BookOpen size={14} style={{ color: "#0891b2", flexShrink: 0 }} />;
+                    else if (/parent/i.test(clean)) icon = <Users size={14} style={{ color: "#059669", flexShrink: 0 }} />;
+                    else if (/course/i.test(clean)) icon = <Award size={14} style={{ color: "#d97706", flexShrink: 0 }} />;
+                    else if (/campaign|utm/i.test(clean)) icon = <Activity size={14} style={{ color: "#7c3aed", flexShrink: 0 }} />;
+                    else if (/re-enquiry/i.test(clean)) icon = <RefreshCw size={14} style={{ color: "#ea580c", flexShrink: 0 }} />;
+
+                    return (
+                      <div key={idx} style={{ display: "flex", alignItems: "flex-start", gap: "8px", margin: "3px 0" }}>
+                        <span style={{ marginTop: "3px", display: "inline-flex" }}>{icon}</span>
+                        <span style={{ wordBreak: "break-word" }}>{clean}</span>
+                      </div>
+                    );
+                  })
+                ) : (
+                  <span style={{ color: "var(--text-400)" }}>No notes</span>
+                )}
+              </div>
+            </div>
           </div>}
           {leadTab === "docs" && <div className="dpane active">
-            <LeadDocumentRow label="Government proof" doc={lead.governmentProof} type="lead" id={lead._id} field="governmentProof" onPreview={onPreviewDocument} />
-            <LeadDocumentRow label="Qualification certificate" doc={lead.highestQualificationCertificate} type="lead" id={lead._id} field="highestQualificationCertificate" onPreview={onPreviewDocument} />
+            <div style={{ marginBottom: "14px", background: "#FAFBFD", padding: "10px 12px", borderRadius: "8px", border: "1px solid var(--border-soft)", fontSize: "12px", color: "var(--text-600)" }}>
+              Attach KYC & educational qualification documents for this lead. Supported: PDF, JPG, PNG, WEBP (Max 2 MB).
+            </div>
+            <LeadDocumentRow label="Government proof" doc={lead.governmentProof} type="lead" id={lead._id} field="governmentProof" onPreview={onPreviewDocument} onUpload={(field, file) => onUploadDocument("lead", lead._id, field, file)} />
+            <LeadDocumentRow label="Qualification certificate" doc={lead.highestQualificationCertificate} type="lead" id={lead._id} field="highestQualificationCertificate" onPreview={onPreviewDocument} onUpload={(field, file) => onUploadDocument("lead", lead._id, field, file)} />
           </div>}
           {leadTab === "act" && <div className="dpane active">
             <div style={{ marginBottom: "14px" }}>
@@ -8827,18 +12882,20 @@ function ProfilePanel({ profile, user, accessCount, canManageFees, canManageSett
   const normalizedStatus = normalizeStudentStatus(student.status);
   const canDecideFees = normalizedStatus !== "Enrolled";
   const feesReady = ["Fees Decided", "Fees Collected", "Active Student", "Course Completed", "Alumni"].includes(normalizedStatus);
+  const isFeeDecided = Boolean((student.totalFee && student.totalFee > 0) || feesReady);
+  const isFeeLockedForBranchStaff = false;
   const admissionPlanReady = Boolean(feesReady && student.admissionPaymentMode && netFee > 0);
   const lmsAccessBlockReason = !feesReady
     ? "Decide fees first"
     : !admissionPlanReady
       ? "Save final fee and payment plan"
-    : !student.admissionNumber
-      ? "Admission number required"
-      : !student.phone
-        ? "Registered phone required"
-        : !student.batch
-          ? "Batch assignment required"
-          : "";
+      : !student.admissionNumber
+        ? "Admission number required"
+        : !student.phone
+          ? "Registered phone required"
+          : !student.batch
+            ? "Batch assignment required"
+            : "";
   const lmsAccessReady = !lmsAccessBlockReason;
   const admissionTotalFee = Math.max(0, Number(admissionTotalFeeDraft || 0));
   const admissionDiscount = Math.max(0, Number(admissionDiscountDraft || 0));
@@ -8849,13 +12906,36 @@ function ProfilePanel({ profile, user, accessCount, canManageFees, canManageSett
   const admissionUpfrontAmount = isAdmissionPartialEmiPlan ? Math.max(0, Number(admissionUpfrontDraft || 0)) : 0;
   const admissionEmiBalance = Math.max(0, admissionNetFee - Math.max(student.paidAmount || 0, admissionUpfrontAmount));
   const internshipAssignment = student.internshipAssignment || null;
-  const tabs: { key: "sum" | "journey" | "admission" | "pay" | "emi" | "internship" | "feedback" | "cert"; label: string }[] = [
+  const tabs: { key: "sum" | "docs" | "journey" | "admission" | "pay" | "emi" | "internship" | "feedback" | "cert"; label: string }[] = [
     { key: "sum", label: "Summary" },
+    { key: "docs", label: "Documents" },
     { key: "journey", label: "Journey" },
     ...(canManageFees ? [{ key: "admission" as const, label: "Admission" }, { key: "pay" as const, label: "Payments" }, { key: "emi" as const, label: "EMI" }] : []),
     ...(canManageInternships ? [{ key: "internship" as const, label: "Internship" }] : []),
   ];
   const activeStudentTab = tabs.some((tab) => tab.key === studentTab) ? studentTab : "sum";
+  const suggestedPaymentAmount = useMemo(() => {
+    if (!student) return "";
+    if (paymentPurposeDraft === "Fees Installment" && emiBreakdown.isEmi) {
+      return emiBreakdown.currentDue ? String(emiBreakdown.currentDue) : "";
+    }
+    if (
+      (payments.length === 0 || paymentPurposeDraft === "Seat Booking Amount" || paymentPurposeDraft === "Admission Fee") &&
+      student.admissionUpfrontAmount &&
+      student.admissionUpfrontAmount > 0 &&
+      student.admissionUpfrontAmount <= due
+    ) {
+      return String(student.admissionUpfrontAmount);
+    }
+    if (payments.length === 0 && student.admissionPaymentMode === "Full Payment" && due > 0) {
+      return String(due);
+    }
+    return "";
+  }, [student, paymentPurposeDraft, emiBreakdown.isEmi, emiBreakdown.currentDue, payments.length, due]);
+
+  useEffect(() => {
+    setPaymentAmountDraft(suggestedPaymentAmount);
+  }, [suggestedPaymentAmount]);
   const recalculateEmiAmount = (monthsValue: string) => {
     const months = Math.max(1, Number(monthsValue || 0));
     return String(Math.floor((due || netFee || 0) / months));
@@ -8956,7 +13036,7 @@ function ProfilePanel({ profile, user, accessCount, canManageFees, canManageSett
       if (amount > emiBalance) return toast.error(`Monthly EMI cannot exceed EMI balance of ${formatCurrency(emiBalance)}`);
       if (!admissionNextEmiDateDraft) return toast.error("Next EMI date is required");
     }
-    onStudentPatch(student._id, {
+    const updates: Partial<Student> = {
       totalFee,
       discountAmount,
       admissionPaymentMode: paymentMode,
@@ -8966,7 +13046,32 @@ function ProfilePanel({ profile, user, accessCount, canManageFees, canManageSett
       emiAmount: isEmi ? amount : 0,
       nextEmiDate: isEmi ? admissionNextEmiDateDraft : "",
       status: ["Enrolled", "Admission Completed", "Admission"].includes(student.status) ? "Fees Decided" : normalizeStudentStatus(student.status),
-    });
+    };
+    if (!isSuperAdmin) {
+      updates.feeApproval = {
+        status: "pending",
+        requestedFee: netFee,
+        requestedDiscount: discountAmount,
+        reason: student.feeApproval?.reason || (discountAmount > 0 ? "Admission fee concession" : "Fee plan decided"),
+        standardCourseFee: dynamicCoursePayable || totalFee,
+        requestedBy: user?.name || user?.email || "Staff",
+        requestedByRole: user?.role || "counsellor",
+        requestedAt: new Date().toISOString(),
+      };
+    } else {
+      updates.feeApproval = {
+        status: "approved",
+        requestedFee: netFee,
+        requestedDiscount: discountAmount,
+        reason: "Approved by Super Admin",
+        standardCourseFee: dynamicCoursePayable || totalFee,
+        reviewedBy: user?.name || "Super Admin",
+        reviewedByRole: user?.role || "superadmin",
+        reviewedAt: new Date().toISOString(),
+      };
+    }
+    onStudentPatch(student._id, updates);
+    toast.success(isSuperAdmin ? "Fee plan saved successfully" : "Fee plan saved & submitted for Super Admin approval");
   };
   const completeAdmission = () => {
     const cName = admissionCounsellorDraft.trim();
@@ -8982,8 +13087,8 @@ function ProfilePanel({ profile, user, accessCount, canManageFees, canManageSett
   const saveEmiPlan = (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
     const form = Object.fromEntries(new FormData(event.currentTarget).entries());
-    const months = Number(form.emiMonths || 0);
-    const amount = Number(form.emiAmount || 0) || Number(recalculateEmiAmount(String(months)));
+    const months = Number(form.emiMonths || emiMonthsDraft || student.emiMonths || 1);
+    const amount = Number(form.emiAmount || emiAmountDraft || student.emiAmount || 0) || Number(recalculateEmiAmount(String(months)));
     if (due <= 0) return toast.error("Cannot save EMI plan because fee is fully paid");
     if (amount <= 0) return toast.error("Monthly EMI amount is required");
     if (amount > due) return toast.error(`Monthly EMI cannot exceed pending due of ${formatCurrency(due)}`);
@@ -8991,7 +13096,7 @@ function ProfilePanel({ profile, user, accessCount, canManageFees, canManageSett
       emiEnabled: true,
       emiMonths: months,
       emiAmount: amount,
-      nextEmiDate: String(form.nextEmiDate || ""),
+      nextEmiDate: String(form.nextEmiDate || student.nextEmiDate || ""),
     });
   };
   const closeEmiPlan = () => {
@@ -9008,20 +13113,27 @@ function ProfilePanel({ profile, user, accessCount, canManageFees, canManageSett
     const saveStudentEdit = (event: FormEvent<HTMLFormElement>) => {
       event.preventDefault();
       const form = Object.fromEntries(new FormData(event.currentTarget).entries());
-      const totalFee = Number(form.totalFee || 0);
-      const discountAmount = Number(form.discountAmount || 0);
+      const totalFee = isFeeLockedForBranchStaff ? Number(student.totalFee || 0) : Number(form.totalFee || 0);
+      const discountAmount = isFeeLockedForBranchStaff ? Number(student.discountAmount || 0) : Number(form.discountAmount || 0);
       const paidAmount = Number(form.paidAmount || 0);
       const editDue = Math.max(0, totalFee - discountAmount - paidAmount);
       const emiEnabled = form.emiEnabled === "true";
       const emiAmount = Number(form.emiAmount || 0);
       if (canManageFees) {
+        if (isFeeLockedForBranchStaff && (Number(form.totalFee || 0) !== Number(student.totalFee || 0) || Number(form.discountAmount || 0) !== Number(student.discountAmount || 0))) {
+          return toast.error("Fees are locked. Submit a Concession Request for any fee modifications.");
+        }
         if (paidAmount > Math.max(0, totalFee - discountAmount)) return toast.error("Paid amount cannot exceed net course fee");
         if (emiEnabled && editDue <= 0) return toast.error("Cannot enable EMI when fee is fully paid");
         if (emiAmount > editDue && editDue > 0) return toast.error(`Monthly EMI cannot exceed pending due of ${formatCurrency(editDue)}`);
       }
-      const nextStatus = String(form.status || student.status);
+      const nextStatus = String(editStatusDraft || form.status || student.status);
       const statusReason = studentStatusBlockReason({ ...student, totalFee, discountAmount, paidAmount }, nextStatus);
       if (statusReason) return toast.error(statusReason);
+      if (normalizeStudentStatus(nextStatus) === "Dropped") {
+        const reason = String(form.dropoutReason || editDropoutReasonDraft || "").trim();
+        if (!reason) return toast.error("Dropout reason is mandatory when marking a student as Dropped");
+      }
       const updates: Partial<Student> = {
         fullName: String(form.fullName || ""),
         phone: String(form.phone || ""),
@@ -9034,6 +13146,10 @@ function ProfilePanel({ profile, user, accessCount, canManageFees, canManageSett
         batch: String(form.batch || ""),
         batchCommenceDate: String(form.batchCommenceDate || ""),
         status: nextStatus,
+        ...(normalizeStudentStatus(nextStatus) === "Dropped" ? {
+          dropoutReason: String(form.dropoutReason || editDropoutReasonDraft || ""),
+          dropoutNotes: String(form.dropoutNotes || editDropoutNotesDraft || ""),
+        } : {}),
         ...(canManageSettings ? { counsellor: String(form.counsellor || "") } : {}),
         ...(canAssignTeachers ? { teacher: String(form.teacher || "") } : {}),
       };
@@ -9078,10 +13194,63 @@ function ProfilePanel({ profile, user, accessCount, canManageFees, canManageSett
           <EditField name="batchCommenceDate" label="Batch start date" type="date" defaultValue={dateInputValue(batchOptions.find((b) => b.name === (editBatchDraft || student.batch))?.commenceDate || student.batchCommenceDate || "")} />
           {canManageSettings && <EditField name="counsellor" label="Counsellor" defaultValue={student.counsellor} />}
           {canAssignTeachers && <div className="field"><label>Teacher</label><select name="teacher" defaultValue={student.teacher || ""}><option value="">Unassigned</option>{teachers.map((teacher) => <option key={teacher.email}>{teacher.name}</option>)}</select></div>}
-          <div className="field"><label>Status</label><select name="status" defaultValue={normalizeStudentStatus(student.status)}>{studentStatuses.map((status) => <option key={status} value={status}>{studentStatusLabel(status)}</option>)}</select><span className="field-help">Alumni is available only after fee clearance and certificate issue.</span></div>
+          <div className="field">
+            <label>Status</label>
+            <select name="status" value={editStatusDraft} onChange={(e) => setEditStatusDraft(e.target.value)}>
+              {studentStatuses.map((status) => (
+                <option key={status} value={status}>{studentStatusLabel(status)}</option>
+              ))}
+            </select>
+            <span className="field-help">Alumni is available only after fee clearance and certificate issue.</span>
+          </div>
+
+          {normalizeStudentStatus(editStatusDraft) === "Dropped" && (
+            <>
+              <div className="field">
+                <RequiredLabel required>Dropout reason</RequiredLabel>
+                <select
+                  name="dropoutReason"
+                  value={editDropoutReasonDraft}
+                  onChange={(e) => setEditDropoutReasonDraft(e.target.value)}
+                  required
+                >
+                  <option value="" disabled>-- Select mandatory dropout reason --</option>
+                  {dropoutReasonOptions.map((reason) => (
+                    <option key={reason} value={reason}>{reason}</option>
+                  ))}
+                </select>
+              </div>
+              <div className="field full">
+                <label>Dropout notes</label>
+                <textarea
+                  name="dropoutNotes"
+                  value={editDropoutNotesDraft}
+                  onChange={(e) => setEditDropoutNotesDraft(e.target.value)}
+                  placeholder="Additional details regarding student dropout..."
+                  rows={2}
+                />
+              </div>
+            </>
+          )}
+
           {canManageFees && <>
-            <EditField name="totalFee" label="Total fee" type="number" value={editTotalFeeDraft} onChange={(e) => setEditTotalFeeDraft((e.target as HTMLInputElement).value)} />
-            <EditField name="discountAmount" label="Discount" type="number" defaultValue={String(student.discountAmount || 0)} />
+            <EditField
+              name="totalFee"
+              label="Total fee"
+              type="number"
+              value={isFeeLockedForBranchStaff ? String(student.totalFee || 0) : editTotalFeeDraft}
+              onChange={(e) => setEditTotalFeeDraft((e.target as HTMLInputElement).value)}
+              readOnly={isFeeLockedForBranchStaff}
+              helpText={isFeeLockedForBranchStaff ? "Fee is locked. Submit a Concession Request to modify." : undefined}
+            />
+            <EditField
+              name="discountAmount"
+              label="Discount"
+              type="number"
+              defaultValue={String(student.discountAmount || 0)}
+              readOnly={isFeeLockedForBranchStaff}
+              helpText={isFeeLockedForBranchStaff ? "Discount is locked. Submit a Concession Request to modify." : undefined}
+            />
             <EditField name="paidAmount" label="Paid amount" type="number" defaultValue={String(student.paidAmount || 0)} />
             <div className="field"><label>EMI enabled</label><select name="emiEnabled" defaultValue={student.emiEnabled ? "true" : ""}><option value="">No</option><option value="true">Yes</option></select></div>
             <EditField name="emiMonths" label="EMI months" type="number" defaultValue={String(student.emiMonths || courseDurationMonths)} />
@@ -9116,6 +13285,7 @@ function ProfilePanel({ profile, user, accessCount, canManageFees, canManageSett
           <div className="kv-row"><span className="k">Progress</span><span className="v"><span className="progress-track profile-progress"><span className="progress-fill" style={{ width: `${paidPct}%` }} /></span> {paidPct}%</span></div>
           <div className="kv-row"><span className="k">Due</span><span className="v">{formatCurrency(due || Math.max(0, (student.totalFee || dynamicCoursePayable || 0) - (student.discountAmount || 0) - (student.paidAmount || 0)))}</span></div>
           <div className="kv-row"><span className="k">Discount</span><span className="v">{formatCurrency(student.discountAmount || 0)}</span></div>
+          <div className="kv-row"><span className="k">Admission date</span><span className="v mono">{student.createdAt ? formatDate(student.createdAt) : "-"}</span></div>
           <div className="kv-row"><span className="k">Course</span><span className="v">{courseShortCode(student.course)}</span></div>
           <div className="kv-row"><span className="k">Centre</span><span className="v">{student.centre || "-"}</span></div>
           <div className="kv-row"><span className="k">Phone</span><span className="v">{student.phone || "-"}</span></div>
@@ -9128,7 +13298,123 @@ function ProfilePanel({ profile, user, accessCount, canManageFees, canManageSett
           {student.callerName && <div className="kv-row"><span className="k">Caller</span><span className="v">{student.callerName}</span></div>}
           <div className="kv-row"><span className="k">Teacher</span><span className="v">{student.teacher || "Unassigned"}</span></div>
           <div className="kv-row"><span className="k">LMS access</span><span className="v">{student.lmsAccessEnabled ? <span className="badge badge-green">Enabled</span> : <span className="badge badge-gray">Not generated</span>}</span></div>
-          <div className="field drawer-notes"><label>Status</label><select value={normalizedStatus} onChange={(event) => { const reason = studentStatusBlockReason(student, event.target.value); if (reason) { toast.error(reason); return; } onStudentPatch(student._id, { status: event.target.value }); }}>{studentStatuses.map((status) => <option key={status} value={status}>{studentStatusLabel(status)}</option>)}</select></div>
+
+          {student.feeApproval?.status === "pending" && (
+            <div style={{ background: "#FFFBEB", border: "1px solid #FCD34D", borderRadius: 10, padding: "12px 14px", margin: "14px 0" }}>
+              <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", flexWrap: "wrap", gap: 8, marginBottom: 6 }}>
+                <div style={{ display: "flex", alignItems: "center", gap: 6, color: "#B45309", fontWeight: 700, fontSize: 13 }}>
+                  <Clock size={15} /> Fee Concession Pending Approval
+                </div>
+                {(isHeadSuperAdmin || isCenterAdmin) && (
+                  <div style={{ display: "inline-flex", gap: 6 }}>
+                    <button
+                      type="button"
+                      className="btn btn-xs btn-primary"
+                      disabled={feeApprovalReviewingId === student._id}
+                      onClick={() => onReviewFeeApproval?.(student._id, "approve")}
+                      style={{ background: "#16A34A", borderColor: "#16A34A" }}
+                    >
+                      <Check size={12} /> Approve
+                    </button>
+                    <button
+                      type="button"
+                      className="btn btn-xs btn-danger"
+                      disabled={feeApprovalReviewingId === student._id}
+                      onClick={() => onRejectPrompt?.(student)}
+                    >
+                      <X size={12} /> Reject
+                    </button>
+                  </div>
+                )}
+              </div>
+              <div style={{ fontSize: 12.5, color: "var(--text-main)" }}>
+                <strong>Proposed Fee:</strong> {formatCurrency(student.feeApproval.requestedFee || student.totalFee || 0)}
+                {Number(student.feeApproval.requestedDiscount || 0) > 0 && <span> (Discount: {formatCurrency(student.feeApproval.requestedDiscount || 0)})</span>}
+              </div>
+              <div style={{ fontSize: 12, color: "var(--text-muted)", marginTop: 3 }}>
+                <strong>Reason:</strong> "{student.feeApproval.reason || "Fee concession"}"
+              </div>
+              <div className="cell-sub" style={{ marginTop: 4 }}>
+                Requested by {student.feeApproval.requestedBy || "Staff"} ({student.feeApproval.requestedByRole || "admin"}) {student.feeApproval.requestedAt ? `on ${formatDate(student.feeApproval.requestedAt)}` : ""}
+              </div>
+            </div>
+          )}
+
+          {student.feeApproval?.status === "approved" && (
+            <div style={{ background: "#F0FDF4", border: "1px solid #BBF7D0", borderRadius: 8, padding: "8px 12px", margin: "10px 0", fontSize: 12, color: "#15803D", display: "flex", alignItems: "center", gap: 6 }}>
+              <CheckCircle2 size={14} /> Concession approved by {student.feeApproval.reviewedBy || "Admin"} ({student.feeApproval.reviewedByRole || "superadmin"}) {student.feeApproval.reviewedAt ? `on ${formatDate(student.feeApproval.reviewedAt)}` : ""}
+            </div>
+          )}
+
+          {student.feeApproval?.status === "rejected" && (
+            <div style={{ background: "#FEF2F2", border: "1px solid #FECACA", borderRadius: 8, padding: "8px 12px", margin: "10px 0", fontSize: 12, color: "#B91C1C", display: "flex", alignItems: "center", justifyContent: "space-between", flexWrap: "wrap", gap: 6 }}>
+              <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
+                <X size={14} /> Concession rejected: "{student.feeApproval.rejectionReason || "Declined by management"}"
+              </div>
+              {onRequestFeeApprovalModal && (
+                <button type="button" className="btn btn-xs btn-soft" onClick={() => onRequestFeeApprovalModal(student)}>
+                  Re-submit
+                </button>
+              )}
+            </div>
+          )}
+
+          {normalizedStatus === "Dropped" && (
+            <div style={{ background: "var(--red-50)", border: "1px solid #FCA5A5", borderRadius: 10, padding: "12px 14px", margin: "14px 0" }}>
+              <div style={{ display: "flex", alignItems: "center", gap: 8, color: "var(--red-700)", fontWeight: 700, fontSize: 13, marginBottom: 4 }}>
+                <AlertTriangle size={15} /> Student Dropped Out
+              </div>
+              <div style={{ fontSize: 12.5, color: "var(--text-900)" }}>
+                <strong>Reason:</strong> {student.dropoutReason || "Not specified"}
+              </div>
+              {student.dropoutNotes && (
+                <div style={{ fontSize: 11.5, color: "var(--text-600)", marginTop: 4 }}>
+                  <strong>Notes:</strong> {student.dropoutNotes}
+                </div>
+              )}
+              {student.dropoutDate && (
+                <div style={{ fontSize: 11, color: "var(--text-400)", marginTop: 4 }}>
+                  Recorded on {formatDate(student.dropoutDate)}
+                </div>
+              )}
+            </div>
+          )}
+
+          <div className="field drawer-notes">
+            <label>Status</label>
+            <select
+              value={normalizedStatus}
+              onChange={(event) => {
+                const nextVal = event.target.value;
+                if (nextVal === "Dropped") {
+                  setDropoutModalOpen(true);
+                  return;
+                }
+                const reason = studentStatusBlockReason(student, nextVal);
+                if (reason) {
+                  toast.error(reason);
+                  return;
+                }
+                onStudentPatch(student._id, { status: nextVal });
+              }}
+            >
+              {studentStatuses.map((status) => (
+                <option key={status} value={status}>{studentStatusLabel(status)}</option>
+              ))}
+            </select>
+          </div>
+
+          {dropoutModalOpen && (
+            <DropoutModal
+              student={student}
+              onConfirm={(reason, notes) => {
+                onStudentPatch(student._id, { status: "Dropped", dropoutReason: reason, dropoutNotes: notes });
+                setDropoutModalOpen(false);
+                toast.success(`${student.fullName} recorded as Dropped Out`);
+              }}
+              onClose={() => setDropoutModalOpen(false)}
+            />
+          )}
 
           <div style={{ marginTop: 18, borderTop: "1px solid var(--border)", paddingTop: 14 }}>
             <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 10 }}>
@@ -9176,6 +13462,31 @@ function ProfilePanel({ profile, user, accessCount, canManageFees, canManageSett
             )}
           </div>
         </div>}
+        {activeStudentTab === "docs" && (
+          <div className="dpane active">
+            <div style={{ marginBottom: "14px", background: "#FAFBFD", padding: "10px 12px", borderRadius: "8px", border: "1px solid var(--border-soft)", fontSize: "12px", color: "var(--text-600)" }}>
+              Upload or update candidate KYC & educational qualification records. Supported: PDF, JPG, PNG, WEBP (Max 2 MB).
+            </div>
+            <LeadDocumentRow
+              label="Government proof"
+              doc={student.governmentProof}
+              type="student"
+              id={student._id}
+              field="governmentProof"
+              onPreview={onPreviewDocument}
+              onUpload={(field, file) => onUploadDocument("student", student._id, field, file)}
+            />
+            <LeadDocumentRow
+              label="Qualification certificate"
+              doc={student.highestQualificationCertificate}
+              type="student"
+              id={student._id}
+              field="highestQualificationCertificate"
+              onPreview={onPreviewDocument}
+              onUpload={(field, file) => onUploadDocument("student", student._id, field, file)}
+            />
+          </div>
+        )}
         {activeStudentTab === "journey" && <div className="dpane active">{studentJourneyStages.map((stage) => {
           const currentIndex = studentJourneyStages.indexOf(normalizedStatus);
           const done = currentIndex >= 0 && studentJourneyStages.indexOf(stage) <= currentIndex;
@@ -9289,6 +13600,47 @@ function ProfilePanel({ profile, user, accessCount, canManageFees, canManageSett
               )}
             </div>
           )}
+          {student.feeApproval?.status === "pending" && (
+            <div style={{ background: "#FFFBEB", border: "1px solid #FCD34D", borderRadius: 10, padding: "12px 14px", marginBottom: 14 }}>
+              <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", flexWrap: "wrap", gap: 8, marginBottom: 6 }}>
+                <div style={{ display: "flex", alignItems: "center", gap: 6, color: "#B45309", fontWeight: 700, fontSize: 13 }}>
+                  <Clock size={15} /> Fee Concession Pending Review
+                </div>
+                {(isHeadSuperAdmin || isCenterAdmin) && (
+                  <div style={{ display: "inline-flex", gap: 6 }}>
+                    <button
+                      type="button"
+                      className="btn btn-xs btn-primary"
+                      disabled={feeApprovalReviewingId === student._id}
+                      onClick={() => onReviewFeeApproval?.(student._id, "approve")}
+                      style={{ background: "#16A34A", borderColor: "#16A34A" }}
+                    >
+                      <Check size={12} /> Approve
+                    </button>
+                    <button
+                      type="button"
+                      className="btn btn-xs btn-danger"
+                      disabled={feeApprovalReviewingId === student._id}
+                      onClick={() => onRejectPrompt?.(student)}
+                    >
+                      <X size={12} /> Reject
+                    </button>
+                  </div>
+                )}
+              </div>
+              <div style={{ fontSize: 12.5, color: "var(--text-main)" }}>
+                <strong>Proposed Fee:</strong> {formatCurrency(student.feeApproval.requestedFee || student.totalFee || 0)}
+                {Number(student.feeApproval.requestedDiscount || 0) > 0 && <span> (Discount: {formatCurrency(student.feeApproval.requestedDiscount || 0)})</span>}
+              </div>
+              <div style={{ fontSize: 12, color: "var(--text-muted)", marginTop: 3 }}>
+                <strong>Reason:</strong> "{student.feeApproval.reason || "Fee concession"}"
+              </div>
+              <div className="cell-sub" style={{ marginTop: 4 }}>
+                Requested by {student.feeApproval.requestedBy || "Staff"} ({student.feeApproval.requestedByRole || "admin"}) {student.feeApproval.requestedAt ? `on ${formatDate(student.feeApproval.requestedAt)}` : ""}
+              </div>
+            </div>
+          )}
+
           <div className="grid-metrics profile-metrics">
             <MetricCard label="Final payable" value={formatCurrency(admissionNetFee)} dot="#4F6BFF" delta={`discount ${formatCurrency(admissionDiscount)}`} />
             <MetricCard label={isAdmissionPartialEmiPlan ? "EMI balance" : "Pending due"} value={formatCurrency(isAdmissionPartialEmiPlan ? admissionEmiBalance : admissionDue)} dot="#EF4444" delta={isAdmissionPartialEmiPlan ? `partial ${formatCurrency(admissionUpfrontAmount)}` : `paid ${formatCurrency(student.paidAmount || 0)}`} />
@@ -9334,15 +13686,35 @@ function ProfilePanel({ profile, user, accessCount, canManageFees, canManageSett
                 </span>
               )}
             </div>
-            <div className="field"><RequiredLabel>Discount</RequiredLabel><input name="discountAmount" type="number" min="0" max={admissionTotalFee || undefined} step="1" disabled={!canDecideFees} value={admissionDiscountDraft} onChange={(event) => { const val = event.target.value; setAdmissionDiscountDraft(val); updateAdmissionEmi(admissionTotalFeeDraft, val, admissionUpfrontDraft, admissionPaymentModeDraft); }} /></div>
+            <div className="field">
+              <RequiredLabel>Discount</RequiredLabel>
+              <input
+                name="discountAmount"
+                type="number"
+                min="0"
+                max={admissionTotalFee || undefined}
+                step="1"
+                disabled={!canDecideFees}
+                value={admissionDiscountDraft}
+                onChange={(event) => {
+                  const val = event.target.value;
+                  setAdmissionDiscountDraft(val);
+                  updateAdmissionEmi(admissionTotalFeeDraft, val, admissionUpfrontDraft, admissionPaymentModeDraft);
+                }}
+              />
+            </div>
             <div className="field"><RequiredLabel required>Fee payment plan</RequiredLabel><select name="admissionPaymentMode" required disabled={!canDecideFees} value={admissionPaymentModeDraft} onChange={(event) => recalcEmiOnModeChange(event.target.value)}>{admissionPaymentModes.map((mode) => <option key={mode}>{mode}</option>)}</select></div>
             {isAdmissionPartialEmiPlan && <div className="field"><RequiredLabel required>Upfront / partial amount</RequiredLabel><input name="admissionUpfrontAmount" type="number" min="1" max={admissionNetFee ? admissionNetFee - 1 : undefined} required disabled={!canDecideFees} value={admissionUpfrontDraft} onChange={(event) => { const value = event.target.value; setAdmissionUpfrontDraft(value); updateAdmissionEmi(admissionTotalFeeDraft, admissionDiscountDraft, value, admissionPaymentModeDraft); }} /><span className="field-help">Record this actual payment from the Payments tab after saving admission.</span></div>}
             {isAdmissionEmiPlan && <>
-              <div className="field"><RequiredLabel required>EMI months</RequiredLabel><input name="emiMonths" type="number" required readOnly disabled value={admissionEmiMonthsDraft} style={{ background: "var(--surface-2, #f3f4f6)", cursor: "not-allowed" }} /><span className="field-help">Auto-set from course duration ({admissionEmiMonthsDraft} {Number(admissionEmiMonthsDraft) === 1 ? "month" : "months"}) — not editable</span></div>
-              <div className="field"><RequiredLabel required>Monthly EMI (auto-calculated)</RequiredLabel><input name="emiAmount" type="number" required readOnly disabled value={admissionEmiAmountDraft} style={{ background: "var(--surface-2, #f3f4f6)", cursor: "not-allowed" }} /><span className="field-help">{isAdmissionPartialEmiPlan ? "EMI balance" : "Pending due"}: {formatCurrency(isAdmissionPartialEmiPlan ? admissionEmiBalance : admissionDue)} / {admissionEmiMonthsDraft} {Number(admissionEmiMonthsDraft) === 1 ? "month" : "months"}{(isAdmissionPartialEmiPlan ? admissionEmiBalance : admissionDue) - (Number(admissionEmiAmountDraft || 0) * Number(admissionEmiMonthsDraft || 1)) > 0 ? ` (₹${(isAdmissionPartialEmiPlan ? admissionEmiBalance : admissionDue) - (Number(admissionEmiAmountDraft || 0) * Number(admissionEmiMonthsDraft || 1))} adjusted in final month)` : ""}</span></div>
+              <div className="field"><RequiredLabel required>EMI months</RequiredLabel><input name="emiMonths" type="number" required readOnly value={admissionEmiMonthsDraft} style={{ background: "var(--surface-2, #f3f4f6)", cursor: "not-allowed" }} /><span className="field-help">Auto-set from course duration ({admissionEmiMonthsDraft} {Number(admissionEmiMonthsDraft) === 1 ? "month" : "months"}) — not editable</span></div>
+              <div className="field"><RequiredLabel required>Monthly EMI (auto-calculated)</RequiredLabel><input name="emiAmount" type="number" required readOnly value={admissionEmiAmountDraft} style={{ background: "var(--surface-2, #f3f4f6)", cursor: "not-allowed" }} /><span className="field-help">{isAdmissionPartialEmiPlan ? "EMI balance" : "Pending due"}: {formatCurrency(isAdmissionPartialEmiPlan ? admissionEmiBalance : admissionDue)} / {admissionEmiMonthsDraft} {Number(admissionEmiMonthsDraft) === 1 ? "month" : "months"}{(isAdmissionPartialEmiPlan ? admissionEmiBalance : admissionDue) - (Number(admissionEmiAmountDraft || 0) * Number(admissionEmiMonthsDraft || 1)) > 0 ? ` (₹${(isAdmissionPartialEmiPlan ? admissionEmiBalance : admissionDue) - (Number(admissionEmiAmountDraft || 0) * Number(admissionEmiMonthsDraft || 1))} adjusted in final month)` : ""}</span></div>
               <div className="field"><RequiredLabel required>Next EMI date</RequiredLabel><input name="nextEmiDate" type="date" required disabled={!canDecideFees} value={admissionNextEmiDateDraft} onChange={(event) => setAdmissionNextEmiDateDraft(event.target.value)} /></div>
             </>}
-            <div className="profile-edit-actions"><button className="btn btn-primary" disabled={!canDecideFees}><CheckCircle2 size={15} /> Save fees decided</button></div>
+            <div className="profile-edit-actions" style={{ display: "flex", gap: 10, flexWrap: "wrap", alignItems: "center" }}>
+              <button className="btn btn-primary" disabled={!canDecideFees}>
+                <CheckCircle2 size={15} /> {isSuperAdmin ? "Save fee plan" : "Save & Request Approval"}
+              </button>
+            </div>
           </form>
           <div className="kv-row"><span className="k">Admission finalized</span><span className="v">{student.admissionFinalizedAt ? `${formatDate(student.admissionFinalizedAt)} by ${student.admissionFinalizedBy || "Admin"}` : "Not yet"}</span></div>
           <div className="empty-state paid-empty lms-access-card">
@@ -9362,87 +13734,614 @@ function ProfilePanel({ profile, user, accessCount, canManageFees, canManageSett
             )}
           </div>
         </div>}
-        {activeStudentTab === "pay" && <div className="dpane active">
-          <div className="table-wrap"><table><thead><tr><th>#</th><th>Date</th><th>Payment for</th><th>Mode</th><th>Reference</th><th>Amount</th><th>Recorded by</th><th>Receipt</th><th>Proof</th></tr></thead><tbody>{payments.map((payment, index) => <tr key={`${payment.paidAt || index}-${payment.amount || 0}`}><td>{index + 1}</td><td className="mono">{formatDate(payment.paidAt)}</td><td>{normalizePaymentPurpose(payment.paymentPurpose, payment.mode)}{payment.emiReference && <div className="cell-sub mono">{payment.emiReference}</div>}</td><td>{payment.mode || "-"}</td><td className="mono">{payment.transactionId || "-"}{payment.loanProviderName && <div className="cell-sub">{payment.loanProviderName}</div>}</td><td className="mono">{formatCurrency(payment.amount || 0)}</td><td>{payment.by || "-"}</td><td className="mono">{paymentReceiptNumber(student, index)}</td><td>{(() => {
-            const proofs = (payment.proofs && payment.proofs.length > 0) ? payment.proofs : (payment.proof?.storedName ? [payment.proof] : []);
-            if (!proofs.length) return <span className="cell-sub">Missing</span>;
-            if (proofs.length === 1) {
-              return (
-                <div className="action-icons" style={{ display: "inline-flex", gap: "4px", alignItems: "center" }}>
-                  <button type="button" className="action-icon-btn action-icon-primary" title={proofs[0].originalName ? `Preview: ${proofs[0].originalName}` : "Preview proof"} onClick={() => onPreviewPaymentProof?.(student, payment, index, 0)}>
-                    <Eye size={14} />
-                  </button>
-                  <button type="button" className="action-icon-btn" title={proofs[0].originalName || "Download proof"} onClick={() => onDownloadPaymentProof(student, payment, index, 0)}>
-                    <Download size={14} />
-                  </button>
-                </div>
-              );
-            }
-            return (
-              <div style={{ display: "flex", gap: "4px", flexWrap: "wrap", alignItems: "center" }}>
-                {proofs.map((p, pIdx) => (
-                  <div key={pIdx} style={{ display: "inline-flex", alignItems: "center", border: "1px solid var(--border-color, #e2e8f0)", borderRadius: "6px", overflow: "hidden" }}>
-                    <button type="button" className="btn btn-sm btn-ghost" style={{ padding: "2px 6px", fontSize: "11px", height: "24px", display: "inline-flex", alignItems: "center", gap: "3px", borderRadius: 0 }} title={`Preview: ${p.originalName || `#${pIdx + 1}`}`} onClick={() => onPreviewPaymentProof?.(student, payment, index, pIdx)}>
-                      <Eye size={12} /> #{pIdx + 1}
-                    </button>
-                    <button type="button" className="btn btn-sm btn-ghost" style={{ padding: "2px 5px", fontSize: "11px", height: "24px", borderLeft: "1px solid var(--border-color, #e2e8f0)", borderRadius: 0 }} title={`Download: ${p.originalName || `#${pIdx + 1}`}`} onClick={() => onDownloadPaymentProof(student, payment, index, pIdx)}>
-                      <Download size={11} />
-                    </button>
+        {activeStudentTab === "pay" && (() => {
+          const approvedPayments = payments.filter((p) => (p.status || "approved") === "approved");
+          const pendingPayments = payments.filter((p) => p.status === "pending");
+          const approvedPaidTotal = approvedPayments.reduce((sum, p) => sum + Number(p.amount || 0), 0);
+          const pendingPaidTotal = pendingPayments.reduce((sum, p) => sum + Number(p.amount || 0), 0);
+          const totalFeeDecided = Number(netFee || student.totalFee || 0);
+
+          return (
+            <div className="dpane active" style={{ display: "flex", flexDirection: "column", gap: 16 }}>
+              {/* Financial KPI Summary Cards - Matching Project Dashboard Metric Cards */}
+              <div className="grid-metrics" style={{
+                display: "grid",
+                gridTemplateColumns: "repeat(auto-fit, minmax(140px, 1fr))",
+                gap: 12,
+                marginBottom: 0
+              }}>
+                <div className="metric-card" style={{ padding: "14px 16px" }}>
+                  <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
+                    <span className="m-label" style={{ fontSize: 11.5, color: "var(--text-600)", fontWeight: 600 }}>Total Course Fee</span>
+                    <span style={{ width: 30, height: 30, borderRadius: 8, background: "var(--blue-50)", color: "var(--indigo-600)", display: "inline-flex", alignItems: "center", justifyContent: "center" }}>
+                      <CreditCard size={15} />
+                    </span>
                   </div>
-                ))}
+                  <div className="m-value" style={{ fontSize: 21, fontWeight: 800, marginTop: 8, color: "var(--text-900)" }}>
+                    {formatCurrency(totalFeeDecided)}
+                  </div>
+                  <div className="m-delta" style={{ display: "flex", alignItems: "center", gap: 6, color: "var(--text-600)", marginTop: 6, fontSize: 11, fontWeight: 600 }}>
+                    <span className="m-dot" style={{ background: "var(--indigo-500)" }} />
+                    <span>{Number(student.discountAmount || 0) > 0 ? `₹${student.discountAmount} discount` : "Net course payable"}</span>
+                  </div>
+                </div>
+
+                <div className="metric-card" style={{ padding: "14px 16px" }}>
+                  <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
+                    <span className="m-label" style={{ fontSize: 11.5, color: "var(--text-600)", fontWeight: 600 }}>Total Paid</span>
+                    <span style={{ width: 30, height: 30, borderRadius: 8, background: "var(--green-50)", color: "var(--green-700)", display: "inline-flex", alignItems: "center", justifyContent: "center" }}>
+                      <CheckCircle2 size={15} />
+                    </span>
+                  </div>
+                  <div className="m-value" style={{ fontSize: 21, fontWeight: 800, marginTop: 8, color: "var(--text-900)" }}>
+                    {formatCurrency(approvedPaidTotal)}
+                  </div>
+                  <div className="m-delta" style={{ display: "flex", alignItems: "center", gap: 6, color: "var(--green-700)", marginTop: 6, fontSize: 11, fontWeight: 600 }}>
+                    <span className="m-dot" style={{ background: "var(--green-500)" }} />
+                    <span>{approvedPayments.length} {approvedPayments.length === 1 ? "verified payment" : "verified payments"}</span>
+                  </div>
+                </div>
+
+                <div className="metric-card" style={{ padding: "14px 16px" }}>
+                  <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
+                    <span className="m-label" style={{ fontSize: 11.5, color: "var(--text-600)", fontWeight: 600 }}>Under Review</span>
+                    <span style={{ width: 30, height: 30, borderRadius: 8, background: "var(--amber-50)", color: "var(--amber-700)", display: "inline-flex", alignItems: "center", justifyContent: "center" }}>
+                      <Clock size={15} />
+                    </span>
+                  </div>
+                  <div className="m-value" style={{ fontSize: 21, fontWeight: 800, marginTop: 8, color: "var(--text-900)" }}>
+                    {formatCurrency(pendingPaidTotal)}
+                  </div>
+                  <div className="m-delta" style={{ display: "flex", alignItems: "center", gap: 6, color: pendingPaidTotal > 0 ? "var(--amber-700)" : "var(--text-400)", marginTop: 6, fontSize: 11, fontWeight: 600 }}>
+                    <span className="m-dot" style={{ background: pendingPaidTotal > 0 ? "var(--amber-500)" : "var(--text-400)" }} />
+                    <span>{pendingPayments.length > 0 ? `${pendingPayments.length} pending review` : "0 pending review"}</span>
+                  </div>
+                </div>
+
+                <div className="metric-card" style={{ padding: "14px 16px" }}>
+                  <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
+                    <span className="m-label" style={{ fontSize: 11.5, color: "var(--text-600)", fontWeight: 600 }}>Balance Due</span>
+                    <span style={{ width: 30, height: 30, borderRadius: 8, background: due > 0 ? "var(--red-50)" : "var(--green-50)", color: due > 0 ? "var(--red-700)" : "var(--green-700)", display: "inline-flex", alignItems: "center", justifyContent: "center" }}>
+                      <BadgeIndianRupee size={15} />
+                    </span>
+                  </div>
+                  <div className="m-value" style={{ fontSize: 21, fontWeight: 800, marginTop: 8, color: "var(--text-900)" }}>
+                    {formatCurrency(due)}
+                  </div>
+                  <div className="m-delta" style={{ display: "flex", alignItems: "center", gap: 6, color: due > 0 ? "var(--red-700)" : "var(--green-700)", marginTop: 6, fontSize: 11, fontWeight: 600 }}>
+                    <span className="m-dot" style={{ background: due > 0 ? "var(--red-500)" : "var(--green-500)" }} />
+                    <span>{due > 0 ? "Pending collection" : "Fully settled"}</span>
+                  </div>
+                </div>
               </div>
-            );
-          })()}</td></tr>)}{!payments.length && <tr><td colSpan={9}><div className="empty-state"><h4>No payments yet</h4></div></td></tr>}</tbody></table></div>
-          {canManageFees && (!admissionPlanReady ? <div className="empty-state"><h4>Complete admission first</h4><p>Finalize the fee and payment plan in the Admission tab before recording payments.</p><button type="button" className="btn btn-primary" onClick={() => setStudentTab("admission")}>Open admission</button></div> : due <= 0 ? <div className="empty-state paid-empty"><h4>Fully paid</h4><p>No pending due for this student.</p></div> : <form className="payment-form profile-payment-form" onSubmit={async (event) => {
-            const success = await onPayment(event, student, paymentProofFiles);
-            if (success) setPaymentProofFiles([]);
-          }}>
-            <div className="field"><RequiredLabel required>Payment amount</RequiredLabel><input name="amount" type="number" min="1" max={due} step="1" required defaultValue={paymentPurposeDraft === "Fees Installment" && emiBreakdown.isEmi ? emiBreakdown.currentDue : ""} key={`${student._id}-${paymentPurposeDraft}`} /><span className="field-help">{paymentPurposeDraft === "Fees Installment" && emiBreakdown.isEmi ? `Expected this cycle: ${formatCurrency(emiBreakdown.currentDue)} ${emiBreakdown.shortfall > 0 ? `(${formatCurrency(emiBreakdown.baseEmi)} EMI + ${formatCurrency(emiBreakdown.shortfall)} shortfall)` : ""} | ` : ""}Pending due: {formatCurrency(due)}</span></div>
-            <div className="field"><RequiredLabel required>Payment for</RequiredLabel><select name="paymentPurpose" value={paymentPurposeDraft} required onChange={(event) => setPaymentPurposeDraft(event.target.value)}>{paymentPurposes.map((purpose) => <option key={purpose}>{purpose}</option>)}</select>{paymentPurposeDraft === "Seat Booking Amount" && <span className="field-help">Use this for the first booking/token amount.</span>}</div>
-            <div className="field"><RequiredLabel required>Mode</RequiredLabel><select name="mode" value={paymentModeDraft} required onChange={(event) => { setPaymentModeDraft(event.target.value); if (event.target.value === "Cash") setPaymentProofFiles([]); }}>{paymentModes.map((mode) => <option key={mode}>{mode}</option>)}</select></div>
-            {paymentModeDraft === "Loan Provider" && <div className="field"><RequiredLabel required>Loan provider name</RequiredLabel><input name="loanProviderName" required maxLength={100} /></div>}
-            {paymentPurposeDraft === "Fees Installment" && student.emiEnabled && <div className="field"><RequiredLabel>EMI reference no.</RequiredLabel><input name="emiReference" value={emiReferenceNumber(student)} readOnly maxLength={paymentReferenceMaxLength} /><span className="field-help">Auto generated for this EMI installment.</span></div>}
-            {paymentModeDraft !== "Cash" && <div className="field"><RequiredLabel required>{paymentReferenceLabel(paymentModeDraft)}</RequiredLabel><input name="transactionId" required maxLength={paymentReferenceMaxLength} pattern="[A-Za-z0-9][A-Za-z0-9 ._/@:;,-]*" placeholder={paymentModeDraft === "UPI" ? "e.g. UPI12345, UPI67890 (comma separated for multiple)" : undefined} /><span className="field-help">Required for {paymentModeDraft} payments. Separate multiple transaction IDs with commas if paid in parts.</span></div>}
-            <div className="field"><label>Note</label><input name="note" maxLength={paymentNoteMaxLength} /></div>
-            {paymentModeDraft !== "Cash" && <div className="field">
-              <RequiredLabel required>Payment proof(s)</RequiredLabel>
-              <input
-                name="paymentProof"
-                type="file"
-                accept={leadDocumentAccept}
-                multiple
-                onChange={(e) => {
-                  const newFiles = Array.from(e.target.files || []);
-                  if (newFiles.length) {
-                    setPaymentProofFiles((prev) => {
-                      const existingKeys = new Set(prev.map((f) => `${f.name}-${f.size}`));
-                      const unique = newFiles.filter((f) => !existingKeys.has(`${f.name}-${f.size}`));
-                      return [...prev, ...unique];
-                    });
-                  }
-                  e.target.value = "";
-                }}
-              />
-              <span className="field-help">{leadDocumentHelpText}. You can select or add multiple files/screenshots for split transactions.</span>
-              {paymentProofFiles.length > 0 && (
-                <div style={{ marginTop: "8px", display: "flex", flexDirection: "column", gap: "6px" }}>
-                  <div style={{ fontSize: "12px", fontWeight: 600, color: "var(--text-muted, #64748b)" }}>
-                    {paymentProofFiles.length} {paymentProofFiles.length === 1 ? "proof file" : "proof files"} attached:
+
+              {/* Payment History Card */}
+              <div className="card" style={{ borderRadius: 14, overflow: "hidden" }}>
+                <div className="card-head" style={{ padding: "14px 18px", borderBottom: "1px solid var(--border-soft)", display: "flex", alignItems: "center", justifyContent: "space-between", flexWrap: "wrap", gap: 8 }}>
+                  <div>
+                    <h3 style={{ fontSize: 13.5, fontWeight: 700, margin: 0, color: "var(--text-900)" }}>Payment History</h3>
+                    <div className="sub" style={{ fontSize: 11, color: "var(--text-400)", marginTop: 2 }}>{payments.length} {payments.length === 1 ? "transaction" : "transactions"} recorded</div>
                   </div>
-                  <div style={{ display: "flex", flexWrap: "wrap", gap: "6px" }}>
-                    {paymentProofFiles.map((file, fileIdx) => (
-                      <span key={`${file.name}-${fileIdx}`} className="badge badge-gray" style={{ display: "inline-flex", alignItems: "center", gap: "6px", padding: "4px 8px", fontSize: "12px", maxWidth: "260px" }}>
-                        <span style={{ overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{file.name} ({(file.size / 1024).toFixed(0)} KB)</span>
-                        <button type="button" style={{ background: "none", border: "none", cursor: "pointer", padding: "0 2px", fontSize: "15px", lineHeight: 1, color: "var(--red-500, #ef4444)", fontWeight: "bold" }} title="Remove this file" onClick={() => setPaymentProofFiles((prev) => prev.filter((_, i) => i !== fileIdx))}>×</button>
+                  <div style={{ display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap" }}>
+                    {pendingPayments.length > 0 && (
+                      <span className="badge badge-amber" style={{ fontSize: 11 }}>
+                        <Clock size={11} /> {pendingPayments.length} awaiting review
                       </span>
-                    ))}
+                    )}
+                    <button
+                      type="button"
+                      className="btn btn-xs btn-ghost"
+                      disabled={refreshingPaymentStatus}
+                      onClick={handleRefreshPaymentStatus}
+                      title="Check if pending payments have been approved or verified by Head Office"
+                      style={{
+                        display: "inline-flex",
+                        alignItems: "center",
+                        gap: 6,
+                        fontSize: 11.5,
+                        fontWeight: 600,
+                        padding: "4px 10px",
+                        borderRadius: 8,
+                        height: 28,
+                        color: "var(--text-700)",
+                        border: "1px solid var(--border-soft)",
+                        background: "var(--bg-surface)",
+                        cursor: refreshingPaymentStatus ? "not-allowed" : "pointer",
+                      }}
+                    >
+                      <RefreshCw size={12} className={refreshingPaymentStatus ? "spin-icon" : ""} style={{ color: "var(--indigo-600)" }} />
+                      <span>{refreshingPaymentStatus ? "Checking..." : "Refresh status"}</span>
+                    </button>
                   </div>
                 </div>
-              )}
-            </div>}
-            <div className="payment-form-actions"><button className="btn btn-primary">Record payment</button></div>
-          </form>)}
-        </div>}
+
+                <div className="table-wrap" style={{ border: 0, borderRadius: 0, margin: 0, overflowX: "auto" }}>
+                  <table style={{ width: "100%", borderCollapse: "collapse", minWidth: 780 }}>
+                    <thead>
+                      <tr>
+                        <th style={{ width: 34, textAlign: "center" }}>#</th>
+                        <th style={{ textAlign: "left" }}>Date</th>
+                        <th style={{ textAlign: "left" }}>Payment for</th>
+                        <th style={{ textAlign: "center", width: 68 }}>Mode</th>
+                        <th style={{ textAlign: "left" }}>Reference</th>
+                        <th style={{ textAlign: "left" }}>Amount</th>
+                        <th style={{ textAlign: "left" }}>Status</th>
+                        <th style={{ textAlign: "left" }}>Recorded by</th>
+                        <th style={{ textAlign: "left" }}>Receipt</th>
+                        <th style={{ textAlign: "center", width: 84, paddingRight: 18 }}>Proof</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {payments.map((payment, index) => {
+                        const pStatus = payment.status || "approved";
+                        const paymentKey = String(payment._id || index);
+                        return (
+                          <tr key={`${payment.paidAt || index}-${payment.amount || 0}`}>
+                            <td style={{ textAlign: "center", color: "var(--text-400)", fontWeight: 600 }}>{index + 1}</td>
+                            <td className="mono" style={{ whiteSpace: "nowrap", textAlign: "left" }}>{formatDate(payment.paidAt)}</td>
+                            <td style={{ textAlign: "left" }}>
+                              <span style={{ fontWeight: 600, color: "var(--text-900)" }}>
+                                {normalizePaymentPurpose(payment.paymentPurpose, payment.mode)}
+                              </span>
+                              {payment.emiReference && <div className="cell-sub mono">{payment.emiReference}</div>}
+                            </td>
+                            <td style={{ textAlign: "center" }}>
+                              <span className="badge badge-gray">
+                                {payment.mode || "-"}
+                              </span>
+                            </td>
+                            <td className="mono" style={{ textAlign: "left" }}>
+                              {payment.transactionId || "—"}
+                              {payment.loanProviderName && <div className="cell-sub">{payment.loanProviderName}</div>}
+                            </td>
+                            <td className="mono" style={{ textAlign: "left", fontWeight: 700, color: pStatus === "rejected" ? "var(--text-400)" : "var(--text-900)", fontSize: 13 }}>
+                              {pStatus !== "rejected" && <span style={{ color: "var(--green-700)", marginRight: 2 }}>+</span>}
+                              {formatCurrency(payment.amount || 0)}
+                            </td>
+                            <td style={{ textAlign: "left" }}>
+                              {pStatus === "pending" ? (
+                                <div style={{ display: "inline-flex", alignItems: "center", gap: 6, flexWrap: "wrap" }}>
+                                  <span className="badge badge-amber" style={{ width: "fit-content" }}>
+                                    <Clock size={11} /> Pending approval
+                                  </span>
+                                  {(isHeadSuperAdmin || isCenterAdmin) && (
+                                    <div style={{ display: "inline-flex", gap: 4 }}>
+                                      <button
+                                        type="button"
+                                        className="btn btn-xs btn-primary"
+                                        disabled={paymentApprovalReviewingId === paymentKey}
+                                        onClick={() => onReviewPaymentApproval?.(student._id, paymentKey, "approve")}
+                                        style={{ fontSize: 10, padding: "2px 7px", height: 22 }}
+                                        title="Approve Payment"
+                                      >
+                                        <Check size={10} /> Approve
+                                      </button>
+                                      <button
+                                        type="button"
+                                        className="btn btn-xs btn-danger"
+                                        disabled={paymentApprovalReviewingId === paymentKey}
+                                        onClick={() => {
+                                          onRejectPaymentPrompt?.({
+                                            studentId: student._id,
+                                            studentName: student.fullName,
+                                            studentPhone: student.phone,
+                                            amount: payment.amount || 0,
+                                            mode: payment.mode || "Payment",
+                                            paymentId: paymentKey,
+                                            paymentIndex: index,
+                                            status: "pending",
+                                            requestedBy: payment.requestedBy || payment.by || "",
+                                          } as PaymentApprovalItem);
+                                        }}
+                                        style={{ fontSize: 10, padding: "2px 7px", height: 22 }}
+                                        title="Reject Payment"
+                                      >
+                                        <X size={10} /> Reject
+                                      </button>
+                                    </div>
+                                  )}
+                                </div>
+                              ) : pStatus === "rejected" ? (
+                                <div>
+                                  <span
+                                    className="badge badge-red"
+                                    title={payment.rejectionReason || "Payment rejected"}
+                                  >
+                                    <X size={11} /> Rejected
+                                  </span>
+                                  {payment.rejectionReason && (
+                                    <div
+                                      className="cell-sub"
+                                      style={{
+                                        color: "var(--red-700)",
+                                        maxWidth: 160,
+                                        overflow: "hidden",
+                                        textOverflow: "ellipsis",
+                                        whiteSpace: "nowrap",
+                                      }}
+                                      title={payment.rejectionReason}
+                                    >
+                                      {payment.rejectionReason}
+                                    </div>
+                                  )}
+                                </div>
+                              ) : (
+                                <span className="badge badge-green">
+                                  <Check size={11} /> Approved
+                                </span>
+                              )}
+                            </td>
+                            <td style={{ color: "var(--text-700)", textAlign: "left" }}>{payment.by || "-"}</td>
+                            <td className="mono" style={{ textAlign: "left" }}>
+                              {pStatus === "pending" ? (
+                                <span className="cell-sub" style={{ color: "var(--amber-700)", fontWeight: 600 }}>
+                                  Awaiting approval
+                                </span>
+                              ) : pStatus === "rejected" ? (
+                                <span className="cell-sub" style={{ color: "var(--red-700)" }}>
+                                  Rejected
+                                </span>
+                              ) : (
+                                <span style={{ color: "var(--indigo-600)", fontWeight: 700 }}>
+                                  {paymentReceiptNumber(student, index)}
+                                </span>
+                              )}
+                            </td>
+                            <td style={{ textAlign: "center", paddingRight: 18 }}>
+                              {(() => {
+                                const proofs = (payment.proofs && payment.proofs.length > 0) ? payment.proofs : (payment.proof?.storedName ? [payment.proof] : []);
+                                if (!proofs.length) return <span className="cell-sub" style={{ color: "var(--text-400)" }}>{payment.mode === "Cash" ? "— (Cash)" : "Missing proof"}</span>;
+                                if (proofs.length === 1) {
+                                  return (
+                                    <div className="action-icons" style={{ display: "inline-flex", gap: "4px", alignItems: "center", justifyContent: "center" }}>
+                                      <button type="button" className="action-icon-btn action-icon-primary" title={proofs[0].originalName ? `Preview: ${proofs[0].originalName}` : "Preview proof"} onClick={() => onPreviewPaymentProof?.(student, payment, index, 0)}>
+                                        <Eye size={13} />
+                                      </button>
+                                      <button type="button" className="action-icon-btn" title={proofs[0].originalName || "Download proof"} onClick={() => onDownloadPaymentProof(student, payment, index, 0)}>
+                                        <Download size={13} />
+                                      </button>
+                                    </div>
+                                  );
+                                }
+                                return (
+                                  <div style={{ display: "flex", gap: "4px", flexWrap: "wrap", alignItems: "center", justifyContent: "center" }}>
+                                    {proofs.map((p, pIdx) => (
+                                      <div key={pIdx} style={{ display: "inline-flex", alignItems: "center", border: "1px solid var(--border)", borderRadius: "6px", overflow: "hidden" }}>
+                                        <button type="button" className="btn btn-sm btn-ghost" style={{ padding: "2px 6px", fontSize: "11px", height: "24px", display: "inline-flex", alignItems: "center", gap: "3px", borderRadius: 0 }} title={`Preview: ${p.originalName || `#${pIdx + 1}`}`} onClick={() => onPreviewPaymentProof?.(student, payment, index, pIdx)}>
+                                          <Eye size={11} /> #{pIdx + 1}
+                                        </button>
+                                        <button type="button" className="btn btn-sm btn-ghost" style={{ padding: "2px 5px", fontSize: "11px", height: "24px", borderLeft: "1px solid var(--border)", borderRadius: 0 }} title={`Download: ${p.originalName || `#${pIdx + 1}`}`} onClick={() => onDownloadPaymentProof(student, payment, index, pIdx)}>
+                                          <Download size={10} />
+                                        </button>
+                                      </div>
+                                    ))}
+                                  </div>
+                                );
+                              })()}
+                            </td>
+                          </tr>
+                        );
+                      })}
+                      {!payments.length && (
+                        <tr>
+                          <td colSpan={10}>
+                            <div className="empty-state" style={{ padding: "34px 20px" }}>
+                              <ReceiptText size={28} style={{ color: "var(--text-400)", marginBottom: 6 }} />
+                              <h4 style={{ margin: "0 0 4px", color: "var(--text-600)", fontSize: 13 }}>No payments yet</h4>
+                              <p style={{ margin: 0, fontSize: 12, color: "var(--text-400)" }}>Use the form below to record the first payment collection.</p>
+                            </div>
+                          </td>
+                        </tr>
+                      )}
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+
+              {/* Record New Payment Section */}
+              {canManageFees && (() => {
+                const hasExistingPayments = Number(student.paidAmount || 0) > 0 || Boolean(payments && payments.length > 0);
+                const isFeeApproved = student.feeApproval?.status === "approved" || hasExistingPayments;
+                const isFeeRejected = student.feeApproval?.status === "rejected" && !hasExistingPayments;
+
+                if (isFeeRejected) {
+                  return (
+                    <div className="empty-state" style={{ background: "var(--red-50)", border: "1px solid #FECACA", borderRadius: 14, padding: "24px 20px", textAlign: "center" }}>
+                      <X size={36} style={{ color: "var(--red-500)", marginBottom: 8 }} />
+                      <h4 style={{ color: "var(--red-700)", margin: "0 0 6px 0", fontSize: 15, fontWeight: 700 }}>Fee Plan Rejected</h4>
+                      <p style={{ color: "var(--red-700)", margin: "0 0 14px 0", fontSize: 13, maxWidth: 460, marginLeft: "auto", marginRight: "auto", lineHeight: 1.4 }}>
+                        The fee plan was rejected: "{student.feeApproval?.rejectionReason || "Declined by management"}". Payments cannot be recorded until a revised fee plan is approved.
+                      </p>
+                      {onRequestFeeApprovalModal && (
+                        <button
+                          type="button"
+                          className="btn btn-primary"
+                          onClick={() => onRequestFeeApprovalModal(student)}
+                          style={{ display: "inline-flex", alignItems: "center", gap: 6 }}
+                        >
+                          <BadgePercent size={14} /> Re-submit Fee Plan
+                        </button>
+                      )}
+                    </div>
+                  );
+                }
+
+                if (!isSuperAdmin && !isFeeApproved) {
+                  return (
+                    <div className="empty-state" style={{ background: "var(--amber-50)", border: "1px solid #FCD34D", borderRadius: 14, padding: "24px 20px", textAlign: "center" }}>
+                      <Clock size={36} style={{ color: "var(--amber-500)", marginBottom: 8 }} />
+                      <h4 style={{ color: "var(--amber-700)", margin: "0 0 6px 0", fontSize: 15, fontWeight: 700 }}>Fee Approval Required Before Recording Payments</h4>
+                      <p style={{ color: "var(--amber-700)", margin: "0 0 14px 0", fontSize: 13, maxWidth: 500, marginLeft: "auto", marginRight: "auto", lineHeight: 1.4 }}>
+                        The decided fee of <b>{formatCurrency(netFee || student.totalFee || 0)}</b> {Number(student.discountAmount || 0) > 0 ? `(with ${formatCurrency(student.discountAmount || 0)} discount)` : ""} must be approved before payments can be recorded.
+                      </p>
+                      {(isHeadSuperAdmin || isCenterAdmin) ? (
+                        <div style={{ display: "flex", gap: 10, justifyContent: "center", flexWrap: "wrap", marginTop: 8 }}>
+                          <button
+                            type="button"
+                            className="btn btn-primary"
+                            disabled={feeApprovalReviewingId === student._id}
+                            onClick={() => onReviewFeeApproval?.(student._id, "approve")}
+                            style={{ display: "inline-flex", alignItems: "center", gap: 6 }}
+                          >
+                            <Check size={14} /> Approve Fee Plan
+                          </button>
+                          <button
+                            type="button"
+                            className="btn btn-danger"
+                            disabled={feeApprovalReviewingId === student._id}
+                            onClick={() => onRejectPrompt?.(student)}
+                            style={{ display: "inline-flex", alignItems: "center", gap: 6 }}
+                          >
+                            <X size={14} /> Reject
+                          </button>
+                        </div>
+                      ) : (
+                        <div className="badge badge-amber" style={{ padding: "6px 12px", borderRadius: 8, fontSize: 12, fontWeight: 600 }}>
+                          <Clock size={14} /> Awaiting Super Admin / Center Admin authorization
+                        </div>
+                      )}
+                    </div>
+                  );
+                }
+
+                if (!admissionPlanReady) {
+                  return (
+                    <div className="empty-state" style={{ borderRadius: 14, border: "1px solid var(--border)", background: "#fff", padding: "28px 20px" }}>
+                      <h4 style={{ margin: "0 0 6px 0", fontSize: 14, color: "var(--text-600)" }}>Complete admission first</h4>
+                      <p style={{ margin: "0 0 14px 0", fontSize: 12.5, color: "var(--text-400)" }}>Finalize the fee and payment plan in the Admission tab before recording payments.</p>
+                      <button type="button" className="btn btn-primary" onClick={() => setStudentTab("admission")}>Open admission</button>
+                    </div>
+                  );
+                }
+
+                if (due <= 0) {
+                  return (
+                    <div className="empty-state paid-empty" style={{ borderRadius: 14, border: "1px solid var(--border)", background: "#fff", padding: "28px 20px" }}>
+                      <CheckCircle2 size={32} style={{ color: "var(--green-700)", marginBottom: 6 }} />
+                      <h4 style={{ color: "var(--green-700)", margin: "0 0 4px 0", fontSize: 15, fontWeight: 700 }}>Fully paid</h4>
+                      <p style={{ color: "var(--text-400)", margin: 0, fontSize: 12.5 }}>No pending due for this student.</p>
+                    </div>
+                  );
+                }
+
+                return (
+                  <div className="card" style={{ borderRadius: 14, overflow: "hidden" }}>
+                    <div className="card-head" style={{ padding: "14px 18px", borderBottom: "1px solid var(--border-soft)", display: "flex", alignItems: "center", justifyContent: "space-between", flexWrap: "wrap", gap: 8 }}>
+                      <div>
+                        <h3 style={{ fontSize: 13.5, fontWeight: 700, margin: 0, color: "var(--text-900)" }}>Record New Payment</h3>
+                        <div className="sub" style={{ fontSize: 11, color: "var(--text-400)", marginTop: 2 }}>Submit payment collection for ledger approval</div>
+                      </div>
+                      <div style={{ display: "flex", alignItems: "center", gap: 6, flexWrap: "wrap" }}>
+                        <span style={{ fontSize: 11, color: "var(--text-400)", fontWeight: 600 }}>Quick fill:</span>
+                        {due > 0 && (
+                          <button
+                            type="button"
+                            className="btn btn-xs btn-soft"
+                            style={{ fontSize: 11, padding: "3px 8px", borderRadius: 6 }}
+                            onClick={() => setPaymentAmountDraft(String(due))}
+                          >
+                            Full Due ({formatCurrency(due)})
+                          </button>
+                        )}
+                        {due >= 1000 && (
+                          <button
+                            type="button"
+                            className="btn btn-xs btn-soft"
+                            style={{ fontSize: 11, padding: "3px 8px", borderRadius: 6 }}
+                            onClick={() => {
+                              setPaymentAmountDraft("1000");
+                              setPaymentPurposeDraft("Seat Booking Amount");
+                            }}
+                          >
+                            Token (₹1,000)
+                          </button>
+                        )}
+                        {student.emiEnabled && Number(student.emiAmount || 0) > 0 && (
+                          <button
+                            type="button"
+                            className="btn btn-xs btn-soft"
+                            style={{ fontSize: 11, padding: "3px 8px", borderRadius: 6 }}
+                            onClick={() => {
+                              setPaymentAmountDraft(String(student.emiAmount));
+                              setPaymentPurposeDraft("Fees Installment");
+                            }}
+                          >
+                            EMI ({formatCurrency(student.emiAmount || 0)})
+                          </button>
+                        )}
+                      </div>
+                    </div>
+
+                    <form
+                      className="payment-form profile-payment-form card-body"
+                      style={{
+                        padding: "16px 18px",
+                        display: "grid",
+                        gridTemplateColumns: "repeat(2, minmax(0, 1fr))",
+                        gap: 14,
+                        margin: 0
+                      }}
+                      onSubmit={async (event) => {
+                        const success = await onPayment(event, student, paymentProofFiles);
+                        if (success) setPaymentProofFiles([]);
+                      }}
+                    >
+                      <div className="field">
+                        <RequiredLabel required>Payment amount</RequiredLabel>
+                        <div style={{ display: "flex", alignItems: "center", position: "relative" }}>
+                          <span style={{
+                            position: "absolute",
+                            left: 11,
+                            color: "var(--text-600)",
+                            fontWeight: 700,
+                            fontSize: 13,
+                            pointerEvents: "none"
+                          }}>₹</span>
+                          <input
+                            name="amount"
+                            type="number"
+                            min="1"
+                            max={due}
+                            step="1"
+                            required
+                            value={paymentAmountDraft}
+                            onChange={(event) => setPaymentAmountDraft(event.target.value)}
+                            placeholder="Enter amount"
+                            style={{ paddingLeft: 26, fontWeight: 700, fontFamily: "inherit" }}
+                          />
+                        </div>
+                        <span className="field-help">
+                          {paymentPurposeDraft === "Fees Installment" && emiBreakdown.isEmi ? `Expected cycle: ${formatCurrency(emiBreakdown.currentDue)} | ` : ""}
+                          Pending due: <strong style={{ color: "var(--indigo-600)" }}>{formatCurrency(due)}</strong>
+                        </span>
+                      </div>
+
+                      <div className="field">
+                        <RequiredLabel required>Payment for</RequiredLabel>
+                        <select name="paymentPurpose" value={paymentPurposeDraft} required onChange={(event) => setPaymentPurposeDraft(event.target.value)}>
+                          {paymentPurposes.map((purpose) => <option key={purpose}>{purpose}</option>)}
+                        </select>
+                        <span className="field-help">
+                          {paymentPurposeDraft === "Seat Booking Amount" ? "Use this for the first booking/token amount." : "Installment or EMI tuition payment."}
+                        </span>
+                      </div>
+
+                      <div className="field">
+                        <RequiredLabel required>Mode</RequiredLabel>
+                        <select name="mode" value={paymentModeDraft} required onChange={(event) => { setPaymentModeDraft(event.target.value); if (event.target.value === "Cash") setPaymentProofFiles([]); }}>
+                          {paymentModes.map((mode) => <option key={mode}>{mode}</option>)}
+                        </select>
+                      </div>
+
+                      {paymentModeDraft === "Loan Provider" ? (
+                        <div className="field">
+                          <RequiredLabel required>Loan provider name</RequiredLabel>
+                          <input name="loanProviderName" required maxLength={100} placeholder="e.g. Propelld, LiquiLoans, Avanse" />
+                        </div>
+                      ) : paymentModeDraft !== "Cash" ? (
+                        <div className="field">
+                          <RequiredLabel required>{paymentReferenceLabel(paymentModeDraft)}</RequiredLabel>
+                          <input
+                            name="transactionId"
+                            required
+                            maxLength={paymentReferenceMaxLength}
+                            pattern="[A-Za-z0-9][A-Za-z0-9 ._/@:;,-]*"
+                            placeholder={paymentModeDraft === "UPI" ? "e.g. UPI12345, UPI67890 (comma separated)" : "Enter transaction / reference ID"}
+                          />
+                          <span className="field-help">Required for {paymentModeDraft} payments. Separate multiple IDs with commas if paid in parts.</span>
+                        </div>
+                      ) : (
+                        <div className="field">
+                          <label>Reference</label>
+                          <input name="transactionId" placeholder="Optional cash memo or receipt counter remark" maxLength={paymentReferenceMaxLength} />
+                        </div>
+                      )}
+
+                      {paymentPurposeDraft === "Fees Installment" && student.emiEnabled && (
+                        <div className="field" style={{ gridColumn: "1 / -1" }}>
+                          <RequiredLabel>EMI reference no.</RequiredLabel>
+                          <input name="emiReference" value={emiReferenceNumber(student)} readOnly maxLength={paymentReferenceMaxLength} style={{ background: "var(--bg)" }} />
+                          <span className="field-help">Auto generated for this EMI installment.</span>
+                        </div>
+                      )}
+
+                      <div className="field" style={{ gridColumn: paymentModeDraft === "Cash" ? "1 / -1" : "auto" }}>
+                        <label>Note</label>
+                        <input name="note" maxLength={paymentNoteMaxLength} placeholder="Optional payment note" />
+                      </div>
+
+                      {paymentModeDraft !== "Cash" && (
+                        <div className="field">
+                          <RequiredLabel required>Payment proof(s)</RequiredLabel>
+                          <input
+                            name="paymentProof"
+                            type="file"
+                            accept={leadDocumentAccept}
+                            multiple
+                            onChange={(e) => {
+                              const newFiles = Array.from(e.target.files || []);
+                              if (newFiles.length) {
+                                setPaymentProofFiles((prev) => {
+                                  const existingKeys = new Set(prev.map((f) => `${f.name}-${f.size}`));
+                                  const unique = newFiles.filter((f) => !existingKeys.has(`${f.name}-${f.size}`));
+                                  return [...prev, ...unique];
+                                });
+                              }
+                              e.target.value = "";
+                            }}
+                          />
+                          <span className="field-help">{leadDocumentHelpText}</span>
+                          {paymentProofFiles.length > 0 && (
+                            <div style={{ marginTop: "6px", display: "flex", flexWrap: "wrap", gap: "6px" }}>
+                              {paymentProofFiles.map((file, fileIdx) => (
+                                <span key={`${file.name}-${fileIdx}`} className="badge badge-gray" style={{ display: "inline-flex", alignItems: "center", gap: "6px", padding: "4px 8px", fontSize: "11.5px", maxWidth: "240px" }}>
+                                  <span style={{ overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{file.name} ({(file.size / 1024).toFixed(0)} KB)</span>
+                                  <button type="button" style={{ background: "none", border: "none", cursor: "pointer", padding: "0 2px", fontSize: "14px", lineHeight: 1, color: "var(--red-500)", fontWeight: "bold" }} title="Remove this file" onClick={() => setPaymentProofFiles((prev) => prev.filter((_, i) => i !== fileIdx))}>×</button>
+                                </span>
+                              ))}
+                            </div>
+                          )}
+                        </div>
+                      )}
+
+                      <div className="payment-form-actions" style={{
+                        gridColumn: "1 / -1",
+                        display: "flex",
+                        alignItems: "center",
+                        justifyContent: "space-between",
+                        flexWrap: "wrap",
+                        gap: 12,
+                        paddingTop: 14,
+                        borderTop: "1px solid var(--border-soft)"
+                      }}>
+                        <div className="badge badge-amber" style={{
+                          padding: "7px 12px",
+                          borderRadius: 8,
+                          fontSize: 11.5,
+                          fontWeight: 600,
+                          display: "inline-flex",
+                          alignItems: "center",
+                          gap: 6,
+                          maxWidth: 440,
+                          whiteSpace: "normal",
+                          lineHeight: 1.35
+                        }}>
+                          <Clock size={13} style={{ flexShrink: 0 }} />
+                          <span>{isHeadSuperAdmin ? "Direct entry will be credited immediately to confirmed student collections." : "Recorded payment (including cash) will require Super Admin / Center Admin approval before crediting to confirmed student collections."}</span>
+                        </div>
+
+                        <button className="btn btn-primary" type="submit" style={{ display: "inline-flex", alignItems: "center", gap: 7, height: 38, padding: "0 18px", fontSize: 12.5, fontWeight: 700 }}>
+                          <CheckCircle2 size={15} />
+                          {isHeadSuperAdmin ? "Record & approve payment" : "Submit payment for approval"}
+                        </button>
+                      </div>
+                    </form>
+                  </div>
+                );
+              })()}
+            </div>
+          );
+        })()}
         {activeStudentTab === "emi" && <div className="dpane active">
           {hasEmi && <>
             <div className="kv-row"><span className="k">Plan tenure</span><span className="v">{student.emiMonths || "-"} months</span></div>
@@ -9480,8 +14379,8 @@ function ProfilePanel({ profile, user, accessCount, canManageFees, canManageSett
             </div>
           </>}
           {canManageFees ? (!admissionPlanReady ? <div className="empty-state"><h4>Complete admission first</h4><p>EMI terms must be decided in the Admission tab before updating EMI reminders.</p><button type="button" className="btn btn-primary" onClick={() => setStudentTab("admission")}>Open admission</button></div> : due <= 0 ? <div className="empty-state paid-empty"><h4>Fully paid</h4><p>EMI plan is not needed because there is no pending due.</p>{hasEmi && <button type="button" className="btn btn-ghost" onClick={closeEmiPlan}>Close EMI plan</button>}</div> : <form className="field-grid feedback-form emi-plan-form" onSubmit={saveEmiPlan}>
-            <div className="field"><RequiredLabel required>EMI months</RequiredLabel><input name="emiMonths" type="number" required readOnly disabled value={emiMonthsDraft} style={{ background: "var(--surface-2, #f3f4f6)", cursor: "not-allowed" }} /><span className="field-help">Auto-set from course duration ({emiMonthsDraft} {Number(emiMonthsDraft) === 1 ? "month" : "months"}) — not editable</span></div>
-            <div className="field"><RequiredLabel required>Monthly EMI (auto-calculated)</RequiredLabel><input name="emiAmount" type="number" required readOnly disabled value={emiAmountDraft} style={{ background: "var(--surface-2, #f3f4f6)", cursor: "not-allowed" }} /><span className="field-help">Pending due: {formatCurrency(due)} / {emiMonthsDraft} {Number(emiMonthsDraft) === 1 ? "month" : "months"}{due - (Number(emiAmountDraft || 0) * Number(emiMonthsDraft || 1)) > 0 ? ` (₹${due - (Number(emiAmountDraft || 0) * Number(emiMonthsDraft || 1))} adjusted in final month)` : ""}</span></div>
+            <div className="field"><RequiredLabel required>EMI months</RequiredLabel><input name="emiMonths" type="number" required readOnly value={emiMonthsDraft} style={{ background: "var(--surface-2, #f3f4f6)", cursor: "not-allowed" }} /><span className="field-help">Auto-set from course duration ({emiMonthsDraft} {Number(emiMonthsDraft) === 1 ? "month" : "months"}) — not editable</span></div>
+            <div className="field"><RequiredLabel required>Monthly EMI (auto-calculated)</RequiredLabel><input name="emiAmount" type="number" required readOnly value={emiAmountDraft} style={{ background: "var(--surface-2, #f3f4f6)", cursor: "not-allowed" }} /><span className="field-help">Pending due: {formatCurrency(due)} / {emiMonthsDraft} {Number(emiMonthsDraft) === 1 ? "month" : "months"}{due - (Number(emiAmountDraft || 0) * Number(emiMonthsDraft || 1)) > 0 ? ` (₹${due - (Number(emiAmountDraft || 0) * Number(emiMonthsDraft || 1))} adjusted in final month)` : ""}</span></div>
             <Field name="nextEmiDate" label="Next EMI date" type="date" defaultValue={student.nextEmiDate ? dateInputValue(student.nextEmiDate) : dateInputValueFromOffset(12)} required />
             <div className="profile-edit-actions"><button className="btn btn-primary"><CalendarDays size={15} /> {hasEmi ? "Update EMI plan" : "Save EMI plan"}</button>{hasEmi && <button type="button" className="btn btn-ghost" onClick={closeEmiPlan}>Close EMI plan</button>}</div>
           </form>) : <div className="empty-state"><h4>EMI updates restricted</h4><p>Admin access is required to manage EMI plans.</p></div>}
@@ -9537,12 +14436,51 @@ function RequiredLabel({ children, required = false }: { children: ReactNode; re
   return <label>{children}{required && <span className="required-star" aria-hidden="true">*</span>}</label>;
 }
 
-function Field({ name, label, type = "text", required = false, defaultValue = "" }: { name: string; label: string; type?: string; required?: boolean; defaultValue?: string | number }) {
-  return <div className="field"><RequiredLabel required={required}>{label}</RequiredLabel><input name={name} type={type} required={required} defaultValue={defaultValue} /></div>;
+function Field({ name, label, type = "text", required = false, defaultValue = "", step }: { name: string; label: string; type?: string; required?: boolean; defaultValue?: string | number; step?: string }) {
+  return <div className="field"><RequiredLabel required={required}>{label}</RequiredLabel><input name={name} type={type} required={required} defaultValue={defaultValue} step={step} /></div>;
 }
 
-function EditField({ name, label, type = "text", defaultValue = "", value, onChange, required = false }: { name: string; label: string; type?: string; defaultValue?: string | number; value?: string | number; onChange?: (e: ChangeEvent<HTMLInputElement>) => void; required?: boolean }) {
-  return <div className="field"><RequiredLabel required={required}>{label}</RequiredLabel><input name={name} type={type} {...(value !== undefined ? { value, onChange } : { defaultValue: defaultValue || "" })} required={required} /></div>;
+function EditField({
+  name,
+  label,
+  type = "text",
+  defaultValue = "",
+  value,
+  onChange,
+  required = false,
+  readOnly = false,
+  disabled = false,
+  helpText,
+  step,
+}: {
+  name: string;
+  label: string;
+  type?: string;
+  defaultValue?: string | number;
+  value?: string | number;
+  onChange?: (e: ChangeEvent<HTMLInputElement>) => void;
+  required?: boolean;
+  readOnly?: boolean;
+  disabled?: boolean;
+  helpText?: string;
+  step?: string;
+}) {
+  return (
+    <div className="field">
+      <RequiredLabel required={required}>{label}</RequiredLabel>
+      <input
+        name={name}
+        type={type}
+        {...(value !== undefined ? { value, onChange } : { defaultValue: defaultValue || "" })}
+        required={required}
+        readOnly={readOnly}
+        disabled={disabled}
+        step={step}
+        style={readOnly || disabled ? { background: "var(--surface-2, #f3f4f6)", cursor: "not-allowed" } : undefined}
+      />
+      {helpText && <span className="field-help">{helpText}</span>}
+    </div>
+  );
 }
 
 function SelectField({ name, label, options, defaultValue = "" }: { name: string; label: string; options: string[]; defaultValue?: string }) {
@@ -9657,8 +14595,8 @@ function CrmStyles() {
       .sidebar-footer{padding:12px;border-top:1px solid var(--navy-line)}.role-pill{display:flex;align-items:center;gap:9px;background:var(--navy-800);border:1px solid var(--navy-line);border-radius:10px;padding:8px 10px}.role-avatar{width:28px;height:28px;border-radius:8px;background:linear-gradient(135deg,#F5A524,#E5484D);display:flex;align-items:center;justify-content:center;font-weight:700;color:#fff;font-size:12px}.role-meta{line-height:1.2;overflow:hidden}.role-meta b{font-size:12px;color:#fff;display:block;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}.role-meta span{font-size:10.5px;color:#8A91B0}.role-pill .icon-btn{margin-left:auto;background:transparent;border:0;color:#8A91B0}
       .main{flex:1;display:flex;flex-direction:column;height:100vh;overflow:hidden;width:100%;max-width:100%;min-width:0;box-sizing:border-box}.topbar{height:60px;flex:0 0 60px;background:#fff;border-bottom:1px solid var(--border);display:flex;align-items:center;gap:12px;padding:0 22px;width:100%;max-width:100%;min-width:0;box-sizing:border-box;position:relative;z-index:40;overflow:visible}.page-title{font-size:16px;font-weight:700}.page-sub{font-size:11.5px;color:var(--text-400);margin-top:1px}.topbar-spacer{flex:1}.scope-select,.df-select,.fbtn{border:1px solid var(--border);background:#fff;border-radius:8px;padding:7px 10px;font-size:12.5px;color:var(--text-700);font-weight:500;font-family:inherit}.scope-select{height:36px;box-sizing:border-box;display:inline-flex;align-items:center;padding:0 12px;flex-shrink:0}.scope-select-locked{background:var(--bg);color:var(--text-400)}.date-filter{display:inline-flex;align-items:center;gap:4px;background:var(--bg);border:1px solid var(--border);border-radius:9px;padding:3px;height:36px;box-sizing:border-box;flex-shrink:0}.df-btn{border:none;background:transparent;padding:0 11px;height:28px;border-radius:7px;font-size:12px;font-weight:600;color:var(--text-600);white-space:nowrap;display:inline-flex;align-items:center;justify-content:center;line-height:1;flex-shrink:0}.df-btn.active{background:#fff;color:var(--indigo-600);box-shadow:0 1px 2px rgba(16,20,40,.05)}.df-date{border:1px solid var(--border);border-radius:7px;padding:5px 8px;font-size:12px;display:none;height:28px;box-sizing:border-box}.df-date.show{display:inline-block}.icon-btn{width:36px;height:36px;border-radius:9px;border:1px solid var(--border);background:#fff;display:inline-flex;align-items:center;justify-content:center;color:var(--text-600);box-sizing:border-box;flex-shrink:0}.search-box{display:flex;align-items:center;gap:7px;background:var(--bg);border:1px solid var(--border);border-radius:9px;padding:0 12px;width:230px;height:36px;box-sizing:border-box;flex-shrink:0}.search-box input{border:none;background:transparent;outline:none;font-size:12.5px;width:100%;color:var(--text-900);padding:0}
       .content{flex:1;overflow-y:auto;overflow-x:hidden;padding:22px;width:100%;max-width:100%;min-width:0;box-sizing:border-box}.grid-metrics{display:grid;grid-template-columns:repeat(auto-fit,minmax(170px,1fr));gap:14px;margin-bottom:18px}.metric-card,.card{background:#fff;border:1px solid var(--border);border-radius:14px;box-shadow:0 1px 2px rgba(16,20,40,.05)}.metric-card{padding:16px 18px;position:relative;overflow:hidden}.m-label{font-size:11.5px;color:var(--text-600);font-weight:600;display:flex;align-items:center;gap:6px}.m-value{font-size:24px;font-weight:800;margin-top:8px;color:#061633;font-family:JetBrains Mono,monospace}.m-delta{font-size:11px;font-weight:600;margin-top:6px}.m-delta.up{color:var(--green-700)}.m-delta.down{color:var(--red-700)}.m-dot{width:9px;height:9px;border-radius:3px;display:inline-block}.two-col{display:grid;grid-template-columns:1.3fr 1fr;gap:16px;margin-bottom:16px}.lower-grid{grid-template-columns:1fr 1fr .75fr}.card-head{display:flex;align-items:center;gap:12px;padding:16px 18px;border-bottom:1px solid var(--border-soft)}.card-head h3{font-size:13.5px;font-weight:700;margin:0}.card-head .sub{font-size:11px;color:var(--text-400);margin-top:2px}.card-head button,.card-head input{margin-left:auto}.card-body{padding:16px 18px}.funnel-wrap{display:flex;flex-direction:column;gap:6px}.funnel-row{display:grid;grid-template-columns:120px 1fr 90px;align-items:center;gap:10px}.flabel{font-size:12px;font-weight:600;color:var(--text-600)}.funnel-bar-track{background:var(--border-soft);border-radius:6px;height:22px;overflow:hidden}.funnel-bar-fill{height:100%;border-radius:6px;background:linear-gradient(90deg,var(--indigo-500),#8A6BFF);display:flex;align-items:center;justify-content:flex-end;padding-right:8px}.funnel-bar-fill span{color:#fff;font-size:10.5px;font-weight:700}.fval{font-size:12px;color:var(--text-400);text-align:right;font-family:JetBrains Mono,monospace}
-      .filter-bar{display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin-bottom:14px}.btn{border:none;border-radius:8px;padding:8px 14px;font-size:12.5px;font-weight:600;display:inline-flex;align-items:center;gap:6px;text-decoration:none}.btn-primary{background:var(--indigo-500);color:#fff;box-shadow:0 4px 10px rgba(79,107,255,.28)}.btn-ghost{background:#fff;border:1px solid var(--border);color:var(--text-700)}.btn-soft{background:var(--indigo-100);color:var(--indigo-600)}.btn-whatsapp{background:#e8f8ef;color:#047a43}.btn-danger{background:var(--red-700);color:#fff;box-shadow:0 4px 10px rgba(229,72,77,.22)}.btn-sm{padding:5px 10px;font-size:11.5px;border-radius:7px}.btn:disabled{opacity:.55;cursor:not-allowed}.file-upload-btn{position:relative;overflow:hidden;cursor:pointer}.file-upload-btn input{position:absolute;inset:0;opacity:0;cursor:pointer}.action-icons{display:flex;align-items:center;gap:6px}.action-icon-btn{width:30px;height:30px;border:1px solid var(--border);border-radius:8px;background:#fff;color:var(--text-600);display:inline-flex;align-items:center;justify-content:center}.action-icon-btn:hover{background:var(--bg);color:var(--text-900)}.action-icon-primary{background:var(--indigo-100);border-color:#dbe2ff;color:var(--indigo-600)}.action-icon-danger{background:var(--red-50);border-color:#f7d7d7;color:var(--red-700)}.action-icon-whatsapp{background:#e8f8ef;border-color:#c8eed9;color:#047a43}.delete-modal,.forgot-modal{width:390px;max-width:92vw;overflow:hidden}.delete-modal .modal-head,.forgot-modal .modal-head{padding:18px 18px 16px}.delete-modal-body,.forgot-modal-body{display:flex;gap:14px;align-items:center;padding:20px 18px}.delete-modal-body p,.forgot-modal-body p{margin:0;color:var(--text-700);line-height:1.45;min-width:0}.forgot-email-field{margin-top:12px}.forgot-email-field input{height:38px}.delete-icon{width:38px;height:38px;border-radius:10px;background:var(--red-50);color:var(--red-700);display:flex;align-items:center;justify-content:center;flex:0 0 38px}.logout-icon{background:var(--indigo-100);color:var(--indigo-600)}.delete-modal-actions{display:flex;justify-content:flex-end;gap:10px;padding:0 18px 18px}.delete-modal-actions .btn{min-width:66px;justify-content:center}.pamphlet-select{height:32px;border:1px solid #dbe2ff;border-radius:8px;background:var(--indigo-100);color:var(--indigo-600);font-size:11.5px;font-weight:700;padding:0 8px;max-width:150px}.pamphlet-select.compact{width:92px;height:30px;padding:0 6px}.table-wrap{overflow-x:auto}table{width:100%;border-collapse:collapse;font-size:12.5px}thead th{text-align:left;font-size:10.5px;text-transform:uppercase;letter-spacing:.4px;color:var(--text-400);font-weight:700;padding:10px 12px;border-bottom:1px solid var(--border);white-space:nowrap;background:#FAFBFD}tbody td{padding:11px 12px;border-bottom:1px solid var(--border-soft);color:var(--text-700);white-space:nowrap}tbody tr:hover{background:#F8F9FD}.clickable{cursor:pointer}.cell-name,.nm{font-weight:700;color:var(--text-900)}.cell-sub,.mt{font-size:11px;color:var(--text-400)}.mini-select,.mini-input{max-width:160px;border:1px solid var(--border);border-radius:7px;padding:5px 7px;background:#fff}.tag{font-size:12px;border-radius:999px;padding:6px 10px;font-weight:700}.tag.green{background:var(--green-50);color:var(--green-700)}.tag.purple{background:var(--purple-50);color:var(--purple-700)}.tag.amber{background:var(--amber-50);color:var(--amber-700)}.tag.blue{background:var(--blue-50);color:var(--indigo-600)}.tag.red{background:var(--red-50);color:var(--red-700)}
-      .badge{display:inline-flex;align-items:center;gap:5px;padding:3px 9px;border-radius:20px;font-size:11px;font-weight:700;white-space:nowrap}.badge-gray{background:#f1f2f6;color:var(--text-600)}.badge-amber{background:var(--amber-50);color:var(--amber-700)}.badge-red{background:var(--red-50);color:var(--red-700)}.badge-green{background:var(--green-50);color:var(--green-700)}.badge-blue{background:var(--blue-50);color:var(--indigo-600)}.badge-purple{background:var(--purple-50);color:var(--purple-700)}.badge-junk{background:#fee2e2;color:#991b1b;border:1px solid #fecaca}.btn-green{background:var(--green-50);color:var(--green-700)}.leads-filter-bar{gap:10px;margin-bottom:14px}.leads-filter-bar .fbtn{height:34px}.leads-filter-bar .lead-search-input{width:200px}.leads-filter-bar .filter-spacer{flex:1}.leads-card{border-radius:14px;overflow:hidden}.leads-table-wrap{overflow-x:auto}.leads-table{min-width:1300px}.leads-table thead th{height:38px;padding:10px 12px;background:#fafbfd;color:#99a1b3;font-size:10.5px;letter-spacing:.4px}.leads-table tbody td{height:58px;padding:10px 12px;color:#333a56}.leads-table tbody tr:hover{background:#f8f9fd}.lead-name-cell{display:flex;align-items:center;gap:9px}.avatar{width:30px;height:30px;border-radius:8px;display:flex;align-items:center;justify-content:center;color:#fff;font-weight:700;font-size:11.5px;flex:0 0 30px}.lead-avatar{background:#eef3ff;color:#4f6bff;border-radius:8px}.leads-table .cell-name{font-size:12.5px;font-weight:700;color:#161b33}.leads-table .cell-sub{font-size:11px;color:#99a1b3;margin-top:3px}.leads-table .mini-select,.leads-table .stage-select{height:29px;max-width:150px;border:1px solid var(--border);border-radius:7px;background:#fff;padding:5px 8px;font-size:11.5px;color:var(--text-700)}.leads-table .stage-select{max-width:118px}.leads-table .feedback-select{max-width:132px;font-weight:700;border-radius:999px}.feedback-select.badge-red{background:var(--red-50);color:var(--red-700);border-color:#f7d7d7}.feedback-select.badge-gray{background:#f1f2f6;color:var(--text-600)}.feedback-select.badge-amber{background:var(--amber-50);color:var(--amber-700);border-color:#f5dfaf}.feedback-select.badge-blue{background:var(--blue-50);color:var(--indigo-600);border-color:#dbe2ff}.feedback-select.badge-green{background:var(--green-50);color:var(--green-700);border-color:#caefdf}.feedback-select.badge-purple{background:var(--purple-50);color:var(--purple-700);border-color:#ded2fb}.feedback-select.badge-junk{background:#fee2e2;color:#991b1b;border-color:#fecaca}.leads-table .btn-soft{background:var(--indigo-100);color:var(--indigo-600);box-shadow:none}.leads-table .empty-state h4{margin:0 0 4px;color:var(--text-600);font-size:13px}.leads-table .empty-state p{margin:0;font-size:12px;color:var(--text-400)}.pill-tabs{display:flex;gap:4px;background:var(--bg);border:1px solid var(--border);border-radius:999px;padding:3px}.pill-tab{padding:7px 14px;border-radius:999px;font-size:12px;font-weight:600;color:var(--text-600);background:transparent;border:none}.pill-tab.active{background:#fff;color:var(--indigo-600);box-shadow:0 1px 3px rgba(16,20,40,.08)}.admissions-tabs{width:max-content;margin-bottom:16px}.admissions-card{border-radius:14px;overflow:hidden}.admissions-table{width:100%;min-width:980px;border-collapse:collapse}.admissions-table thead th{height:42px;padding:11px 16px;background:#fafbfd;color:#99a1b3;font-size:10.5px;letter-spacing:.4px;font-weight:700;white-space:nowrap;border-bottom:1px solid var(--border)}.admissions-table thead th:last-child{text-align:right}.admissions-table tbody td{height:70px;padding:12px 16px;color:#333a56;vertical-align:middle;border-bottom:1px solid var(--border-soft)}.admissions-table tbody tr:hover{background:#f8f9fd}.admissions-table th:nth-child(1),.admissions-table td:nth-child(1){width:24%;min-width:200px}.admissions-table th:nth-child(2),.admissions-table td:nth-child(2){width:10%;min-width:85px}.admissions-table th:nth-child(3),.admissions-table td:nth-child(3){width:12%;min-width:100px}.admissions-table th:nth-child(4),.admissions-table td:nth-child(4){width:13%;min-width:110px}.admissions-table th:nth-child(5),.admissions-table td:nth-child(5){width:11%;min-width:100px}.admissions-table th:nth-child(6),.admissions-table td:nth-child(6){width:12%;min-width:110px}.admissions-table th:nth-child(7),.admissions-table td:nth-child(7){width:18%;min-width:180px}.admissions-table th:nth-child(8),.admissions-table td:nth-child(8){width:8%;min-width:85px;text-align:right}.admissions-table .cell-name{font-size:12.5px;font-weight:700;color:#161b33}.admissions-table .cell-sub{font-size:11px;color:#99a1b3;margin-top:3px}.admission-batch-cell{display:grid;align-content:center;gap:5px;max-width:220px}.admissions-table .student-mini-select{width:100%;max-width:180px;height:32px}.admission-batch-hint{display:grid;gap:1px;max-width:220px;color:var(--text-400);margin-top:0}.admission-batch-hint b{color:var(--amber-700);font-size:10.5px;line-height:1.2;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}.admission-batch-hint span{font-size:10px;line-height:1.2;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}.admission-action-cell{text-align:right}.admission-action-cell .btn{height:32px;min-width:82px;justify-content:center}.mono{font-family:JetBrains Mono,monospace}.admissions-table .btn-primary{box-shadow:0 4px 10px rgba(79,107,255,.22)}.admissions-table .empty-state{padding:54px 20px;text-align:center}.admissions-table .empty-state h4{margin:0 0 6px;color:var(--text-600);font-size:14px;font-weight:700}.admissions-table .empty-state p{margin:0;font-size:12.5px;color:var(--text-400)}
+      .filter-bar{display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin-bottom:14px}.btn{border:none;border-radius:8px;padding:8px 14px;font-size:12.5px;font-weight:600;display:inline-flex;align-items:center;gap:6px;text-decoration:none}.btn-primary{background:var(--indigo-500);color:#fff;box-shadow:0 4px 10px rgba(79,107,255,.28)}.btn-ghost{background:#fff;border:1px solid var(--border);color:var(--text-700)}.btn-soft{background:var(--indigo-100);color:var(--indigo-600)}.btn-whatsapp{background:#e8f8ef;color:#047a43}.btn-danger{background:var(--red-700);color:#fff;box-shadow:0 4px 10px rgba(229,72,77,.22)}.btn-sm{padding:5px 10px;font-size:11.5px;border-radius:7px}.btn:disabled{opacity:.55;cursor:not-allowed}.file-upload-btn{position:relative;overflow:hidden;cursor:pointer}.file-upload-btn input{position:absolute;inset:0;opacity:0;cursor:pointer}.action-icons{display:flex;align-items:center;gap:6px}.action-icon-btn{width:30px;height:30px;border:1px solid var(--border);border-radius:8px;background:#fff;color:var(--text-600);display:inline-flex;align-items:center;justify-content:center}.action-icon-btn:hover{background:var(--bg);color:var(--text-900)}.action-icon-primary{background:var(--indigo-100);border-color:#dbe2ff;color:var(--indigo-600)}.action-icon-danger{background:var(--red-50);border-color:#f7d7d7;color:var(--red-700)}.action-icon-whatsapp{background:#e8f8ef;border-color:#c8eed9;color:#047a43}.delete-modal,.forgot-modal{width:390px;max-width:92vw;overflow:hidden}.delete-modal .modal-head,.forgot-modal .modal-head{padding:18px 18px 16px}.delete-modal-body,.forgot-modal-body{display:flex;gap:14px;align-items:center;padding:20px 18px}.delete-modal-body p,.forgot-modal-body p{margin:0;color:var(--text-700);line-height:1.45;min-width:0}.forgot-email-field{margin-top:12px}.forgot-email-field input{height:38px}.delete-icon{width:38px;height:38px;border-radius:10px;background:var(--red-50);color:var(--red-700);display:flex;align-items:center;justify-content:center;flex:0 0 38px}.logout-icon{background:var(--indigo-100);color:var(--indigo-600)}.delete-modal-actions{display:flex;justify-content:flex-end;gap:10px;padding:0 18px 18px}.delete-modal-actions .btn{min-width:66px;justify-content:center}.pamphlet-select{height:32px;border:1px solid #dbe2ff;border-radius:8px;background:var(--indigo-100);color:var(--indigo-600);font-size:11.5px;font-weight:700;padding:0 8px;max-width:150px}.pamphlet-select.compact{width:92px;height:30px;padding:0 6px}.table-wrap{overflow-x:auto}table{width:100%;border-collapse:collapse;font-size:12.5px}thead th{text-align:left;font-size:10.5px;text-transform:uppercase;letter-spacing:.4px;color:var(--text-400);font-weight:700;padding:10px 12px;border-bottom:1px solid var(--border);white-space:nowrap;background:#FAFBFD}tbody td,tfoot td{padding:11px 12px;border-bottom:1px solid var(--border-soft);color:var(--text-700);white-space:nowrap;vertical-align:middle}tbody tr:hover{background:#F8F9FD}.approvals-table thead th{vertical-align:middle}.approvals-table tbody td{vertical-align:middle}.clickable{cursor:pointer}.cell-name,.nm{font-weight:700;color:var(--text-900)}.cell-sub,.mt{font-size:11px;color:var(--text-400)}.mini-select,.mini-input{max-width:160px;border:1px solid var(--border);border-radius:7px;padding:5px 7px;background:#fff}.tag{font-size:12px;border-radius:999px;padding:6px 10px;font-weight:700}.tag.green{background:var(--green-50);color:var(--green-700)}.tag.purple{background:var(--purple-50);color:var(--purple-700)}.tag.amber{background:var(--amber-50);color:var(--amber-700)}.tag.blue{background:var(--blue-50);color:var(--indigo-600)}.tag.red{background:var(--red-50);color:var(--red-700)}
+      .badge{display:inline-flex;align-items:center;gap:5px;padding:3px 9px;border-radius:20px;font-size:11px;font-weight:700;white-space:nowrap}.badge-gray{background:#f1f2f6;color:var(--text-600)}.badge-amber{background:var(--amber-50);color:var(--amber-700)}.badge-red{background:var(--red-50);color:var(--red-700)}.badge-green{background:var(--green-50);color:var(--green-700)}.badge-blue{background:var(--blue-50);color:var(--indigo-600)}.badge-purple{background:var(--purple-50);color:var(--purple-700)}.badge-junk{background:#fee2e2;color:#991b1b;border:1px solid #fecaca}.btn-green{background:var(--green-50);color:var(--green-700)}.leads-filter-bar{gap:10px;margin-bottom:14px}.leads-filter-bar .fbtn{height:34px}.leads-filter-bar .lead-search-input{width:200px}.leads-filter-bar .filter-spacer{flex:1}.leads-card{border-radius:14px;overflow:hidden}.leads-table-wrap{overflow-x:auto}.leads-table{min-width:1300px}.leads-table thead th{height:38px;padding:10px 12px;background:#fafbfd;color:#99a1b3;font-size:10.5px;letter-spacing:.4px}.leads-table tbody td{height:58px;padding:10px 12px;color:#333a56}.leads-table tbody tr:hover{background:#f8f9fd}.lead-name-cell{display:flex;align-items:center;gap:9px}.avatar{width:30px;height:30px;border-radius:8px;display:flex;align-items:center;justify-content:center;color:#fff;font-weight:700;font-size:11.5px;flex:0 0 30px}.lead-avatar{background:#eef3ff;color:#4f6bff;border-radius:8px}.leads-table .cell-name{font-size:12.5px;font-weight:700;color:#161b33}.leads-table .cell-sub{font-size:11px;color:#99a1b3;margin-top:3px}.leads-table .mini-select,.leads-table .stage-select{height:29px;max-width:150px;border:1px solid var(--border);border-radius:7px;background:#fff;padding:5px 8px;font-size:11.5px;color:var(--text-700)}.leads-table .stage-select{max-width:118px}.leads-table .feedback-select{max-width:132px;font-weight:700;border-radius:999px}.feedback-select.badge-red{background:var(--red-50);color:var(--red-700);border-color:#f7d7d7}.feedback-select.badge-gray{background:#f1f2f6;color:var(--text-600)}.feedback-select.badge-amber{background:var(--amber-50);color:var(--amber-700);border-color:#f5dfaf}.feedback-select.badge-blue{background:var(--blue-50);color:var(--indigo-600);border-color:#dbe2ff}.feedback-select.badge-green{background:var(--green-50);color:var(--green-700);border-color:#caefdf}.feedback-select.badge-purple{background:var(--purple-50);color:var(--purple-700);border-color:#ded2fb}.feedback-select.badge-junk{background:#fee2e2;color:#991b1b;border-color:#fecaca}.leads-table .btn-soft{background:var(--indigo-100);color:var(--indigo-600);box-shadow:none}.leads-table .empty-state h4{margin:0 0 4px;color:var(--text-600);font-size:13px}.leads-table .empty-state p{margin:0;font-size:12px;color:var(--text-400)}.pill-tabs{display:inline-flex;align-items:center;gap:4px;background:#EAEFF8;border:1px solid #D2DCEE;border-radius:999px;padding:4px;box-shadow:inset 0 1px 2px rgba(16,20,40,.04);max-width:100%;overflow-x:auto;scrollbar-width:none;-ms-overflow-style:none}.pill-tabs::-webkit-scrollbar{display:none}.pill-tab{display:inline-flex;align-items:center;justify-content:center;gap:7px;padding:7px 14px;border-radius:999px;font-size:12px;font-weight:600;color:var(--text-600);background:transparent;border:1px solid transparent;white-space:nowrap;line-height:1;cursor:pointer;transition:all .15s ease;flex-shrink:0}.pill-tab svg{flex-shrink:0}.pill-tab:hover{color:var(--text-900);background:rgba(255,255,255,.55)}.pill-tab.active{background:#FFFFFF;color:var(--indigo-600);font-weight:700;border-color:rgba(79,107,255,.22);box-shadow:0 2px 6px rgba(16,20,40,.08)}.admissions-tabs{width:max-content;margin-bottom:16px}.admissions-card{border-radius:14px;overflow:hidden}.admissions-table{width:100%;min-width:980px;border-collapse:collapse}.admissions-table thead th{height:42px;padding:11px 16px;background:#fafbfd;color:#99a1b3;font-size:10.5px;letter-spacing:.4px;font-weight:700;white-space:nowrap;border-bottom:1px solid var(--border)}.admissions-table thead th:last-child{text-align:right}.admissions-table tbody td{height:70px;padding:12px 16px;color:#333a56;vertical-align:middle;border-bottom:1px solid var(--border-soft)}.admissions-table tbody tr:hover{background:#f8f9fd}.admissions-table th:nth-child(1),.admissions-table td:nth-child(1){width:24%;min-width:200px}.admissions-table th:nth-child(2),.admissions-table td:nth-child(2){width:10%;min-width:85px}.admissions-table th:nth-child(3),.admissions-table td:nth-child(3){width:12%;min-width:100px}.admissions-table th:nth-child(4),.admissions-table td:nth-child(4){width:13%;min-width:110px}.admissions-table th:nth-child(5),.admissions-table td:nth-child(5){width:11%;min-width:100px}.admissions-table th:nth-child(6),.admissions-table td:nth-child(6){width:12%;min-width:110px}.admissions-table th:nth-child(7),.admissions-table td:nth-child(7){width:18%;min-width:180px}.admissions-table th:nth-child(8),.admissions-table td:nth-child(8){width:8%;min-width:85px;text-align:right}.admissions-table .cell-name{font-size:12.5px;font-weight:700;color:#161b33}.admissions-table .cell-sub{font-size:11px;color:#99a1b3;margin-top:3px}.admission-batch-cell{display:grid;align-content:center;gap:5px;max-width:220px}.admissions-table .student-mini-select{width:100%;max-width:180px;height:32px}.admission-batch-hint{display:grid;gap:1px;max-width:220px;color:var(--text-400);margin-top:0}.admission-batch-hint b{color:var(--amber-700);font-size:10.5px;line-height:1.2;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}.admission-batch-hint span{font-size:10px;line-height:1.2;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}.admission-action-cell{text-align:right}.admission-action-cell .btn{height:32px;min-width:82px;justify-content:center}.mono{font-family:JetBrains Mono,monospace}.admissions-table .btn-primary{box-shadow:0 4px 10px rgba(79,107,255,.22)}.admissions-table .empty-state{padding:54px 20px;text-align:center}.admissions-table .empty-state h4{margin:0 0 6px;color:var(--text-600);font-size:14px;font-weight:700}.admissions-table .empty-state p{margin:0;font-size:12.5px;color:var(--text-400)}
       .leads-bulk-bar{display:flex;align-items:center;gap:12px;padding:10px 16px;background:linear-gradient(90deg,#eef3ff,#f8faff);border:1px solid #c7d7fe;border-radius:10px;margin-bottom:14px;box-shadow:0 2px 8px rgba(79,107,255,.08);flex-wrap:wrap}.leads-bulk-count{font-weight:700;color:var(--indigo-600);font-size:12.5px;display:inline-flex;align-items:center;gap:6px}.leads-bulk-actions{display:inline-flex;align-items:center;gap:8px;margin-left:auto;flex-wrap:wrap}.leads-table th.col-select,.leads-table td.col-select{width:42px;min-width:42px;text-align:center;padding:0 8px}.lead-checkbox{width:16px;height:16px;cursor:pointer;accent-color:var(--indigo-500);border-radius:4px;vertical-align:middle}.leads-table tbody tr.row-selected{background:#eef3ff!important}.leads-table tbody tr.row-selected:hover{background:#e4ebff!important}
       .drawer-overlay{position:fixed;inset:0;background:rgba(10,14,29,.45);display:none;z-index:200}.drawer-overlay.show{display:block}.drawer{position:fixed;top:0;right:0;height:100vh;width:520px;max-width:94vw;background:#fff;box-shadow:-14px 0 40px rgba(10,14,29,.25);transform:translateX(100%);transition:transform .22s ease;z-index:201;display:flex;flex-direction:column}.drawer.show{transform:translateX(0)}.drawer-head{padding:20px 22px;border-bottom:1px solid var(--border-soft);display:flex;align-items:flex-start;gap:14px}.drawer-avatar{width:44px;height:44px;font-size:14px;background:linear-gradient(135deg,var(--indigo-500),#8A6BFF)}.drawer-title{flex:1;min-width:0}.drawer-title h3{margin:0;font-size:15px;line-height:1.25;color:var(--text-900)}.drawer-title .cell-sub{display:flex;align-items:center;gap:6px;flex-wrap:wrap;margin-top:4px}.close-x{width:30px;height:30px;border-radius:8px;border:none;background:var(--bg);color:var(--text-600);font-size:15px}.drawer-body{flex:1;overflow-y:auto;padding:0 0 30px}.dtabs{display:flex;gap:2px;padding:0 22px;border-bottom:1px solid var(--border-soft)}.dtab{padding:12px 12px;font-size:12px;font-weight:700;color:var(--text-400);border:0;background:transparent;border-bottom:2px solid transparent}.dtab.active{color:var(--indigo-600);border-color:var(--indigo-500)}.dpane{display:none;padding:18px 22px}.dpane.active{display:block}.kv-row{display:flex;justify-content:space-between;gap:18px;padding:9px 0;border-bottom:1px solid var(--border-soft);font-size:12.5px}.kv-row .k{color:var(--text-400)}.kv-row .v{font-weight:600;color:var(--text-900);text-align:right;overflow-wrap:anywhere}.drawer-notes{margin-top:14px}.drawer-full-btn{width:100%;justify-content:center;margin-top:12px}.drawer-admit-btn{margin-top:8px}
       .batch-metrics{grid-template-columns:repeat(3,1fr);margin-bottom:18px}.batch-card-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:16px}.batch-select-card{border:1px solid var(--border);background:#fff;border-radius:14px;padding:18px;text-align:left;box-shadow:0 1px 2px rgba(16,20,40,.05);cursor:pointer;transition:transform .16s ease,box-shadow .16s ease,border-color .16s ease}.batch-select-card:hover{transform:translateY(-2px);border-color:#b9c5ff;box-shadow:0 14px 30px rgba(79,107,255,.12)}.batch-select-top{display:flex;align-items:center;justify-content:space-between;margin-bottom:18px}.batch-select-card h3{margin:0 0 6px;font-size:16px;color:#061633}.batch-select-stats{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-top:18px}.batch-select-stats span{border:1px solid var(--border-soft);border-radius:9px;padding:9px 8px;color:var(--text-400);font-size:11px}.batch-select-stats b{display:block;color:#061633;font-size:15px}.calendar-connect-card{display:flex;align-items:center;justify-content:space-between;gap:14px;padding:15px 18px;margin-bottom:16px}.calendar-connect-card h3{margin:0 0 4px;font-size:15px;color:#061633}.calendar-connect-card .sub{font-size:12px;color:var(--text-400)}.calendar-connect-actions{display:flex;align-items:center;gap:8px;flex-wrap:wrap;justify-content:flex-end}.teacher-batches-card{margin-bottom:16px}.teacher-batches-card .card-body{padding:16px 18px}.teacher-batch-grid{grid-template-columns:repeat(auto-fit,minmax(280px,340px));align-items:stretch}.teacher-batch-grid .batch-select-card{min-height:176px;display:flex;flex-direction:column}.teacher-batch-grid .batch-select-stats{margin-top:auto;padding-top:18px}.teacher-action-grid{align-items:stretch}.teacher-action-grid>.card{min-height:258px}.teacher-row-list .crow{display:grid;grid-template-columns:minmax(0,1fr) auto;align-items:center;gap:16px;min-height:72px}.teacher-row-list .who{min-width:0}.teacher-row-list .who>div{min-width:0}.teacher-row-list .nm,.teacher-row-list .mt{overflow:hidden;text-overflow:ellipsis;display:block}.teacher-row-list .nm{line-height:1.35}.teacher-row-list .mt{white-space:nowrap}.teacher-update-tag{min-width:78px;max-width:96px;justify-content:center;text-align:center;white-space:normal;line-height:1.2;padding:8px 10px}.selected-batch-head{margin-bottom:16px}.batch-grid{grid-template-columns:1.2fr .9fr;gap:16px}.batch-grid-single{display:grid;grid-template-columns:1fr;gap:16px}.batch-card{border-radius:14px;overflow:hidden}.batch-card .card-head{min-height:64px}.batch-table,.batch-roster-table{min-width:100%}.batch-table thead th,.batch-roster-table thead th{height:38px;padding:10px 12px;background:#fafbfd;color:#99a1b3;font-size:10.5px;letter-spacing:.4px}.batch-table tbody td,.batch-roster-table tbody td{height:56px;padding:11px 12px;color:#333a56}.batch-table tbody tr:hover,.batch-roster-table tbody tr:hover{background:#f8f9fd}.batch-table .selected-row{background:#f8f9fd}.batch-table .cell-name{font-weight:700;color:#161b33}.batch-roster-table .cell-name{font-size:12.5px;font-weight:700;color:#161b33}.batch-roster-table .cell-sub{font-size:11px;color:#99a1b3;margin-top:3px}
@@ -9669,7 +14607,7 @@ function CrmStyles() {
       .logs-filter-bar{gap:10px;margin-bottom:14px}.logs-filter-bar .fbtn{height:34px;width:220px}.logs-filter-bar .filter-spacer{flex:1}.logs-card{border-radius:14px;overflow:hidden}.logs-table-wrap{overflow-x:auto}.logs-table{min-width:820px}.logs-table thead th{height:38px;padding:10px 12px;background:#fafbfd;color:#99a1b3;font-size:10.5px;letter-spacing:.4px}.logs-table tbody td{height:58px;padding:10px 12px;color:#333a56}.logs-table tbody tr:hover{background:#f8f9fd}.logs-table .cell-name{font-size:12.5px;font-weight:700;color:#161b33}.logs-table .cell-sub{font-size:11px;color:#99a1b3;margin-top:3px}.logs-table .btn-soft{background:var(--indigo-100);color:var(--indigo-600);box-shadow:none}.logs-table .empty-state h4{margin:0;color:var(--text-600);font-size:13px}
       .study-note-form{grid-template-columns:1fr 1fr 240px 1fr auto}.study-note-form .field.full{grid-column:1 / -2}.study-note-list{display:grid;gap:10px;padding:14px 18px 18px}.study-note-row{display:grid;grid-template-columns:42px minmax(0,1fr) auto;align-items:center;gap:12px;border:1px solid var(--border-soft);border-radius:12px;background:#fff;padding:12px 14px}.study-note-icon{width:42px;height:42px;border-radius:12px;background:var(--indigo-100);color:var(--indigo-600);display:grid;place-items:center}.study-note-row b{display:block;font-size:13px;color:var(--text-900);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}.study-note-row p{margin:4px 0 0;color:var(--text-400);font-size:11.5px;line-height:1.35}.study-note-row small{display:block;margin-top:5px;color:var(--text-600);font-size:11.5px;line-height:1.35}.study-notes-card .empty-state{border:1px dashed var(--border);border-radius:12px;background:#fbfcff}
       .attdetail-back{margin-bottom:14px}.attdetail-grid{grid-template-columns:1.2fr .8fr;gap:16px}.attdetail-card{border-radius:14px;overflow:hidden}.cal-grid{display:grid;grid-template-columns:repeat(7,1fr);gap:6px}.cal-dow{text-align:center;font-size:10.5px;font-weight:800;color:var(--text-400);padding:0 0 4px}.cal-cell{aspect-ratio:1;border-radius:8px;display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:700;border:1px solid var(--border-soft);color:var(--text-600);background:#fff}.cal-cell.present{background:var(--teal-100);color:var(--teal-700);border-color:#8ee8dc}.cal-cell.absent{background:var(--red-100);color:var(--red-700);border-color:#f7b7b9}.cal-cell.late{background:var(--amber-50);color:var(--amber-700);border-color:#f5dfaf}.cal-cell.leave{background:var(--purple-50);color:var(--purple-700);border-color:#ded2fb}.cal-cell.blank{background:transparent;border-color:transparent}.legend{display:flex;gap:14px;font-size:11.5px;color:var(--text-600);margin-top:12px;flex-wrap:wrap}.legend span{display:inline-flex;align-items:center;gap:6px}.legend i{width:9px;height:9px;border-radius:3px;display:inline-block}.date-range-row{display:flex;gap:8px}.date-range-row .fbtn{flex:1;min-width:0}.attdetail-status{width:100%}.attdetail-download{width:100%;justify-content:center;margin-top:14px}
-      .finance-metrics{grid-template-columns:repeat(4,1fr)}.finance-grid{grid-template-columns:1.35fr .75fr}.finance-card{border-radius:14px;overflow:hidden}.finance-table-wrap{overflow-x:auto}.finance-table{min-width:920px}.finance-table thead th{height:38px;padding:10px 12px;background:#fafbfd;color:#99a1b3;font-size:10.5px;letter-spacing:.4px}.finance-table tbody td{height:58px;padding:10px 12px;color:#333a56}.finance-table tbody tr:hover{background:#f8f9fd}.finance-table .cell-name{font-size:12.5px;font-weight:700;color:#161b33}.finance-table .cell-sub{font-size:11px;color:#99a1b3;margin-top:3px}.finance-chart-body{display:flex;flex-direction:column;align-items:center;gap:18px}.finance-chart-body .donut-legend{width:100%;min-width:0}
+      .finance-metrics{grid-template-columns:repeat(4,1fr)}.finance-grid{grid-template-columns:1.15fr 1fr}.finance-card{border-radius:14px;overflow:hidden}.finance-table-wrap{overflow-x:auto}.finance-table{min-width:920px}.finance-table thead th{height:38px;padding:10px 12px;background:#fafbfd;color:#99a1b3;font-size:10.5px;letter-spacing:.4px}.finance-table tbody td{height:58px;padding:10px 12px;color:#333a56}.finance-table tbody tr:hover{background:#f8f9fd}.finance-table .cell-name{font-size:12.5px;font-weight:700;color:#161b33}.finance-table .cell-sub{font-size:11px;color:#99a1b3;margin-top:3px}.finance-chart-body{display:flex;flex-direction:column;align-items:center;gap:18px}.finance-chart-body .donut-legend{width:100%;min-width:0}
       .emi-metrics{grid-template-columns:repeat(3,1fr)}.emi-filter-bar{gap:10px;margin-bottom:14px}.emi-filter-bar .filter-spacer{flex:1}.emi-card{border-radius:14px;overflow:hidden}.emi-table-wrap{overflow-x:auto}.emi-table{min-width:880px}.emi-table thead th{height:38px;padding:10px 12px;background:#fafbfd;color:#99a1b3;font-size:10.5px;letter-spacing:.4px}.emi-table tbody td{height:58px;padding:10px 12px;color:#333a56}.emi-table tbody tr:hover{background:#f8f9fd}.emi-table .cell-name{font-size:12.5px;font-weight:700;color:#161b33}.emi-table .cell-sub{font-size:11px;color:#99a1b3;margin-top:3px}.emi-table .btn-green{white-space:nowrap}
       .receipts-filter-bar{gap:10px;margin-bottom:14px}.receipts-filter-bar .fbtn{height:34px;width:240px}.receipts-filter-bar .filter-spacer{flex:1}.receipts-card{border-radius:14px;overflow:hidden}.receipts-table-wrap{overflow-x:auto}.receipts-table{min-width:900px}.receipts-table thead th{height:38px;padding:10px 12px;background:#fafbfd;color:#99a1b3;font-size:10.5px;letter-spacing:.4px}.receipts-table tbody td{height:58px;padding:10px 12px;color:#333a56}.receipts-table tbody tr:hover{background:#f8f9fd}.receipts-table .cell-name{font-size:12.5px;font-weight:700;color:#161b33}.receipts-table .cell-sub{font-size:11px;color:#99a1b3;margin-top:3px}.receipt-drawer{width:720px;max-width:96vw}.receipt-tabs{overflow-x:auto}.receipt-tabs .dtab{white-space:nowrap}.receipt-drawer-body{padding:18px 0 28px;background:#fff}.invoice-card{background:#fff!important;border:0!important;box-shadow:none!important;border-radius:0!important;padding:0 18px!important;overflow:auto!important}.invoice-actions{width:min(820px,100%);margin:14px auto 0;display:flex;justify-content:flex-end;gap:10px;flex-wrap:wrap}.tax-invoice{width:820px;max-width:none;margin:0 auto;background:#fff;color:#111;font-family:Arial,Helvetica,sans-serif;font-size:11px;line-height:1.32;border:1px solid #555}.tax-title{text-align:center;font-weight:700;padding:8px 0;border-bottom:1px solid #555}.invoice-top-grid{display:grid;grid-template-columns:1fr 1fr;border-bottom:1px solid #555}.invoice-seller{padding:8px;display:grid;gap:2px;border-right:1px solid #555;min-height:190px}.invoice-seller strong,.invoice-buyer strong{font-size:12px}.invoice-meta-grid{display:grid;grid-template-columns:1fr 1fr}.invoice-meta-grid>div{min-height:31px;padding:5px 6px;border-right:1px solid #777;border-bottom:1px solid #777;display:grid;align-content:start;gap:2px}.invoice-meta-grid>div:nth-child(2n){border-right:0}.invoice-meta-grid span,.invoice-buyer>span:first-child,.amount-words span,.tax-words span{font-size:10px}.invoice-meta-grid b{font-size:10.5px}.invoice-terms{grid-column:1/-1;min-height:58px!important;border-bottom:0!important}.invoice-buyer{padding:8px;display:grid;gap:2px;border-bottom:1px solid #555;min-height:95px}.invoice-items,.gst-summary{width:100%;border-collapse:collapse;table-layout:fixed}.invoice-items th,.invoice-items td,.gst-summary th,.gst-summary td{border-right:1px solid #777;border-bottom:1px solid #777;padding:5px 6px;vertical-align:top;line-height:1.28}.invoice-items th:last-child,.invoice-items td:last-child,.gst-summary th:last-child,.gst-summary td:last-child{border-right:0;text-align:right}.invoice-items th{font-weight:400;text-align:center;vertical-align:middle;height:24px}.invoice-items td:nth-child(1){width:42px;text-align:center}.invoice-items td:nth-child(2){width:38%}.invoice-items td:nth-child(3),.invoice-items td:nth-child(4),.invoice-items td:nth-child(5),.invoice-items td:nth-child(6){text-align:center}.payment-items td:nth-child(2){width:42%;text-align:left}.payment-items td:nth-child(3),.payment-items td:nth-child(4){text-align:center}.payment-items td:nth-child(5){text-align:right}.payment-summary th,.payment-summary td{text-align:right!important}.payment-summary th:first-child,.payment-summary td:first-child{text-align:left!important}.invoice-items tbody tr:not(.invoice-total-row){height:32px}.invoice-items small{display:block;font-size:10px;margin-top:2px;line-height:1.25}.tax-line{text-align:right;font-weight:700}.invoice-total-row td{font-weight:700;border-top:1px solid #555}.invoice-total-row td:first-child{text-align:right}.amount-words{position:relative;padding:6px 8px;border-bottom:1px solid #555;display:grid;gap:2px}.amount-words em{position:absolute;right:8px;top:6px;font-style:normal;font-size:10px}.gst-summary th{font-size:10px;font-weight:400;text-align:center;vertical-align:middle}.gst-summary td{text-align:right}.gst-summary td:first-child{text-align:left}.tax-words{padding:6px 8px;border-bottom:1px solid #555;display:flex;gap:8px}.invoice-bottom{display:grid;grid-template-columns:1.1fr .9fr;min-height:112px}.invoice-bottom>div{padding:8px;display:grid;align-content:start;gap:3px}.bank-details{border-left:1px solid #555}.bank-details>b{margin-top:10px;text-align:right}.bank-details em{text-align:right;font-style:normal;margin-top:20px}.paid-due{margin-top:8px;font-weight:700}.invoice-footer{text-align:center;font-size:10px;padding:5px;border-top:1px solid #555}
       .tax-invoice th,.tax-invoice td{white-space:normal;overflow-wrap:anywhere}.tax-invoice td:last-child,.tax-invoice .invoice-total-row td:last-child,.tax-invoice .gst-summary td:not(:first-child){white-space:nowrap}.invoice-col-sl{width:46px}.invoice-col-particulars{width:31%}.invoice-col-hsn{width:84px}.invoice-col-qty{width:76px}.invoice-col-rate{width:70px}.invoice-col-per{width:64px}.invoice-col-amount{width:126px}.gst-col-hsn{width:98px}.gst-col-taxable{width:116px}.gst-col-rate{width:94px}.gst-col-amount{width:112px}.gst-col-total{width:124px}
@@ -9767,7 +14705,6 @@ function CrmStyles() {
             @media(max-width:1100px){.sidebar{width:74px;flex-basis:74px}.brand-text,.nav-group-label,.nav-item span,.role-meta{display:none}.sidebar-brand,.nav-item{justify-content:center}.sidebar-brand .brand-full-logo{width:42px;height:42px;max-width:42px;object-fit:contain;object-position:left center}.nav-badge{position:absolute;right:12px;top:7px;margin:0;min-width:17px;height:17px;padding:0 5px;font-size:9.5px}.two-col,.settings-shell,.lower-grid,.batch-grid{grid-template-columns:1fr}.batch-card-grid{grid-template-columns:repeat(2,minmax(0,1fr))}.topbar{height:auto;min-height:0;flex:0 0 auto;display:grid;grid-template-columns:1fr;align-items:stretch;padding:14px;gap:10px}.topbar-spacer{display:none}.search-box{width:100%}.date-filter{flex-wrap:wrap}.field-grid,.profile-grid,.payment-form{grid-template-columns:1fr}.card-head{align-items:flex-start;flex-wrap:wrap}.card-head button,.card-head input{margin-left:0}.settings-prototype-shell{grid-template-columns:1fr}.settings-nav{display:flex;overflow-x:auto;white-space:nowrap}.settings-nav button{flex:0 0 auto}.batch-metrics,.emi-metrics{grid-template-columns:repeat(2,minmax(0,1fr))}}
       @media(max-width:800px){.topbar{display:flex;flex-direction:column;align-items:stretch;gap:8px;width:100%!important;max-width:100vw!important;overflow:visible!important;box-sizing:border-box}.scope-select{width:100%;height:36px}.date-filter{width:100%;overflow-x:auto;justify-content:flex-start;flex-wrap:nowrap}.df-btn{flex:0 0 auto}.df-date.show{width:100%}.topbar>.icon-btn{align-self:flex-end;flex:0 0 34px}.search-box{width:100%;min-height:38px;flex:0 0 auto}.filter-bar{align-items:stretch}.filter-bar .fbtn,.filter-bar select,.filter-bar input,.logs-filter-bar .fbtn,.receipts-filter-bar .fbtn,.cert-filter-bar .fbtn{width:100%;min-width:0}.filter-spacer{display:none}.drawer{width:100vw!important;max-width:100vw;border-radius:0}.receipt-drawer{width:100vw;max-width:100vw}.drawer-head{padding:16px}.drawer-body{padding:14px}.receipt-drawer-body{padding:14px 0 24px}.invoice-card{padding:0 10px!important}.tax-invoice{min-width:720px}.invoice-actions{padding:0 10px}.profile-shell{max-width:none}.modal{width:100%;max-width:100%;border-radius:14px}.delete-modal{width:390px;max-width:calc(100vw - 20px)}.modal-overlay{padding:10px}.modal-body,.modal-head,.modal-foot{padding-left:16px;padding-right:16px}.modal-foot{flex-wrap:wrap}.modal-foot .btn,.modal-actions .btn{flex:1;justify-content:center}.delete-modal-actions .btn{flex:0 0 auto}.date-range-row{flex-direction:column}.finance-metrics,.batch-metrics,.emi-metrics{grid-template-columns:1fr}.chart-body{flex-direction:column;align-items:stretch}.donut-wrap{align-self:center}.donut-legend{width:100%}.pager{align-items:flex-start;gap:10px;flex-direction:column}.pager-btns{width:100%;overflow-x:auto}.profile-edit-actions{justify-content:stretch;flex-wrap:wrap}.profile-edit-actions .btn{flex:1;justify-content:center}}
       @media(max-width:700px){.imed-admin-prototype #app{display:block;min-height:100vh;height:100vh;overflow:hidden;width:100%!important;max-width:100vw!important}.sidebar{position:fixed;left:0;right:0;bottom:0;top:auto;width:100%!important;max-width:100vw!important;height:76px;z-index:20;display:flex;flex-direction:row;border-right:0;border-top:1px solid var(--navy-line);box-sizing:border-box}.sidebar-brand,.sidebar-footer{display:none}.nav-scroll{display:flex;overflow-x:auto;overflow-y:hidden;padding:0;scrollbar-width:none}.nav-scroll::-webkit-scrollbar{display:none}.nav-scroll>div{display:contents}.nav-item{min-width:72px;height:76px;border-radius:0;display:grid;place-items:center;gap:5px;font-size:10px;margin:0;padding:8px 6px}.nav-item svg{width:17px;height:17px}.nav-item span{display:block;max-width:64px;text-align:center;line-height:1.15;white-space:normal}.mobile-logout{display:grid;color:#FCA5A5}.mobile-logout:hover{background:var(--navy-800);color:#fff}.main{height:calc(100vh - 76px);width:100%!important;max-width:100vw!important;overflow:hidden!important;box-sizing:border-box}.content{padding:12px 10px 18px;width:100%!important;max-width:100vw!important;overflow-x:hidden!important;box-sizing:border-box}.grid-metrics,.batch-card-grid{grid-template-columns:1fr;gap:10px}.metric-card{padding:14px}.m-value{font-size:21px}.funnel-row{grid-template-columns:88px minmax(0,1fr) 56px}.topbar{position:sticky;top:0;z-index:40;box-shadow:0 1px 0 var(--border);width:100%!important;max-width:100vw!important;overflow:visible!important;box-sizing:border-box}.page-title{font-size:15px}.page-sub{font-size:11px}.field-grid,.profile-grid,.payment-form{grid-template-columns:1fr}.card-head,.card-body{padding-left:14px;padding-right:14px}.attendance-card .card-body{padding:14px 10px}.att-row{min-width:700px}.cal-grid{gap:4px}.cal-cell{font-size:11px;border-radius:7px}.profile-head{padding:16px 14px}.profile-tabs{padding:0 14px}.dtabs{overflow-x:auto}.dtab{white-space:nowrap}.certificate-preview-shell{padding:0;overflow-x:auto}.imed-certificate-exact-frame{transform:scale(.48);transform-origin:top left;margin:0;width:1220px}.cert-modal .certificate-card{padding:10px;overflow:auto}}
-      @media(max-width:420px){.content{padding-left:8px;padding-right:8px;width:100%!important;max-width:100vw!important;overflow-x:hidden!important;box-sizing:border-box}.auth-card{padding:22px 18px}.topbar{padding:12px 10px;width:100%!important;max-width:100vw!important;overflow:visible!important;box-sizing:border-box}.date-filter{padding:3px}.df-btn{padding:6px 8px}.metric-card,.card{border-radius:12px}.card-head,.card-body{padding-left:12px;padding-right:12px}.funnel-row{grid-template-columns:76px minmax(0,1fr) 48px;gap:7px}.flabel,.fval{font-size:11px}.invoice-card{padding:0 6px!important}.tax-invoice{min-width:680px;font-size:10px}.drawer-head{padding:14px 12px}.drawer-body{padding:12px}.modal-overlay{padding:6px}.modal-head,.modal-body,.modal-foot{padding-left:12px;padding-right:12px}.settings-nav{border-radius:12px}.nav-item{min-width:68px}.att-row{min-width:660px}.profile-metrics{grid-template-columns:1fr}.crow{align-items:flex-start}.who{min-width:0}.who>div{min-width:0}.who .cell-name,.who .cell-sub{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}.collection-box strong{font-size:21px}}
     `}</style>
   );
 }

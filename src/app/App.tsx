@@ -20,6 +20,7 @@ const loadAdminCrm = () => import("../imports/AdminCrm/AdminCrm");
 const loadStudentLms = () => import("../imports/StudentLms/StudentLms");
 const loadCertificateVerify = () => import("../imports/CertificateVerify/CertificateVerify");
 const loadApplyNow = () => import("../imports/ApplyNow/ApplyNow");
+const loadBracRegistration = () => import("../imports/BracRegistration/BracRegistration");
 
 const HomePage = lazy(loadHomePage);
 const CareersPage = lazy(loadCareersPage);
@@ -39,6 +40,7 @@ const AdminCrm = lazy(loadAdminCrm);
 const StudentLms = lazy(loadStudentLms);
 const CertificateVerify = lazy(loadCertificateVerify);
 const ApplyNow = lazy(loadApplyNow);
+const BracRegistration = lazy(loadBracRegistration);
 
 const preloadByHash: Record<string, () => Promise<unknown>> = {
   "#emt": loadEmergencyMedicalTechnician,
@@ -58,6 +60,11 @@ const preloadByHash: Record<string, () => Promise<unknown>> = {
   "#terms-and-conditions": loadTermsAndConditions,
   "#applynow": loadApplyNow,
   "#apply-now": loadApplyNow,
+  "#brac": loadBracRegistration,
+  "#brac-registration": loadBracRegistration,
+  "#brac-registeration": loadBracRegistration,
+  "#bracregistration": loadBracRegistration,
+  "#bracregisteration": loadBracRegistration,
   "": loadHomePage,
 };
 
@@ -165,6 +172,16 @@ const SEO_BY_HASH: Record<string, SeoConfig> = {
     description: "Apply for healthcare courses at iMED Academy and kickstart your career with hands-on hospital training.",
     path: "/#applynow",
   },
+  "#brac": {
+    title: "Register · iMED Academy × BRAC",
+    description: "Register for iMED Academy Healthcare Career Programme at Dr. Bhim Rao Ambedkar College.",
+    path: "/#brac",
+  },
+  "#brac-registration": {
+    title: "Register · iMED Academy × BRAC",
+    description: "Register for iMED Academy Healthcare Career Programme at Dr. Bhim Rao Ambedkar College.",
+    path: "/#brac-registration",
+  },
 };
 
 function upsertMeta(attr: "name" | "property", key: string, value: string) {
@@ -202,8 +219,11 @@ export default function App() {
       if (["#acha", "#aahp"].includes(window.location.hash.toLowerCase())) {
         window.history.replaceState(null, "", "#ahap");
       }
-      if (window.location.hash.toLowerCase() === "#apply-now") {
+      if (["#apply-now"].includes(window.location.hash.toLowerCase())) {
         window.history.replaceState(null, "", "#applynow");
+      }
+      if (["#brac-registeration", "#bracregisteration", "#bracregistration"].includes(window.location.hash.toLowerCase())) {
+        window.history.replaceState(null, "", "#brac-registration");
       }
       setHash(window.location.hash);
     };
@@ -526,9 +546,15 @@ export default function App() {
     page = <PrivacyPolicy />;
   } else if (hash === "#terms-and-conditions") {
     page = <TermsAndConditions />;
+  } else if (hash.startsWith("#brac")) {
+    page = <BracRegistration />;
   }
 
-  const showFloatingWhatsApp = !hash.startsWith("#admin") && !hash.startsWith("#student") && !hash.startsWith("#verify=");
+  const showFloatingWhatsApp =
+    !hash.startsWith("#admin") &&
+    !hash.startsWith("#student") &&
+    !hash.startsWith("#verify=") &&
+    !hash.startsWith("#brac");
 
   return (
     <>

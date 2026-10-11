@@ -82,11 +82,14 @@ const npsTouchpointLabels = {
 };
 fs.mkdirSync(leadDocumentDir, { recursive: true });
 
+const smtpUser = (process.env.SMTP_USER || "").trim();
+const smtpPass = (process.env.SMTP_PASS || "").replace(/\s+/g, "").trim();
+
 const transporter = nodemailer.createTransport({
   service: "gmail",
-  auth: { user: process.env.SMTP_USER, pass: process.env.SMTP_PASS },
+  auth: { user: smtpUser, pass: smtpPass },
 });
-const toAddress = process.env.MAIL_TO || process.env.SMTP_USER;
+const toAddress = (process.env.MAIL_TO || smtpUser).trim();
 
 function escapeHtml(value = "") {
   return String(value)
@@ -312,6 +315,7 @@ const cashDepositSchema = new mongoose.Schema({
 }, { _id: false });
 
 const paymentSchema = new mongoose.Schema({
+  _id: { type: mongoose.Schema.Types.ObjectId, default: () => new mongoose.Types.ObjectId() },
   amount: { type: Number, required: true },
   mode: { type: String, default: "Cash" },
   paymentPurpose: { type: String, enum: [...paymentPurposes, ...legacyPaymentPurposes, ""], default: "Fees Installment" },
@@ -322,9 +326,17 @@ const paymentSchema = new mongoose.Schema({
   proof: { type: documentFileSchema, default: undefined },
   proofs: [documentFileSchema],
   cashDeposits: [cashDepositSchema],
+  status: { type: String, enum: ["pending", "approved", "rejected"], default: "approved" },
+  requestedBy: { type: String, default: "" },
+  requestedByRole: { type: String, default: "" },
+  requestedAt: { type: Date, default: Date.now },
+  reviewedBy: { type: String, default: "" },
+  reviewedByRole: { type: String, default: "" },
+  reviewedAt: { type: Date },
+  rejectionReason: { type: String, default: "" },
   by: { type: String, default: "" },
   paidAt: { type: Date, default: Date.now },
-}, { _id: false });
+});
 
 const studentFeedbackSchema = new mongoose.Schema({
   type: { type: String, enum: ["Academic progress", "Attendance issue", "Fee / EMI discussion", "Placement discussion", "Parent conversation", "Complaint", "General follow-up"], default: "General follow-up" },
@@ -361,9 +373,26 @@ const studentSchema = new mongoose.Schema({
   admissionUpfrontAmount: { type: Number, default: 0 },
   admissionFinalizedAt: { type: Date },
   admissionFinalizedBy: { type: String, default: "" },
-  discountAmount: { type: Number, default: 0 },
   status: { type: String, enum: ["Enrolled", "Admission", "Admission Completed", "Fees Decided", "Fees Collected", "Active Student", "Classroom Complete", "In Training", "Course Completed", "Alumni", "Placed", "Dropped"], default: "Enrolled" },
+  dropoutReason: { type: String, default: "" },
+  dropoutDate: { type: Date },
+  dropoutNotes: { type: String, default: "" },
   totalFee: { type: Number, default: 0 },
+  discountAmount: { type: Number, default: 0 },
+  feeApproval: {
+    status: { type: String, enum: ["none", "pending", "approved", "rejected"], default: "none" },
+    standardCourseFee: { type: Number, default: 0 },
+    requestedFee: { type: Number, default: 0 },
+    requestedDiscount: { type: Number, default: 0 },
+    reason: { type: String, default: "" },
+    requestedBy: { type: String, default: "" },
+    requestedByRole: { type: String, default: "" },
+    requestedAt: { type: Date },
+    reviewedBy: { type: String, default: "" },
+    reviewedByRole: { type: String, default: "" },
+    reviewedAt: { type: Date },
+    rejectionReason: { type: String, default: "" },
+  },
   paidAmount: { type: Number, default: 0 },
   emiEnabled: { type: Boolean, default: false },
   emiMonths: { type: Number, default: 0 },
@@ -680,6 +709,10 @@ async function seedBaseData() {
     { name: "Geriatric Care Assistant", code: "GCA", fee: 35000, duration: "4 months" },
     { name: "Medical Laboratory Technician", code: "MLT", fee: 55000, duration: "6 months" },
     { name: "Radiology X-Ray Technician", code: "RADIOLOGY", fee: 55000, duration: "6 months" },
+    { name: "Foundation Certificate in Healthcare - BRAC", code: "FCH-BRAC", fee: 4236.44, duration: "3 months" },
+    { name: "Certificate in Hospital Operations - BRAC", code: "CHO-BRAC", fee: 6778.81, duration: "4 months" },
+    { name: "Certificate in Hospital Administration - BRAC", code: "CHA-BRAC", fee: 8473.73, duration: "5 months" },
+    { name: "Advanced Certificate in Healthcare Management - BRAC", code: "ACHM-BRAC", fee: 16100.85, duration: "6 months" },
   ];
   await Promise.all(centres.map((centre) => Centre.updateOne({ name: centre.name }, { $set: { type: "branch" }, $setOnInsert: centre }, { upsert: true })));
   await Centre.updateMany({ name: { $nin: centres.map((centre) => centre.name) }, type: { $exists: false } }, { $set: { type: "franchise" } });
@@ -2086,6 +2119,175 @@ app.get("/api/admin/dashboard/centres", requireAuth, async (req, res) => {
   res.json({ ok: true, data: data.map((item) => ({ centre: item._id || "Unassigned", leads: item.leads, enrolled: item.enrolled })) });
 });
 
+app.get("/api/admin/reports/student-status", requireAuth, async (req, res) => {
+  if (!isHeadSuperAdmin(req.user)) {
+    return sendError(res, 403, "Status & Branch Reports are restricted to Super Admin only");
+  }
+
+  const { timeframe = "all", dateFrom = "", dateTo = "", centre = "", course = "", status = "", q = "" } = req.query;
+
+  // Build Date Range
+  const now = new Date();
+  let dateQuery = {};
+
+  if (dateFrom && dateTo) {
+    const startParts = String(dateFrom).split("-").map(Number);
+    const endParts = String(dateTo).split("-").map(Number);
+    if (startParts.length === 3 && endParts.length === 3) {
+      const start = new Date(startParts[0], startParts[1] - 1, startParts[2], 0, 0, 0, 0);
+      const end = new Date(endParts[0], endParts[1] - 1, endParts[2], 23, 59, 59, 999);
+      dateQuery = { createdAt: { $gte: start, $lte: end } };
+    }
+  } else if (dateFrom) {
+    const parts = String(dateFrom).split("-").map(Number);
+    if (parts.length === 3) {
+      const start = new Date(parts[0], parts[1] - 1, parts[2], 0, 0, 0, 0);
+      const end = new Date(parts[0], parts[1] - 1, parts[2], 23, 59, 59, 999);
+      dateQuery = { createdAt: { $gte: start, $lte: end } };
+    }
+  } else if (timeframe === "today") {
+    const start = new Date(now.getFullYear(), now.getMonth(), now.getDate(), 0, 0, 0, 0);
+    const end = new Date(now.getFullYear(), now.getMonth(), now.getDate(), 23, 59, 59, 999);
+    dateQuery = { createdAt: { $gte: start, $lte: end } };
+  } else if (timeframe === "yesterday") {
+    const yest = new Date(now);
+    yest.setDate(yest.getDate() - 1);
+    const start = new Date(yest.getFullYear(), yest.getMonth(), yest.getDate(), 0, 0, 0, 0);
+    const end = new Date(yest.getFullYear(), yest.getMonth(), yest.getDate(), 23, 59, 59, 999);
+    dateQuery = { createdAt: { $gte: start, $lte: end } };
+  } else if (timeframe === "this_week") {
+    const day = now.getDay();
+    const diff = now.getDate() - day + (day === 0 ? -6 : 1);
+    const start = new Date(now.getFullYear(), now.getMonth(), diff, 0, 0, 0, 0);
+    const end = new Date(now.getFullYear(), now.getMonth(), diff + 6, 23, 59, 59, 999);
+    dateQuery = { createdAt: { $gte: start, $lte: end } };
+  } else if (timeframe === "last_week") {
+    const day = now.getDay();
+    const diff = now.getDate() - day + (day === 0 ? -6 : 1) - 7;
+    const start = new Date(now.getFullYear(), now.getMonth(), diff, 0, 0, 0, 0);
+    const end = new Date(now.getFullYear(), now.getMonth(), diff + 6, 23, 59, 59, 999);
+    dateQuery = { createdAt: { $gte: start, $lte: end } };
+  } else if (timeframe === "this_month") {
+    const start = new Date(now.getFullYear(), now.getMonth(), 1, 0, 0, 0, 0);
+    const end = new Date(now.getFullYear(), now.getMonth() + 1, 0, 23, 59, 59, 999);
+    dateQuery = { createdAt: { $gte: start, $lte: end } };
+  } else if (timeframe === "last_month") {
+    const start = new Date(now.getFullYear(), now.getMonth() - 1, 1, 0, 0, 0, 0);
+    const end = new Date(now.getFullYear(), now.getMonth(), 0, 23, 59, 59, 999);
+    dateQuery = { createdAt: { $gte: start, $lte: end } };
+  } else if (timeframe === "this_year") {
+    const start = new Date(now.getFullYear(), 0, 1, 0, 0, 0, 0);
+    const end = new Date(now.getFullYear(), 11, 31, 23, 59, 59, 999);
+    dateQuery = { createdAt: { $gte: start, $lte: end } };
+  }
+
+  const baseFilter = { ...(await scopedDataFilter(req, req.query)), ...dateQuery };
+  if (centre && centre !== "all") baseFilter.centre = centre;
+  if (course && course !== "all") baseFilter.course = course;
+  if (status && status !== "all") baseFilter.status = status;
+
+  if (q && q.trim()) {
+    const regex = new RegExp(escapeRegex(q.trim()), "i");
+    baseFilter.$or = [{ fullName: regex }, { phone: regex }, { email: regex }, { admissionNumber: regex }, { counsellor: regex }];
+  }
+
+  // Fetch student records matching the filter
+  const students = await Student.find(baseFilter)
+    .select("fullName phone email parentMobile centre course batch counsellor counsellorName status totalFee paidAmount admissionNumber createdAt placementCompany placementSalary")
+    .sort({ createdAt: -1 })
+    .lean();
+
+  // Load all centres to show even 0-count centres in matrix
+  const allCentresDocs = await Centre.find({ active: { $ne: false } }).select("name").lean();
+  const knownCentres = new Set(allCentresDocs.map((c) => c.name).filter(Boolean));
+  students.forEach((s) => {
+    if (s.centre) knownCentres.add(s.centre);
+  });
+
+  const centreList = Array.from(knownCentres);
+  if (centreList.length === 0) centreList.push("Default Centre");
+
+  // Build matrix grouped by Centre
+  const matrix = centreList.map((cName) => {
+    const branchStudents = students.filter((s) => (s.centre || "Unassigned") === cName);
+    const enrolled = branchStudents.filter((s) => ["Enrolled", "Admission", "Admission Completed"].includes(s.status)).length;
+    const inTraining = branchStudents.filter((s) => ["Fees Decided", "Fees Collected", "Active Student", "In Training"].includes(s.status)).length;
+    const classroomComplete = branchStudents.filter((s) => s.status === "Classroom Complete").length;
+    const courseCompleted = branchStudents.filter((s) => s.status === "Course Completed").length;
+    const placed = branchStudents.filter((s) => ["Placed", "Alumni"].includes(s.status)).length;
+    const dropped = branchStudents.filter((s) => s.status === "Dropped").length;
+    const total = branchStudents.length;
+
+    const dropoutRate = total > 0 ? Number(((dropped / total) * 100).toFixed(1)) : 0;
+    const retentionRate = total > 0 ? Number((((total - dropped) / total) * 100).toFixed(1)) : 0;
+    const completionRate = total > 0 ? Number((((courseCompleted + placed) / total) * 100).toFixed(1)) : 0;
+
+    return {
+      centre: cName,
+      enrolled,
+      inTraining,
+      classroomComplete,
+      courseCompleted,
+      placed,
+      dropped,
+      total,
+      dropoutRate,
+      retentionRate,
+      completionRate,
+    };
+  });
+
+  // Sort matrix by total students descending
+  matrix.sort((a, b) => b.total - a.total);
+
+  // Calculate Grand Totals
+  const grandTotal = {
+    centre: "All Branches (Total)",
+    enrolled: matrix.reduce((acc, row) => acc + row.enrolled, 0),
+    inTraining: matrix.reduce((acc, row) => acc + row.inTraining, 0),
+    classroomComplete: matrix.reduce((acc, row) => acc + row.classroomComplete, 0),
+    courseCompleted: matrix.reduce((acc, row) => acc + row.courseCompleted, 0),
+    placed: matrix.reduce((acc, row) => acc + row.placed, 0),
+    dropped: matrix.reduce((acc, row) => acc + row.dropped, 0),
+    total: matrix.reduce((acc, row) => acc + row.total, 0),
+  };
+
+  grandTotal.dropoutRate = grandTotal.total > 0 ? Number(((grandTotal.dropped / grandTotal.total) * 100).toFixed(1)) : 0;
+  grandTotal.retentionRate = grandTotal.total > 0 ? Number((((grandTotal.total - grandTotal.dropped) / grandTotal.total) * 100).toFixed(1)) : 0;
+  grandTotal.completionRate = grandTotal.total > 0 ? Number((((grandTotal.courseCompleted + grandTotal.placed) / grandTotal.total) * 100).toFixed(1)) : 0;
+
+  // Course Breakdown
+  const courseMap = new Map();
+  students.forEach((s) => {
+    const cName = s.course || "Other";
+    if (!courseMap.has(cName)) {
+      courseMap.set(cName, { course: cName, enrolled: 0, inTraining: 0, classroomComplete: 0, courseCompleted: 0, placed: 0, dropped: 0, total: 0 });
+    }
+    const item = courseMap.get(cName);
+    item.total += 1;
+    if (["Enrolled", "Admission", "Admission Completed"].includes(s.status)) item.enrolled += 1;
+    else if (["Fees Decided", "Fees Collected", "Active Student", "In Training"].includes(s.status)) item.inTraining += 1;
+    else if (s.status === "Classroom Complete") item.classroomComplete += 1;
+    else if (s.status === "Course Completed") item.courseCompleted += 1;
+    else if (["Placed", "Alumni"].includes(s.status)) item.placed += 1;
+    else if (s.status === "Dropped") item.dropped += 1;
+  });
+
+  const courseBreakdown = Array.from(courseMap.values()).sort((a, b) => b.total - a.total);
+
+  res.json({
+    ok: true,
+    data: {
+      summary: grandTotal,
+      matrix,
+      grandTotal,
+      courseBreakdown,
+      students,
+      filters: { timeframe, dateFrom, dateTo, centre, course, status, q },
+    },
+  });
+});
+
 app.get("/api/admin/leads", requireAuth, async (req, res) => {
   if (!canUseLeads(req.user)) return sendError(res, 403, "Lead access is restricted to counsellor and admin accounts");
   const { q = "", stage = "", centre = "", course = "", counsellor = "", leadFeedback = "" } = req.query;
@@ -2728,6 +2930,41 @@ app.get("/api/admin/documents/:type/:id/:field", requireAuth, async (req, res) =
   res.setHeader("Content-Type", document.mimeType || "application/octet-stream");
   res.setHeader("Content-Disposition", `inline; filename="${fileName}"; filename*=UTF-8''${encodeURIComponent(fileName)}`);
   res.sendFile(filePath);
+});
+
+app.post("/api/admin/documents/:type/:id/:field", requireAuth, leadDocumentUpload.single("file"), async (req, res) => {
+  const { type, id, field } = req.params;
+  if (!["lead", "student"].includes(type) || !["governmentProof", "highestQualificationCertificate"].includes(field)) {
+    return sendError(res, 400, "Invalid document upload target");
+  }
+  if (!req.file) {
+    return sendError(res, 400, "Please attach a document file (PDF, JPG, PNG or WEBP up to 2 MB)");
+  }
+  const Model = type === "lead" ? Lead : Student;
+  const record = await Model.findById(id);
+  if (!record) return sendError(res, 404, `${type === "lead" ? "Lead" : "Candidate"} record not found`);
+  if (!(await canAccessRecord(req, record))) return sendError(res, 403, "You can access only permitted records");
+
+  const docData = saveLeadDocument(req.file);
+  record[field] = docData;
+  if (type === "lead") {
+    record.activities = record.activities || [];
+    record.activities.push({
+      type: "document_uploaded",
+      message: `Uploaded ${field === "governmentProof" ? "Government Proof" : "Qualification Certificate"}: ${docData.originalName}`,
+      by: req.user.name,
+      at: new Date(),
+    });
+  }
+  await record.save();
+
+  if (type === "lead") {
+    await Student.findOneAndUpdate({ leadId: record._id }, { [field]: docData });
+  } else if (type === "student" && record.leadId) {
+    await Lead.findByIdAndUpdate(record.leadId, { [field]: docData });
+  }
+
+  res.json({ ok: true, data: record });
 });
 
 app.get("/api/admin/students", requireAuth, async (req, res) => {
@@ -3576,8 +3813,18 @@ app.post("/api/admin/attendance", requireAuth, async (req, res) => {
   res.json({ ok: true, data: saved });
 });
 
+app.get("/api/admin/students/:id", requireAuth, async (req, res) => {
+  try {
+    const student = await Student.findById(req.params.id).lean();
+    if (!student) return sendError(res, 404, "Student not found");
+    res.json({ ok: true, data: student });
+  } catch (error) {
+    sendError(res, 500, error.message || "Failed to fetch student");
+  }
+});
+
 app.patch("/api/admin/students/:id", requireAuth, async (req, res) => {
-  const allowedStudentUpdates = (({ fullName, phone, parentMobile, email, governmentProof, highestQualificationCertificate, studentLocation, centre, course, counsellor, counsellorName, callerName, teacher, batch, batchCommenceDate, admissionNumber, admissionPaymentMode, admissionUpfrontAmount, discountAmount, status, totalFee, paidAmount, emiEnabled, emiMonths, emiAmount, nextEmiDate, placementStatus, placementCompany, placementRole, placementJoiningDate, placementSalary, placementHrContact, placementOfferLetterUrl, placementRemarks, testimonialText, testimonialVideoUrl, testimonialRating, testimonialApproved, referralName, referralPhone, referralStatus, certificateNumber, certificateIssuedAt, certificateStatus }) => ({ fullName, phone, parentMobile, email, governmentProof, highestQualificationCertificate, studentLocation, centre, course, counsellor, counsellorName, callerName, teacher, batch, batchCommenceDate, admissionNumber, admissionPaymentMode, admissionUpfrontAmount, discountAmount, status, totalFee, paidAmount, emiEnabled, emiMonths, emiAmount, nextEmiDate, placementStatus, placementCompany, placementRole, placementJoiningDate, placementSalary, placementHrContact, placementOfferLetterUrl, placementRemarks, testimonialText, testimonialVideoUrl, testimonialRating, testimonialApproved, referralName, referralPhone, referralStatus, certificateNumber, certificateIssuedAt, certificateStatus }))(req.body || {});
+  const allowedStudentUpdates = (({ fullName, phone, parentMobile, email, governmentProof, highestQualificationCertificate, studentLocation, centre, course, counsellor, counsellorName, callerName, teacher, batch, batchCommenceDate, admissionNumber, admissionPaymentMode, admissionUpfrontAmount, discountAmount, feeApproval, status, dropoutReason, dropoutDate, dropoutNotes, totalFee, paidAmount, emiEnabled, emiMonths, emiAmount, nextEmiDate, placementStatus, placementCompany, placementRole, placementJoiningDate, placementSalary, placementHrContact, placementOfferLetterUrl, placementRemarks, testimonialText, testimonialVideoUrl, testimonialRating, testimonialApproved, referralName, referralPhone, referralStatus, certificateNumber, certificateIssuedAt, certificateStatus }) => ({ fullName, phone, parentMobile, email, governmentProof, highestQualificationCertificate, studentLocation, centre, course, counsellor, counsellorName, callerName, teacher, batch, batchCommenceDate, admissionNumber, admissionPaymentMode, admissionUpfrontAmount, discountAmount, feeApproval, status, dropoutReason, dropoutDate, dropoutNotes, totalFee, paidAmount, emiEnabled, emiMonths, emiAmount, nextEmiDate, placementStatus, placementCompany, placementRole, placementJoiningDate, placementSalary, placementHrContact, placementOfferLetterUrl, placementRemarks, testimonialText, testimonialVideoUrl, testimonialRating, testimonialApproved, referralName, referralPhone, referralStatus, certificateNumber, certificateIssuedAt, certificateStatus }))(req.body || {});
   Object.keys(allowedStudentUpdates).forEach((key) => allowedStudentUpdates[key] === undefined && delete allowedStudentUpdates[key]);
   const feeFields = ["admissionPaymentMode", "admissionUpfrontAmount", "discountAmount", "totalFee", "paidAmount", "emiEnabled", "emiMonths", "emiAmount", "nextEmiDate"];
   if (!canManageFees(req.user) && feeFields.some((field) => Object.prototype.hasOwnProperty.call(allowedStudentUpdates, field))) {
@@ -3602,7 +3849,7 @@ app.patch("/api/admin/students/:id", requireAuth, async (req, res) => {
     allowedStudentUpdates.admissionPaymentMode = normalizeAdmissionPaymentMode(String(allowedStudentUpdates.admissionPaymentMode || ""));
     if (!admissionPaymentModes.includes(allowedStudentUpdates.admissionPaymentMode)) return sendError(res, 400, "Choose a valid admission payment plan");
   }
-  ["nextEmiDate", "batchCommenceDate", "certificateIssuedAt", "placementJoiningDate"].forEach((field) => {
+  ["nextEmiDate", "batchCommenceDate", "certificateIssuedAt", "placementJoiningDate", "dropoutDate"].forEach((field) => {
     if (Object.prototype.hasOwnProperty.call(allowedStudentUpdates, field) && !allowedStudentUpdates[field]) allowedStudentUpdates[field] = null;
   });
   const existingStudent = await Student.findById(req.params.id).lean();
@@ -3626,8 +3873,45 @@ app.patch("/api/admin/students/:id", requireAuth, async (req, res) => {
   const nextStudentCourse = Object.prototype.hasOwnProperty.call(allowedStudentUpdates, "course") ? allowedStudentUpdates.course : existingStudent.course;
   const nextStudentStatus = Object.prototype.hasOwnProperty.call(allowedStudentUpdates, "status") ? allowedStudentUpdates.status : existingStudent.status;
   const nextStudentBatch = Object.prototype.hasOwnProperty.call(allowedStudentUpdates, "batch") ? allowedStudentUpdates.batch : existingStudent.batch;
-  if (!isCourseAllowedForCentre(nextStudentCentre, nextStudentCourse, req.user)) return sendError(res, 400, "Kochi centre allows only AHAP and GCA courses");
-  if (Object.prototype.hasOwnProperty.call(allowedStudentUpdates, "status") && nextStudentStatus === "Active Student" && !nextStudentBatch) return sendError(res, 400, "Assign a batch before marking student as active");
+  const isSuper = isHeadSuperAdmin(req.user);
+  const isUpdatingFeePlan = Object.prototype.hasOwnProperty.call(allowedStudentUpdates, "totalFee") ||
+    Object.prototype.hasOwnProperty.call(allowedStudentUpdates, "discountAmount") ||
+    Object.prototype.hasOwnProperty.call(allowedStudentUpdates, "admissionPaymentMode");
+
+  if (isUpdatingFeePlan) {
+    if (isSuper) {
+      if (!allowedStudentUpdates.feeApproval) {
+        allowedStudentUpdates.feeApproval = {
+          status: "approved",
+          standardCourseFee: Number(allowedStudentUpdates.totalFee || existingStudent.totalFee || 0),
+          requestedFee: Math.max(0, Number(allowedStudentUpdates.totalFee || existingStudent.totalFee || 0) - Number(allowedStudentUpdates.discountAmount || existingStudent.discountAmount || 0)),
+          requestedDiscount: Number(allowedStudentUpdates.discountAmount || existingStudent.discountAmount || 0),
+          reviewedBy: req.user.name || "Super Admin",
+          reviewedByRole: req.user.role || "superadmin",
+          reviewedAt: new Date(),
+        };
+      }
+    } else {
+      const nextCourse = allowedStudentUpdates.course || existingStudent.course || "";
+      const standardCourseObj = await Course.findOne({ $or: [{ code: new RegExp(`^${nextCourse}$`, "i") }, { name: new RegExp(`^${nextCourse}$`, "i") }], active: true }).lean();
+      const stdFee = standardCourseObj ? feeWithGst(standardCourseObj.fee || 0) : Number(allowedStudentUpdates.totalFee || existingStudent.totalFee || 0);
+
+      allowedStudentUpdates.feeApproval = {
+        status: "pending",
+        standardCourseFee: stdFee,
+        requestedFee: Math.max(0, Number(allowedStudentUpdates.totalFee || existingStudent.totalFee || 0) - Number(allowedStudentUpdates.discountAmount || existingStudent.discountAmount || 0)),
+        requestedDiscount: Number(allowedStudentUpdates.discountAmount || existingStudent.discountAmount || 0),
+        reason: req.body.feeApprovalReason || existingStudent.feeApproval?.reason || "Fee plan decided/updated by staff",
+        requestedBy: req.user.name || "Staff",
+        requestedByRole: req.user.role || "counsellor",
+        requestedAt: new Date(),
+      };
+      // Keep existing totalFee and discountAmount unchanged until approved by Super Admin or Center Admin
+      delete allowedStudentUpdates.totalFee;
+      delete allowedStudentUpdates.discountAmount;
+    }
+  }
+
   const nextTotalFee = Object.prototype.hasOwnProperty.call(allowedStudentUpdates, "totalFee") ? Number(allowedStudentUpdates.totalFee || 0) : Number(existingStudent.totalFee || 0);
   const nextDiscount = Object.prototype.hasOwnProperty.call(allowedStudentUpdates, "discountAmount") ? Number(allowedStudentUpdates.discountAmount || 0) : Number(existingStudent.discountAmount || 0);
   const nextPaid = Object.prototype.hasOwnProperty.call(allowedStudentUpdates, "paidAmount") ? Number(allowedStudentUpdates.paidAmount || 0) : Number(existingStudent.paidAmount || 0);
@@ -3645,6 +3929,16 @@ app.patch("/api/admin/students/:id", requireAuth, async (req, res) => {
   }
   if (Object.prototype.hasOwnProperty.call(allowedStudentUpdates, "status") && nextNormalizedStatus === "Classroom Complete" && currentNormalizedStatus !== "Classroom Complete" && !isStudentStatusAtLeast(currentNormalizedStatus, "Active Student")) {
     return sendError(res, 400, "Move the candidate to Active Student before marking Classroom Complete");
+  }
+  if (Object.prototype.hasOwnProperty.call(allowedStudentUpdates, "status") && (nextNormalizedStatus === "Dropped" || nextStudentStatus === "Dropped")) {
+    allowedStudentUpdates.status = "Dropped";
+    const reason = allowedStudentUpdates.dropoutReason || existingStudent.dropoutReason;
+    if (!reason || !String(reason).trim()) {
+      return sendError(res, 400, "Dropout reason is mandatory when marking student as Dropped");
+    }
+    if (!allowedStudentUpdates.dropoutDate && !existingStudent.dropoutDate) {
+      allowedStudentUpdates.dropoutDate = new Date();
+    }
   }
   if (Object.prototype.hasOwnProperty.call(allowedStudentUpdates, "status") && nextNormalizedStatus === "Course Completed" && currentNormalizedStatus !== "Course Completed") {
     if (!isStudentStatusAtLeast(currentNormalizedStatus, "Classroom Complete")) return sendError(res, 400, "Mark Classroom Complete before Course Completed");
@@ -3718,6 +4012,7 @@ app.post("/api/admin/students/:id/lms-access", requireAuth, async (req, res) => 
   if (!(await canAccessRecord(req, existingStudent))) return sendError(res, 403, "You can access only permitted records");
   const blocked = studentLmsAccessBlockReason(existingStudent);
   if (blocked) return sendError(res, 400, blocked);
+  const shouldUpdateStatus = !["Course Completed", "Alumni", "Classroom Complete"].includes(existingStudent.status);
   const student = await Student.findByIdAndUpdate(
     req.params.id,
     {
@@ -3725,11 +4020,14 @@ app.post("/api/admin/students/:id/lms-access", requireAuth, async (req, res) => 
         lmsAccessEnabled: true,
         lmsAccessGeneratedAt: new Date(),
         lmsAccessGeneratedBy: req.user.name || req.user.email || "Admin",
+        ...(shouldUpdateStatus ? { status: "Active Student" } : {}),
       },
       $push: {
         activities: {
           type: "lms",
-          message: "Student LMS login generated",
+          message: shouldUpdateStatus
+            ? "Student LMS login generated & status moved to Active Student"
+            : "Student LMS login generated",
           by: req.user.name || req.user.email || "Admin",
         },
       },
@@ -3852,6 +4150,582 @@ app.post("/api/admin/students/:id/certificate", requireAuth, async (req, res) =>
   res.json({ ok: true, data: student });
 });
 
+app.get("/api/admin/finance/collection-stats", requireAuth, async (req, res) => {
+  if (!canManageFees(req.user)) return sendError(res, 403, "Fee analytics is restricted to admin accounts");
+
+  const now = new Date();
+  const startOfToday = new Date(now.getFullYear(), now.getMonth(), now.getDate(), 0, 0, 0, 0);
+  const endOfToday = new Date(now.getFullYear(), now.getMonth(), now.getDate(), 23, 59, 59, 999);
+  const startOfYesterday = new Date(now.getFullYear(), now.getMonth(), now.getDate() - 1, 0, 0, 0, 0);
+  const endOfYesterday = new Date(now.getFullYear(), now.getMonth(), now.getDate() - 1, 23, 59, 59, 999);
+  const startOfThisMonth = new Date(now.getFullYear(), now.getMonth(), 1, 0, 0, 0, 0);
+  const endOfThisMonth = new Date(now.getFullYear(), now.getMonth() + 1, 0, 23, 59, 59, 999);
+  const startOfLastMonth = new Date(now.getFullYear(), now.getMonth() - 1, 1, 0, 0, 0, 0);
+  const endOfLastMonth = new Date(now.getFullYear(), now.getMonth(), 0, 23, 59, 59, 999);
+  const startOfThisYear = new Date(now.getFullYear(), 0, 1, 0, 0, 0, 0);
+  const endOfThisYear = new Date(now.getFullYear(), 11, 31, 23, 59, 59, 999);
+
+  const { timeframe = "this_month", dateFrom = "", dateTo = "", centre = "", course = "" } = req.query;
+
+  let filterStart = startOfThisMonth;
+  let filterEnd = endOfThisMonth;
+
+  if (dateFrom && dateTo) {
+    const sParts = String(dateFrom).split("-").map(Number);
+    const eParts = String(dateTo).split("-").map(Number);
+    if (sParts.length === 3 && eParts.length === 3) {
+      filterStart = new Date(sParts[0], sParts[1] - 1, sParts[2], 0, 0, 0, 0);
+      filterEnd = new Date(eParts[0], eParts[1] - 1, eParts[2], 23, 59, 59, 999);
+    }
+  } else if (timeframe === "today") {
+    filterStart = startOfToday;
+    filterEnd = endOfToday;
+  } else if (timeframe === "yesterday") {
+    filterStart = startOfYesterday;
+    filterEnd = endOfYesterday;
+  } else if (timeframe === "last_month") {
+    filterStart = startOfLastMonth;
+    filterEnd = endOfLastMonth;
+  } else if (timeframe === "last_3_months") {
+    filterStart = new Date(now.getFullYear(), now.getMonth() - 2, 1, 0, 0, 0, 0);
+    filterEnd = endOfThisMonth;
+  } else if (timeframe === "this_year") {
+    filterStart = startOfThisYear;
+    filterEnd = endOfThisYear;
+  } else if (timeframe === "all") {
+    filterStart = new Date(2020, 0, 1, 0, 0, 0, 0);
+    filterEnd = new Date(2099, 11, 31, 23, 59, 59, 999);
+  }
+
+  const baseFilter = { ...(await scopedDataFilter(req, req.query)) };
+  if (centre && centre !== "all") baseFilter.centre = centre;
+  if (course && course !== "all") baseFilter.course = course;
+
+  const students = await Student.find(baseFilter)
+    .select("fullName phone admissionNumber centre course status totalFee paidAmount discountAmount admissionPaymentMode admissionFinalizedAt admissionFinalizedBy payments createdAt")
+    .lean();
+
+  let todayTotal = 0;
+  let todayCount = 0;
+  let yesterdayTotal = 0;
+  let yesterdayCount = 0;
+  let thisMonthTotal = 0;
+  let thisMonthCount = 0;
+  let lastMonthTotal = 0;
+  let lastMonthCount = 0;
+  let allTimeTotal = 0;
+  let allTimeCount = 0;
+
+  let filteredTotal = 0;
+  let filteredCount = 0;
+
+  const centreMap = new Map();
+  const modeMap = new Map();
+  const courseMap = new Map();
+  const allPaymentsList = [];
+
+  // Initialize monthly trend buckets for the last 12 months
+  const monthlyTrendBuckets = [];
+  for (let i = 11; i >= 0; i--) {
+    const d = new Date(now.getFullYear(), now.getMonth() - i, 1);
+    const key = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}`;
+    const label = d.toLocaleDateString("en-US", { month: "short", year: "numeric" });
+    monthlyTrendBuckets.push({ key, label, amount: 0, count: 0 });
+  }
+  const monthlyMap = new Map(monthlyTrendBuckets.map((b) => [b.key, b]));
+
+  students.forEach((student) => {
+    const studentCentre = student.centre || "Unassigned";
+    const studentCourse = student.course || "Other";
+    const payments = Array.isArray(student.payments) ? student.payments : [];
+    let recordedSum = 0;
+
+    const processPayment = (p) => {
+      if (p.status === "pending" || p.status === "rejected") return;
+      const amount = Number(p.amount || 0);
+      if (!Number.isFinite(amount) || amount <= 0) return;
+      const paidAt = p.paidAt ? new Date(p.paidAt) : (student.createdAt ? new Date(student.createdAt) : now);
+      const mode = String(p.mode || "Cash").trim() || "Cash";
+      const purpose = String(p.paymentPurpose || "Fees Installment").trim();
+
+      allTimeTotal += amount;
+      allTimeCount += 1;
+
+      if (paidAt >= startOfToday && paidAt <= endOfToday) {
+        todayTotal += amount;
+        todayCount += 1;
+      }
+      if (paidAt >= startOfYesterday && paidAt <= endOfYesterday) {
+        yesterdayTotal += amount;
+        yesterdayCount += 1;
+      }
+      if (paidAt >= startOfThisMonth && paidAt <= endOfThisMonth) {
+        thisMonthTotal += amount;
+        thisMonthCount += 1;
+      }
+      if (paidAt >= startOfLastMonth && paidAt <= endOfLastMonth) {
+        lastMonthTotal += amount;
+        lastMonthCount += 1;
+      }
+
+      // Monthly Trend
+      const monthKey = `${paidAt.getFullYear()}-${String(paidAt.getMonth() + 1).padStart(2, "0")}`;
+      if (monthlyMap.has(monthKey)) {
+        const bucket = monthlyMap.get(monthKey);
+        bucket.amount += amount;
+        bucket.count += 1;
+      }
+
+      // Timeframe Filtered aggregations
+      if (paidAt >= filterStart && paidAt <= filterEnd) {
+        filteredTotal += amount;
+        filteredCount += 1;
+
+        // By Centre
+        const cItem = centreMap.get(studentCentre) || { centre: studentCentre, amount: 0, count: 0 };
+        cItem.amount += amount;
+        cItem.count += 1;
+        centreMap.set(studentCentre, cItem);
+
+        // By Mode
+        const mItem = modeMap.get(mode) || { mode, amount: 0, count: 0 };
+        mItem.amount += amount;
+        mItem.count += 1;
+        modeMap.set(mode, mItem);
+
+        // By Course
+        const crsItem = courseMap.get(studentCourse) || { course: studentCourse, amount: 0, count: 0 };
+        crsItem.amount += amount;
+        crsItem.count += 1;
+        courseMap.set(studentCourse, crsItem);
+
+        allPaymentsList.push({
+          studentId: student._id,
+          studentName: student.fullName,
+          studentPhone: student.phone,
+          admissionNumber: student.admissionNumber || "",
+          centre: studentCentre,
+          course: studentCourse,
+          amount,
+          mode,
+          paymentPurpose: purpose,
+          transactionId: p.transactionId || p.emiReference || "",
+          by: p.by || "Admin",
+          paidAt,
+        });
+      }
+    };
+
+    payments.forEach((p) => {
+      recordedSum += Number(p.amount || 0);
+      processPayment(p);
+    });
+
+    // Capture upfront fee if not explicitly in payments array
+    const unrecorded = Number(student.paidAmount || 0) - recordedSum;
+    if (unrecorded > 0) {
+      processPayment({
+        amount: unrecorded,
+        mode: student.admissionPaymentMode || "Cash",
+        paymentPurpose: "Admission Upfront Fee",
+        paidAt: student.admissionFinalizedAt || student.createdAt || now,
+        by: student.admissionFinalizedBy || "Admission Desk",
+      });
+    }
+  });
+
+  // Calculate percentages and sort
+  const byCentre = Array.from(centreMap.values())
+    .map((item) => ({ ...item, share: filteredTotal > 0 ? Number(((item.amount / filteredTotal) * 100).toFixed(1)) : 0 }))
+    .sort((a, b) => b.amount - a.amount);
+
+  const byMode = Array.from(modeMap.values())
+    .map((item) => ({ ...item, share: filteredTotal > 0 ? Number(((item.amount / filteredTotal) * 100).toFixed(1)) : 0 }))
+    .sort((a, b) => b.amount - a.amount);
+
+  const byCourse = Array.from(courseMap.values())
+    .map((item) => ({ ...item, share: filteredTotal > 0 ? Number(((item.amount / filteredTotal) * 100).toFixed(1)) : 0 }))
+    .sort((a, b) => b.amount - a.amount);
+
+  const momGrowth = lastMonthTotal > 0
+    ? Number((((thisMonthTotal - lastMonthTotal) / lastMonthTotal) * 100).toFixed(1))
+    : (thisMonthTotal > 0 ? 100 : 0);
+
+  const totalBilled = students.reduce((sum, s) => sum + Math.max(0, Number(s.totalFee || 0) - Number(s.discountAmount || 0)), 0);
+  const totalDue = Math.max(0, totalBilled - allTimeTotal);
+
+  allPaymentsList.sort((a, b) => new Date(b.paidAt).getTime() - new Date(a.paidAt).getTime());
+
+  res.json({
+    ok: true,
+    data: {
+      today: { total: todayTotal, count: todayCount },
+      yesterday: { total: yesterdayTotal, count: yesterdayCount },
+      thisMonth: { total: thisMonthTotal, count: thisMonthCount },
+      lastMonth: { total: lastMonthTotal, count: lastMonthCount },
+      momGrowth,
+      allTime: { total: allTimeTotal, count: allTimeCount },
+      filtered: { total: filteredTotal, count: filteredCount, timeframe, dateFrom, dateTo },
+      totals: { billed: totalBilled, collected: allTimeTotal, due: totalDue },
+      monthlyTrend: monthlyTrendBuckets,
+      byCentre,
+      byMode,
+      byCourse,
+      recentPayments: allPaymentsList.slice(0, 30),
+      totalTransactions: allPaymentsList.length,
+    },
+  });
+});
+
+// GET /api/admin/finance/fee-approvals - List all pending/reviewed fee concession approval requests
+app.get("/api/admin/finance/fee-approvals", requireAuth, async (req, res) => {
+  if (!canManageFees(req.user)) return sendError(res, 403, "Access restricted to authorized admin accounts");
+  const statusFilter = String(req.query?.status || "pending").trim().toLowerCase();
+  const centreFilter = String(req.query?.centre || "all").trim();
+
+  const query = {};
+  if (statusFilter !== "all") {
+    query["feeApproval.status"] = statusFilter;
+  } else {
+    query["feeApproval.status"] = { $in: ["pending", "approved", "rejected"] };
+  }
+
+  // Centre Scope
+  if (isCenterAdmin(req.user)) {
+    const scope = await centerAdminBranchScope(req.user);
+    if (scope.names.length) {
+      query.centre = { $in: scope.names };
+    }
+  } else if (isFranchiseUser(req.user) && req.user.franchiseId) {
+    query.franchiseId = req.user.franchiseId;
+  }
+
+  if (centreFilter !== "all") {
+    query.centre = centreFilter;
+  }
+
+  const [items, pendingCount] = await Promise.all([
+    Student.find(query)
+      .select("fullName phone admissionNumber centre course status totalFee discountAmount feeApproval admissionPaymentMode createdAt")
+      .sort({ "feeApproval.requestedAt": -1, updatedAt: -1 })
+      .lean(),
+    Student.countDocuments({
+      ...query,
+      "feeApproval.status": "pending",
+    }),
+  ]);
+
+  res.json({
+    ok: true,
+    data: items,
+    pendingCount,
+  });
+});
+
+// POST /api/admin/finance/fee-approvals/:id/review - Approve or reject a candidate fee concession
+app.post("/api/admin/finance/fee-approvals/:id/review", requireAuth, async (req, res) => {
+  const isSuper = isHeadSuperAdmin(req.user);
+  const isCenter = isCenterAdmin(req.user);
+  if (!isSuper && !isCenter) {
+    return sendError(res, 403, "Only Super Admin and Center Admin are authorized to approve fee concessions");
+  }
+
+  const student = await Student.findById(req.params.id);
+  if (!student) return sendError(res, 404, "Candidate record not found");
+
+  if (isCenter && !isSuper) {
+    const scope = await centerAdminBranchScope(req.user);
+    const matchesCentre = student.centre && scope.names.map((n) => n.toLowerCase()).includes(student.centre.toLowerCase());
+    const matchesFranchise = student.franchiseId && scope.ids.map(String).includes(String(student.franchiseId));
+    if (!matchesCentre && !matchesFranchise) {
+      return sendError(res, 403, "You can only approve fee requests for branches within your center scope");
+    }
+  }
+
+  const action = String(req.body?.action || "").toLowerCase().trim();
+  const note = String(req.body?.note || "").trim();
+  if (!["approve", "reject"].includes(action)) {
+    return sendError(res, 400, "Invalid review action. Must be 'approve' or 'reject'");
+  }
+
+  if (!student.feeApproval || student.feeApproval.status !== "pending") {
+    return sendError(res, 400, "This candidate does not have a pending fee concession request");
+  }
+
+  if (action === "approve") {
+    const requestedFee = Number(student.feeApproval.requestedFee || student.totalFee || 0);
+    const requestedDiscount = Number(student.feeApproval.requestedDiscount || 0);
+    student.totalFee = requestedFee;
+    student.discountAmount = requestedDiscount;
+    student.feeApproval.status = "approved";
+    student.feeApproval.reviewedBy = req.user.name || "Admin";
+    student.feeApproval.reviewedByRole = req.user.role || "superadmin";
+    student.feeApproval.reviewedAt = new Date();
+    if (note) student.feeApproval.reason = student.feeApproval.reason ? `${student.feeApproval.reason} (Note: ${note})` : note;
+
+    student.activities = student.activities || [];
+    student.activities.push({
+      type: "fee_approval",
+      message: `Fee concession approved by ${req.user.name} (${req.user.role}): Total Fee ₹${requestedFee.toLocaleString("en-IN")}, Discount ₹${requestedDiscount.toLocaleString("en-IN")}${note ? ` - Note: "${note}"` : ""}`,
+      by: req.user.name || "Admin",
+      at: new Date(),
+    });
+  } else {
+    student.feeApproval.status = "rejected";
+    student.feeApproval.rejectionReason = note || "Concession rejected by administrative review";
+    student.feeApproval.reviewedBy = req.user.name || "Admin";
+    student.feeApproval.reviewedByRole = req.user.role || "superadmin";
+    student.feeApproval.reviewedAt = new Date();
+
+    student.activities = student.activities || [];
+    student.activities.push({
+      type: "fee_rejection",
+      message: `Fee concession request rejected by ${req.user.name}: "${student.feeApproval.rejectionReason}"`,
+      by: req.user.name || "Admin",
+      at: new Date(),
+    });
+  }
+
+  await student.save();
+  const updated = await Student.findById(student._id).lean();
+  res.json({ ok: true, data: updated, message: action === "approve" ? "Fee concession approved successfully" : "Fee concession rejected" });
+});
+
+// GET /api/admin/finance/payment-approvals - List pending and reviewed student payments
+app.get("/api/admin/finance/payment-approvals", requireAuth, async (req, res) => {
+  if (!canManageFees(req.user)) return sendError(res, 403, "Access restricted to authorized admin accounts");
+  const statusFilter = String(req.query?.status || "pending").trim().toLowerCase();
+  const centreFilter = String(req.query?.centre || "all").trim();
+
+  const query = {};
+  if (isCenterAdmin(req.user)) {
+    const scope = await centerAdminBranchScope(req.user);
+    if (scope.names.length) {
+      query.centre = { $in: scope.names };
+    }
+  } else if (isFranchiseUser(req.user) && req.user.franchiseId) {
+    query.franchiseId = req.user.franchiseId;
+  }
+
+  if (centreFilter !== "all") {
+    query.centre = centreFilter;
+  }
+
+  const students = await Student.find(query)
+    .select("fullName phone admissionNumber centre course status totalFee discountAmount paidAmount payments createdAt")
+    .lean();
+
+  const flatPayments = [];
+  let pendingCount = 0;
+
+  students.forEach((st) => {
+    (st.payments || []).forEach((p, idx) => {
+      const pStatus = p.status || "approved";
+      if (pStatus === "pending") pendingCount++;
+      if (statusFilter === "all" || pStatus === statusFilter) {
+        flatPayments.push({
+          studentId: st._id,
+          studentName: st.fullName,
+          studentPhone: st.phone,
+          admissionNumber: st.admissionNumber,
+          centre: st.centre,
+          course: st.course,
+          totalFee: st.totalFee,
+          paidAmount: st.paidAmount,
+          paymentId: String(p._id || idx),
+          paymentIndex: idx,
+          amount: p.amount,
+          mode: p.mode,
+          paymentPurpose: p.paymentPurpose,
+          transactionId: p.transactionId,
+          emiReference: p.emiReference,
+          loanProviderName: p.loanProviderName,
+          note: p.note,
+          proof: p.proof,
+          proofs: p.proofs,
+          status: pStatus,
+          requestedBy: p.requestedBy || p.by,
+          requestedByRole: p.requestedByRole || "",
+          requestedAt: p.requestedAt || p.paidAt,
+          reviewedBy: p.reviewedBy,
+          reviewedByRole: p.reviewedByRole,
+          reviewedAt: p.reviewedAt,
+          rejectionReason: p.rejectionReason,
+          paidAt: p.paidAt,
+        });
+      }
+    });
+  });
+
+  flatPayments.sort((a, b) => new Date(b.requestedAt || b.paidAt).getTime() - new Date(a.requestedAt || a.paidAt).getTime());
+
+  res.json({
+    ok: true,
+    data: flatPayments,
+    pendingCount,
+  });
+});
+
+// POST /api/admin/finance/payment-approvals/:studentId/:paymentId/review - Approve or reject a candidate payment
+app.post("/api/admin/finance/payment-approvals/:studentId/:paymentId/review", requireAuth, async (req, res) => {
+  const isSuper = isHeadSuperAdmin(req.user);
+  const isCenter = isCenterAdmin(req.user);
+  if (!isSuper && !isCenter) {
+    return sendError(res, 403, "Only Super Admin and Center Admin are authorized to approve payments");
+  }
+
+  const student = await Student.findById(req.params.studentId);
+  if (!student) return sendError(res, 404, "Candidate record not found");
+
+  if (isCenter && !isSuper) {
+    const scope = await centerAdminBranchScope(req.user);
+    const matchesCentre = student.centre && scope.names.map((n) => n.toLowerCase()).includes(student.centre.toLowerCase());
+    const matchesFranchise = student.franchiseId && scope.ids.map(String).includes(String(student.franchiseId));
+    if (!matchesCentre && !matchesFranchise) {
+      return sendError(res, 403, "You can only approve payments for branches within your center scope");
+    }
+  }
+
+  const payment = (student.payments || []).find((p, idx) => String(p._id || idx) === String(req.params.paymentId));
+  if (!payment) return sendError(res, 404, "Payment record not found");
+  if (payment.status !== "pending") return sendError(res, 400, "This payment is not pending approval");
+
+  const action = String(req.body?.action || "").toLowerCase().trim();
+  const note = String(req.body?.note || "").trim();
+  if (!["approve", "reject"].includes(action)) {
+    return sendError(res, 400, "Invalid review action. Must be 'approve' or 'reject'");
+  }
+
+  if (action === "approve") {
+    payment.status = "approved";
+    payment.reviewedBy = req.user.name || "Admin";
+    payment.reviewedByRole = req.user.role || "admin";
+    payment.reviewedAt = new Date();
+
+    const paymentAmount = Number(payment.amount || 0);
+    student.paidAmount = Math.max(0, Number(student.paidAmount || 0) + paymentAmount);
+
+    const finalPayable = Math.max(0, Number(student.totalFee || 0) - Number(student.discountAmount || 0));
+    const remainingAfter = Math.max(0, finalPayable - student.paidAmount);
+
+    if (payment.paymentPurpose === "Fees Installment" && student.emiEnabled) {
+      if (remainingAfter <= 0) {
+        student.emiEnabled = false;
+        student.nextEmiDate = null;
+      } else {
+        const nextDate = student.nextEmiDate ? new Date(student.nextEmiDate) : new Date();
+        nextDate.setMonth(nextDate.getMonth() + 1);
+        student.nextEmiDate = nextDate;
+      }
+    }
+    if (remainingAfter <= 0 && normalizeStudentStatus(student.status) === "Fees Decided") {
+      student.status = "Fees Collected";
+    }
+
+    student.activities = student.activities || [];
+    student.activities.push({
+      type: "payment_approved",
+      message: `Payment of ₹${paymentAmount.toLocaleString("en-IN")} (${payment.mode} - ${payment.paymentPurpose}) approved by ${req.user.name} (${req.user.role})${note ? ` - Note: "${note}"` : ""}`,
+      by: req.user.name || "Admin",
+      at: new Date(),
+    });
+  } else {
+    payment.status = "rejected";
+    payment.rejectionReason = note || "Payment rejected by administrative review";
+    payment.reviewedBy = req.user.name || "Admin";
+    payment.reviewedByRole = req.user.role || "admin";
+    payment.reviewedAt = new Date();
+
+    student.activities = student.activities || [];
+    student.activities.push({
+      type: "payment_rejected",
+      message: `Payment of ₹${Number(payment.amount || 0).toLocaleString("en-IN")} (${payment.mode}) rejected by ${req.user.name}: "${payment.rejectionReason}"`,
+      by: req.user.name || "Admin",
+      at: new Date(),
+    });
+  }
+
+  await student.save();
+  const updated = await Student.findById(student._id).lean();
+  res.json({
+    ok: true,
+    data: updated,
+    message: action === "approve" ? "Payment approved successfully" : "Payment rejected",
+  });
+});
+
+// POST /api/admin/students/:id/request-fee-approval - Propose a fee concession / custom fee
+app.post("/api/admin/students/:id/request-fee-approval", requireAuth, async (req, res) => {
+  if (!canManageFees(req.user)) return sendError(res, 403, "Fee concession updates are restricted to admin and counsellor staff");
+
+  const student = await Student.findById(req.params.id);
+  if (!student) return sendError(res, 404, "Candidate record not found");
+  if (!(await canAccessRecord(req, student))) return sendError(res, 403, "You can access only permitted records");
+
+  const requestedFee = Number(req.body?.requestedFee);
+  const requestedDiscount = Number(req.body?.requestedDiscount || 0);
+  const standardCourseFee = Number(req.body?.standardCourseFee || student.totalFee || 0);
+  const reason = String(req.body?.reason || "").trim();
+
+  if (!Number.isFinite(requestedFee) || requestedFee < 0) return sendError(res, 400, "Please specify a valid requested total fee");
+  if (!reason && !isHeadSuperAdmin(req.user)) return sendError(res, 400, "Please provide a reason / justification for the fee concession");
+
+  const isSuper = isHeadSuperAdmin(req.user);
+
+  if (isSuper) {
+    // Super Admin direct change is auto-approved
+    student.totalFee = requestedFee;
+    student.discountAmount = requestedDiscount;
+    student.feeApproval = {
+      status: "approved",
+      standardCourseFee,
+      requestedFee,
+      requestedDiscount,
+      reason: reason || "Direct Super Admin update",
+      requestedBy: req.user.name || "Super Admin",
+      requestedByRole: req.user.role || "superadmin",
+      requestedAt: new Date(),
+      reviewedBy: req.user.name || "Super Admin",
+      reviewedByRole: req.user.role || "superadmin",
+      reviewedAt: new Date(),
+    };
+    student.activities = student.activities || [];
+    student.activities.push({
+      type: "fee_update",
+      message: `Total fee updated directly by ${req.user.name}: ₹${requestedFee.toLocaleString("en-IN")}${requestedDiscount > 0 ? ` (Discount: ₹${requestedDiscount.toLocaleString("en-IN")})` : ""}`,
+      by: req.user.name || "Admin",
+      at: new Date(),
+    });
+  } else {
+    // Branch staff submit for approval
+    student.feeApproval = {
+      status: "pending",
+      standardCourseFee,
+      requestedFee,
+      requestedDiscount,
+      reason,
+      requestedBy: req.user.name || "Staff",
+      requestedByRole: req.user.role || "admin",
+      requestedAt: new Date(),
+    };
+    student.activities = student.activities || [];
+    student.activities.push({
+      type: "fee_concession_requested",
+      message: `Fee concession submitted by ${req.user.name} (${req.user.role}): Proposed Total ₹${requestedFee.toLocaleString("en-IN")}, Discount ₹${requestedDiscount.toLocaleString("en-IN")}. Reason: "${reason}"`,
+      by: req.user.name || "Admin",
+      at: new Date(),
+    });
+  }
+
+  await student.save();
+  const updated = await Student.findById(student._id).lean();
+  res.json({
+    ok: true,
+    data: updated,
+    message: isSuper ? "Fee updated successfully" : "Fee concession submitted for Super Admin / Center Admin approval",
+  });
+});
+
 app.post("/api/admin/students/:id/payments", requireAuth, leadDocumentUpload.array("paymentProof", 10), async (req, res) => {
   if (!canManageFees(req.user)) return sendError(res, 403, "Fee and payment updates are restricted to admin accounts");
   const amount = Number(req.body?.amount || 0);
@@ -3872,7 +4746,25 @@ app.post("/api/admin/students/:id/payments", requireAuth, leadDocumentUpload.arr
   const existingStudent = await Student.findById(req.params.id).lean();
   if (!existingStudent) return sendError(res, 404, "Student not found");
   if (!(await canAccessRecord(req, existingStudent))) return sendError(res, 403, "You can access only permitted records");
+  
   const finalPayable = Math.max(0, Number(existingStudent.totalFee || 0) - Number(existingStudent.discountAmount || 0));
+  const courseObj = await Course.findOne({
+    $or: [
+      { code: { $regex: new RegExp(`^${escapeRegex(existingStudent.course || "")}$`, "i") } },
+      { name: { $regex: new RegExp(`^${escapeRegex(existingStudent.course || "")}$`, "i") } }
+    ]
+  }).lean();
+  const isSuper = isHeadSuperAdmin(req.user) || isCenterAdmin(req.user);
+  const hasExistingPayments = Number(existingStudent.paidAmount || 0) > 0 || (Array.isArray(existingStudent.payments) && existingStudent.payments.length > 0);
+  const isApproved = (existingStudent.feeApproval && existingStudent.feeApproval.status === "approved") || hasExistingPayments;
+  const isRejected = existingStudent.feeApproval && existingStudent.feeApproval.status === "rejected" && !hasExistingPayments;
+
+  if (isRejected) {
+    return sendError(res, 400, "Cannot record payments because the student's fee plan was rejected. Please submit a revised fee plan for approval.");
+  }
+  if (!isSuper && !isApproved) {
+    return sendError(res, 400, "Cannot record payments until the student's fee plan is approved by Super Admin or Center Admin.");
+  }
   const paymentAllowedStatuses = ["Fees Decided", "Fees Collected", "Active Student", "Course Completed", "Alumni"];
   if (!paymentAllowedStatuses.includes(normalizeStudentStatus(existingStudent.status))) return sendError(res, 400, "Decide fees before recording payment");
   if (!existingStudent.admissionPaymentMode || finalPayable <= 0) return sendError(res, 400, "Complete admission and final fee before recording payment");
@@ -3888,50 +4780,91 @@ app.post("/api/admin/students/:id/payments", requireAuth, leadDocumentUpload.arr
   const uploadedFiles = Array.isArray(req.files) ? req.files : (req.file ? [req.file] : []);
   const proofs = uploadedFiles.map((file) => saveLeadDocument(file)).filter(Boolean);
   const proof = proofs[0] || undefined;
+  const proofMsg = proofs.length > 1 ? ` (${proofs.length} proofs attached)` : (proof?.storedName ? " (Proof attached)" : "");
   if (mode !== "Cash" && proofs.length === 0 && !proof?.storedName) return sendError(res, 400, "Payment proof is required for non-cash payments");
   const remainingAfterPayment = pendingDue - amount;
   const emiShortfall = paymentPurpose === "Fees Installment" && existingStudent.emiEnabled && existingStudent.emiAmount && amount < existingStudent.emiAmount
     ? Math.max(0, existingStudent.emiAmount - amount)
     : 0;
-  const proofMsg = proofs.length > 1 ? ` with ${proofs.length} proofs` : (proof ? " with proof" : "");
-  const paymentUpdate = {
-    $inc: { paidAmount: amount },
-    $push: {
-      payments: { amount, paymentPurpose, mode, transactionId, emiReference, loanProviderName, note, proof, proofs, by: req.user.name },
-      activities: {
-        type: "payment",
-        message: emiShortfall > 0
-          ? `${paymentPurpose} received: ${amount}${proofMsg}. Shortfall of ${emiShortfall} carried forward to next EMI.`
-          : `${paymentPurpose} received: ${amount}${proofMsg}`,
-        by: req.user.name,
-      },
-    },
+  const isSuperOnly = isHeadSuperAdmin(req.user);
+  const paymentStatus = isSuperOnly ? "approved" : "pending";
+
+  const newPayment = {
+    _id: new mongoose.Types.ObjectId(),
+    amount,
+    paymentPurpose,
+    mode,
+    transactionId,
+    emiReference,
+    loanProviderName,
+    note,
+    proof,
+    proofs,
+    by: req.user.name,
+    paidAt: new Date(),
+    status: paymentStatus,
+    requestedBy: req.user.name,
+    requestedByRole: req.user.role || "staff",
+    requestedAt: new Date(),
+    ...(isSuperOnly ? {
+      reviewedBy: req.user.name,
+      reviewedByRole: req.user.role || "superadmin",
+      reviewedAt: new Date(),
+    } : {}),
   };
-  if (paymentPurpose === "Fees Installment" && existingStudent.emiEnabled) {
-    const setAfterPayment = remainingAfterPayment <= 0
-      ? { emiEnabled: false, nextEmiDate: null }
-      : { nextEmiDate: (() => { const date = existingStudent.nextEmiDate ? new Date(existingStudent.nextEmiDate) : new Date(); date.setMonth(date.getMonth() + 1); return date; })() };
-    paymentUpdate.$set = setAfterPayment;
-  }
-  if (remainingAfterPayment <= 0 && normalizeStudentStatus(existingStudent.status) === "Fees Decided") {
-    paymentUpdate.$set = { ...(paymentUpdate.$set || {}), status: "Fees Collected" };
-    paymentUpdate.$push.activities.message = `${paymentPurpose} received: ${amount}${proofMsg}. Status moved to Fees Collected`;
-  }
-  const student = await Student.findOneAndUpdate(
-    {
-      _id: req.params.id,
-      $expr: {
-        $gte: [
-          { $subtract: [{ $subtract: ["$totalFee", { $ifNull: ["$discountAmount", 0] }] }, "$paidAmount"] },
-          amount,
-        ],
+
+  let paymentUpdate;
+  if (isSuperOnly) {
+    paymentUpdate = {
+      $inc: { paidAmount: amount },
+      $push: {
+        payments: newPayment,
+        activities: {
+          type: "payment",
+          message: emiShortfall > 0
+            ? `${paymentPurpose} received: ${amount}${proofMsg}. Shortfall of ${emiShortfall} carried forward to next EMI.`
+            : `${paymentPurpose} received: ${amount}${proofMsg}`,
+          by: req.user.name,
+        },
       },
-    },
+    };
+    if (paymentPurpose === "Fees Installment" && existingStudent.emiEnabled) {
+      const setAfterPayment = remainingAfterPayment <= 0
+        ? { emiEnabled: false, nextEmiDate: null }
+        : { nextEmiDate: (() => { const date = existingStudent.nextEmiDate ? new Date(existingStudent.nextEmiDate) : new Date(); date.setMonth(date.getMonth() + 1); return date; })() };
+      paymentUpdate.$set = setAfterPayment;
+    }
+    if (remainingAfterPayment <= 0 && normalizeStudentStatus(existingStudent.status) === "Fees Decided") {
+      paymentUpdate.$set = { ...(paymentUpdate.$set || {}), status: "Fees Collected" };
+      paymentUpdate.$push.activities.message = `${paymentPurpose} received: ${amount}${proofMsg}. Status moved to Fees Collected`;
+    }
+  } else {
+    // Non-superadmin payment: Pending approval by Super Admin / Center Admin
+    paymentUpdate = {
+      $push: {
+        payments: newPayment,
+        activities: {
+          type: "payment_pending",
+          message: `Payment of ₹${amount.toLocaleString("en-IN")} (${mode} - ${paymentPurpose}) recorded by ${req.user.name} - Pending approval by Super Admin / Center Admin.${proofMsg}`,
+          by: req.user.name,
+        },
+      },
+    };
+  }
+
+  const student = await Student.findByIdAndUpdate(
+    req.params.id,
     paymentUpdate,
-    { new: true, runValidators: true },
+    { returnDocument: "after", runValidators: true },
   );
-  if (!student) return sendError(res, 400, "Payment cannot exceed current pending due");
-  res.json({ ok: true, data: await studentAdminWithInternshipResponse(student) });
+  if (!student) return sendError(res, 404, "Student record not found");
+  res.json({
+    ok: true,
+    data: await studentAdminWithInternshipResponse(student),
+    message: isSuperOnly
+      ? "Payment recorded and approved successfully"
+      : "Payment recorded successfully! It is now pending approval by Super Admin / Center Admin.",
+  });
 });
 
 app.get("/api/admin/students/:id/payments/:index/proof", requireAuth, async (req, res) => {
@@ -4142,9 +5075,11 @@ app.get("/api/admin/courses", requireAuth, async (req, res) => {
 
 app.post("/api/admin/courses", requireAuth, requireFranchiseManager, async (req, res) => {
   if (!req.body?.name) return sendError(res, 400, "Course name is required");
+  const parsedFee = Number(req.body.fee);
+  const fee = Number.isFinite(parsedFee) ? parsedFee : 0;
   const course = await Course.create({
     ...req.body,
-    fee: Number(req.body.fee || 0),
+    fee,
     franchiseId: isFranchiseUser(req.user) || isHeadBranchAdmin(req.user) ? req.user.franchiseId : req.body.franchiseId || undefined,
   });
   res.status(201).json({ ok: true, data: course });
@@ -4160,7 +5095,10 @@ app.patch("/api/admin/courses/:id", requireAuth, requireFranchiseManager, async 
   if (updates.name !== undefined) updates.name = String(updates.name || "").trim();
   if (updates.code !== undefined) updates.code = String(updates.code || "").trim();
   if (updates.duration !== undefined) updates.duration = String(updates.duration || "").trim();
-  if (updates.fee !== undefined) updates.fee = Number(updates.fee || 0);
+  if (updates.fee !== undefined) {
+    const parsedFee = Number(updates.fee);
+    updates.fee = Number.isFinite(parsedFee) ? parsedFee : 0;
+  }
   if (updates.fee < 0) return sendError(res, 400, "Course fee cannot be negative");
   if (updates.name !== undefined && !updates.name) return sendError(res, 400, "Course name is required");
   if (isFranchiseUser(req.user) || isHeadBranchAdmin(req.user)) delete updates.franchiseId;
@@ -5035,6 +5973,221 @@ app.post("/api/careers", upload.single("resume"), async (req, res) => {
   } catch (error) {
     console.error("Career form mail error:", error);
     sendError(res, 500, "Unable to submit application right now. Please try again later.");
+  }
+});
+
+app.post("/api/public/college-registration", async (req, res) => {
+  const { student, parent, course, meta } = req.body || {};
+
+  const clientIp = (
+    req.headers["cf-connecting-ip"] ||
+    req.headers["x-real-ip"] ||
+    (req.headers["x-forwarded-for"] ? String(req.headers["x-forwarded-for"]).split(",")[0].trim() : "") ||
+    req.socket?.remoteAddress ||
+    req.ip ||
+    ""
+  ).replace(/^::ffff:/, "").trim();
+
+  const userAgent = String(req.headers["user-agent"] || "").slice(0, 500);
+
+  const studentName = String(student?.name || "").replace(/[^a-zA-Z\s.'-]/g, "").trim();
+  const rawPhone = String(student?.phone || "").trim();
+  const cleanPhoneDigits = rawPhone.replace(/\D/g, "");
+  const last10Digits = cleanPhoneDigits.slice(-10);
+
+  if (!studentName || studentName.length < 2) {
+    return sendError(res, 400, "Valid student name is required.");
+  }
+  if (last10Digits.length < 10) {
+    return sendError(res, 400, "Valid 10-digit student phone number is required.");
+  }
+
+  const studentEmail = String(student?.email || "").toLowerCase().trim();
+  const rollNo = String(student?.rollNo || "").trim();
+  const section = String(student?.section || "").trim();
+  const stream = String(student?.stream || "").trim();
+
+  const parentName = String(parent?.name || "").trim();
+  const parentPhone = String(parent?.phone || "").trim();
+
+  const courseName = String(course?.name || course?.code || "Foundation Certificate in Healthcare - BRAC").trim();
+  const courseFee = Number(course?.fee) || 4999;
+
+  const collegeName = String(meta?.college || "Dr. Bhim Rao Ambedkar College").trim();
+  const campaignName = String(meta?.campaign || "BRAC Seminar Oct 2026").trim();
+  const utmSource = String(meta?.utm_source || "qr").trim();
+  const utmMedium = String(meta?.utm_medium || "seminar-flyer").trim();
+
+  // Strictly assign to Delhi centre
+  const leadCentre = "Delhi";
+  let leadFranchiseId = null;
+  try {
+    const delhiCentreDoc = await Centre.findOne({ name: { $regex: /^delhi$/i }, active: true }).lean();
+    if (delhiCentreDoc) {
+      leadFranchiseId = delhiCentreDoc._id;
+    } else {
+      const fallbackDelhi = await Centre.findOne({ name: { $regex: /delhi/i }, active: true }).lean();
+      if (fallbackDelhi) leadFranchiseId = fallbackDelhi._id;
+    }
+  } catch (centreErr) {
+    console.error("Error resolving Delhi centre:", centreErr);
+  }
+
+  const formattedNotes = [
+    `College: ${collegeName}`,
+    `Roll No: ${rollNo || "N/A"}`,
+    `Stream: ${stream || "N/A"}${section ? ` (Section: ${section})` : ""}`,
+    `Parent / Guardian: ${parentName || "N/A"} (${parentPhone || "N/A"})`,
+    `Selected Course: ${courseName} (Fee: ₹${courseFee.toLocaleString("en-IN")})`,
+    `Campaign: ${campaignName} | UTM: ${utmSource}/${utmMedium}`,
+  ].join("\n");
+
+  try {
+    // Check for duplicate / existing lead
+    const existingLead = await Lead.findOne({
+      phone: { $regex: `${last10Digits}$` },
+    }).sort({ createdAt: -1 });
+
+    if (existingLead) {
+      const ageInSeconds = (Date.now() - new Date(existingLead.createdAt).getTime()) / 1000;
+      if (ageInSeconds <= 15) {
+        return res.json({ ok: true, message: "Registration received successfully.", duplicate: true, leadId: existingLead._id });
+      }
+
+      existingLead.fullName = studentName;
+      if (studentEmail) existingLead.email = studentEmail;
+      existingLead.course = courseName;
+      existingLead.source = `${collegeName} (College Partnership)`;
+      existingLead.centre = "Delhi";
+      if (leadFranchiseId) existingLead.franchiseId = leadFranchiseId;
+      if (parentPhone) existingLead.parentMobile = normalizePhone(parentPhone);
+      existingLead.expectedFee = courseFee;
+      existingLead.studentLocation = "Delhi";
+      existingLead.city = "Delhi";
+      existingLead.stage = "New Lead";
+      existingLead.leadFeedback = "Interested";
+      existingLead.priority = "P1";
+      if (clientIp) existingLead.ipAddress = clientIp;
+      if (userAgent) existingLead.userAgent = userAgent;
+
+      existingLead.activities.push({
+        type: "college_registration",
+        message: `College registration submitted via ${collegeName} form for ${courseName} (Roll: ${rollNo}, Stream: ${stream})`,
+        by: "BRAC Portal",
+        at: new Date(),
+      });
+
+      existingLead.notes = existingLead.notes ? `${existingLead.notes}\n\n[College Registration]:\n${formattedNotes}` : formattedNotes;
+
+      await existingLead.save();
+
+      // Refresh in MongoDB so it ranks high and has updated info
+      await mongoose.connection.collection("leads").updateOne(
+        { _id: existingLead._id },
+        {
+          $set: {
+            fullName: studentName,
+            email: studentEmail || existingLead.email || "",
+            course: courseName,
+            source: `${collegeName} (College Partnership)`,
+            stage: "New Lead",
+            leadFeedback: "Interested",
+            priority: "P1",
+            expectedFee: courseFee,
+            createdAt: new Date(),
+            centre: "Delhi",
+            franchiseId: existingLead.franchiseId || leadFranchiseId,
+            ipAddress: clientIp || existingLead.ipAddress || "",
+            userAgent: userAgent || existingLead.userAgent || "",
+          },
+        }
+      );
+
+      // Send email alert to admissions team
+      try {
+        await transporter.sendMail({
+          from: `iMED Academy <${process.env.SMTP_USER}>`,
+          to: toAddress,
+          replyTo: studentEmail || process.env.SMTP_USER,
+          subject: `🎓 [Delhi BRAC Registration] ${studentName} - ${courseName}`,
+          html: `<h2>BRAC College Registration (Delhi)</h2>
+            <p><strong>Note:</strong> Student already existed in CRM; profile updated with BRAC details and assigned to Delhi.</p>
+            <table cellpadding="8" cellspacing="0" border="1" style="border-collapse:collapse;font-family:Arial,sans-serif;">
+              <tr><th align="left">Student Name</th><td>${escapeHtml(studentName)}</td></tr>
+              <tr><th align="left">Phone</th><td>${escapeHtml(rawPhone)}</td></tr>
+              <tr><th align="left">Email</th><td>${escapeHtml(studentEmail || "Not provided")}</td></tr>
+              <tr><th align="left">College</th><td>${escapeHtml(collegeName)}</td></tr>
+              <tr><th align="left">Roll Number</th><td>${escapeHtml(rollNo)}</td></tr>
+              <tr><th align="left">Stream & Section</th><td>${escapeHtml(`${stream} ${section ? `(Sec ${section})` : ""}`)}</td></tr>
+              <tr><th align="left">Parent</th><td>${escapeHtml(`${parentName} - ${parentPhone}`)}</td></tr>
+              <tr><th align="left">Course Selected</th><td>${escapeHtml(courseName)} (₹${courseFee})</td></tr>
+              <tr><th align="left">Assigned Centre</th><td><strong>Delhi</strong></td></tr>
+            </table>`,
+        });
+      } catch (mailErr) {
+        console.error("College registration email notification error:", mailErr);
+      }
+
+      return res.json({ ok: true, message: "Registration recorded successfully.", updated: true, leadId: existingLead._id });
+    }
+
+    // Create new Lead for Delhi
+    const newLead = await Lead.create({
+      fullName: studentName,
+      phone: normalizePhone(rawPhone),
+      parentMobile: normalizePhone(parentPhone),
+      email: studentEmail,
+      studentLocation: "Delhi",
+      city: "Delhi",
+      centre: "Delhi",
+      franchiseId: leadFranchiseId,
+      source: `${collegeName} (College Partnership)`,
+      course: courseName,
+      expectedFee: courseFee,
+      stage: "New Lead",
+      leadFeedback: "Interested",
+      priority: "P1",
+      notes: formattedNotes,
+      ipAddress: clientIp,
+      userAgent: userAgent,
+      activities: [
+        {
+          type: "college_registration",
+          message: `Direct registration submitted from ${collegeName} portal for ${courseName} (Roll: ${rollNo}, Stream: ${stream})`,
+          by: "BRAC Portal",
+          at: new Date(),
+        },
+      ],
+    });
+
+    // Send email alert
+    try {
+      await transporter.sendMail({
+        from: `iMED Academy <${process.env.SMTP_USER}>`,
+        to: toAddress,
+        replyTo: studentEmail || process.env.SMTP_USER,
+        subject: `🎓 [Delhi BRAC Registration] New Student: ${studentName} - ${courseName}`,
+        html: `<h2>New BRAC College Registration (Delhi)</h2>
+          <table cellpadding="8" cellspacing="0" border="1" style="border-collapse:collapse;font-family:Arial,sans-serif;">
+            <tr><th align="left">Student Name</th><td>${escapeHtml(studentName)}</td></tr>
+            <tr><th align="left">Phone</th><td>${escapeHtml(rawPhone)}</td></tr>
+            <tr><th align="left">Email</th><td>${escapeHtml(studentEmail || "Not provided")}</td></tr>
+            <tr><th align="left">College</th><td>${escapeHtml(collegeName)}</td></tr>
+            <tr><th align="left">Roll Number</th><td>${escapeHtml(rollNo)}</td></tr>
+            <tr><th align="left">Stream & Section</th><td>${escapeHtml(`${stream} ${section ? `(Sec ${section})` : ""}`)}</td></tr>
+            <tr><th align="left">Parent</th><td>${escapeHtml(`${parentName} - ${parentPhone}`)}</td></tr>
+            <tr><th align="left">Course Selected</th><td>${escapeHtml(courseName)} (₹${courseFee})</td></tr>
+            <tr><th align="left">Assigned Centre</th><td><strong>Delhi</strong></td></tr>
+          </table>`,
+      });
+    } catch (mailErr) {
+      console.error("College registration email notification error:", mailErr);
+    }
+
+    return res.json({ ok: true, message: "Registration submitted successfully.", leadId: newLead._id });
+  } catch (err) {
+    console.error("Error creating college registration lead:", err);
+    return sendError(res, 500, "Unable to save registration. Please try again or reach out via WhatsApp.");
   }
 });
 

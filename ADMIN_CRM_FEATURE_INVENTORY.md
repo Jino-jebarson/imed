@@ -43,6 +43,7 @@ Source reviewed:
 ## Navigation Panels
 
 - Dashboard
+- Status & Branch Report
 - Leads
 - Add lead
 - Admissions
@@ -58,6 +59,22 @@ Source reviewed:
 - EMI reminders
 - Settings
 - Profile
+
+## Status & Branch Reports (Super Admin Analytics)
+
+- Timeframe filters:
+  - All Time, Today, Yesterday, This Week, Last Week, This Month, Last Month, This Year, Custom Date Range (`dateFrom` to `dateTo`).
+- Filter controls by Branch/Centre, Course, Candidate Status, and Quick Search.
+- KPI Summary Metrics:
+  - Total Candidates, Enrolled/New Admissions, In Training, Classroom Complete, Course Completed, Placed/Alumni, Dropouts count & rate %, Retention Rate %.
+- Branch vs. Status Cross-Tabulation Pivot Matrix:
+  - Row per branch (Delhi, Kochi, Bangalore, Franchises).
+  - Status counts (Enrolled, In Training, Classroom Complete, Course Completed, Placed, Dropped, Total).
+  - Branch-wise Retention % and Dropout %.
+  - Consolidated Grand Total summary row across all branches.
+- Course distribution breakdown.
+- Candidate Records Drill-Down table with one-click Profile Drawer access.
+- One-Click Excel Export (`.xls`) for executive presentations and auditing.
 
 ## Global Filters
 
