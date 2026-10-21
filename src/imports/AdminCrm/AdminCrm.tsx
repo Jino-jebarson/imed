@@ -1,6 +1,7 @@
 import { ChangeEvent, FormEvent, ReactNode, useEffect, useMemo, useRef, useState } from "react";
 import html2canvas from "html2canvas";
 import { jsPDF } from "jspdf";
+import * as XLSX from "xlsx";
 import { Toaster, toast } from "sonner";
 import { FiUpload, FiRefreshCw, FiEye } from "react-icons/fi";
 import IMedCertificate from "./IMedCertificate";
@@ -1312,15 +1313,14 @@ function downloadExcelFile(headers: string[], rows: (string | number | undefined
     toast.message("Nothing to download");
     return;
   }
-  const esc = (value?: string | number) => String(value ?? "").replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
-  const html = `<table><tr>${headers.map((header) => `<th>${esc(header)}</th>`).join("")}</tr>${rows.map((row) => `<tr>${row.map((cell) => `<td>${esc(cell)}</td>`).join("")}</tr>`).join("")}</table>`;
-  const blob = new Blob([html], { type: "application/vnd.ms-excel;charset=utf-8;" });
-  const url = URL.createObjectURL(blob);
-  const link = document.createElement("a");
-  link.href = url;
-  link.download = `${filename}-${dateInputValue()}.xls`;
-  link.click();
-  URL.revokeObjectURL(url);
+  const worksheetData = [
+    headers,
+    ...rows.map((row) => row.map((cell) => (cell === undefined || cell === null ? "" : cell))),
+  ];
+  const worksheet = XLSX.utils.aoa_to_sheet(worksheetData);
+  const workbook = XLSX.utils.book_new();
+  XLSX.utils.book_append_sheet(workbook, worksheet, "Data");
+  XLSX.writeFile(workbook, `${filename}-${dateInputValue()}.xlsx`);
 }
 
 export default function AdminCrm() {
@@ -2952,12 +2952,18 @@ export default function AdminCrm() {
     }
   };
 
-  const downloadPaymentProof = async (student: Student, payment: PaymentRecord, index: number, proofIndex = 0) => {
+  const downloadPaymentProof = async (
+    student: Student | { _id?: string; studentId?: string; fullName?: string; studentName?: string },
+    payment: PaymentRecord | { amount?: number; proof?: DocumentFile; proofs?: DocumentFile[] },
+    index: number | string,
+    proofIndex = 0
+  ) => {
+    const studentId = ("_id" in student && student._id ? student._id : (student as any).studentId) || "";
     const proofList = (payment.proofs && payment.proofs.length > 0) ? payment.proofs : (payment.proof?.storedName ? [payment.proof] : []);
     const targetProof = proofList[proofIndex] || payment.proof;
     if (!targetProof?.storedName) return toast.message("No payment proof uploaded");
     try {
-      const response = await fetch(`${API_BASE_URL}/api/admin/students/${student._id}/payments/${index}/proof?proofIndex=${proofIndex}`, { headers: { Authorization: `Bearer ${token}` } });
+      const response = await fetch(`${API_BASE_URL}/api/admin/students/${studentId}/payments/${index}/proof?proofIndex=${proofIndex}`, { headers: { Authorization: `Bearer ${token}` } });
       if (!response.ok) {
         const result = await response.json().catch(() => null);
         throw new Error(result?.message || "Unable to download payment proof");
@@ -2976,14 +2982,21 @@ export default function AdminCrm() {
     }
   };
 
-  const previewPaymentProof = async (student: Student, payment: PaymentRecord, index: number, proofIndex = 0) => {
+  const previewPaymentProof = async (
+    student: Student | { _id?: string; studentId?: string; fullName?: string; studentName?: string },
+    payment: PaymentRecord | { amount?: number; proof?: DocumentFile; proofs?: DocumentFile[] },
+    index: number | string,
+    proofIndex = 0
+  ) => {
+    const studentId = ("_id" in student && student._id ? student._id : (student as any).studentId) || "";
+    const studentName = ("fullName" in student && student.fullName ? student.fullName : (student as any).studentName) || "Candidate";
     const proofList = (payment.proofs && payment.proofs.length > 0) ? payment.proofs : (payment.proof?.storedName ? [payment.proof] : []);
     const targetProof = proofList[proofIndex] || payment.proof;
     if (!targetProof?.storedName) return toast.message("No payment proof uploaded");
     const label = proofList.length > 1 ? `Payment Proof #${proofIndex + 1}` : "Payment Proof";
     await openSecurePreview(
-      `/api/admin/students/${student._id}/payments/${index}/proof?proofIndex=${proofIndex}`,
-      `${label} (${formatCurrency(payment.amount || 0)}) - ${student.fullName}`,
+      `/api/admin/students/${studentId}/payments/${index}/proof?proofIndex=${proofIndex}`,
+      `${label} (${formatCurrency(payment.amount || 0)}) - ${studentName}`,
       targetProof.originalName || "payment-proof"
     );
   };
@@ -4221,6 +4234,8 @@ export default function AdminCrm() {
                 onCashDeposit={recordCashDeposit}
                 onDownloadCashDepositProof={downloadCashDepositProof}
                 onPreviewCashDepositProof={previewCashDepositProof}
+                onDownloadPaymentProof={downloadPaymentProof}
+                onPreviewPaymentProof={previewPaymentProof}
               />
             )}
             {panel === "emi" && canManageFees && (
@@ -7688,6 +7703,8 @@ function FinancePanel({
   onCashDeposit,
   onDownloadCashDepositProof,
   onPreviewCashDepositProof,
+  onDownloadPaymentProof,
+  onPreviewPaymentProof,
 }: {
   students: Student[];
   meta: PaginationMeta | null;
@@ -7729,6 +7746,8 @@ function FinancePanel({
   onCashDeposit: (event: FormEvent<HTMLFormElement>, student: Student, payment: PaymentRecord, paymentIndex: number) => void;
   onDownloadCashDepositProof: (student: Student, paymentIndex: number, deposit: CashDeposit, depositIndex: number) => void;
   onPreviewCashDepositProof?: (student: Student, paymentIndex: number, deposit: CashDeposit, depositIndex: number) => void;
+  onDownloadPaymentProof?: (student: { _id?: string; studentId?: string; fullName?: string; studentName?: string }, payment: { amount?: number; proof?: DocumentFile; proofs?: DocumentFile[] }, index: number | string, proofIndex?: number) => void;
+  onPreviewPaymentProof?: (student: { _id?: string; studentId?: string; fullName?: string; studentName?: string }, payment: { amount?: number; proof?: DocumentFile; proofs?: DocumentFile[] }, index: number | string, proofIndex?: number) => void;
 }) {
   const showAnalytics = Boolean(isHeadSuperAdmin || isCenterAdmin);
   const [subTab, setSubTab] = useState<"analytics" | "cash" | "ledger" | "approvals" | "paymentApprovals">(showAnalytics ? "analytics" : "cash");
@@ -9176,33 +9195,50 @@ function FinancePanel({
                         </td>
                         <td style={{ verticalAlign: "middle", textAlign: "center" }}>
                           {proofs.length > 0 ? (
-                            <div style={{ display: "inline-flex", gap: 4, justifyContent: "center" }}>
-                              <button
-                                type="button"
-                                className="action-icon-btn action-icon-primary"
-                                title="Preview proof"
-                                onClick={() => {
-                                  const targetStudent = students.find((s) => s._id === item.studentId);
-                                  if (targetStudent) {
-                                    onPreviewCashDepositProof?.(targetStudent, item.paymentIndex, { proof: proofs[0] }, 0);
-                                  }
-                                }}
-                              >
-                                <Eye size={13} />
-                              </button>
-                              <button
-                                type="button"
-                                className="action-icon-btn"
-                                title="Download proof"
-                                onClick={() => {
-                                  const targetStudent = students.find((s) => s._id === item.studentId);
-                                  if (targetStudent) {
-                                    onDownloadCashDepositProof?.(targetStudent, item.paymentIndex, { proof: proofs[0] }, 0);
-                                  }
-                                }}
-                              >
-                                <Download size={13} />
-                              </button>
+                            <div style={{ display: "inline-flex", gap: 4, justifyContent: "center", alignItems: "center" }}>
+                              {proofs.length === 1 ? (
+                                <>
+                                  <button
+                                    type="button"
+                                    className="action-icon-btn action-icon-primary"
+                                    title={proofs[0].originalName ? `Preview: ${proofs[0].originalName}` : "Preview proof"}
+                                    onClick={() => onPreviewPaymentProof?.({ studentId: item.studentId, studentName: item.studentName }, item, item.paymentIndex, 0)}
+                                  >
+                                    <Eye size={13} />
+                                  </button>
+                                  <button
+                                    type="button"
+                                    className="action-icon-btn"
+                                    title={proofs[0].originalName || "Download proof"}
+                                    onClick={() => onDownloadPaymentProof?.({ studentId: item.studentId, studentName: item.studentName }, item, item.paymentIndex, 0)}
+                                  >
+                                    <Download size={13} />
+                                  </button>
+                                </>
+                              ) : (
+                                proofs.map((p, pIdx) => (
+                                  <div key={pIdx} style={{ display: "inline-flex", alignItems: "center", border: "1px solid var(--border)", borderRadius: "6px", overflow: "hidden" }}>
+                                    <button
+                                      type="button"
+                                      className="btn btn-sm btn-ghost"
+                                      style={{ padding: "2px 6px", fontSize: "11px", height: "24px", display: "inline-flex", alignItems: "center", gap: "3px", borderRadius: 0 }}
+                                      title={`Preview: ${p.originalName || `#${pIdx + 1}`}`}
+                                      onClick={() => onPreviewPaymentProof?.({ studentId: item.studentId, studentName: item.studentName }, item, item.paymentIndex, pIdx)}
+                                    >
+                                      <Eye size={11} /> #{pIdx + 1}
+                                    </button>
+                                    <button
+                                      type="button"
+                                      className="btn btn-sm btn-ghost"
+                                      style={{ padding: "2px 5px", fontSize: "11px", height: "24px", borderLeft: "1px solid var(--border)", borderRadius: 0 }}
+                                      title={`Download: ${p.originalName || `#${pIdx + 1}`}`}
+                                      onClick={() => onDownloadPaymentProof?.({ studentId: item.studentId, studentName: item.studentName }, item, item.paymentIndex, pIdx)}
+                                    >
+                                      <Download size={11} />
+                                    </button>
+                                  </div>
+                                ))
+                              )}
                             </div>
                           ) : (
                             <span className="cell-sub">{item.mode === "Cash" ? "Cash slip" : "None"}</span>

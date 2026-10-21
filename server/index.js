@@ -1161,7 +1161,7 @@ function excelNumber(row, aliases = []) {
 }
 
 function isHeadBranchScoped(user) {
-  return ["admin", "counsellor", "teacher", "operations_executive"].includes(user?.role);
+  return ["admin", "branch_admin_counsellor", "counsellor", "teacher", "operations_executive"].includes(user?.role);
 }
 
 async function headOfficeBranchScope(user) {
@@ -2182,9 +2182,34 @@ app.get("/api/admin/reports/student-status", requireAuth, async (req, res) => {
   }
 
   const baseFilter = { ...(await scopedDataFilter(req, req.query)), ...dateQuery };
-  if (centre && centre !== "all") baseFilter.centre = centre;
-  if (course && course !== "all") baseFilter.course = course;
-  if (status && status !== "all") baseFilter.status = status;
+  if (centre && centre !== "all") {
+    baseFilter.centre = { $regex: new RegExp(`^${escapeRegex(String(centre).trim())}$`, "i") };
+  }
+  if (course && course !== "all") {
+    const trimmedCourse = String(course).trim();
+    const courseDoc = await Course.findOne({
+      $or: [
+        { code: { $regex: new RegExp(`^${escapeRegex(trimmedCourse)}$`, "i") } },
+        { name: { $regex: new RegExp(`^${escapeRegex(trimmedCourse)}$`, "i") } },
+      ],
+    }).lean();
+    if (courseDoc) {
+      baseFilter.course = { $in: [courseDoc.code, courseDoc.name] };
+    } else {
+      baseFilter.course = { $regex: new RegExp(`^${escapeRegex(trimmedCourse)}$`, "i") };
+    }
+  }
+  if (status && status !== "all") {
+    if (status === "Placed" || status === "Alumni") {
+      baseFilter.status = { $in: ["Placed", "Alumni"] };
+    } else if (status === "In Training") {
+      baseFilter.status = { $in: ["Fees Decided", "Fees Collected", "Active Student", "In Training"] };
+    } else if (status === "Enrolled") {
+      baseFilter.status = { $in: ["Enrolled", "Admission", "Admission Completed"] };
+    } else {
+      baseFilter.status = status;
+    }
+  }
 
   if (q && q.trim()) {
     const regex = new RegExp(escapeRegex(q.trim()), "i");
@@ -2209,7 +2234,7 @@ app.get("/api/admin/reports/student-status", requireAuth, async (req, res) => {
 
   // Build matrix grouped by Centre
   const matrix = centreList.map((cName) => {
-    const branchStudents = students.filter((s) => (s.centre || "Unassigned") === cName);
+    const branchStudents = students.filter((s) => String(s.centre || "Unassigned").trim().toLowerCase() === String(cName).trim().toLowerCase());
     const enrolled = branchStudents.filter((s) => ["Enrolled", "Admission", "Admission Completed"].includes(s.status)).length;
     const inTraining = branchStudents.filter((s) => ["Fees Decided", "Fees Collected", "Active Student", "In Training"].includes(s.status)).length;
     const classroomComplete = branchStudents.filter((s) => s.status === "Classroom Complete").length;
@@ -4383,21 +4408,11 @@ app.get("/api/admin/finance/fee-approvals", requireAuth, async (req, res) => {
   const statusFilter = String(req.query?.status || "pending").trim().toLowerCase();
   const centreFilter = String(req.query?.centre || "all").trim();
 
-  const query = {};
+  const query = { ...(await scopedDataFilter(req, req.query)) };
   if (statusFilter !== "all") {
     query["feeApproval.status"] = statusFilter;
   } else {
     query["feeApproval.status"] = { $in: ["pending", "approved", "rejected"] };
-  }
-
-  // Centre Scope
-  if (isCenterAdmin(req.user)) {
-    const scope = await centerAdminBranchScope(req.user);
-    if (scope.names.length) {
-      query.centre = { $in: scope.names };
-    }
-  } else if (isFranchiseUser(req.user) && req.user.franchiseId) {
-    query.franchiseId = req.user.franchiseId;
   }
 
   if (centreFilter !== "all") {
@@ -4497,16 +4512,7 @@ app.get("/api/admin/finance/payment-approvals", requireAuth, async (req, res) =>
   const statusFilter = String(req.query?.status || "pending").trim().toLowerCase();
   const centreFilter = String(req.query?.centre || "all").trim();
 
-  const query = {};
-  if (isCenterAdmin(req.user)) {
-    const scope = await centerAdminBranchScope(req.user);
-    if (scope.names.length) {
-      query.centre = { $in: scope.names };
-    }
-  } else if (isFranchiseUser(req.user) && req.user.franchiseId) {
-    query.franchiseId = req.user.franchiseId;
-  }
-
+  const query = { ...(await scopedDataFilter(req, req.query)) };
   if (centreFilter !== "all") {
     query.centre = centreFilter;
   }
@@ -4871,9 +4877,14 @@ app.get("/api/admin/students/:id/payments/:index/proof", requireAuth, async (req
   const existingStudent = await Student.findById(req.params.id).select("payments franchiseId").lean();
   if (!existingStudent) return sendError(res, 404, "Student not found");
   if (!(await canAccessRecord(req, existingStudent))) return sendError(res, 403, "You can access only permitted records");
-  const index = Number(req.params.index);
-  if (!Number.isInteger(index) || index < 0) return sendError(res, 400, "Invalid payment proof request");
-  const payment = existingStudent.payments?.[index];
+  const param = String(req.params.index || "").trim();
+  let payment = null;
+  if (/^\d+$/.test(param)) {
+    payment = existingStudent.payments?.[Number(param)];
+  }
+  if (!payment) {
+    payment = (existingStudent.payments || []).find((p) => String(p._id) === param);
+  }
   if (!payment) return sendError(res, 404, "Payment not found");
   const proofIndexParam = req.query.proofIndex !== undefined ? Number(req.query.proofIndex) : 0;
   const proofList = (Array.isArray(payment.proofs) && payment.proofs.length > 0)
@@ -4882,7 +4893,7 @@ app.get("/api/admin/students/:id/payments/:index/proof", requireAuth, async (req
   const proof = proofList[proofIndexParam] || payment.proof;
   if (!proof?.storedName) return sendError(res, 404, "Payment proof not found");
   const filePath = path.join(leadDocumentDir, proof.storedName);
-  if (!filePath.startsWith(leadDocumentDir) || !fs.existsSync(filePath)) return sendError(res, 404, "Payment proof not found");
+  if (!filePath.startsWith(leadDocumentDir) || !fs.existsSync(filePath)) return sendError(res, 404, "Payment proof file missing on server");
   res.setHeader("Content-Type", proof.mimeType || "application/octet-stream");
   res.download(filePath, proof.originalName || "payment-proof");
 });
