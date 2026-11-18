@@ -1,7 +1,7 @@
 import svgPaths from "./svg-wx3a9wl5xb";
 import { useLayoutEffect, useRef, useState } from "react";
 import ScopeSalarySection from "../../app/components/ScopeSalarySection";
-import imgImage1712 from "./36b610493eb683f0e81e17848fd143c365f117fd.png";
+import imgImage1712 from "../HomePage/imedLogoTMTag.svg";
 import imgImage1722 from "./0a48e951af0bd5cfbf745f6d2c98a4323c8d823f.png";
 import imgImage1745 from "./b73f0f056b5acfab0ab86412053ae64220255bfa.png";
 import imgImage1709 from "./b81b596114f0ffba80ef5ecf6da7673ce022a911.png";
@@ -53,8 +53,10 @@ const gcaFooterPrograms = [
   { label: "Hospital Administration", hash: "ha" },
   { label: "General Duty Assistance", hash: "gda" },
   { label: "OCHA", hash: "ocha" },
-  { label: "ACHA", hash: "acha" },
+  { label: "AHAP", hash: "ahap" },
   { label: "Geriatric Care Assistance", hash: "gca", scrollTarget: "home" },
+  { label: "MLT", hash: "mlt" },
+  { label: "Radiology", hash: "radiology" },
 ];
 
 const gcaFooterCompany = [
@@ -70,9 +72,9 @@ const gcaFooterPolicies = [
 function Group12() {
   return (
     <div className="grid-cols-[max-content] grid-rows-[max-content] inline-grid place-items-start relative shrink-0">
-      <div className="col-1 h-[29px] ml-0 mt-0 relative row-1 w-[22.895px]" data-name="image 1712">
+      <div className="col-1 h-[38px] ml-0 mt-0 relative row-1 w-[203px]" data-name="image 1712">
         <div className="absolute inset-0 overflow-hidden pointer-events-none">
-          <img loading="eager" fetchPriority="high" decoding="async" alt="" className="absolute h-[131.58%] left-[-33.33%] max-w-none top-[-15.79%] w-[166.67%]" src={imgImage1712} />
+          <img loading="eager" fetchPriority="high" decoding="async" alt="" className="absolute inset-0 h-full w-full max-w-none object-contain" src={imgImage1712} />
         </div>
       </div>
     </div>
@@ -81,7 +83,7 @@ function Group12() {
 
 function Frame135() {
   return (
-    <div data-nav-target="home" className="content-stretch flex gap-[10px] items-center leading-[0] relative shrink-0 w-[203px] cursor-pointer transition-transform duration-200 hover:scale-[1.02]">
+    <div data-nav-target="home" className="content-stretch flex gap-[10px] items-center leading-[0] relative shrink-0 w-[203px] cursor-pointer [&>p]:hidden transition-transform duration-200 hover:scale-[1.02]">
       <Group12 />
       <p className="[word-break:break-word] font-['Inter:Bold',sans-serif] font-bold h-[18px] not-italic relative shrink-0 text-[#1f3471] text-[22.992px] text-center w-[170px]">
         <span className="leading-[21px]">{`iMED `}</span>
@@ -1727,7 +1729,7 @@ function Heading11() {
 function Paragraph() {
   return (
     <div className="absolute h-[20px] left-0 top-[95.99px] w-[573.6px]" data-name="Paragraph">
-      <p className="[word-break:break-word] absolute font-['Inter:Regular',sans-serif] font-normal leading-[20px] left-0 not-italic text-[#bedbff] text-[14px] top-[-0.2px] whitespace-nowrap">Tier 1 - Metro � Multi-speciality � 2 yrs exp � Day Shift</p>
+      <p className="[word-break:break-word] absolute font-['Inter:Regular',sans-serif] font-normal leading-[20px] left-0 not-italic text-[#bedbff] text-[14px] top-[-0.2px] whitespace-nowrap">Tier 1 - Metro · Multi-speciality · 2 yrs exp · Day Shift</p>
     </div>
   );
 }
@@ -3563,7 +3565,7 @@ function Frame68() {
 
 function Frame4() {
   return (
-    <div className="bg-[#1f3471] h-[328px] relative shrink-0 w-full">
+    <div className="bg-[#1f3471] h-[420px] relative shrink-0 w-full">
       <Frame1 />
       <Frame68 />
     </div>
@@ -3588,7 +3590,7 @@ function Frame() {
       <div aria-hidden="true" className="absolute bg-[#1f3471] inset-0 pointer-events-none" />
       <div className="flex flex-row items-center size-full">
         <div className="[word-break:break-word] content-stretch flex font-['Inter:Regular',sans-serif] font-normal items-center justify-between leading-[normal] not-italic px-[70px] py-[16px] relative size-full text-[14px] text-white whitespace-nowrap">
-          <p className="relative shrink-0">� 2026 iMED Academy. All rights reserved. � NSDC Authorised Training Partner � MSME Registered</p>
+          <p className="relative shrink-0">© 2026 iMED Academy. All rights reserved. · NSDC Authorised Training Partner · MSME Registered</p>
           <Frame35 />
         </div>
       </div>
@@ -3619,7 +3621,8 @@ export default function GeriatricCareAssistance() {
       setPageScale(nextScale);
 
       if (pageRef.current) {
-        setScaledHeight(Math.ceil(pageRef.current.offsetHeight * nextScale));
+        const rawHeight = pageRef.current.scrollHeight || pageRef.current.offsetHeight;
+        setScaledHeight(Math.ceil(rawHeight * nextScale));
       }
     };
 
@@ -3658,9 +3661,9 @@ export default function GeriatricCareAssistance() {
           <Frame15 />
           <About />
           <About1 />
-          <About2 />
           <About3 />
           <About4 />
+          <About2 />
           <About5 />
           <About6 />
           <About7 />

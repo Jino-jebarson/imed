@@ -1,6 +1,6 @@
-﻿import { useLayoutEffect, useRef, useState, type MouseEvent } from "react";
+import { useLayoutEffect, useRef, useState, type MouseEvent } from "react";
 import svgPaths from "./svg-13aci5trdk";
-import imgImage1712 from "../Ocha/36b610493eb683f0e81e17848fd143c365f117fd.png";
+import imgImage1712 from "../HomePage/imedLogoTMTag.svg";
 import imgImage1722 from "./image1722.webp";
 import imgImage1746 from "./image1746.webp";
 import imgImage1709 from "./image1709.webp";
@@ -13,9 +13,9 @@ import ScopeSalarySection from "../../app/components/ScopeSalarySection";
 function Group12() {
   return (
     <div className="grid-cols-[max-content] grid-rows-[max-content] inline-grid place-items-start relative shrink-0">
-      <div className="col-1 h-[29px] ml-0 mt-0 relative row-1 w-[22.895px]" data-name="image 1712">
+      <div className="col-1 h-[38px] ml-0 mt-0 relative row-1 w-[203px]" data-name="image 1712">
       <div className="absolute inset-0 overflow-hidden pointer-events-none">
-               <img loading="lazy" decoding="async" alt="" className="absolute h-[131.58%] left-[-33.33%] max-w-none top-[-15.79%] w-[166.67%]" src={imgImage1712} />
+               <img loading="lazy" decoding="async" alt="" className="absolute inset-0 h-full w-full max-w-none object-contain" src={imgImage1712} />
              </div>
       </div>
     </div>
@@ -24,7 +24,7 @@ function Group12() {
 
 function Group13() {
   return (
-    <div data-nav-target="home" className="content-stretch flex gap-[10px] items-center leading-[0] relative shrink-0 w-[203px] cursor-pointer transition-transform duration-200 hover:scale-[1.02]">
+    <div data-nav-target="home" className="content-stretch flex gap-[10px] items-center leading-[0] relative shrink-0 w-[203px] cursor-pointer [&>p]:hidden transition-transform duration-200 hover:scale-[1.02]">
       <Group12 />
       <p className="font-['Inter:Bold',sans-serif] font-bold h-[18px] not-italic relative shrink-0 text-[#1f3471] text-[22.992px] text-center w-[170px]">
         <span className="leading-[21px]">{`iMED `}</span>
@@ -709,7 +709,7 @@ function Frame107() {
   return (
     <div className="content-stretch flex flex-col items-start leading-[23px] not-italic relative shrink-0 text-[18px] w-[192px]">
       <p className="font-['Inter:Regular',sans-serif] font-normal min-w-full relative shrink-0 text-[#1f3471] w-[min-content]">Eligibility</p>
-      <p className="font-['Inter:Medium',sans-serif] font-medium relative shrink-0 text-[#333] text-center w-[216px]">12th Pass — Any Stream</p>
+      <p className="font-['Inter:Medium',sans-serif] font-medium relative shrink-0 text-[#333] text-center w-[216px]">12th Pass - Any Stream</p>
     </div>
   );
 }
@@ -871,7 +871,7 @@ function Frame119() {
   return (
     <div className="content-stretch flex gap-[15px] items-center relative shrink-0">
       <MdiTickCircleOutline10 />
-      <p className="font-['Inter:Medium',sans-serif] font-medium leading-[23px] not-italic relative shrink-0 text-[18px] text-center text-white whitespace-nowrap">Any stream eligible — Science, Commerce, or Arts</p>
+      <p className="font-['Inter:Medium',sans-serif] font-medium leading-[23px] not-italic relative shrink-0 text-[18px] text-center text-white whitespace-nowrap">Any stream eligible – Science, Commerce, or Arts</p>
     </div>
   );
 }
@@ -966,7 +966,7 @@ function Frame97() {
 
 function About2() {
   return (
-    <div id="career-path" data-nav="career-path" className="-translate-x-1/2 absolute bg-white content-stretch flex flex-col gap-[70px] items-center left-1/2 px-[32px] py-[60px] top-[3695px] w-[1440px]" data-name="About">
+    <div id="career-path" data-nav="career-path" className="-translate-x-1/2 absolute bg-white content-stretch flex flex-col gap-[70px] items-center left-1/2 px-[32px] py-[60px] top-[4095px] w-[1440px]" data-name="About">
       <Frame46 />
       <Frame97 />
     </div>
@@ -1215,7 +1215,7 @@ function Frame32() {
         <span className="leading-[22px] text-[#25a88d]">{`One Career Path `}</span>
       </p>
       <p className="absolute font-['Inter:Regular',sans-serif] font-normal leading-[0] left-[calc(50%-165.5px)] not-italic text-[#25a88d] text-[18px] top-[617px] whitespace-nowrap">
-        <span className="leading-[normal]">{`ðŸ‡®ðŸ‡³ `}</span>
+        <span className="leading-[normal]">{`🇮🇳 `}</span>
         <span className="leading-[normal] text-[#333]">Made in India built for Bharath Future</span>
       </p>
     </div>
@@ -1383,7 +1383,7 @@ function Text2() {
   return (
     <div className="h-[24px] relative shrink-0 w-[104px]" data-name="Text">
       <div className="bg-clip-padding border-0 border-[transparent] border-solid relative size-full">
-        <p className="absolute font-['Inter:Medium',sans-serif] font-medium leading-[24px] left-0 not-italic text-[#101828] text-[16px] top-[-2.2px] whitespace-nowrap">Tier 1 “ Metro</p>
+        <p className="absolute font-['Inter:Medium',sans-serif] font-medium leading-[24px] left-0 not-italic text-[#101828] text-[16px] top-[-2.2px] whitespace-nowrap">Tier 1 – Metro</p>
       </div>
     </div>
   );
@@ -3212,8 +3212,10 @@ function Frame2() {
       <button type="button" onClick={handleProgramClick("#ha")} className="relative shrink-0 text-left transition-colors duration-200 w-[264px] hover:text-[#8ee2d2]">Hospital Administration</button>
       <button type="button" onClick={handleProgramClick("#gda")} className="min-w-full relative shrink-0 text-left transition-colors duration-200 w-[min-content] hover:text-[#8ee2d2]">General Duty Assistance</button>
       <button type="button" onClick={handleProgramClick("#ocha")} className="min-w-full relative shrink-0 text-left transition-colors duration-200 w-[min-content] hover:text-[#8ee2d2]">OCHA</button>
-      <button type="button" onClick={handleProgramClick("#acha")} className="min-w-full relative shrink-0 text-left transition-colors duration-200 w-[min-content] hover:text-[#8ee2d2]">ACHA</button>
+      <button type="button" onClick={handleProgramClick("#ahap")} className="min-w-full relative shrink-0 text-left transition-colors duration-200 w-[min-content] hover:text-[#8ee2d2]">AHAP</button>
       <button type="button" onClick={handleProgramClick("#gca")} className="min-w-full relative shrink-0 text-left transition-colors duration-200 w-[min-content] hover:text-[#8ee2d2]">GCA</button>
+      <button type="button" onClick={handleProgramClick("#mlt")} className="min-w-full relative shrink-0 text-left transition-colors duration-200 w-[min-content] hover:text-[#8ee2d2]">MLT</button>
+      <button type="button" onClick={handleProgramClick("#radiology")} className="min-w-full relative shrink-0 text-left transition-colors duration-200 w-[min-content] hover:text-[#8ee2d2]">Radiology</button>
     </div>
   );
 }
@@ -3545,7 +3547,7 @@ function Frame68() {
 
 function Frame4() {
   return (
-    <div className="bg-[#1f3471] h-[330px] relative shrink-0 w-full">
+    <div className="bg-[#1f3471] h-[420px] relative shrink-0 w-full">
       <Frame1 />
       <Frame68 />
     </div>
@@ -3603,7 +3605,8 @@ export default function HospitalAdministration() {
       setPageScale(nextScale);
 
       if (pageRef.current) {
-        setScaledHeight(Math.ceil(pageRef.current.offsetHeight * nextScale));
+        const rawHeight = pageRef.current.scrollHeight || pageRef.current.offsetHeight;
+        setScaledHeight(Math.ceil(rawHeight * nextScale));
       }
     };
 
@@ -3642,15 +3645,14 @@ export default function HospitalAdministration() {
           <Frame15 />
           <About />
           <About1 />
-          <About2 />
           <About3 />
           <About4 />
+          <About2 />
           <About5 />
           <About6 />
           <About7 />
           <Container41 />
           <Frame16 />
-
         </div>
       </div>
     </div>

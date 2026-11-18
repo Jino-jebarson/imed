@@ -1,5 +1,5 @@
 import svgPaths from "./svg-xe5jyfstps";
-import imgImage1712 from "./36b610493eb683f0e81e17848fd143c365f117fd.png";
+import imgImage1712 from "../HomePage/imedLogoTMTag.svg";
 import imgImage1722 from "./cf44fa52324cd66d65a0152684512e2b60b655c1.png";
 import imgImage1745 from "./onlineCertificate.svg";
 import imgImage1709 from "./27eab949d23f7b9baa2c3e419bed159e65e87d8b.png";
@@ -138,8 +138,10 @@ const footerProgramLinks = [
   { label: "Hospital Administration", hash: "#ha", className: "cursor-pointer relative shrink-0 text-left transition-colors duration-200 w-[264px] hover:text-[#8ee2d2]" },
   { label: "General Duty Assistance", hash: "#gda", className: "cursor-pointer min-w-full relative shrink-0 text-left transition-colors duration-200 w-[min-content] hover:text-[#8ee2d2]" },
   { label: "OCHA", target: "home", className: "cursor-pointer min-w-full relative shrink-0 text-left transition-colors duration-200 w-[min-content] hover:text-[#8ee2d2]" },
-  { label: "ACHA", hash: "#acha", className: "cursor-pointer min-w-full relative shrink-0 text-left transition-colors duration-200 w-[min-content] hover:text-[#8ee2d2]" },
+  { label: "AHAP", hash: "#ahap", className: "cursor-pointer min-w-full relative shrink-0 text-left transition-colors duration-200 w-[min-content] hover:text-[#8ee2d2]" },
   { label: "GCA", hash: "#gca", className: "cursor-pointer min-w-full relative shrink-0 text-left transition-colors duration-200 w-[min-content] hover:text-[#8ee2d2]" },
+  { label: "MLT", hash: "#mlt", className: "cursor-pointer min-w-full relative shrink-0 text-left transition-colors duration-200 w-[min-content] hover:text-[#8ee2d2]" },
+  { label: "Radiology", hash: "#radiology", className: "cursor-pointer min-w-full relative shrink-0 text-left transition-colors duration-200 w-[min-content] hover:text-[#8ee2d2]" },
 ];
 
 const footerCompanyLinks = [
@@ -195,9 +197,9 @@ function handleFooterNavigation(item: { hash?: string; target?: string }) {
 function Group12() {
   return (
     <div className="grid-cols-[max-content] grid-rows-[max-content] inline-grid place-items-start relative shrink-0">
-      <div className="col-1 h-[29px] ml-0 mt-0 relative row-1 w-[22.895px]" data-name="image 1712">
+      <div className="col-1 h-[38px] ml-0 mt-0 relative row-1 w-[203px]" data-name="image 1712">
         <div className="absolute inset-0 overflow-hidden pointer-events-none">
-          <img loading="lazy" decoding="async" alt="" className="absolute h-[131.58%] left-[-33.33%] max-w-none top-[-15.79%] w-[166.67%]" src={imgImage1712} />
+          <img loading="lazy" decoding="async" alt="" className="absolute inset-0 h-full w-full max-w-none object-contain" src={imgImage1712} />
         </div>
       </div>
     </div>
@@ -206,7 +208,7 @@ function Group12() {
 
 function Frame135() {
   return (
-    <button className="content-stretch flex cursor-pointer gap-[10px] items-center leading-[0] relative shrink-0 w-[203px]" onClick={() => scrollToOchaSection("home")} type="button">
+    <button className="content-stretch flex cursor-pointer gap-[10px] items-center leading-[0] relative shrink-0 w-[203px] [&>p]:hidden" onClick={() => scrollToOchaSection("home")} type="button">
       <Group12 />
       <p className="font-['Inter:Bold',sans-serif] font-bold h-[18px] not-italic relative shrink-0 text-[#1f3471] text-[22.992px] text-center w-[170px]">
         <span className="leading-[21px]">{`iMED `}</span>
@@ -3650,7 +3652,7 @@ function Frame68() {
 
 function Frame4() {
   return (
-    <div className="bg-[#1f3471] h-[330px] relative shrink-0 w-full">
+    <div className="bg-[#1f3471] h-[420px] relative shrink-0 w-full">
       <Frame1 />
       <Frame68 />
     </div>

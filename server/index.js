@@ -10,12 +10,18 @@ import jwt from "jsonwebtoken";
 import fs from "fs";
 import path from "path";
 import crypto from "crypto";
+import XLSX from "xlsx";
 
 const app = express();
 const port = process.env.PORT || 3001;
 const mongoUri = process.env.MONGO_URI || "mongodb://127.0.0.1:27017/imed_crm";
 const jwtSecret = process.env.JWT_SECRET || "imed-local-jwt-secret";
 const adminSetupCode = process.env.ADMIN_SETUP_CODE || "909090";
+const emptyObjectId = new mongoose.Types.ObjectId("000000000000000000000000");
+const googleCalendarClientId = process.env.GOOGLE_CALENDAR_CLIENT_ID || "";
+const googleCalendarClientSecret = process.env.GOOGLE_CALENDAR_CLIENT_SECRET || "";
+const googleCalendarRedirectUri = process.env.GOOGLE_CALENDAR_REDIRECT_URI || "";
+const googleCalendarTimeZone = process.env.GOOGLE_CALENDAR_TIME_ZONE || "Asia/Kolkata";
 
 const allowedOrigins = (process.env.CORS_ORIGINS || "http://localhost:5173,http://localhost:5174,http://localhost:5175,http://127.0.0.1:5173,https://imedacademy.in,https://www.imedacademy.in")
   .split(",")
@@ -35,15 +41,55 @@ app.use(compression());
 app.use(express.json({ limit: "2mb" }));
 
 const upload = multer({ storage: multer.memoryStorage(), limits: { fileSize: 5 * 1024 * 1024 } });
-const leadDocumentUpload = multer({ storage: multer.memoryStorage(), limits: { fileSize: 2 * 1024 * 1024 } });
+const leadDocumentUpload = multer({
+  storage: multer.memoryStorage(),
+  limits: { fileSize: 2 * 1024 * 1024 },
+  fileFilter(_req, file, callback) {
+    const validMime = ["application/pdf", "image/jpeg", "image/png", "image/webp"].includes(file.mimetype || "");
+    const validName = /\.(pdf|jpe?g|png|webp)$/i.test(file.originalname || "");
+    callback(validMime || validName ? null : new Error("Only PDF, JPG, PNG or WEBP documents are allowed"), validMime || validName);
+  },
+});
+const studyNoteUpload = multer({
+  storage: multer.memoryStorage(),
+  limits: { fileSize: 10 * 1024 * 1024 },
+  fileFilter(_req, file, callback) {
+    const validName = /\.(pdf|docx?|pptx?|xlsx?|csv|jpe?g|png|webp|txt)$/i.test(file.originalname || "");
+    callback(validName ? null : new Error("Only PDF, Word, PPT, Excel, image, CSV or TXT notes are allowed"), validName);
+  },
+});
 const leadDocumentDir = path.join(process.cwd(), "uploads", "lead-documents");
+const GST_RATE = 0.18;
+const paymentModes = ["Cash", "UPI", "Card", "Bank Transfer", "Loan Provider"];
+const paymentPurposes = ["Seat Booking Amount", "Fees Installment"];
+const legacyPaymentPurposes = ["Fee Payment", "Upfront", "EMI Installment"];
+const partialEmiPaymentMode = "Partial + EMI";
+const legacyPartialEmiPaymentMode = "Upfront + EMI";
+const admissionPaymentModes = ["Full Payment", "EMI", partialEmiPaymentMode, "Loan Provider"];
+const admissionPaymentModeValues = [...admissionPaymentModes, legacyPartialEmiPaymentMode];
+const paymentNoteMaxLength = 250;
+const paymentReferenceMaxLength = 200;
+const kochiCourseOptions = ["AHAP", "GCA"];
+const leadFeedbackOptions = ["New", "Interested", "Qualified", "Follow-up", "RNR", "Not Interested", "Future Cohort", "On Hold", "Converted", "Lost", "Not Connected", "Busy Call later", "Invalid", "Junk"];
+const leadPriorityOptions = ["P0", "P1", "P2", "P3"];
+const leadStageOptions = ["New Lead", "Contacted", "Counselling", "Demo / Visit", "Admission", "Enrolled", "Alumni", "Lost", "RNR", "Not Interested", "Future Cohort"];
+const leadCreateStageOptions = ["New Lead", "Contacted", "Counselling", "Demo / Visit", "Admission", "Lost", "RNR", "Not Interested", "Future Cohort"];
+const npsTouchpoints = ["mid_course", "post_classroom", "post_internship"];
+const npsTouchpointLabels = {
+  mid_course: "Mid-course feedback",
+  post_classroom: "Classroom completion feedback",
+  post_internship: "Internship completion feedback",
+};
 fs.mkdirSync(leadDocumentDir, { recursive: true });
+
+const smtpUser = (process.env.SMTP_USER || "").trim();
+const smtpPass = (process.env.SMTP_PASS || "").replace(/\s+/g, "").trim();
 
 const transporter = nodemailer.createTransport({
   service: "gmail",
-  auth: { user: process.env.SMTP_USER, pass: process.env.SMTP_PASS },
+  auth: { user: smtpUser, pass: smtpPass },
 });
-const toAddress = process.env.MAIL_TO || process.env.SMTP_USER;
+const toAddress = (process.env.MAIL_TO || smtpUser).trim();
 
 function escapeHtml(value = "") {
   return String(value)
@@ -56,6 +102,65 @@ function escapeHtml(value = "") {
 
 function normalizePhone(value = "") {
   return String(value).replace(/\s+/g, " ").trim();
+}
+
+function isKochiCentre(centre = "") {
+  return String(centre || "").trim().toLowerCase() === "kochi";
+}
+
+function isCourseAllowedForCentre(centre = "", course = "", user = null) {
+  return true;
+}
+
+function normalizeCourseCode(course = "") {
+  const normalized = String(course || "").trim().toUpperCase();
+  return normalized === "AAHP" ? "AHAP" : normalized;
+}
+
+function normalizeAdmissionPaymentMode(mode = "") {
+  return mode === legacyPartialEmiPaymentMode ? partialEmiPaymentMode : mode;
+}
+
+function isPartialEmiPaymentMode(mode = "") {
+  return normalizeAdmissionPaymentMode(mode) === partialEmiPaymentMode;
+}
+
+function normalizePaymentPurpose(purpose = "", mode = "") {
+  if (purpose === "Seat Booking Amount" || purpose === "Upfront") return "Seat Booking Amount";
+  if (purpose === "Fees Installment" || purpose === "EMI Installment" || purpose === "Fee Payment" || mode === "EMI") return "Fees Installment";
+  return "Fees Installment";
+}
+
+function normalizeStudentStatus(status = "") {
+  if (status === "Admission") return "Admission Completed";
+  if (status === "In Training") return "Active Student";
+  if (status === "Placed") return "Alumni";
+  return status;
+}
+
+function studentStatusRank(status = "") {
+  return ["Enrolled", "Admission Completed", "Fees Decided", "Fees Collected", "Active Student", "Classroom Complete", "Course Completed", "Alumni"].indexOf(normalizeStudentStatus(status));
+}
+
+function isStudentStatusAtLeast(status = "", milestone = "") {
+  const current = studentStatusRank(status);
+  const target = studentStatusRank(milestone);
+  return current >= 0 && target >= 0 && current >= target;
+}
+
+function npsCategory(score = 0) {
+  const value = Number(score);
+  if (value <= 6) return "detractor";
+  if (value <= 8) return "passive";
+  return "promoter";
+}
+
+function netStudentFee(student = {}) {
+  return Math.max(0, Number(student.totalFee || 0) - Number(student.discountAmount || 0));
+}
+
+function studentDueAmount(student = {}) {
+  return Math.max(0, netStudentFee(student) - Number(student.paidAmount || 0));
 }
 
 function saveLeadDocument(file) {
@@ -80,28 +185,56 @@ const adminUserSchema = new mongoose.Schema({
   name: { type: String, required: true, trim: true },
   email: { type: String, required: true, unique: true, lowercase: true, trim: true },
   passwordHash: { type: String, required: true },
-  role: { type: String, enum: ["superadmin", "admin", "counsellor"], default: "admin" },
+  role: { type: String, enum: ["superadmin", "center_admin", "admin", "branch_admin_counsellor", "counsellor", "teacher", "operations_executive", "franchise_superadmin", "franchise_admin_counsellor", "franchise_counsellor", "franchise_teacher", "franchise_operations_executive"], default: "admin" },
+  franchiseId: { type: mongoose.Schema.Types.ObjectId, ref: "Centre" },
+  passwordResetTokenHash: { type: String, default: "" },
+  passwordResetExpiresAt: { type: Date },
+  googleCalendarRefreshToken: { type: String, default: "", select: false },
+  googleCalendarEmail: { type: String, default: "" },
+  googleCalendarConnectedAt: { type: Date },
+}, { timestamps: true });
+
+const counterSchema = new mongoose.Schema({
+  key: { type: String, required: true, unique: true },
+  seq: { type: Number, default: 0 },
 }, { timestamps: true });
 
 const centreSchema = new mongoose.Schema({
-  name: { type: String, required: true, unique: true, trim: true },
+  name: { type: String, required: true, trim: true },
+  type: { type: String, enum: ["branch", "franchise"], default: "franchise" },
+  parentCentreId: { type: mongoose.Schema.Types.ObjectId, ref: "Centre", default: null },
   city: { type: String, default: "" },
   manager: { type: String, default: "" },
+  billingLegalName: { type: String, default: "" },
+  billingAddress: { type: String, default: "" },
+  billingGstin: { type: String, default: "" },
+  billingStateName: { type: String, default: "" },
+  billingStateCode: { type: String, default: "" },
+  billingEmail: { type: String, default: "" },
+  billingPhone: { type: String, default: "" },
+  bankAccountName: { type: String, default: "" },
+  bankName: { type: String, default: "" },
+  bankAccountNumber: { type: String, default: "" },
+  bankIfsc: { type: String, default: "" },
+  bankBranch: { type: String, default: "" },
   active: { type: Boolean, default: true },
 }, { timestamps: true });
 
 const courseSchema = new mongoose.Schema({
-  name: { type: String, required: true, unique: true, trim: true },
+  name: { type: String, required: true, trim: true },
   code: { type: String, default: "" },
   fee: { type: Number, default: 0 },
   duration: { type: String, default: "" },
+  franchiseId: { type: mongoose.Schema.Types.ObjectId, ref: "Centre" },
   active: { type: Boolean, default: true },
 }, { timestamps: true });
 
 const batchSchema = new mongoose.Schema({
-  name: { type: String, required: true, unique: true, trim: true },
+  name: { type: String, required: true, trim: true },
   centre: { type: String, default: "" },
+  franchiseId: { type: mongoose.Schema.Types.ObjectId, ref: "Centre" },
   course: { type: String, default: "" },
+  assignedFaculty: [{ type: String, trim: true }],
   commenceDate: { type: Date, required: true },
   active: { type: Boolean, default: true },
 }, { timestamps: true });
@@ -111,6 +244,15 @@ const activitySchema = new mongoose.Schema({
   message: { type: String, required: true },
   by: { type: String, default: "Admin" },
   at: { type: Date, default: Date.now },
+}, { _id: false });
+
+const leadFollowUpSchema = new mongoose.Schema({
+  type: { type: String, enum: ["Call", "WhatsApp", "Walk-in", "Demo", "Counselling", "Fee discussion", "Document collection", "Final confirmation"], default: "Call" },
+  status: { type: String, enum: ["Scheduled", "Completed", "No response", "Rescheduled", "Interested", "Not interested"], default: "Scheduled" },
+  scheduledAt: { type: Date, required: true },
+  note: { type: String, default: "", trim: true },
+  by: { type: String, default: "Admin" },
+  createdAt: { type: Date, default: Date.now },
 }, { _id: false });
 
 const documentFileSchema = new mongoose.Schema({
@@ -128,85 +270,659 @@ const leadSchema = new mongoose.Schema({
   email: { type: String, default: "", lowercase: true, trim: true },
   governmentProof: { type: documentFileSchema, default: undefined },
   highestQualificationCertificate: { type: documentFileSchema, default: undefined },
+  studentLocation: { type: String, default: "", trim: true },
   source: { type: String, default: "Website" },
+  counsellorName: { type: String, default: "", trim: true },
+  scholarName: { type: String, default: "", trim: true },
+  refereeName: { type: String, default: "", trim: true },
+  refereePhone: { type: String, default: "", trim: true },
+  referralAmount: { type: Number, default: 0 },
   centre: { type: String, default: "" },
+  franchiseId: { type: mongoose.Schema.Types.ObjectId, ref: "Centre" },
   course: { type: String, default: "" },
   counsellor: { type: String, default: "Unassigned" },
+  leadFeedback: { type: String, enum: leadFeedbackOptions, default: "New" },
   stage: {
     type: String,
-    enum: ["New Lead", "Contacted", "Demo / Visit", "Counselling", "Enrolled", "In Training", "Placed", "Lost"],
+    enum: leadStageOptions,
     default: "New Lead",
   },
-  priority: { type: String, enum: ["Hot", "Warm", "Cold"], default: "Warm" },
+  priority: { type: String, enum: leadPriorityOptions, default: "P2" },
   city: { type: String, default: "" },
   expectedFee: { type: Number, default: 0 },
   paidAmount: { type: Number, default: 0 },
   nextFollowUp: { type: Date },
+  followUps: [leadFollowUpSchema],
   notes: { type: String, default: "" },
+  ipAddress: { type: String, default: "" },
+  userAgent: { type: String, default: "" },
+  isSuspectedConsultancy: { type: Boolean, default: false },
+  consultancyFlagReason: { type: String, default: "" },
+  assignedAt: { type: Date },
+  assignedBy: { type: String, default: "" },
   activities: [activitySchema],
 }, { timestamps: true });
 
+const cashDepositSchema = new mongoose.Schema({
+  _id: { type: mongoose.Schema.Types.ObjectId, default: () => new mongoose.Types.ObjectId() },
+  amount: { type: Number, required: true },
+  bank: { type: String, required: true, trim: true },
+  referenceNumber: { type: String, default: "", trim: true },
+  note: { type: String, default: "" },
+  proof: { type: documentFileSchema, default: undefined },
+  depositedBy: { type: String, default: "", trim: true },
+  by: { type: String, default: "" },
+  depositedAt: { type: Date, default: Date.now },
+  createdAt: { type: Date, default: Date.now },
+  status: { type: String, enum: ["pending", "verified", "rejected"], default: "pending" },
+  verifiedBy: { type: String, default: "" },
+  verifiedByRole: { type: String, default: "" },
+  verifiedAt: { type: Date },
+  rejectionReason: { type: String, default: "" },
+  approverScope: { type: String, default: "superadmin" }, // "superadmin" or "center_admin_or_superadmin"
+  isMultiBranch: { type: Boolean, default: false },
+});
+
 const paymentSchema = new mongoose.Schema({
+  _id: { type: mongoose.Schema.Types.ObjectId, default: () => new mongoose.Types.ObjectId() },
   amount: { type: Number, required: true },
   mode: { type: String, default: "Cash" },
+  paymentPurpose: { type: String, enum: [...paymentPurposes, ...legacyPaymentPurposes, ""], default: "Fees Installment" },
+  transactionId: { type: String, default: "", trim: true },
+  emiReference: { type: String, default: "", trim: true },
+  loanProviderName: { type: String, default: "", trim: true },
   note: { type: String, default: "" },
+  proof: { type: documentFileSchema, default: undefined },
+  proofs: [documentFileSchema],
+  cashDeposits: [cashDepositSchema],
+  status: { type: String, enum: ["pending", "approved", "rejected"], default: "approved" },
+  requestedBy: { type: String, default: "" },
+  requestedByRole: { type: String, default: "" },
+  requestedAt: { type: Date, default: Date.now },
+  reviewedBy: { type: String, default: "" },
+  reviewedByRole: { type: String, default: "" },
+  reviewedAt: { type: Date },
+  rejectionReason: { type: String, default: "" },
+  by: { type: String, default: "" },
   paidAt: { type: Date, default: Date.now },
+});
+
+const studentFeedbackSchema = new mongoose.Schema({
+  type: { type: String, enum: ["Academic progress", "Attendance issue", "Fee / EMI discussion", "Placement discussion", "Parent conversation", "Complaint", "General follow-up"], default: "General follow-up" },
+  status: { type: String, enum: ["Positive", "Needs follow-up", "Escalated", "Resolved", "No response"], default: "Needs follow-up" },
+  note: { type: String, required: true, trim: true },
+  nextFollowUpDate: { type: Date },
+  by: { type: String, default: "Admin" },
+  at: { type: Date, default: Date.now },
 }, { _id: false });
 
 const studentSchema = new mongoose.Schema({
   leadId: { type: mongoose.Schema.Types.ObjectId, ref: "Lead" },
+  source: { type: String, default: "Website" },
   fullName: { type: String, required: true, trim: true },
   phone: { type: String, required: true, trim: true },
   parentMobile: { type: String, default: "", trim: true },
   email: { type: String, default: "", lowercase: true, trim: true },
   governmentProof: { type: documentFileSchema, default: undefined },
   highestQualificationCertificate: { type: documentFileSchema, default: undefined },
+  studentLocation: { type: String, default: "", trim: true },
   centre: { type: String, default: "" },
+  franchiseId: { type: mongoose.Schema.Types.ObjectId, ref: "Centre" },
   course: { type: String, default: "" },
   counsellor: { type: String, default: "Unassigned" },
+  counsellorName: { type: String, default: "", trim: true },
+  callerName: { type: String, default: "", trim: true },
+  teacher: { type: String, default: "Unassigned" },
   batch: { type: String, default: "" },
   batchCommenceDate: { type: Date },
   admissionNumber: { type: String, default: "" },
-  discountAmount: { type: Number, default: 0 },
-  status: { type: String, enum: ["Enrolled", "In Training", "Course Completed", "Placed", "Dropped"], default: "Enrolled" },
+  lmsAccessEnabled: { type: Boolean, default: false },
+  lmsAccessGeneratedAt: { type: Date },
+  lmsAccessGeneratedBy: { type: String, default: "" },
+  admissionPaymentMode: { type: String, enum: [...admissionPaymentModeValues, ""], default: "" },
+  admissionUpfrontAmount: { type: Number, default: 0 },
+  admissionFinalizedAt: { type: Date },
+  admissionFinalizedBy: { type: String, default: "" },
+  status: { type: String, enum: ["Enrolled", "Admission", "Admission Completed", "Fees Decided", "Fees Collected", "Active Student", "Classroom Complete", "In Training", "Course Completed", "Alumni", "Placed", "Dropped"], default: "Enrolled" },
+  dropoutReason: { type: String, default: "" },
+  dropoutDate: { type: Date },
+  dropoutNotes: { type: String, default: "" },
   totalFee: { type: Number, default: 0 },
+  discountAmount: { type: Number, default: 0 },
+  feeApproval: {
+    status: { type: String, enum: ["none", "pending", "approved", "rejected"], default: "none" },
+    standardCourseFee: { type: Number, default: 0 },
+    requestedFee: { type: Number, default: 0 },
+    requestedDiscount: { type: Number, default: 0 },
+    reason: { type: String, default: "" },
+    requestedBy: { type: String, default: "" },
+    requestedByRole: { type: String, default: "" },
+    requestedAt: { type: Date },
+    reviewedBy: { type: String, default: "" },
+    reviewedByRole: { type: String, default: "" },
+    reviewedAt: { type: Date },
+    rejectionReason: { type: String, default: "" },
+  },
+  deleteApproval: {
+    status: { type: String, enum: ["none", "pending", "approved", "rejected"], default: "none" },
+    reason: { type: String, default: "" },
+    requestedBy: { type: String, default: "" },
+    requestedByRole: { type: String, default: "" },
+    requestedAt: { type: Date },
+    reviewedBy: { type: String, default: "" },
+    reviewedByRole: { type: String, default: "" },
+    reviewedAt: { type: Date },
+    rejectionReason: { type: String, default: "" },
+    isMultiBranch: { type: Boolean, default: false },
+    approverScope: { type: String, default: "" },
+  },
   paidAmount: { type: Number, default: 0 },
   emiEnabled: { type: Boolean, default: false },
   emiMonths: { type: Number, default: 0 },
   emiAmount: { type: Number, default: 0 },
   nextEmiDate: { type: Date },
+  placementStatus: { type: String, enum: ["Not Placed", "Interview Scheduled", "Placed", "Self Placed", ""], default: "Not Placed" },
   placementCompany: { type: String, default: "" },
+  placementRole: { type: String, default: "" },
+  placementJoiningDate: { type: Date },
   placementSalary: { type: Number, default: 0 },
+  placementHrContact: { type: String, default: "" },
+  placementOfferLetterUrl: { type: String, default: "" },
+  placementRemarks: { type: String, default: "" },
+  testimonialText: { type: String, default: "" },
+  testimonialVideoUrl: { type: String, default: "" },
+  testimonialRating: { type: Number, default: 0 },
+  testimonialApproved: { type: Boolean, default: false },
+  referralName: { type: String, default: "" },
+  referralPhone: { type: String, default: "" },
+  referralStatus: { type: String, enum: ["New", "Contacted", "Converted", "Lost", ""], default: "New" },
+  refereeName: { type: String, default: "", trim: true },
+  refereePhone: { type: String, default: "", trim: true },
+  referralAmount: { type: Number, default: 0 },
+  referralSettlement: {
+    status: { type: String, enum: ["unsettled", "settled", "cancelled"], default: "unsettled" },
+    amount: { type: Number, default: 0 },
+    settledAt: { type: Date },
+    settledBy: { type: String, default: "" },
+    settledByRole: { type: String, default: "" },
+    payoutMode: { type: String, default: "" },
+    transactionReference: { type: String, default: "" },
+    proof: { type: documentFileSchema, default: undefined },
+    note: { type: String, default: "" },
+  },
   certificateNumber: { type: String, default: "" },
   certificateIssuedAt: { type: Date },
   certificateStatus: { type: String, enum: ["Not Issued", "Issued"], default: "Not Issued" },
   payments: [paymentSchema],
+  feedbacks: [studentFeedbackSchema],
   activities: [activitySchema],
+  kitDistribution: {
+    idCardIssued: { type: Boolean, default: false },
+    idCardNumber: { type: String, default: "" },
+    idCardIssuedAt: { type: Date },
+    tshirtIssued: { type: Boolean, default: false },
+    tshirtSize: { type: String, default: "" },
+    tshirtQuantity: { type: Number, default: 1 },
+    tshirts: [{ size: { type: String, default: "" }, quantity: { type: Number, default: 1 } }],
+    tshirtIssuedAt: { type: Date },
+    bagIssued: { type: Boolean, default: false },
+    bagIssuedAt: { type: Date },
+    tabletIssued: { type: Boolean, default: false },
+    tabletAssetId: { type: String, default: "" },
+    tabletSerialNumber: { type: String, default: "" },
+    tabletIssuedAt: { type: Date },
+    issuedBy: { type: String, default: "" },
+    notes: { type: String, default: "" },
+  },
+}, { timestamps: true });
+studentSchema.index({ leadId: 1 }, { unique: true, partialFilterExpression: { leadId: { $type: "objectId" } } });
+studentSchema.index({ admissionNumber: 1 }, { unique: true, partialFilterExpression: { admissionNumber: { $type: "string", $gt: "" } } });
+studentSchema.index({ certificateNumber: 1 }, { unique: true, partialFilterExpression: { certificateNumber: { $type: "string", $gt: "" } } });
+
+const attendanceSchema = new mongoose.Schema({
+  classSessionId: { type: mongoose.Schema.Types.ObjectId, ref: "ClassSession" },
+  studentId: { type: mongoose.Schema.Types.ObjectId, ref: "Student", required: true },
+  studentName: { type: String, default: "" },
+  date: { type: Date, required: true },
+  nature: { type: String, enum: ["Theoretical", "Practical"], default: "Theoretical" },
+  status: { type: String, enum: ["Present", "Absent", "Late", "Leave"], required: true },
+  note: { type: String, default: "" },
+  centre: { type: String, default: "" },
+  franchiseId: { type: mongoose.Schema.Types.ObjectId, ref: "Centre" },
+  batch: { type: String, default: "" },
+  course: { type: String, default: "" },
+  counsellor: { type: String, default: "" },
+  teacher: { type: String, default: "" },
+  markedBy: { type: String, default: "" },
+}, { timestamps: true });
+attendanceSchema.index({ studentId: 1, date: 1, nature: 1, classSessionId: 1 }, { unique: true });
+
+const classScheduleSchema = new mongoose.Schema({
+  batchId: { type: mongoose.Schema.Types.ObjectId, ref: "Batch", required: true },
+  batchName: { type: String, required: true, trim: true },
+  course: { type: String, default: "" },
+  centre: { type: String, default: "" },
+  franchiseId: { type: mongoose.Schema.Types.ObjectId, ref: "Centre" },
+  classType: { type: String, enum: ["Regular Class", "One-time Class"], default: "Regular Class" },
+  nature: { type: String, enum: ["Theoretical", "Practical"], default: "Theoretical" },
+  faculty: { type: String, required: true, trim: true },
+  days: [{ type: String, enum: ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"] }],
+  startTime: { type: String, required: true, trim: true },
+  endTime: { type: String, required: true, trim: true },
+  startDate: { type: Date },
+  endDate: { type: Date },
+  note: { type: String, default: "" },
+  active: { type: Boolean, default: true },
+  createdBy: { type: String, default: "" },
+}, { timestamps: true });
+
+const classSessionSchema = new mongoose.Schema({
+  scheduleId: { type: mongoose.Schema.Types.ObjectId, ref: "ClassSchedule" },
+  batchId: { type: mongoose.Schema.Types.ObjectId, ref: "Batch", required: true },
+  batchName: { type: String, required: true, trim: true },
+  course: { type: String, default: "" },
+  centre: { type: String, default: "" },
+  franchiseId: { type: mongoose.Schema.Types.ObjectId, ref: "Centre" },
+  classType: { type: String, enum: ["Regular Class", "One-time Class"], default: "Regular Class" },
+  nature: { type: String, enum: ["Theoretical", "Practical"], default: "Theoretical" },
+  faculty: { type: String, required: true, trim: true },
+  date: { type: Date, required: true },
+  startTime: { type: String, required: true, trim: true },
+  endTime: { type: String, required: true, trim: true },
+  studentCount: { type: Number, default: 0 },
+  attendanceMarked: { type: Boolean, default: false },
+  googleCalendarEventId: { type: String, default: "" },
+  note: { type: String, default: "" },
+  createdBy: { type: String, default: "" },
+}, { timestamps: true });
+classSessionSchema.index({ scheduleId: 1, date: 1, startTime: 1 }, { unique: true, partialFilterExpression: { scheduleId: { $type: "objectId" } } });
+
+const topicProgressSchema = new mongoose.Schema({
+  batchId: { type: mongoose.Schema.Types.ObjectId, ref: "Batch", required: true },
+  batchName: { type: String, required: true, trim: true },
+  course: { type: String, default: "" },
+  centre: { type: String, default: "" },
+  franchiseId: { type: mongoose.Schema.Types.ObjectId, ref: "Centre" },
+  module: { type: String, required: true, trim: true },
+  topic: { type: String, required: true, trim: true },
+  status: { type: String, enum: ["Not Started", "In Progress", "Covered"], default: "Not Started" },
+  dateCovered: { type: Date },
+  faculty: { type: String, default: "" },
+  updatedBy: { type: String, default: "" },
+}, { timestamps: true });
+topicProgressSchema.index({ batchId: 1, module: 1, topic: 1 }, { unique: true });
+
+const practicalRecordSchema = new mongoose.Schema({
+  batchId: { type: mongoose.Schema.Types.ObjectId, ref: "Batch", required: true },
+  batchName: { type: String, required: true, trim: true },
+  course: { type: String, default: "" },
+  centre: { type: String, default: "" },
+  franchiseId: { type: mongoose.Schema.Types.ObjectId, ref: "Centre" },
+  practicalName: { type: String, required: true, trim: true },
+  module: { type: String, default: "" },
+  studentId: { type: mongoose.Schema.Types.ObjectId, ref: "Student", required: true },
+  studentName: { type: String, default: "" },
+  dateConducted: { type: Date },
+  status: { type: String, enum: ["Pending", "Completed", "Needs Repeat"], default: "Pending" },
+  remarks: { type: String, default: "" },
+  faculty: { type: String, default: "" },
+  updatedBy: { type: String, default: "" },
+}, { timestamps: true });
+practicalRecordSchema.index({ batchId: 1, practicalName: 1, studentId: 1 }, { unique: true });
+
+const studyNoteSchema = new mongoose.Schema({
+  batchId: { type: mongoose.Schema.Types.ObjectId, ref: "Batch", required: true },
+  batchName: { type: String, required: true, trim: true },
+  course: { type: String, default: "" },
+  centre: { type: String, default: "" },
+  franchiseId: { type: mongoose.Schema.Types.ObjectId, ref: "Centre" },
+  title: { type: String, required: true, trim: true },
+  module: { type: String, default: "", trim: true },
+  description: { type: String, default: "", trim: true },
+  file: { type: documentFileSchema, default: undefined },
+  referenceUrl: { type: String, default: "", trim: true },
+  resourceType: { type: String, enum: ["File", "Video", "Reference"], default: "File" },
+  uploadedBy: { type: String, default: "" },
+}, { timestamps: true });
+
+const internshipAssignmentSchema = new mongoose.Schema({
+  studentId: { type: mongoose.Schema.Types.ObjectId, ref: "Student", required: true, unique: true },
+  facilityName: { type: String, required: true, trim: true },
+  facilityLocation: { type: String, default: "", trim: true },
+  supervisorName: { type: String, default: "", trim: true },
+  supervisorContact: { type: String, default: "", trim: true },
+  supervisorEmail: { type: String, default: "", trim: true, lowercase: true },
+  facilityLatitude: { type: Number },
+  facilityLongitude: { type: Number },
+  allowedRadiusMeters: { type: Number, default: 200 },
+  startDate: { type: Date, required: true },
+  durationValue: { type: Number, default: 3 },
+  durationUnit: { type: String, enum: ["days", "weeks", "months"], default: "months" },
+  expectedEndDate: { type: Date, required: true },
+  actualEndDate: { type: Date },
+  status: { type: String, enum: ["Assigned", "Active", "Completed", "Terminated"], default: "Assigned" },
+  departmentRotation: { type: String, default: "", trim: true },
+  assignedBy: { type: String, default: "" },
+}, { timestamps: true });
+
+const internshipLogSchema = new mongoose.Schema({
+  assignmentId: { type: mongoose.Schema.Types.ObjectId, ref: "InternshipAssignment", required: true },
+  studentId: { type: mongoose.Schema.Types.ObjectId, ref: "Student", required: true },
+  date: { type: Date, required: true },
+  loginAt: { type: Date },
+  loginPhoto: { type: documentFileSchema, default: undefined },
+  loginGps: { type: String, default: "" },
+  logoutAt: { type: Date },
+  logoutPhoto: { type: documentFileSchema, default: undefined },
+  logoutGps: { type: String, default: "" },
+  hours: { type: Number, default: 0 },
+  flagged: { type: Boolean, default: false },
+  flagReason: { type: String, default: "" },
+}, { timestamps: true });
+internshipLogSchema.index({ assignmentId: 1, studentId: 1, date: 1 }, { unique: true });
+
+const logbookEntrySchema = new mongoose.Schema({
+  assignmentId: { type: mongoose.Schema.Types.ObjectId, ref: "InternshipAssignment", required: true },
+  studentId: { type: mongoose.Schema.Types.ObjectId, ref: "Student", required: true },
+  date: { type: Date, required: true },
+  departmentArea: { type: String, required: true, trim: true },
+  activitiesPerformed: { type: String, required: true, trim: true },
+  keyLearnings: { type: String, required: true, trim: true },
+  challenges: { type: String, default: "", trim: true },
+  supervisorRemark: { type: String, default: "", trim: true },
+  verified: { type: Boolean, default: false },
+  verifiedBy: { type: String, default: "" },
+  verifiedAt: { type: Date },
+}, { timestamps: true });
+logbookEntrySchema.index({ assignmentId: 1, studentId: 1, date: 1 }, { unique: true });
+
+const npsResponseSchema = new mongoose.Schema({
+  studentId: { type: mongoose.Schema.Types.ObjectId, ref: "Student", required: true },
+  batchId: { type: mongoose.Schema.Types.ObjectId, ref: "Batch" },
+  batchName: { type: String, default: "" },
+  courseCode: { type: String, default: "" },
+  collegeId: { type: String, default: "" },
+  centre: { type: String, default: "" },
+  franchiseId: { type: mongoose.Schema.Types.ObjectId, ref: "Centre" },
+  touchpoint: { type: String, enum: npsTouchpoints, required: true },
+  npsScore: { type: Number, required: true, min: 0, max: 10 },
+  npsCategory: { type: String, enum: ["promoter", "passive", "detractor"], required: true },
+  attrTeachingQuality: { type: Number, required: true, min: 1, max: 5 },
+  attrContentRelevance: { type: Number, required: true, min: 1, max: 5 },
+  attrPracticalTraining: { type: Number, min: 1, max: 5 },
+  attrSupportInfra: { type: Number, required: true, min: 1, max: 5 },
+  attrPlacementAssistance: { type: Number, min: 1, max: 5 },
+  openFeedback: { type: String, default: "", trim: true, maxlength: 500 },
+  followUpStatus: { type: String, enum: ["Pending", "In Progress", "Resolved"], default: "Pending" },
+  followUpNotes: [{
+    note: { type: String, default: "", trim: true },
+    by: { type: String, default: "" },
+    at: { type: Date, default: Date.now },
+  }],
+  active: { type: Boolean, default: true },
+  submittedAt: { type: Date, default: Date.now },
+}, { timestamps: true });
+npsResponseSchema.index({ studentId: 1, touchpoint: 1 }, { unique: true });
+
+const inventoryItemSchema = new mongoose.Schema({
+  itemType: { type: String, enum: ["id_card", "tshirt", "bag"], required: true },
+  size: { type: String, enum: ["S", "M", "L", "XL", "XXL", "All", "NA"], default: "NA" },
+  quantity: { type: Number, default: 0, min: 0 },
+  minThreshold: { type: Number, default: 5 },
+  centre: { type: String, default: "" },
+  franchiseId: { type: mongoose.Schema.Types.ObjectId, ref: "Centre" },
+}, { timestamps: true });
+inventoryItemSchema.index({ itemType: 1, size: 1, franchiseId: 1 }, { unique: true });
+
+const tabletAssetSchema = new mongoose.Schema({
+  assetId: { type: String, required: true, trim: true },
+  serialNumber: { type: String, required: true, trim: true },
+  brandModel: { type: String, default: "Android Tablet", trim: true },
+  status: { type: String, enum: ["In Stock", "Assigned", "Under Repair", "Returned", "Decommissioned"], default: "In Stock" },
+  assignedStudentId: { type: mongoose.Schema.Types.ObjectId, ref: "Student" },
+  assignedStudentName: { type: String, default: "" },
+  assignedStudentAdmissionNo: { type: String, default: "" },
+  assignedDate: { type: Date },
+  returnedDate: { type: Date },
+  centre: { type: String, default: "" },
+  franchiseId: { type: mongoose.Schema.Types.ObjectId, ref: "Centre" },
+  remarks: { type: String, default: "" },
+}, { timestamps: true });
+tabletAssetSchema.index({ assetId: 1, franchiseId: 1 }, { unique: true });
+tabletAssetSchema.index({ serialNumber: 1, franchiseId: 1 }, { unique: true });
+
+const inventoryTransactionSchema = new mongoose.Schema({
+  type: { type: String, enum: ["Stock In", "Stock Out", "Return", "Adjustment"], required: true },
+  itemType: { type: String, enum: ["id_card", "tshirt", "bag", "tablet"], required: true },
+  size: { type: String, default: "" },
+  quantity: { type: Number, default: 1 },
+  tabletId: { type: mongoose.Schema.Types.ObjectId, ref: "TabletAsset" },
+  assetId: { type: String, default: "" },
+  serialNumber: { type: String, default: "" },
+  studentId: { type: mongoose.Schema.Types.ObjectId, ref: "Student" },
+  studentName: { type: String, default: "" },
+  vendorChallan: { type: String, default: "" },
+  handledBy: { type: String, default: "" },
+  date: { type: Date, default: Date.now },
+  notes: { type: String, default: "" },
+  centre: { type: String, default: "" },
+  franchiseId: { type: mongoose.Schema.Types.ObjectId, ref: "Centre" },
 }, { timestamps: true });
 
 const AdminUser = mongoose.model("AdminUser", adminUserSchema);
+const Counter = mongoose.model("Counter", counterSchema);
 const Centre = mongoose.model("Centre", centreSchema);
 const Course = mongoose.model("Course", courseSchema);
 const Batch = mongoose.model("Batch", batchSchema);
 const Lead = mongoose.model("Lead", leadSchema);
 const Student = mongoose.model("Student", studentSchema);
+const Attendance = mongoose.model("Attendance", attendanceSchema);
+const ClassSchedule = mongoose.model("ClassSchedule", classScheduleSchema);
+const ClassSession = mongoose.model("ClassSession", classSessionSchema);
+const TopicProgress = mongoose.model("TopicProgress", topicProgressSchema);
+const PracticalRecord = mongoose.model("PracticalRecord", practicalRecordSchema);
+const StudyNote = mongoose.model("StudyNote", studyNoteSchema);
+const InternshipAssignment = mongoose.model("InternshipAssignment", internshipAssignmentSchema);
+const InternshipLog = mongoose.model("InternshipLog", internshipLogSchema);
+const LogbookEntry = mongoose.model("LogbookEntry", logbookEntrySchema);
+const NpsResponse = mongoose.model("NpsResponse", npsResponseSchema);
+const InventoryItem = mongoose.model("InventoryItem", inventoryItemSchema);
+const TabletAsset = mongoose.model("TabletAsset", tabletAssetSchema);
+const InventoryTransaction = mongoose.model("InventoryTransaction", inventoryTransactionSchema);
 
 async function seedBaseData() {
+  await Promise.all([
+    Course.collection.dropIndex("name_1").catch(() => undefined),
+    Batch.collection.dropIndex("name_1").catch(() => undefined),
+    Attendance.collection.dropIndex("studentId_1_date_1").catch(() => undefined),
+  ]);
   const centres = [{ name: "Delhi", city: "Delhi" }, { name: "Kochi", city: "Kochi" }, { name: "Bangalore", city: "Bangalore" }];
   const courses = [
     { name: "Hospital Administration", code: "HA", fee: 55000, duration: "6 months" },
     { name: "Emergency Medical Technician", code: "EMT", fee: 45000, duration: "6 months" },
     { name: "General Duty Assistant", code: "GDA", fee: 35000, duration: "4 months" },
     { name: "OCHA", code: "OCHA", fee: 30000, duration: "Online" },
-    { name: "ACHA", code: "ACHA", fee: 65000, duration: "6 months" },
+    { name: "Advanced Healthcare Administration Program", code: "AHAP", fee: 65000, duration: "6 months" },
+    { name: "Geriatric Care Assistant", code: "GCA", fee: 35000, duration: "4 months" },
+    { name: "Medical Laboratory Technician", code: "MLT", fee: 55000, duration: "6 months" },
+    { name: "Radiology X-Ray Technician", code: "RADIOLOGY", fee: 55000, duration: "6 months" },
+    { name: "Foundation Certificate in Healthcare - BRAC", code: "FCH-BRAC", fee: 4236.44, duration: "3 months" },
+    { name: "Certificate in Hospital Operations - BRAC", code: "CHO-BRAC", fee: 6778.81, duration: "4 months" },
+    { name: "Certificate in Hospital Administration - BRAC", code: "CHA-BRAC", fee: 8473.73, duration: "5 months" },
+    { name: "Advanced Certificate in Healthcare Management - BRAC", code: "ACHM-BRAC", fee: 16100.85, duration: "6 months" },
   ];
-  await Promise.all(centres.map((centre) => Centre.updateOne({ name: centre.name }, { $setOnInsert: centre }, { upsert: true })));
-  await Promise.all(courses.map((course) => Course.updateOne({ name: course.name }, { $setOnInsert: course }, { upsert: true })));
+  await Promise.all(centres.map((centre) => Centre.updateOne({ name: centre.name }, { $set: { type: "branch" }, $setOnInsert: centre }, { upsert: true })));
+  await Centre.updateMany({ name: { $nin: centres.map((centre) => centre.name) }, type: { $exists: false } }, { $set: { type: "franchise" } });
+  await Course.updateMany({ code: "AAHP" }, { $set: { code: "AHAP", name: "Advanced Healthcare Administration Program", fee: 65000, duration: "6 months" } });
+  await Promise.all([
+    Lead.updateMany({ course: "AAHP" }, { $set: { course: "AHAP" } }),
+    Student.updateMany({ course: "AAHP" }, { $set: { course: "AHAP" } }),
+    Batch.updateMany({ course: "AAHP" }, { $set: { course: "AHAP" } }),
+  ]);
+  await Course.updateMany({ code: "AHAP" }, { $set: { name: "Advanced Healthcare Administration Program", duration: "6 months" }, $setOnInsert: { fee: 65000 } });
+  await Promise.all(courses.map((course) => Course.updateOne({ code: course.code }, { $setOnInsert: course }, { upsert: true })));
+  const ahapCourses = await Course.find({ code: "AHAP", $or: [{ franchiseId: { $exists: false } }, { franchiseId: null }] }).sort({ _id: 1 }).select("_id").lean();
+  if (ahapCourses.length > 1) {
+    await Course.deleteMany({ _id: { $in: ahapCourses.slice(1).map((course) => course._id) } });
+  }
+  const savedCentres = await Centre.find({ active: true }).select("_id name").lean();
+  await Promise.all(savedCentres.map((centre) => Promise.all([
+    Lead.updateMany({ centre: centre.name, franchiseId: { $exists: false } }, { $set: { franchiseId: centre._id } }),
+    Student.updateMany({ centre: centre.name, franchiseId: { $exists: false } }, { $set: { franchiseId: centre._id } }),
+    Batch.updateMany({ centre: centre.name, franchiseId: { $exists: false } }, { $set: { franchiseId: centre._id } }),
+  ])));
 }
 
 function signToken(user) {
-  return jwt.sign({ id: user._id.toString(), email: user.email, name: user.name, role: user.role }, jwtSecret, { expiresIn: "7d" });
-} 
+  return jwt.sign({ id: user._id.toString(), email: user.email, name: user.name, role: user.role, franchiseId: user.franchiseId?.toString() || "" }, jwtSecret, { expiresIn: "7d" });
+}
+
+function signStudentToken(student) {
+  return jwt.sign({ studentId: student._id.toString(), purpose: "student-lms" }, jwtSecret, { expiresIn: "30d" });
+}
+
+function publicAppBaseUrl(req) {
+  const configured = process.env.APP_BASE_URL || process.env.PUBLIC_APP_URL || "";
+  if (configured) return configured.replace(/\/$/, "");
+  const origin = req.get("origin") || `${req.protocol}://${req.get("host")}`;
+  return origin.replace(/\/$/, "");
+}
+
+function googleCalendarReady() {
+  return Boolean(googleCalendarClientId && googleCalendarClientSecret && googleCalendarRedirectUri);
+}
+
+function googleCalendarTokenKey() {
+  return crypto.createHash("sha256").update(jwtSecret).digest();
+}
+
+function encryptGoogleToken(value = "") {
+  if (!value) return "";
+  const iv = crypto.randomBytes(12);
+  const cipher = crypto.createCipheriv("aes-256-gcm", googleCalendarTokenKey(), iv);
+  const encrypted = Buffer.concat([cipher.update(String(value), "utf8"), cipher.final()]);
+  return `${iv.toString("base64")}.${cipher.getAuthTag().toString("base64")}.${encrypted.toString("base64")}`;
+}
+
+function decryptGoogleToken(value = "") {
+  if (!value) return "";
+  const [iv, tag, encrypted] = String(value).split(".");
+  if (!iv || !tag || !encrypted) return "";
+  const decipher = crypto.createDecipheriv("aes-256-gcm", googleCalendarTokenKey(), Buffer.from(iv, "base64"));
+  decipher.setAuthTag(Buffer.from(tag, "base64"));
+  return Buffer.concat([decipher.update(Buffer.from(encrypted, "base64")), decipher.final()]).toString("utf8");
+}
+
+async function googleCalendarFetch(pathname, options = {}) {
+  const response = await fetch(`https://www.googleapis.com${pathname}`, options);
+  const result = await response.json().catch(() => ({}));
+  if (!response.ok) throw new Error(result.error?.message || result.error_description || "Google Calendar request failed");
+  return result;
+}
+
+async function googleOAuthFetch(url, options = {}) {
+  const response = await fetch(url, options);
+  const result = await response.json().catch(() => ({}));
+  if (!response.ok) throw new Error(result.error?.message || result.error_description || "Google authorization request failed");
+  return result;
+}
+
+async function googleAccessTokenForTeacher(teacher) {
+  if (!teacher?.googleCalendarRefreshToken || !googleCalendarReady()) return "";
+  const refreshToken = decryptGoogleToken(teacher.googleCalendarRefreshToken);
+  if (!refreshToken) return "";
+  const body = new URLSearchParams({
+    client_id: googleCalendarClientId,
+    client_secret: googleCalendarClientSecret,
+    refresh_token: refreshToken,
+    grant_type: "refresh_token",
+  });
+  const result = await googleOAuthFetch("https://oauth2.googleapis.com/token", {
+    method: "POST",
+    headers: { "Content-Type": "application/x-www-form-urlencoded" },
+    body,
+  });
+  return result.access_token || "";
+}
+
+function sessionDateKey(value) {
+  const date = value instanceof Date ? value : new Date(value);
+  if (Number.isNaN(date.getTime())) return "";
+  const year = date.getUTCFullYear();
+  const month = String(date.getUTCMonth() + 1).padStart(2, "0");
+  const day = String(date.getUTCDate()).padStart(2, "0");
+  return `${year}-${month}-${day}`;
+}
+
+function calendarEventBody(session) {
+  const date = sessionDateKey(session.date);
+  return {
+    summary: `${session.batchName} - ${session.nature}`,
+    location: session.centre || "iMED Academy",
+    description: `${session.classType}\nFaculty: ${session.faculty}\nStudents: ${session.studentCount || 0}\nCourse: ${session.course || ""}`,
+    start: { dateTime: `${date}T${session.startTime || "00:00"}:00`, timeZone: googleCalendarTimeZone },
+    end: { dateTime: `${date}T${session.endTime || "00:00"}:00`, timeZone: googleCalendarTimeZone },
+  };
+}
+
+async function syncClassSessionsToGoogleCalendar(sessions = [], options = {}) {
+  if (!googleCalendarReady() || !sessions.length) return { synced: 0, skipped: sessions.length };
+  let synced = 0;
+  let skipped = 0;
+  const errors = new Map();
+  const noteError = (message = "Unknown sync error") => {
+    const clean = String(message || "Unknown sync error").slice(0, 160);
+    errors.set(clean, (errors.get(clean) || 0) + 1);
+  };
+  const teacherCache = new Map();
+  const connectedTeacher = options.teacher || null;
+  for (const session of sessions) {
+    try {
+      if (!session?._id || !session.faculty) {
+        skipped += 1;
+        noteError("Class session is missing faculty");
+        continue;
+      }
+      let teacher = connectedTeacher;
+      if (!teacher) {
+        const cacheKey = session.faculty;
+        teacher = teacherCache.get(cacheKey);
+        if (teacher === undefined) {
+          teacher = await AdminUser.findOne({ name: session.faculty, role: { $in: ["teacher", "franchise_teacher"] } }).select("+googleCalendarRefreshToken name email googleCalendarEmail").lean();
+          teacherCache.set(cacheKey, teacher || null);
+        }
+      }
+      if (!teacher?.googleCalendarRefreshToken) {
+        skipped += 1;
+        noteError("Teacher has not connected Google Calendar");
+        continue;
+      }
+      const accessToken = await googleAccessTokenForTeacher(teacher);
+      if (!accessToken) {
+        skipped += 1;
+        noteError("Unable to refresh Google access token");
+        continue;
+      }
+      const existingEventId = session.googleCalendarEventId || "";
+      const event = await googleCalendarFetch(existingEventId ? `/calendar/v3/calendars/primary/events/${encodeURIComponent(existingEventId)}` : "/calendar/v3/calendars/primary/events", {
+        method: existingEventId ? "PATCH" : "POST",
+        headers: { Authorization: `Bearer ${accessToken}`, "Content-Type": "application/json" },
+        body: JSON.stringify(calendarEventBody(session)),
+      });
+      if (event.id && event.id !== existingEventId) await ClassSession.findByIdAndUpdate(session._id, { $set: { googleCalendarEventId: event.id } });
+      synced += 1;
+    } catch (error) {
+      console.warn("Google Calendar sync skipped:", error.message);
+      skipped += 1;
+      noteError(error.message);
+    }
+  }
+  return { synced, skipped, errors: [...errors.entries()].map(([message, count]) => ({ message, count })) };
+}
+
+function passwordResetHash(token = "") {
+  return crypto.createHash("sha256").update(String(token)).digest("hex");
+}
 
 async function requireAuth(req, res, next) {
   try {
@@ -217,17 +933,488 @@ async function requireAuth(req, res, next) {
     const user = await AdminUser.findById(payload.id).lean();
     if (!user) return sendError(res, 401, "Invalid login session");
     req.user = user;
-    next();  
+    next();
   } catch {
     return sendError(res, 401, "Invalid login session");
+  }
+}
+
+async function requireStudentAuth(req, res, next) {
+  try {
+    const header = req.headers.authorization || "";
+    const token = header.startsWith("Bearer ") ? header.slice(7) : "";
+    if (!token) return sendError(res, 401, "Student login required");
+    const payload = jwt.verify(token, jwtSecret);
+    if (payload.purpose !== "student-lms" || !mongoose.isValidObjectId(String(payload.studentId || ""))) return sendError(res, 401, "Invalid student session");
+    const student = await Student.findById(payload.studentId).lean();
+    if (!student) return sendError(res, 401, "Invalid student session");
+    if (!student.lmsAccessEnabled) return sendError(res, 403, "Student LMS access is not generated yet");
+    req.student = student;
+    next();
+  } catch {
+    return sendError(res, 401, "Invalid student session");
   }
 }
 
 function adminScopeFilter(query = {}) {
   const filter = {};
   if (query.centre) filter.centre = String(query.centre);
-  if (query.counsellor) filter.counsellor = String(query.counsellor);
+  if (query.franchiseId && mongoose.isValidObjectId(String(query.franchiseId))) filter.franchiseId = new mongoose.Types.ObjectId(String(query.franchiseId));
+  if (query.counsellor) {
+    if (query.counsellor === "Unassigned") {
+      filter.counsellor = { $in: ["Unassigned", "", null] };
+    } else {
+      filter.counsellor = String(query.counsellor);
+    }
+  }
   return filter;
+}
+
+function isOperationsAccount(user) {
+  return ["operations_executive", "franchise_operations_executive"].includes(user?.role);
+}
+
+function isHeadAdmin(user) {
+  return ["superadmin", "center_admin", "admin", "branch_admin_counsellor"].includes(user?.role);
+}
+
+function isHeadSuperAdmin(user) {
+  return user?.role === "superadmin";
+}
+
+function isCenterAdmin(user) {
+  return user?.role === "center_admin";
+}
+
+function isHeadBranchAdmin(user) {
+  return ["admin", "branch_admin_counsellor"].includes(user?.role);
+}
+
+function isFranchiseUser(user) {
+  return ["franchise_superadmin", "franchise_admin_counsellor", "franchise_counsellor", "franchise_teacher", "franchise_operations_executive"].includes(user?.role);
+}
+
+function isFranchiseSuperAdmin(user) {
+  return ["franchise_superadmin", "franchise_admin_counsellor"].includes(user?.role);
+}
+
+function isCounsellorAccount(user) {
+  return ["counsellor", "franchise_counsellor"].includes(user?.role);
+}
+
+function isTeacherAccount(user) {
+  return ["teacher", "franchise_teacher"].includes(user?.role);
+}
+
+function isStudentStaffAccount(user) {
+  return isCounsellorAccount(user) || isTeacherAccount(user) || isOperationsAccount(user);
+}
+
+// Returns the branch IDs under a center_admin's parent centre (including child branches and parent centre)
+async function centerAdminBranchIds(user) {
+  if (!isCenterAdmin(user) || !user?.franchiseId) return [];
+  const branches = await Centre.find({
+    $or: [{ parentCentreId: user.franchiseId }, { _id: user.franchiseId }],
+    active: true,
+  }).select("_id").lean();
+  return branches.map((b) => b._id);
+}
+
+// Returns branch IDs + names for a center_admin
+async function centerAdminBranchScope(user) {
+  if (!isCenterAdmin(user) || !user?.franchiseId) return { ids: [], names: [] };
+  const branches = await Centre.find({
+    $or: [{ parentCentreId: user.franchiseId }, { _id: user.franchiseId }],
+    active: true,
+  }).select("_id name").lean();
+  return { ids: branches.map((b) => b._id), names: branches.map((b) => b.name) };
+}
+
+function canManageFees(user) {
+  return isHeadAdmin(user) || isFranchiseSuperAdmin(user) || isOperationsAccount(user);
+}
+
+function canManageCertificates(user) {
+  return isHeadAdmin(user) || isFranchiseSuperAdmin(user) || isOperationsAccount(user);
+}
+
+function canManageInternships(user) {
+  return isHeadAdmin(user) || isFranchiseSuperAdmin(user) || isOperationsAccount(user);
+}
+
+function canManageNps(user) {
+  return isHeadAdmin(user) || isFranchiseSuperAdmin(user) || isOperationsAccount(user);
+}
+
+function canManageAlumni(user) {
+  return isHeadAdmin(user) || isFranchiseSuperAdmin(user) || isOperationsAccount(user);
+}
+
+function canManageInventory(user) {
+  return isHeadAdmin(user) || isFranchiseSuperAdmin(user) || isOperationsAccount(user);
+}
+
+function canUseLeads(user) {
+  return isHeadAdmin(user) || isFranchiseSuperAdmin(user) || isCounsellorAccount(user);
+}
+
+function canAssignStaff(user) {
+  return isHeadAdmin(user) || isFranchiseSuperAdmin(user) || isOperationsAccount(user);
+}
+
+function canManageStudentLmsAccess(user) {
+  return isHeadAdmin(user) || isFranchiseSuperAdmin(user) || isOperationsAccount(user);
+}
+
+function canRequestStudentDeletion(user) {
+  return isHeadAdmin(user) || isFranchiseSuperAdmin(user) || isOperationsAccount(user);
+}
+
+// Determines if a candidate's branch setup is multi-branch or single branch
+async function getStudentMultiBranchInfo(student) {
+  let centreDoc = null;
+  if (student?.franchiseId && mongoose.isValidObjectId(String(student.franchiseId))) {
+    centreDoc = await Centre.findById(student.franchiseId).lean();
+  }
+  if (!centreDoc && student?.centre) {
+    const escapedCentre = String(student.centre).replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+    centreDoc = await Centre.findOne({ name: { $regex: new RegExp(`^${escapedCentre}$`, "i") } }).lean();
+  }
+  if (!centreDoc) {
+    return { isMultiBranch: false, centreDoc: null, approverScope: "superadmin" };
+  }
+
+  const parentCentreId = centreDoc.parentCentreId;
+  const isChildBranch = Boolean(parentCentreId);
+  const childCount = await Centre.countDocuments({ parentCentreId: centreDoc._id, active: true });
+  const isParentBranch = childCount > 0;
+
+  const parentOrSelfId = parentCentreId || centreDoc._id;
+  const centerAdminCount = await AdminUser.countDocuments({
+    role: "center_admin",
+    franchiseId: { $in: [centreDoc._id, parentOrSelfId].filter(Boolean) },
+    active: true,
+  });
+
+  const isMultiBranch = isChildBranch || isParentBranch || centerAdminCount > 0;
+  return {
+    isMultiBranch,
+    centreDoc,
+    approverScope: isMultiBranch ? "center_admin_or_superadmin" : "superadmin",
+  };
+}
+
+// Checks if the user is authorized to approve/reject candidate deletion:
+// - Super admin can approve for any candidate (single or multi-branch).
+// - Center admin can approve if candidate belongs to their multi-branch scope.
+// - Branch admins and operations executives cannot approve; they can only request.
+async function canApproveStudentDeletion(user, student) {
+  if (!user || !student) return false;
+  if (isHeadSuperAdmin(user)) return true;
+  if (isCenterAdmin(user)) {
+    const scope = await centerAdminBranchScope(user);
+    const matchesCentre = student.centre && scope.names.map((n) => n.toLowerCase()).includes(student.centre.toLowerCase());
+    const matchesFranchise = student.franchiseId && scope.ids.map(String).includes(String(student.franchiseId));
+    return Boolean(matchesCentre || matchesFranchise);
+  }
+  return false;
+}
+
+// Checks if the user is authorized to verify/approve cash deposit challans:
+// - Single branch: Only Super Admin can verify.
+// - Multi-branch: Both Super Admin and Center Admin (within their branch scope) can verify.
+// - Branch admins and operations executives cannot verify; their uploads require approval.
+async function canApproveCashDeposit(user, student) {
+  if (!user || !student) return false;
+  if (isHeadSuperAdmin(user)) return true;
+  if (isCenterAdmin(user)) {
+    const multiBranchInfo = await getStudentMultiBranchInfo(student);
+    if (!multiBranchInfo.isMultiBranch) return false;
+    const scope = await centerAdminBranchScope(user);
+    const matchesCentre = student.centre && scope.names.map((n) => n.toLowerCase()).includes(student.centre.toLowerCase());
+    const matchesFranchise = student.franchiseId && scope.ids.map(String).includes(String(student.franchiseId));
+    return Boolean(matchesCentre || matchesFranchise);
+  }
+  return false;
+}
+
+function studentLmsAccessBlockReason(student = {}) {
+  const status = normalizeStudentStatus(student.status);
+  const readyStatus = ["Fees Decided", "Fees Collected", "Active Student", "Course Completed", "Alumni"].includes(status);
+  if (!readyStatus) return "Decide fees before generating Student LMS login";
+  if (Math.max(0, Number(student.totalFee || 0) - Number(student.discountAmount || 0)) <= 0 || !student.admissionPaymentMode) return "Save final fee and payment plan before generating Student LMS login";
+  if (!student.admissionNumber) return "Admission number is required before generating Student LMS login";
+  if (!student.phone) return "Registered phone number is required before generating Student LMS login";
+  if (!student.batch) return "Assign a batch before generating Student LMS login";
+  return "";
+}
+
+function canUseAttendance(user) {
+  return isHeadAdmin(user) || isFranchiseSuperAdmin(user) || isTeacherAccount(user) || isOperationsAccount(user);
+}
+
+async function teacherAcademicBatchScope(user) {
+  if (!isTeacherAccount(user)) return null;
+  const [studentRows, scheduleRows] = await Promise.all([
+    Student.find({ teacher: user.name, batch: { $nin: ["", null] } }).select("batch").lean(),
+    ClassSchedule.find({ active: true, faculty: user.name }).select("batchId batchName").lean(),
+  ]);
+  const assignedBatchRows = await Batch.find({ active: true, assignedFaculty: user.name }).select("_id name").lean();
+  const batchNames = [...new Set([...studentRows.map((row) => row.batch).filter(Boolean), ...scheduleRows.map((row) => row.batchName).filter(Boolean), ...assignedBatchRows.map((row) => row.name).filter(Boolean)])];
+  const batchIds = [...new Set(scheduleRows.map((row) => String(row.batchId || "")).filter((id) => mongoose.isValidObjectId(id)))].map((id) => new mongoose.Types.ObjectId(id));
+  assignedBatchRows.forEach((row) => batchIds.push(row._id));
+  return { batchNames, batchIds };
+}
+
+async function teacherCanAccessBatch(user, batch) {
+  if (!isTeacherAccount(user)) return true;
+  const scope = await teacherAcademicBatchScope(user);
+  return scope.batchIds.some((id) => String(id) === String(batch?._id || "")) || scope.batchNames.includes(String(batch?.name || ""));
+}
+
+function escapeRegex(value = "") {
+  return String(value).replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+}
+
+async function maxStudentNumberSuffix(field, prefix) {
+  const regex = new RegExp(`^${escapeRegex(prefix)}(\\d+)$`);
+  const rows = await Student.find({ [field]: { $regex: regex } }).select(field).lean();
+  return rows.reduce((max, row) => {
+    const match = String(row?.[field] || "").match(regex);
+    const value = match ? Number(match[1]) : 0;
+    return Number.isFinite(value) ? Math.max(max, value) : max;
+  }, 0);
+}
+
+async function nextCounterValue(key, floor = 0) {
+  const existing = await Counter.findOne({ key }).select("seq").lean();
+  if (!existing) {
+    await Counter.create({ key, seq: floor }).catch((error) => {
+      if (error?.code !== 11000) throw error;
+    });
+  } else if (Number(existing.seq || 0) < floor) {
+    await Counter.updateOne({ key, seq: { $lt: floor } }, { $set: { seq: floor } });
+  }
+  const counter = await Counter.findOneAndUpdate(
+    { key },
+    { $inc: { seq: 1 } },
+    { new: true, upsert: true },
+  ).lean();
+  return counter.seq;
+}
+
+function priorityFromLeadFeedback(feedback = "") {
+  const normalized = String(feedback || "").toLowerCase();
+  if (normalized.includes("qualified") || normalized.includes("converted")) return "P0";
+  if (normalized.includes("not interested")) return "P3";
+  if (normalized.includes("interested")) return "P1";
+  if (normalized.includes("lost") || normalized.includes("invalid") || normalized.includes("junk") || normalized.includes("not connected")) return "P3";
+  if (normalized) return "P2";
+  return "";
+}
+
+function normalizeLeadPriority(value = "") {
+  const normalized = String(value || "").trim();
+  const legacyMap = { Hot: "P0", Warm: "P2", Cold: "P3" };
+  const priority = legacyMap[normalized] || normalized.toUpperCase() || "P2";
+  return leadPriorityOptions.includes(priority) ? priority : "P2";
+}
+
+function normalizeLeadFeedbackStatus(value = "") {
+  const legacyMap = {
+    "Hot lead": "Interested",
+    "Warm lead": "Follow-up",
+    "Cold lead": "Lost",
+    DNP: "Not Connected",
+    "Call back": "Busy Call later",
+    "Invalid number": "Invalid",
+    Spam: "Junk",
+    Fake: "Junk",
+    "Junk lead": "Junk",
+    junk: "Junk",
+    rnr: "RNR",
+    "not interested": "Not Interested",
+    "not intrested": "Not Interested",
+    "Not intrested": "Not Interested",
+    "future cohort": "Future Cohort",
+    "Future cohort": "Future Cohort",
+  };
+  const status = legacyMap[value] || value || "New";
+  return leadFeedbackOptions.includes(status) ? status : "New";
+}
+
+function feeWithGst(baseFee = 0) {
+  return Math.round(Number(baseFee || 0) * (1 + GST_RATE));
+}
+
+function normalizeExcelKey(value = "") {
+  return String(value).toLowerCase().replace(/[^a-z0-9]+/g, "");
+}
+
+function excelCell(row, aliases = []) {
+  const normalizedAliases = aliases.map(normalizeExcelKey);
+  for (const [key, value] of Object.entries(row || {})) {
+    if (normalizedAliases.includes(normalizeExcelKey(key))) return value;
+  }
+  return "";
+}
+
+function excelString(row, aliases = []) {
+  return String(excelCell(row, aliases) ?? "").trim();
+}
+
+function excelNumber(row, aliases = []) {
+  const raw = excelString(row, aliases).replace(/[₹,\s]/g, "");
+  const value = Number(raw || 0);
+  return Number.isFinite(value) ? value : 0;
+}
+
+function isHeadBranchScoped(user) {
+  return ["admin", "branch_admin_counsellor", "counsellor", "teacher", "operations_executive"].includes(user?.role);
+}
+
+async function headOfficeBranchScope(user) {
+  const assignedBranchId = isHeadBranchScoped(user) && user?.franchiseId ? String(user.franchiseId) : "";
+  const branches = await Centre.find(
+    assignedBranchId
+      ? { _id: assignedBranchId }
+      : { active: true, type: "branch" }
+  ).select("_id name").lean();
+  return {
+    ids: branches.map((branch) => branch._id),
+    names: branches.map((branch) => branch.name),
+  };
+}
+
+function requireHeadAdmin(req, res, next) {
+  if (!isHeadAdmin(req.user)) return sendError(res, 403, "Head admin access required");
+  next();
+}
+
+function requireFranchiseManager(req, res, next) {
+  if (!isHeadAdmin(req.user) && !isFranchiseSuperAdmin(req.user)) return sendError(res, 403, "Franchise manager access required");
+  next();
+}
+
+async function scopedDataFilter(req, query = {}) {
+  const filter = { ...adminScopeFilter(query) };
+  if (isFranchiseUser(req.user)) {
+    if (!req.user.franchiseId) return { ...filter, franchiseId: emptyObjectId };
+    const userCentre = await Centre.findById(req.user.franchiseId).select("name").lean();
+    const centreName = userCentre?.name || "";
+    if (centreName) {
+      filter.$or = [
+        { franchiseId: req.user.franchiseId },
+        { centre: centreName },
+        { centre: { $regex: new RegExp(`^${escapeRegex(centreName)}$`, "i") } },
+      ];
+    } else {
+      filter.franchiseId = req.user.franchiseId;
+    }
+  } else if (isCenterAdmin(req.user)) {
+    // center_admin sees all branches under their parent centre
+    const branchScope = await centerAdminBranchScope(req.user);
+    if (!branchScope.ids.length) return { ...filter, franchiseId: emptyObjectId };
+    if (filter.franchiseId && String(filter.franchiseId) === String(req.user.franchiseId)) {
+      delete filter.franchiseId;
+    }
+    const regexNames = branchScope.names.map((name) => new RegExp(`^${escapeRegex(name)}$`, "i"));
+    filter.$or = [
+      { franchiseId: { $in: branchScope.ids } },
+      { centre: { $in: branchScope.names } },
+      ...(regexNames.length ? [{ centre: { $in: regexNames } }] : []),
+    ];
+  } else if (isHeadBranchScoped(req.user)) {
+    const branchScope = await headOfficeBranchScope(req.user);
+    const regexNames = branchScope.names.map((name) => new RegExp(`^${escapeRegex(name)}$`, "i"));
+    filter.$or = [
+      { franchiseId: { $in: branchScope.ids } },
+      { centre: { $in: branchScope.names } },
+      ...(regexNames.length ? [{ centre: { $in: regexNames } }] : []),
+    ];
+  }
+  return filter;
+}
+
+async function canAccessRecord(req, record) {
+  const rawRecord = typeof record?.toObject === "function" ? record.toObject() : record;
+  const hasCounsellorOwner = rawRecord && Object.prototype.hasOwnProperty.call(rawRecord, "counsellor");
+  const hasTeacherOwner = rawRecord && Object.prototype.hasOwnProperty.call(rawRecord, "teacher");
+  const counsellorOwner = String(rawRecord?.counsellor || "");
+  const teacherOwner = String(rawRecord?.teacher || "");
+  const recordBatchName = String(rawRecord?.batch || rawRecord?.batchName || rawRecord?.name || "");
+  if (isFranchiseUser(req.user)) {
+    const userCentre = req.user.franchiseId ? await Centre.findById(req.user.franchiseId).select("name").lean() : null;
+    const inFranchise = Boolean(
+      (req.user.franchiseId && record?.franchiseId && String(record.franchiseId) === String(req.user.franchiseId)) ||
+      (userCentre?.name && record?.centre && String(record.centre).toLowerCase() === String(userCentre.name).toLowerCase())
+    );
+    if (!inFranchise) return false;
+    if (isCounsellorAccount(req.user) && hasCounsellorOwner) return counsellorOwner === req.user.name;
+    if (isTeacherAccount(req.user)) {
+      if (hasTeacherOwner && teacherOwner === req.user.name) return true;
+      const teacherScope = await teacherAcademicBatchScope(req.user);
+      return teacherScope.batchNames.includes(recordBatchName);
+    }
+    return true;
+  }
+  if (isCenterAdmin(req.user)) {
+    // center_admin can access records from any branch under their parent centre
+    const branchScope = await centerAdminBranchScope(req.user);
+    const recordFranchiseId = record?.franchiseId ? String(record.franchiseId) : "";
+    const inScope = branchScope.ids.some((id) => String(id) === recordFranchiseId) ||
+      branchScope.names.some((name) => String(name).toLowerCase() === String(record?.centre || "").toLowerCase());
+    return inScope;
+  }
+  if (isHeadBranchScoped(req.user)) {
+    const branchScope = await headOfficeBranchScope(req.user);
+    const recordFranchiseId = record?.franchiseId ? String(record.franchiseId) : "";
+    const inBranch = branchScope.ids.some((id) => String(id) === recordFranchiseId) ||
+      branchScope.names.some((name) => String(name).toLowerCase() === String(record?.centre || "").toLowerCase());
+    if (!inBranch) return false;
+    if (isCounsellorAccount(req.user) && hasCounsellorOwner) return counsellorOwner === req.user.name;
+    if (isTeacherAccount(req.user)) {
+      if (hasTeacherOwner && teacherOwner === req.user.name) return true;
+      const teacherScope = await teacherAcademicBatchScope(req.user);
+      return teacherScope.batchNames.includes(recordBatchName);
+    }
+    return true;
+  }
+  return true;
+}
+
+async function resolveFranchiseFromRequest(req, centreName = "") {
+  if (isFranchiseUser(req.user)) {
+    if (!req.user.franchiseId) return null;
+    return Centre.findById(req.user.franchiseId).lean();
+  }
+  const assignedBranchFilter = isHeadBranchScoped(req.user) && req.user.franchiseId ? { _id: req.user.franchiseId } : {};
+  const bodyFranchiseId = req.body?.franchiseId || req.query?.franchiseId;
+  if (bodyFranchiseId && mongoose.isValidObjectId(String(bodyFranchiseId))) {
+    const centre = await Centre.findOne({ _id: bodyFranchiseId, ...assignedBranchFilter }).lean();
+    if (centre) return centre;
+  }
+  if (centreName) {
+    const trimmed = String(centreName).trim();
+    const centre = await Centre.findOne({
+      name: { $regex: new RegExp(`^${escapeRegex(trimmed)}$`, "i") },
+      ...assignedBranchFilter,
+    }).lean();
+    if (centre) return centre;
+  }
+  return null;
+}
+
+function staffResponse(user) {
+  return {
+    _id: user._id?.toString() || "",
+    name: user.name,
+    email: user.email,
+    role: user.role,
+    franchiseId: user.franchiseId?.toString() || "",
+    googleCalendarConnected: Boolean(user.googleCalendarConnectedAt || user.googleCalendarEmail),
+    googleCalendarEmail: user.googleCalendarEmail || "",
+  };
 }
 
 function dateFilter(query = {}) {
@@ -241,8 +1428,61 @@ function dateFilter(query = {}) {
   return { createdAt: { $gte: start, $lt: end } };
 }
 
+function attendanceDate(value = "") {
+  if (value instanceof Date && !Number.isNaN(value.getTime())) {
+    return new Date(Date.UTC(value.getFullYear(), value.getMonth(), value.getDate()));
+  }
+  const parts = String(value).split("-").map(Number);
+  if (parts.length !== 3 || parts.some(Number.isNaN)) return null;
+  const [year, month, day] = parts;
+  return new Date(Date.UTC(year, month - 1, day));
+}
+
+function weekRangeFromDate(value = "") {
+  const base = attendanceDate(value) || new Date();
+  const day = base.getUTCDay();
+  const mondayOffset = day === 0 ? -6 : 1 - day;
+  const start = new Date(base);
+  start.setUTCDate(base.getUTCDate() + mondayOffset);
+  const end = new Date(start);
+  end.setUTCDate(start.getUTCDate() + 6);
+  end.setUTCHours(23, 59, 59, 999);
+  return { start, end };
+}
+
+function dayCode(date) {
+  return ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"][date.getUTCDay()];
+}
+
+function attendanceRangeFilter(query = {}) {
+  const day = attendanceDate(query.date || "");
+  if (day) return { date: day };
+  const from = attendanceDate(query.dateFrom || "");
+  const to = attendanceDate(query.dateTo || "");
+  if (!from && !to) return {};
+  const range = {};
+  if (from) range.$gte = from;
+  if (to) {
+    const end = new Date(to);
+    end.setUTCDate(end.getUTCDate() + 1);
+    range.$lt = end;
+  }
+  return { date: range };
+}
+
+function paginationFromQuery(query = {}) {
+  const page = Math.max(1, Number.parseInt(String(query.page || "1"), 10) || 1);
+  const limit = Math.min(100, Math.max(10, Number.parseInt(String(query.limit || "25"), 10) || 25));
+  return { page, limit, skip: (page - 1) * limit };
+}
+
+function paginationMeta(total, page, limit) {
+  const pages = Math.max(1, Math.ceil(total / limit));
+  return { page, limit, total, pages, hasPrev: page > 1, hasNext: page < pages };
+}
+
 function requireSuperAdmin(req, res, next) {
-  if (req.user?.role !== "superadmin") return sendError(res, 403, "Super admin access required");
+  if (!isHeadAdmin(req.user)) return sendError(res, 403, "Head admin access required");
   next();
 }
 
@@ -250,18 +1490,136 @@ app.get("/api/health", (_req, res) => {
   res.json({ ok: true, service: "imed-crm", mongo: mongoose.connection.readyState === 1 });
 });
 
+function studentAdminResponse(student = {}) {
+  const data = typeof student.toObject === "function" ? student.toObject() : { ...student };
+  return data;
+}
+
+async function studentAdminWithInternshipResponse(student = {}) {
+  const data = studentAdminResponse(student);
+  if (!data?._id) return data;
+  data.internshipAssignment = await InternshipAssignment.findOne({ studentId: data._id }).lean();
+  data.internshipLogs = data.internshipAssignment
+    ? await InternshipLog.find({ assignmentId: data.internshipAssignment._id, studentId: data._id }).sort({ date: -1 }).limit(60).lean()
+    : [];
+  return data;
+}
+
+async function npsResponsesForStudent(studentId) {
+  return NpsResponse.find({ studentId, active: true }).sort({ submittedAt: -1 }).lean();
+}
+
+function npsAttributeList(touchpoint) {
+  const common = ["attrTeachingQuality", "attrContentRelevance", "attrSupportInfra"];
+  if (touchpoint === "post_internship") return [...common, "attrPlacementAssistance"];
+  return [...common, "attrPracticalTraining"];
+}
+
+function publicNpsResponse(row = {}) {
+  return {
+    _id: row._id,
+    touchpoint: row.touchpoint,
+    label: npsTouchpointLabels[row.touchpoint] || row.touchpoint,
+    npsScore: row.npsScore,
+    npsCategory: row.npsCategory,
+    attrTeachingQuality: row.attrTeachingQuality,
+    attrContentRelevance: row.attrContentRelevance,
+    attrPracticalTraining: row.attrPracticalTraining,
+    attrSupportInfra: row.attrSupportInfra,
+    attrPlacementAssistance: row.attrPlacementAssistance,
+    openFeedback: row.openFeedback || "",
+    submittedAt: row.submittedAt,
+  };
+}
+
+function buildNpsEligibility({ student = {}, topics = [], internship = null, responses = [] }) {
+  const responseMap = new Map(responses.map((row) => [row.touchpoint, row]));
+  const coveredTopics = topics.filter((row) => row.status === "Covered").length;
+  const topicPercent = topics.length ? Math.round((coveredTopics / topics.length) * 100) : 0;
+  const internshipComplete = internship?.status === "Completed";
+  const items = npsTouchpoints.map((touchpoint) => {
+    let eligible = false;
+    let reason = "";
+    if (touchpoint === "mid_course") {
+      eligible = topics.length > 0 && topicPercent >= 50;
+      reason = eligible ? "50% syllabus is completed" : "Available after 50% syllabus completion";
+    } else if (touchpoint === "post_classroom") {
+      eligible = isStudentStatusAtLeast(student.status, "Classroom Complete");
+      reason = eligible ? "Classroom is marked complete" : "Available after classroom completion";
+    } else {
+      eligible = internshipComplete;
+      reason = eligible ? "Internship is marked complete" : "Available after internship completion";
+    }
+    const response = responseMap.get(touchpoint);
+    return {
+      touchpoint,
+      label: npsTouchpointLabels[touchpoint],
+      eligible,
+      submitted: Boolean(response),
+      required: eligible && !response,
+      reason,
+      availableSince: eligible ? (touchpoint === "post_internship" ? internship?.actualEndDate || internship?.updatedAt : new Date()) : null,
+      response: response ? publicNpsResponse(response) : null,
+    };
+  });
+  return {
+    items,
+    pending: items.find((item) => item.required) || null,
+  };
+}
+
+async function npsEligibilityForStudent(student = {}, extra = {}) {
+  const batch = extra.batch !== undefined ? extra.batch : (student.batch ? await Batch.findOne({ name: student.batch, active: true }).lean() : null);
+  const batchFilter = batch ? { $or: [{ batchId: batch._id }, { batchName: batch.name }] } : { batchName: student.batch || "" };
+  const [topics, internship, responses] = await Promise.all([
+    extra.topics !== undefined ? Promise.resolve(extra.topics) : (batch ? TopicProgress.find(batchFilter).lean() : Promise.resolve([])),
+    extra.internship !== undefined ? Promise.resolve(extra.internship) : InternshipAssignment.findOne({ studentId: student._id }).lean(),
+    extra.responses !== undefined ? Promise.resolve(extra.responses) : npsResponsesForStudent(student._id),
+  ]);
+  return buildNpsEligibility({ student, topics, internship, responses });
+}
+
+function npsScopedFilter(req, query = {}) {
+  return scopedDataFilter(req, query);
+}
+
+function computeNps(rows = []) {
+  const activeRows = rows.filter((row) => row.active !== false);
+  const total = activeRows.length;
+  const promoters = activeRows.filter((row) => row.npsCategory === "promoter").length;
+  const passives = activeRows.filter((row) => row.npsCategory === "passive").length;
+  const detractors = activeRows.filter((row) => row.npsCategory === "detractor").length;
+  return {
+    total,
+    promoters,
+    passives,
+    detractors,
+    nps: total ? Math.round((promoters / total) * 100 - (detractors / total) * 100) : 0,
+    promoterPercent: total ? Math.round((promoters / total) * 100) : 0,
+    detractorPercent: total ? Math.round((detractors / total) * 100) : 0,
+  };
+}
+
+function internshipExpectedEndDate(startDate, durationValue = 3, durationUnit = "months") {
+  const end = new Date(startDate);
+  if (durationUnit === "days") end.setUTCDate(end.getUTCDate() + Number(durationValue || 0));
+  else if (durationUnit === "weeks") end.setUTCDate(end.getUTCDate() + (Number(durationValue || 0) * 7));
+  else end.setUTCMonth(end.getUTCMonth() + Number(durationValue || 0));
+  return end;
+}
+
 app.post("/api/auth/signup", async (req, res) => {
   const { name, email, password, setupCode } = req.body || {};
   if (String(setupCode || "").trim() !== adminSetupCode) return sendError(res, 403, "Invalid admin setup code");
   if (!name || !email || !password) return sendError(res, 400, "Name, email, and password are required");
   if (String(password).length < 8) return sendError(res, 400, "Password must be at least 8 characters");
   const adminCount = await AdminUser.countDocuments();
-  if (adminCount >= 3) return sendError(res, 403, "Admin account limit reached");
+  if (adminCount >= 4) return sendError(res, 403, "Admin account limit reached");
   const existing = await AdminUser.findOne({ email: String(email).toLowerCase().trim() });
   if (existing) return sendError(res, 409, "Account already exists");
   const passwordHash = await bcrypt.hash(password, 10);
   const user = await AdminUser.create({ name, email, passwordHash, role: adminCount === 0 ? "superadmin" : "admin" });
-  res.status(201).json({ ok: true, token: signToken(user), user: { name: user.name, email: user.email, role: user.role } });
+  res.status(201).json({ ok: true, token: signToken(user), user: staffResponse(user) });
 });
 
 app.post("/api/auth/login", async (req, res) => {
@@ -271,11 +1629,386 @@ app.post("/api/auth/login", async (req, res) => {
   if (!user) return sendError(res, 401, "Invalid email or password");
   const valid = await bcrypt.compare(password, user.passwordHash);
   if (!valid) return sendError(res, 401, "Invalid email or password");
-  res.json({ ok: true, token: signToken(user), user: { name: user.name, email: user.email, role: user.role } });
+  res.json({ ok: true, token: signToken(user), user: staffResponse(user) });
+});
+
+app.post("/api/auth/forgot-password", async (req, res) => {
+  const email = String(req.body?.email || "").toLowerCase().trim();
+  if (!email) return sendError(res, 400, "Email is required");
+  const user = await AdminUser.findOne({ email });
+  const genericMessage = "If this email exists, a password reset link has been sent";
+  if (!user) return res.json({ ok: true, message: genericMessage });
+
+  const token = crypto.randomBytes(32).toString("hex");
+  user.passwordResetTokenHash = passwordResetHash(token);
+  user.passwordResetExpiresAt = new Date(Date.now() + 60 * 60 * 1000);
+  await user.save();
+
+  const resetUrl = `${publicAppBaseUrl(req)}/?resetToken=${encodeURIComponent(token)}&email=${encodeURIComponent(email)}#admin`;
+  try {
+    await transporter.sendMail({
+      from: `iMED Academy Admin <${process.env.SMTP_USER}>`,
+      to: user.email,
+      subject: "Reset your iMED Admin CRM password",
+      html: `
+        <div style="font-family:Arial,sans-serif;line-height:1.5;color:#16213d">
+          <h2>Password reset request</h2>
+          <p>Hi ${escapeHtml(user.name || "Admin")},</p>
+          <p>Use the secure link below to reset your Admin CRM password. This link expires in 1 hour.</p>
+          <p><a href="${escapeHtml(resetUrl)}" style="display:inline-block;background:#4F6BFF;color:#fff;text-decoration:none;padding:10px 14px;border-radius:8px">Reset password</a></p>
+          <p>If you did not request this, you can ignore this email.</p>
+        </div>
+      `,
+    });
+  } catch (error) {
+    console.error("Password reset email failed", error);
+    return sendError(res, 500, "Unable to send reset email right now");
+  }
+  res.json({ ok: true, message: genericMessage });
+});
+
+app.post("/api/auth/reset-password", async (req, res) => {
+  const token = String(req.body?.token || "").trim();
+  const newPassword = String(req.body?.newPassword || "");
+  if (!token || !newPassword) return sendError(res, 400, "Reset token and new password are required");
+  if (newPassword.length < 8) return sendError(res, 400, "Password must be at least 8 characters");
+  const user = await AdminUser.findOne({
+    passwordResetTokenHash: passwordResetHash(token),
+    passwordResetExpiresAt: { $gt: new Date() },
+  });
+  if (!user) return sendError(res, 400, "Reset link is invalid or expired");
+  user.passwordHash = await bcrypt.hash(newPassword, 10);
+  user.passwordResetTokenHash = "";
+  user.passwordResetExpiresAt = undefined;
+  await user.save();
+  res.json({ ok: true, message: "Password reset successfully" });
 });
 
 app.get("/api/auth/me", requireAuth, (req, res) => {
-  res.json({ ok: true, user: { name: req.user.name, email: req.user.email, role: req.user.role } });
+  res.json({ ok: true, user: staffResponse(req.user) });
+});
+
+app.post("/api/student/auth/login", async (req, res) => {
+  const identifier = String(req.body?.identifier || "").trim();
+  const phone = normalizePhone(req.body?.phone || "");
+  if (!identifier || !phone) return sendError(res, 400, "Admission number and phone are required");
+  const student = await Student.findOne({
+    $or: [
+      { admissionNumber: identifier },
+      { email: identifier.toLowerCase() },
+    ],
+  });
+  if (!student) return sendError(res, 401, "Invalid admission number or phone");
+  if (!student.lmsAccessEnabled) return sendError(res, 403, "Student LMS access is not generated yet");
+  const normalizedStudentPhone = normalizePhone(student.phone || "").replace(/\D/g, "");
+  const normalizedInputPhone = phone.replace(/\D/g, "");
+  if (!normalizedStudentPhone || !normalizedInputPhone || !normalizedStudentPhone.endsWith(normalizedInputPhone.slice(-10))) {
+    return sendError(res, 401, "Invalid admission number or phone");
+  }
+  res.json({ ok: true, token: signStudentToken(student), student: studentAdminResponse(student) });
+});
+
+app.get("/api/student/me", requireStudentAuth, async (req, res) => {
+  const student = req.student;
+  const batch = student.batch ? await Batch.findOne({ name: student.batch, active: true }).lean() : null;
+  const batchFilter = batch ? { $or: [{ batchId: batch._id }, { batchName: batch.name }] } : { batchName: student.batch || "" };
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+  const classVisibleFrom = new Date(today);
+  [student.lmsAccessGeneratedAt, student.admissionFinalizedAt, student.batchCommenceDate].forEach((value) => {
+    if (!value) return;
+    const date = new Date(value);
+    if (Number.isNaN(date.getTime())) return;
+    date.setHours(0, 0, 0, 0);
+    if (date > classVisibleFrom) classVisibleFrom.setTime(date.getTime());
+  });
+  const [sessions, attendance, topics, practicals, studyNotes, internship, logbookEntries, npsResponses] = await Promise.all([
+    student.batch ? ClassSession.find({ ...(batch ? batchFilter : { batchName: student.batch }), date: { $gte: classVisibleFrom } }).sort({ date: 1, startTime: 1 }).limit(90).lean() : [],
+    Attendance.find({ studentId: student._id }).sort({ date: -1 }).limit(180).lean(),
+    batch ? TopicProgress.find(batchFilter).sort({ module: 1, topic: 1 }).lean() : [],
+    batch ? PracticalRecord.find({ ...batchFilter, studentId: student._id }).sort({ module: 1, practicalName: 1 }).lean() : [],
+    batch ? StudyNote.find(batchFilter).sort({ createdAt: -1 }).lean() : [],
+    InternshipAssignment.findOne({ studentId: student._id }).lean(),
+    LogbookEntry.find({ studentId: student._id }).sort({ date: -1 }).limit(60).lean(),
+    npsResponsesForStudent(student._id),
+  ]);
+  const internshipLogs = internship ? await InternshipLog.find({ assignmentId: internship._id, studentId: student._id }).sort({ date: -1 }).limit(60).lean() : [];
+  const attendanceHeld = attendance.length;
+  const attended = attendance.filter((row) => ["Present", "Late"].includes(row.status)).length;
+  const attendancePercent = attendanceHeld ? Math.round((attended / attendanceHeld) * 100) : 0;
+  const coveredTopics = topics.filter((row) => row.status === "Covered").length;
+  const completedPracticals = practicals.filter((row) => row.status === "Completed").length;
+  const nextClass = sessions.find((session) => new Date(session.date) >= today && !session.attendanceMarked) || null;
+  res.json({
+    ok: true,
+    data: {
+      student: studentAdminResponse(student),
+      batch,
+      phase: internship && ["Assigned", "Active"].includes(internship.status) ? "Internship" : "Classroom",
+      summary: {
+        attendanceHeld,
+        attended,
+        attendancePercent,
+        topicTotal: topics.length,
+        coveredTopics,
+        topicPercent: topics.length ? Math.round((coveredTopics / topics.length) * 100) : 0,
+        practicalTotal: practicals.length,
+        completedPracticals,
+        practicalPercent: practicals.length ? Math.round((completedPracticals / practicals.length) * 100) : 0,
+        nextClass,
+      },
+      sessions,
+      attendance,
+      topics,
+      practicals,
+      studyNotes,
+      internship,
+      internshipLogs,
+      logbookEntries,
+      nps: buildNpsEligibility({ student, topics, internship, responses: npsResponses }),
+      npsResponses: npsResponses.map(publicNpsResponse),
+    },
+  });
+});
+
+app.post("/api/nps/submit", requireStudentAuth, async (req, res) => {
+  const touchpoint = String(req.body?.touchpoint || "").trim();
+  if (!npsTouchpoints.includes(touchpoint)) return sendError(res, 400, "Choose a valid NPS touchpoint");
+  const score = Number(req.body?.npsScore);
+  if (!Number.isInteger(score) || score < 0 || score > 10) return sendError(res, 400, "Choose an NPS score from 0 to 10");
+  const eligibility = await npsEligibilityForStudent(req.student);
+  const item = eligibility.items.find((row) => row.touchpoint === touchpoint);
+  if (!item?.eligible) return sendError(res, 400, item?.reason || "This feedback is not available yet");
+  if (item.submitted) return sendError(res, 409, "This feedback has already been submitted");
+  const attributes = npsAttributeList(touchpoint);
+  const payload = {};
+  for (const field of attributes) {
+    const value = Number(req.body?.[field]);
+    if (!Number.isInteger(value) || value < 1 || value > 5) return sendError(res, 400, "All star ratings are required");
+    payload[field] = value;
+  }
+  const openFeedback = String(req.body?.openFeedback || "").trim();
+  if (openFeedback.length > 500) return sendError(res, 400, "Feedback cannot exceed 500 characters");
+  const batch = req.student.batch ? await Batch.findOne({ name: req.student.batch, active: true }).lean() : null;
+  try {
+    const response = await NpsResponse.create({
+      studentId: req.student._id,
+      batchId: batch?._id,
+      batchName: batch?.name || req.student.batch || "",
+      courseCode: normalizeCourseCode(req.student.course || ""),
+      centre: req.student.centre || "",
+      franchiseId: req.student.franchiseId,
+      touchpoint,
+      npsScore: score,
+      npsCategory: npsCategory(score),
+      ...payload,
+      openFeedback,
+      submittedAt: new Date(),
+    });
+    if (response.npsCategory === "detractor" && toAddress) {
+      transporter.sendMail({
+        from: `iMED Academy LMS <${process.env.SMTP_USER}>`,
+        to: toAddress,
+        subject: `Detractor NPS alert - ${req.student.fullName}`,
+        html: `<p>${escapeHtml(req.student.fullName)} submitted ${score}/10 for ${escapeHtml(npsTouchpointLabels[touchpoint])}.</p><p>${escapeHtml(openFeedback || "No comment added.")}</p>`,
+      }).catch(() => undefined);
+    }
+    res.status(201).json({ ok: true, data: publicNpsResponse(response), message: "Thank you for your feedback" });
+  } catch (error) {
+    if (error?.code === 11000) return sendError(res, 409, "This feedback has already been submitted");
+    throw error;
+  }
+});
+
+app.get("/api/nps/my-responses", requireStudentAuth, async (req, res) => {
+  const rows = await npsResponsesForStudent(req.student._id);
+  res.json({ ok: true, data: rows.map(publicNpsResponse) });
+});
+
+app.post("/api/student/internship/log", requireStudentAuth, leadDocumentUpload.single("photo"), async (req, res) => {
+  const type = String(req.body?.type || "").trim();
+  if (!["login", "logout"].includes(type)) return sendError(res, 400, "Choose log in or log out");
+  if (!req.file) return sendError(res, 400, "Photo is required");
+  const assignment = await InternshipAssignment.findOne({ studentId: req.student._id, status: { $in: ["Assigned", "Active"] } });
+  if (!assignment) return sendError(res, 400, "No active internship assignment found");
+  const day = attendanceDate(new Date());
+  if (!day) return sendError(res, 400, "Invalid internship log date");
+  const now = new Date();
+  const startDay = attendanceDate(assignment.startDate);
+  const endDay = attendanceDate(assignment.expectedEndDate);
+  if ((startDay && day < startDay) || (endDay && day > endDay)) return sendError(res, 400, "Internship attendance is allowed only during assigned dates");
+  const photo = saveLeadDocument(req.file);
+  const gps = String(req.body?.gps || "").trim();
+  const existing = await InternshipLog.findOne({ assignmentId: assignment._id, studentId: req.student._id, date: day });
+  if (type === "login" && existing?.loginAt) return sendError(res, 400, existing.logoutAt ? "Today internship attendance is already completed" : "Already logged in today");
+  if (type === "logout" && !existing?.loginAt) return sendError(res, 400, "Log in before logging out");
+  if (type === "logout" && existing?.logoutAt) return sendError(res, 400, "Today internship attendance is already completed");
+  const update = type === "login"
+    ? { loginAt: now, loginPhoto: photo, loginGps: gps }
+    : { logoutAt: now, logoutPhoto: photo, logoutGps: gps, hours: Math.max(0, Number(((now.getTime() - new Date(existing.loginAt).getTime()) / 36e5).toFixed(2))) };
+  const log = await InternshipLog.findOneAndUpdate(
+    { assignmentId: assignment._id, studentId: req.student._id, date: day },
+    { $set: update, $setOnInsert: { assignmentId: assignment._id, studentId: req.student._id, date: day } },
+    { returnDocument: "after", upsert: true, runValidators: true },
+  );
+  if (assignment.status === "Assigned") {
+    assignment.status = "Active";
+    await assignment.save();
+  }
+  res.json({ ok: true, data: log });
+});
+
+app.get("/api/student/internship/logs", requireStudentAuth, async (req, res) => {
+  const assignment = await InternshipAssignment.findOne({ studentId: req.student._id }).lean();
+  if (!assignment) return res.json({ ok: true, data: [], meta: paginationMeta(0, 1, 10) });
+  const page = Math.max(1, Number(req.query.page || 1));
+  const limit = Math.min(30, Math.max(1, Number(req.query.limit || 10)));
+  const filter = { assignmentId: assignment._id, studentId: req.student._id };
+  const [total, logs] = await Promise.all([
+    InternshipLog.countDocuments(filter),
+    InternshipLog.find(filter).sort({ date: -1 }).skip((page - 1) * limit).limit(limit).lean(),
+  ]);
+  res.json({ ok: true, data: logs, meta: paginationMeta(total, page, limit) });
+});
+
+app.post("/api/student/logbook", requireStudentAuth, async (req, res) => {
+  const assignment = await InternshipAssignment.findOne({ studentId: req.student._id, status: { $in: ["Assigned", "Active"] } }).lean();
+  if (!assignment) return sendError(res, 400, "No active internship assignment found");
+  const day = attendanceDate(req.body?.date || new Date());
+  const today = attendanceDate(new Date());
+  if (!day || !today || day.getTime() !== today.getTime()) return sendError(res, 400, "Logbook can be submitted only for today");
+  const attendanceLog = await InternshipLog.findOne({ assignmentId: assignment._id, studentId: req.student._id, date: day }).lean();
+  if (!attendanceLog?.loginAt || !attendanceLog?.logoutAt) return sendError(res, 400, "Complete internship log in and log out before submitting logbook");
+  const departmentArea = String(req.body?.departmentArea || "").trim();
+  const activitiesPerformed = String(req.body?.activitiesPerformed || "").trim();
+  const keyLearnings = String(req.body?.keyLearnings || "").trim();
+  if (!departmentArea || !activitiesPerformed || !keyLearnings) return sendError(res, 400, "Department, activities, and key learnings are required");
+  const existing = await LogbookEntry.findOne({ assignmentId: assignment._id, studentId: req.student._id, date: day });
+  if (existing && Date.now() - new Date(existing.createdAt).getTime() > 24 * 60 * 60 * 1000) return sendError(res, 400, "This logbook entry is locked after 24 hours");
+  const entry = await LogbookEntry.findOneAndUpdate(
+    { assignmentId: assignment._id, studentId: req.student._id, date: day },
+    {
+      $set: {
+        assignmentId: assignment._id,
+        studentId: req.student._id,
+        date: day,
+        departmentArea,
+        activitiesPerformed,
+        keyLearnings,
+        challenges: String(req.body?.challenges || "").trim(),
+      },
+    },
+    { new: true, upsert: true, runValidators: true },
+  );
+  res.json({ ok: true, data: entry });
+});
+
+app.patch("/api/admin/students/:id/logbook/:entryId", requireAuth, async (req, res) => {
+  const student = await Student.findById(req.params.id).lean();
+  if (!student) return sendError(res, 404, "Student not found");
+  if (!(await canAccessRecord(req, student))) return sendError(res, 403, "You can access only permitted records");
+  const entry = await LogbookEntry.findOne({ _id: req.params.entryId, studentId: student._id });
+  if (!entry) return sendError(res, 404, "Logbook entry not found");
+  const verified = Boolean(req.body?.verified);
+  entry.verified = verified;
+  entry.supervisorRemark = String(req.body?.supervisorRemark || "").trim();
+  entry.verifiedBy = verified ? (req.user.name || req.user.email || "Admin") : "";
+  entry.verifiedAt = verified ? new Date() : undefined;
+  await entry.save();
+  res.json({ ok: true, data: entry });
+});
+
+app.get("/api/admin/google-calendar/status", requireAuth, async (req, res) => {
+  if (!isTeacherAccount(req.user)) return sendError(res, 403, "Google Calendar is available for teacher accounts");
+  const user = await AdminUser.findById(req.user._id).select("googleCalendarEmail googleCalendarConnectedAt").lean();
+  res.json({ ok: true, data: { configured: googleCalendarReady(), connected: Boolean(user?.googleCalendarConnectedAt || user?.googleCalendarEmail), email: user?.googleCalendarEmail || "" } });
+});
+
+app.get("/api/admin/google-calendar/connect", requireAuth, (req, res) => {
+  if (!isTeacherAccount(req.user)) return sendError(res, 403, "Google Calendar is available for teacher accounts");
+  if (!googleCalendarReady()) return sendError(res, 400, "Google Calendar API is not configured");
+  const state = jwt.sign({ id: req.user._id.toString(), purpose: "google-calendar" }, jwtSecret, { expiresIn: "10m" });
+  const params = new URLSearchParams({
+    client_id: googleCalendarClientId,
+    redirect_uri: googleCalendarRedirectUri,
+    response_type: "code",
+    scope: "https://www.googleapis.com/auth/calendar.events https://www.googleapis.com/auth/userinfo.email",
+    access_type: "offline",
+    prompt: "consent",
+    include_granted_scopes: "false",
+    state,
+  });
+  res.json({ ok: true, data: { url: `https://accounts.google.com/o/oauth2/v2/auth?${params.toString()}` } });
+});
+
+app.get("/api/admin/google-calendar/callback", async (req, res) => {
+  const redirectBase = publicAppBaseUrl(req);
+  try {
+    if (!googleCalendarReady()) throw new Error("Google Calendar API is not configured");
+    const code = String(req.query.code || "");
+    const state = String(req.query.state || "");
+    if (!code || !state) throw new Error("Missing Google Calendar authorization details");
+    const payload = jwt.verify(state, jwtSecret);
+    if (payload.purpose !== "google-calendar" || !mongoose.isValidObjectId(String(payload.id || ""))) throw new Error("Invalid Google Calendar authorization");
+    const tokenResult = await googleOAuthFetch("https://oauth2.googleapis.com/token", {
+      method: "POST",
+      headers: { "Content-Type": "application/x-www-form-urlencoded" },
+      body: new URLSearchParams({
+        code,
+        client_id: googleCalendarClientId,
+        client_secret: googleCalendarClientSecret,
+        redirect_uri: googleCalendarRedirectUri,
+        grant_type: "authorization_code",
+      }),
+    });
+    if (!tokenResult.refresh_token) throw new Error("Google did not return a refresh token. Disconnect and try again with consent.");
+    const accessToken = tokenResult.access_token || "";
+    const profile = accessToken ? await googleCalendarFetch("/oauth2/v2/userinfo", { headers: { Authorization: `Bearer ${accessToken}` } }).catch(() => ({})) : {};
+    await AdminUser.findByIdAndUpdate(payload.id, {
+      $set: {
+        googleCalendarRefreshToken: encryptGoogleToken(tokenResult.refresh_token),
+        googleCalendarEmail: profile.email || "",
+        googleCalendarConnectedAt: new Date(),
+      },
+    });
+    res.redirect(`${redirectBase}/?calendar=connected#admin`);
+  } catch (error) {
+    res.redirect(`${redirectBase}/?calendar=error&message=${encodeURIComponent(error.message || "Google Calendar connection failed")}#admin`);
+  }
+});
+
+app.delete("/api/admin/google-calendar", requireAuth, async (req, res) => {
+  if (!isTeacherAccount(req.user)) return sendError(res, 403, "Google Calendar is available for teacher accounts");
+  await AdminUser.findByIdAndUpdate(req.user._id, { $unset: { googleCalendarRefreshToken: "", googleCalendarConnectedAt: "" }, $set: { googleCalendarEmail: "" } });
+  res.json({ ok: true, message: "Google Calendar disconnected" });
+});
+
+app.post("/api/admin/google-calendar/sync", requireAuth, async (req, res) => {
+  if (!isTeacherAccount(req.user)) return sendError(res, 403, "Google Calendar sync is available for teacher accounts");
+  if (!googleCalendarReady()) return sendError(res, 400, "Google Calendar API is not configured");
+  const connectedUser = await AdminUser.findById(req.user._id).select("+googleCalendarRefreshToken googleCalendarEmail googleCalendarConnectedAt").lean();
+  if (!connectedUser?.googleCalendarRefreshToken) return sendError(res, 400, "Connect Google Calendar first");
+  const scope = await teacherAcademicBatchScope(req.user);
+  if (!scope.batchIds.length && !scope.batchNames.length) return res.json({ ok: true, data: [], message: "No assigned class sessions to sync" });
+  const range = req.body?.week ? weekRangeFromDate(req.body.week) : (() => {
+    const start = new Date();
+    start.setUTCDate(start.getUTCDate() - 7);
+    start.setUTCHours(0, 0, 0, 0);
+    const end = new Date(start);
+    end.setUTCDate(start.getUTCDate() + 120);
+    end.setUTCHours(23, 59, 59, 999);
+    return { start, end };
+  })();
+  const filter = {
+    date: { $gte: range.start, $lte: range.end },
+    $or: [{ faculty: req.user.name }, { batchId: { $in: scope.batchIds } }, { batchName: { $in: scope.batchNames } }],
+  };
+  const sessions = await ClassSession.find(filter).sort({ date: 1, startTime: 1 }).lean();
+  if (!sessions.length) return res.json({ ok: true, data: [], message: "No generated class sessions found to sync" });
+  const calendar = await syncClassSessionsToGoogleCalendar(sessions, { teacher: connectedUser });
+  const syncedSessions = await ClassSession.find(filter).sort({ date: 1, startTime: 1 }).lean();
+  const reason = calendar.errors?.[0]?.message ? ` (${calendar.errors[0].message})` : "";
+  res.json({ ok: true, data: syncedSessions, message: `${calendar.synced} classes synced to Google Calendar${calendar.skipped ? `, ${calendar.skipped} skipped${reason}` : ""}` });
 });
 
 app.get("/api/certificates/verify/:certificateNumber", async (req, res) => {
@@ -288,27 +2021,196 @@ app.get("/api/certificates/verify/:certificateNumber", async (req, res) => {
   res.json({ ok: true, data: student });
 });
 
-app.get("/api/admin/counsellors", requireAuth, requireSuperAdmin, async (_req, res) => {
-  const counsellors = await AdminUser.find({ role: "counsellor" }).select("name email role").sort({ name: 1 }).lean();
+app.get("/api/centres", async (_req, res) => {
+  const centres = await Centre.find({ active: true })
+    .select("name city type")
+    .sort({ type: 1, name: 1 })
+    .lean();
+  res.json({ ok: true, data: centres });
+});
+
+app.get("/api/admin/counsellors", requireAuth, requireFranchiseManager, async (req, res) => {
+  const filter = isFranchiseSuperAdmin(req.user)
+    ? { role: { $in: ["franchise_superadmin", "franchise_admin_counsellor", "franchise_counsellor", "franchise_teacher", "franchise_operations_executive"] }, franchiseId: req.user.franchiseId || emptyObjectId }
+    : isCenterAdmin(req.user)
+      ? { role: { $in: ["admin", "branch_admin_counsellor", "counsellor", "teacher", "operations_executive"] }, franchiseId: { $in: (await centerAdminBranchIds(req.user)) } }
+      : isHeadBranchAdmin(req.user)
+        ? { role: { $in: ["admin", "branch_admin_counsellor", "counsellor", "teacher", "operations_executive"] }, ...(req.user.franchiseId ? { franchiseId: req.user.franchiseId } : {}) }
+        : { role: { $in: ["superadmin", "center_admin", "admin", "branch_admin_counsellor", "counsellor", "teacher", "operations_executive", "franchise_superadmin", "franchise_admin_counsellor", "franchise_counsellor", "franchise_teacher", "franchise_operations_executive"] } };
+  const counsellors = await AdminUser.find(filter).select("_id name email role franchiseId").sort({ name: 1 }).lean();
   res.json({ ok: true, data: counsellors });
 });
 
-app.post("/api/admin/counsellors", requireAuth, requireSuperAdmin, async (req, res) => {
-  const { name, email, password } = req.body || {};
+app.get("/api/admin/teachers", requireAuth, async (req, res) => {
+  if (!(isHeadAdmin(req.user) || isFranchiseSuperAdmin(req.user) || isCounsellorAccount(req.user) || isOperationsAccount(req.user))) return sendError(res, 403, "Teacher list is restricted to admin, counsellor, and operations accounts");
+  let filter = { role: { $in: ["teacher", "franchise_teacher"] } };
+  if (isFranchiseUser(req.user)) {
+    filter = { ...filter, franchiseId: req.user.franchiseId || emptyObjectId };
+  } else if (isCenterAdmin(req.user)) {
+    const branchIds = await centerAdminBranchIds(req.user);
+    filter = { ...filter, franchiseId: { $in: branchIds } };
+  } else if (isHeadBranchScoped(req.user)) {
+    filter = { ...filter, franchiseId: req.user.franchiseId || emptyObjectId };
+  }
+  const teachers = await AdminUser.find(filter).select("_id name email role franchiseId").sort({ name: 1 }).lean();
+  res.json({ ok: true, data: teachers });
+});
+
+app.post("/api/admin/counsellors", requireAuth, requireFranchiseManager, async (req, res) => {
+  const { name, email, password, role = "counsellor", franchiseId = "" } = req.body || {};
   if (!name || !email || !password) return sendError(res, 400, "Name, email, and password are required");
   if (String(password).length < 8) return sendError(res, 400, "Password must be at least 8 characters");
+  if (!["superadmin", "center_admin", "admin", "branch_admin_counsellor", "counsellor", "teacher", "operations_executive", "franchise_superadmin", "franchise_admin_counsellor", "franchise_counsellor", "franchise_teacher", "franchise_operations_executive"].includes(role)) return sendError(res, 400, "Invalid staff role");
+  if (isFranchiseSuperAdmin(req.user) && !["franchise_admin_counsellor", "franchise_counsellor", "franchise_teacher", "franchise_operations_executive"].includes(role)) return sendError(res, 403, "Franchise super admin can create only franchise staff");
+  if (isHeadBranchAdmin(req.user) && !["admin", "branch_admin_counsellor", "counsellor", "teacher", "operations_executive"].includes(role)) return sendError(res, 403, "Head admin can create only head office staff");
+  if (isCenterAdmin(req.user) && !["admin", "branch_admin_counsellor", "counsellor", "teacher", "operations_executive"].includes(role)) return sendError(res, 403, "Center admin can create only branch staff");
+  if (role === "superadmin" && !isHeadSuperAdmin(req.user)) return sendError(res, 403, "Head super admin access required");
+  if (role === "center_admin" && !isHeadSuperAdmin(req.user)) return sendError(res, 403, "Only super admin can create center admin accounts");
+  if (!isHeadAdmin(req.user) && ["superadmin", "center_admin", "admin", "branch_admin_counsellor", "counsellor", "teacher", "operations_executive", "franchise_superadmin", "franchise_admin_counsellor"].includes(role)) return sendError(res, 403, "Head admin access required");
+  const assignedFranchiseId = isFranchiseSuperAdmin(req.user) || isHeadBranchAdmin(req.user) ? req.user.franchiseId : franchiseId;
+  // center_admin needs a parent centre (type not restricted — could be any Centre record acting as parent)
+  const needsAssignedCentre = ["center_admin", "admin", "branch_admin_counsellor", "counsellor", "teacher", "operations_executive", "franchise_superadmin", "franchise_admin_counsellor", "franchise_counsellor", "franchise_teacher", "franchise_operations_executive"].includes(role);
+  if (needsAssignedCentre && !mongoose.isValidObjectId(String(assignedFranchiseId || ""))) return sendError(res, 400, ["admin", "branch_admin_counsellor", "counsellor", "teacher", "operations_executive"].includes(role) ? "Branch is required" : role === "center_admin" ? "Parent centre is required" : "Franchise is required");
+  if (needsAssignedCentre && !["center_admin"].includes(role)) {
+    const expectedType = ["admin", "branch_admin_counsellor", "counsellor", "teacher", "operations_executive"].includes(role) ? "branch" : "franchise";
+    const centre = await Centre.findOne({ _id: assignedFranchiseId, type: expectedType }).lean();
+    if (!centre) return sendError(res, 404, expectedType === "branch" ? "Branch not found" : "Franchise not found");
+  }
+  if (needsAssignedCentre && role === "center_admin") {
+    const centre = await Centre.findById(assignedFranchiseId).lean();
+    if (!centre) return sendError(res, 404, "Parent centre not found");
+  }
+  if (isCenterAdmin(req.user)) {
+    const branchIds = await centerAdminBranchIds(req.user);
+    if (!branchIds.some((id) => String(id) === String(assignedFranchiseId))) {
+      return sendError(res, 403, "Center admin can only assign staff to branches within their center");
+    }
+  }
   const existing = await AdminUser.findOne({ email: String(email).toLowerCase().trim() });
-  if (existing) return sendError(res, 409, "Counsellor account already exists");
+  if (existing) return sendError(res, 409, "Staff account already exists");
   const passwordHash = await bcrypt.hash(password, 10);
-  const counsellor = await AdminUser.create({ name, email, passwordHash, role: "counsellor" });
-  res.status(201).json({ ok: true, data: { name: counsellor.name, email: counsellor.email, role: counsellor.role } });
+  const counsellor = await AdminUser.create({
+    name,
+    email,
+    passwordHash,
+    role,
+    franchiseId: needsAssignedCentre ? assignedFranchiseId : undefined,
+  });
+  res.status(201).json({ ok: true, data: staffResponse(counsellor) });
+});
+
+app.patch("/api/admin/counsellors/:id", requireAuth, requireFranchiseManager, async (req, res) => {
+  const { id } = req.params;
+  if (!mongoose.isValidObjectId(id)) return sendError(res, 400, "Invalid staff ID");
+  const staff = await AdminUser.findById(id);
+  if (!staff) return sendError(res, 404, "Staff account not found");
+
+  if (isCenterAdmin(req.user)) {
+    const branchIds = await centerAdminBranchIds(req.user);
+    const staffFranchise = String(staff.franchiseId || "");
+    const inScope = branchIds.some((bId) => String(bId) === staffFranchise) || String(staff._id) === String(req.user._id);
+    if (!inScope && !isHeadSuperAdmin(req.user)) {
+      return sendError(res, 403, "Access denied to staff outside your center");
+    }
+  }
+
+  const { name, role, franchiseId, password } = req.body || {};
+  if (name && String(name).trim()) staff.name = String(name).trim();
+
+  if (role) {
+    if (!["superadmin", "center_admin", "admin", "branch_admin_counsellor", "counsellor", "teacher", "operations_executive", "franchise_superadmin", "franchise_admin_counsellor", "franchise_counsellor", "franchise_teacher", "franchise_operations_executive"].includes(role)) {
+      return sendError(res, 400, "Invalid staff role");
+    }
+    if (isCenterAdmin(req.user) && !["admin", "branch_admin_counsellor", "counsellor", "teacher", "operations_executive"].includes(role)) {
+      return sendError(res, 403, "Center admin can create or update only branch staff");
+    }
+    staff.role = role;
+  }
+
+  if (franchiseId !== undefined) {
+    if (franchiseId && mongoose.isValidObjectId(franchiseId)) {
+      if (isCenterAdmin(req.user)) {
+        const branchIds = await centerAdminBranchIds(req.user);
+        if (!branchIds.some((bId) => String(bId) === String(franchiseId))) {
+          return sendError(res, 403, "Cannot assign to branch outside your center");
+        }
+      }
+      staff.franchiseId = franchiseId;
+    } else if (!franchiseId && isHeadSuperAdmin(req.user)) {
+      staff.franchiseId = undefined;
+    }
+  }
+
+  if (password && String(password).length >= 8) {
+    staff.passwordHash = await bcrypt.hash(String(password), 10);
+  }
+
+  await staff.save();
+  res.json({ ok: true, data: staffResponse(staff) });
+});
+
+app.patch("/api/admin/me/password", requireAuth, async (req, res) => {
+  const { currentPassword, newPassword } = req.body || {};
+  if (!currentPassword || !newPassword) return sendError(res, 400, "Current and new password are required");
+  if (String(newPassword).length < 8) return sendError(res, 400, "Password must be at least 8 characters");
+  const user = await AdminUser.findById(req.user._id);
+  if (!user) return sendError(res, 404, "Account not found");
+  const valid = await bcrypt.compare(currentPassword, user.passwordHash);
+  if (!valid) return sendError(res, 401, "Current password is incorrect");
+  user.passwordHash = await bcrypt.hash(newPassword, 10);
+  await user.save();
+  res.json({ ok: true, message: "Password updated" });
+});
+
+app.get("/api/admin/geo-location", async (req, res) => {
+  const clientIp = (
+    req.headers["cf-connecting-ip"] ||
+    req.headers["x-real-ip"] ||
+    (req.headers["x-forwarded-for"] ? String(req.headers["x-forwarded-for"]).split(",")[0].trim() : "") ||
+    req.socket?.remoteAddress ||
+    req.ip ||
+    ""
+  ).replace(/^.*:/, "");
+
+  const isLocal = !clientIp || clientIp === "1" || clientIp === "127.0.0.1";
+
+  // 1. Try ipwho.is
+  try {
+    const geoUrl = isLocal ? "https://ipwho.is/" : `https://ipwho.is/${clientIp}`;
+    const geoRes = await fetch(geoUrl, { signal: AbortSignal.timeout(3000) });
+    if (geoRes.ok) {
+      const data = await geoRes.json();
+      if (data?.success && data?.latitude && data?.longitude) {
+        let city = data.city || data.region || "Chennai";
+        if (/tamil nadu|chennai|poonamalle/i.test(`${data.region || ""} ${data.city || ""}`)) {
+          city = "Chennai";
+        }
+        return res.json({ ok: true, data: { lat: data.latitude, lon: data.longitude, city } });
+      }
+    }
+  } catch (e) { }
+
+  // 2. Try geojs
+  try {
+    const geoRes = await fetch("https://get.geojs.io/v1/ip/geo.json", { signal: AbortSignal.timeout(3000) });
+    if (geoRes.ok) {
+      const data = await geoRes.json();
+      if (data?.latitude && data?.longitude) {
+        let city = data.city || data.region || "Chennai";
+        if (/tamil nadu|chennai|poonamalle/i.test(`${data.region || ""} ${data.city || ""}`)) {
+          city = "Chennai";
+        }
+        return res.json({ ok: true, data: { lat: parseFloat(data.latitude), lon: parseFloat(data.longitude), city } });
+      }
+    }
+  } catch (e) { }
+
+  return res.json({ ok: true, data: { lat: 13.0827, lon: 80.2707, city: "Chennai" } });
 });
 
 app.get("/api/admin/dashboard/summary", requireAuth, async (req, res) => {
-  const leadFilter = { ...adminScopeFilter(req.query), ...dateFilter(req.query) };
-  const studentFilter = { ...dateFilter(req.query) };
-  if (req.query.centre) studentFilter.centre = String(req.query.centre);
-  if (req.query.counsellor) studentFilter.counsellor = String(req.query.counsellor);
+  const leadFilter = { ...(await scopedDataFilter(req, req.query)), ...dateFilter(req.query) };
+  const studentFilter = { ...(await scopedDataFilter(req, req.query)), ...dateFilter(req.query) };
 
   const startOfMonth = new Date();
   startOfMonth.setDate(1);
@@ -318,12 +2220,12 @@ app.get("/api/admin/dashboard/summary", requireAuth, async (req, res) => {
     Lead.countDocuments(leadFilter.createdAt ? leadFilter : { ...leadFilter, createdAt: { $gte: startOfMonth } }),
     Lead.countDocuments(leadFilter),
     Lead.countDocuments({ ...leadFilter, stage: "Enrolled" }),
-    Student.countDocuments({ ...studentFilter, status: "In Training" }),
-    Student.countDocuments({ ...studentFilter, status: { $in: ["Course Completed", "Placed"] } }),
+    Student.countDocuments({ ...studentFilter, status: { $in: ["Admission", "Admission Completed", "Fees Decided", "Fees Collected", "Active Student", "In Training"] } }),
+    Student.countDocuments({ ...studentFilter, status: { $in: ["Course Completed", "Alumni", "Placed"] } }),
     Lead.countDocuments({ ...leadFilter, stage: "Lost" }),
     Student.countDocuments(studentFilter),
     Student.aggregate([{ $match: studentFilter }, { $group: { _id: null, total: { $sum: "$paidAmount" } } }]),
-    Student.aggregate([{ $match: studentFilter }, { $group: { _id: null, total: { $sum: { $max: [{ $subtract: ["$totalFee", "$paidAmount"] }, 0] } } } }]),
+    Student.aggregate([{ $match: studentFilter }, { $group: { _id: null, total: { $sum: { $max: [{ $subtract: [{ $subtract: ["$totalFee", { $ifNull: ["$discountAmount", 0] }] }, "$paidAmount"] }, 0] } } } }]),
   ]);
 
   const conversion = totalLeads ? Math.round(((enrolled + placed) / totalLeads) * 100) : 0;
@@ -331,52 +2233,378 @@ app.get("/api/admin/dashboard/summary", requireAuth, async (req, res) => {
 });
 
 app.get("/api/admin/dashboard/funnel", requireAuth, async (req, res) => {
-  const leadFilter = { ...adminScopeFilter(req.query), ...dateFilter(req.query) };
-  const studentFilter = { ...dateFilter(req.query) };
-  if (req.query.centre) studentFilter.centre = String(req.query.centre);
-  if (req.query.counsellor) studentFilter.counsellor = String(req.query.counsellor);
+  const leadFilter = { ...(await scopedDataFilter(req, req.query)), ...dateFilter(req.query) };
+  const studentFilter = { ...(await scopedDataFilter(req, req.query)), ...dateFilter(req.query) };
 
-  const allStages = ["New Lead", "Contacted", "Demo / Visit", "Counselling", "Enrolled", "In Training", "Course Completed", "Placed", "Lost"];
+  const allStages = ["New Lead", "Contacted", "Counselling", "Demo / Visit", "Admission", "Enrolled", "Alumni"];
   const leadGroups = await Lead.aggregate([{ $match: leadFilter }, { $group: { _id: "$stage", count: { $sum: 1 } } }]);
-  const [studentTraining, studentCompleted, studentPlaced] = await Promise.all([
-    Student.countDocuments({ ...studentFilter, status: "In Training" }),
+  const [studentTraining, studentCompleted, studentAlumni] = await Promise.all([
+    Student.countDocuments({ ...studentFilter, status: { $in: ["Fees Decided", "Fees Collected", "Active Student", "In Training"] } }),
     Student.countDocuments({ ...studentFilter, status: "Course Completed" }),
-    Student.countDocuments({ ...studentFilter, status: "Placed" }),
+    Student.countDocuments({ ...studentFilter, status: "Alumni" }),
   ]);
   const data = allStages.map((stage) => {
-    if (stage === "In Training") return { stage, count: studentTraining };
+    if (stage === "Active Student") return { stage, count: studentTraining };
     if (stage === "Course Completed") return { stage, count: studentCompleted };
-    if (stage === "Placed") return { stage, count: studentPlaced };
+    if (stage === "Alumni") return { stage, count: studentAlumni };
     return { stage, count: leadGroups.find((item) => item._id === stage)?.count || 0 };
   });
   res.json({ ok: true, data });
 });
 
 app.get("/api/admin/dashboard/centres", requireAuth, async (req, res) => {
-  const leadFilter = { ...adminScopeFilter(req.query), ...dateFilter(req.query) };
-  const data = await Lead.aggregate([{ $match: leadFilter }, { $group: { _id: "$centre", leads: { $sum: 1 }, enrolled: { $sum: { $cond: [{ $in: ["$stage", ["Enrolled", "In Training", "Placed"]] }, 1, 0] } } } }, { $sort: { leads: -1 } }]);
+  const leadFilter = { ...(await scopedDataFilter(req, req.query)), ...dateFilter(req.query) };
+  const studentFilter = { ...(await scopedDataFilter(req, req.query)), ...dateFilter(req.query) };
+  if (!leadFilter.centre) leadFilter.centre = { $nin: ["", null] };
+  if (!studentFilter.centre) studentFilter.centre = { $nin: ["", null] };
+  const [leadGroups, studentGroups] = await Promise.all([
+    Lead.aggregate([{ $match: leadFilter }, { $group: { _id: "$centre", leads: { $sum: 1 } } }]),
+    Student.aggregate([
+      { $match: studentFilter },
+      { $group: { _id: "$centre", enrolled: { $sum: 1 } } },
+      { $match: { enrolled: { $gt: 0 } } },
+      { $sort: { enrolled: -1 } },
+    ]),
+  ]);
+  const leadCounts = new Map(leadGroups.map((item) => [item._id || "Unassigned", item.leads]));
+  const data = studentGroups.map((item) => {
+    const centre = item._id || "Unassigned";
+    return { _id: centre, leads: leadCounts.get(centre) || item.enrolled, enrolled: item.enrolled };
+  });
   res.json({ ok: true, data: data.map((item) => ({ centre: item._id || "Unassigned", leads: item.leads, enrolled: item.enrolled })) });
 });
 
+app.get("/api/admin/reports/student-status", requireAuth, async (req, res) => {
+  if (!isHeadSuperAdmin(req.user)) {
+    return sendError(res, 403, "Status & Branch Reports are restricted to Super Admin only");
+  }
+
+  const { timeframe = "all", dateFrom = "", dateTo = "", centre = "", course = "", status = "", q = "" } = req.query;
+
+  // Build Date Range
+  const now = new Date();
+  let dateQuery = {};
+
+  if (dateFrom && dateTo) {
+    const startParts = String(dateFrom).split("-").map(Number);
+    const endParts = String(dateTo).split("-").map(Number);
+    if (startParts.length === 3 && endParts.length === 3) {
+      const start = new Date(startParts[0], startParts[1] - 1, startParts[2], 0, 0, 0, 0);
+      const end = new Date(endParts[0], endParts[1] - 1, endParts[2], 23, 59, 59, 999);
+      dateQuery = { createdAt: { $gte: start, $lte: end } };
+    }
+  } else if (dateFrom) {
+    const parts = String(dateFrom).split("-").map(Number);
+    if (parts.length === 3) {
+      const start = new Date(parts[0], parts[1] - 1, parts[2], 0, 0, 0, 0);
+      const end = new Date(parts[0], parts[1] - 1, parts[2], 23, 59, 59, 999);
+      dateQuery = { createdAt: { $gte: start, $lte: end } };
+    }
+  } else if (timeframe === "today") {
+    const start = new Date(now.getFullYear(), now.getMonth(), now.getDate(), 0, 0, 0, 0);
+    const end = new Date(now.getFullYear(), now.getMonth(), now.getDate(), 23, 59, 59, 999);
+    dateQuery = { createdAt: { $gte: start, $lte: end } };
+  } else if (timeframe === "yesterday") {
+    const yest = new Date(now);
+    yest.setDate(yest.getDate() - 1);
+    const start = new Date(yest.getFullYear(), yest.getMonth(), yest.getDate(), 0, 0, 0, 0);
+    const end = new Date(yest.getFullYear(), yest.getMonth(), yest.getDate(), 23, 59, 59, 999);
+    dateQuery = { createdAt: { $gte: start, $lte: end } };
+  } else if (timeframe === "this_week") {
+    const day = now.getDay();
+    const diff = now.getDate() - day + (day === 0 ? -6 : 1);
+    const start = new Date(now.getFullYear(), now.getMonth(), diff, 0, 0, 0, 0);
+    const end = new Date(now.getFullYear(), now.getMonth(), diff + 6, 23, 59, 59, 999);
+    dateQuery = { createdAt: { $gte: start, $lte: end } };
+  } else if (timeframe === "last_week") {
+    const day = now.getDay();
+    const diff = now.getDate() - day + (day === 0 ? -6 : 1) - 7;
+    const start = new Date(now.getFullYear(), now.getMonth(), diff, 0, 0, 0, 0);
+    const end = new Date(now.getFullYear(), now.getMonth(), diff + 6, 23, 59, 59, 999);
+    dateQuery = { createdAt: { $gte: start, $lte: end } };
+  } else if (timeframe === "this_month") {
+    const start = new Date(now.getFullYear(), now.getMonth(), 1, 0, 0, 0, 0);
+    const end = new Date(now.getFullYear(), now.getMonth() + 1, 0, 23, 59, 59, 999);
+    dateQuery = { createdAt: { $gte: start, $lte: end } };
+  } else if (timeframe === "last_month") {
+    const start = new Date(now.getFullYear(), now.getMonth() - 1, 1, 0, 0, 0, 0);
+    const end = new Date(now.getFullYear(), now.getMonth(), 0, 23, 59, 59, 999);
+    dateQuery = { createdAt: { $gte: start, $lte: end } };
+  } else if (timeframe === "this_year") {
+    const start = new Date(now.getFullYear(), 0, 1, 0, 0, 0, 0);
+    const end = new Date(now.getFullYear(), 11, 31, 23, 59, 59, 999);
+    dateQuery = { createdAt: { $gte: start, $lte: end } };
+  }
+
+  const baseFilter = { ...(await scopedDataFilter(req, req.query)), ...dateQuery };
+  if (centre && centre !== "all") {
+    baseFilter.centre = { $regex: new RegExp(`^${escapeRegex(String(centre).trim())}$`, "i") };
+  }
+  if (course && course !== "all") {
+    const trimmedCourse = String(course).trim();
+    const courseDoc = await Course.findOne({
+      $or: [
+        { code: { $regex: new RegExp(`^${escapeRegex(trimmedCourse)}$`, "i") } },
+        { name: { $regex: new RegExp(`^${escapeRegex(trimmedCourse)}$`, "i") } },
+      ],
+    }).lean();
+    if (courseDoc) {
+      baseFilter.course = { $in: [courseDoc.code, courseDoc.name] };
+    } else {
+      baseFilter.course = { $regex: new RegExp(`^${escapeRegex(trimmedCourse)}$`, "i") };
+    }
+  }
+  if (status && status !== "all") {
+    if (status === "Placed" || status === "Alumni") {
+      baseFilter.status = { $in: ["Placed", "Alumni"] };
+    } else if (status === "In Training") {
+      baseFilter.status = { $in: ["Fees Decided", "Fees Collected", "Active Student", "In Training"] };
+    } else if (status === "Enrolled") {
+      baseFilter.status = { $in: ["Enrolled", "Admission", "Admission Completed"] };
+    } else {
+      baseFilter.status = status;
+    }
+  }
+
+  if (q && q.trim()) {
+    const regex = new RegExp(escapeRegex(q.trim()), "i");
+    baseFilter.$or = [{ fullName: regex }, { phone: regex }, { email: regex }, { admissionNumber: regex }, { counsellor: regex }];
+  }
+
+  // Fetch student records matching the filter
+  const students = await Student.find(baseFilter)
+    .select("fullName phone email parentMobile centre course batch counsellor counsellorName source status totalFee paidAmount admissionNumber createdAt placementCompany placementSalary")
+    .sort({ createdAt: -1 })
+    .lean();
+
+  // Load all centres to show even 0-count centres in matrix
+  const allCentresDocs = await Centre.find({ active: { $ne: false } }).select("name").lean();
+  const knownCentres = new Set(allCentresDocs.map((c) => c.name).filter(Boolean));
+  students.forEach((s) => {
+    if (s.centre) knownCentres.add(s.centre);
+  });
+
+  const centreList = Array.from(knownCentres);
+  if (centreList.length === 0) centreList.push("Default Centre");
+
+  // Build matrix grouped by Centre
+  const matrix = centreList.map((cName) => {
+    const branchStudents = students.filter((s) => String(s.centre || "Unassigned").trim().toLowerCase() === String(cName).trim().toLowerCase());
+    const enrolled = branchStudents.filter((s) => ["Enrolled", "Admission", "Admission Completed"].includes(s.status)).length;
+    const inTraining = branchStudents.filter((s) => ["Fees Decided", "Fees Collected", "Active Student", "In Training"].includes(s.status)).length;
+    const classroomComplete = branchStudents.filter((s) => s.status === "Classroom Complete").length;
+    const courseCompleted = branchStudents.filter((s) => s.status === "Course Completed").length;
+    const placed = branchStudents.filter((s) => ["Placed", "Alumni"].includes(s.status)).length;
+    const dropped = branchStudents.filter((s) => s.status === "Dropped").length;
+    const total = branchStudents.length;
+
+    const dropoutRate = total > 0 ? Number(((dropped / total) * 100).toFixed(1)) : 0;
+    const retentionRate = total > 0 ? Number((((total - dropped) / total) * 100).toFixed(1)) : 0;
+    const completionRate = total > 0 ? Number((((courseCompleted + placed) / total) * 100).toFixed(1)) : 0;
+
+    return {
+      centre: cName,
+      enrolled,
+      inTraining,
+      classroomComplete,
+      courseCompleted,
+      placed,
+      dropped,
+      total,
+      dropoutRate,
+      retentionRate,
+      completionRate,
+    };
+  });
+
+  // Sort matrix by total students descending
+  matrix.sort((a, b) => b.total - a.total);
+
+  // Calculate Grand Totals
+  const grandTotal = {
+    centre: "All Branches (Total)",
+    enrolled: matrix.reduce((acc, row) => acc + row.enrolled, 0),
+    inTraining: matrix.reduce((acc, row) => acc + row.inTraining, 0),
+    classroomComplete: matrix.reduce((acc, row) => acc + row.classroomComplete, 0),
+    courseCompleted: matrix.reduce((acc, row) => acc + row.courseCompleted, 0),
+    placed: matrix.reduce((acc, row) => acc + row.placed, 0),
+    dropped: matrix.reduce((acc, row) => acc + row.dropped, 0),
+    total: matrix.reduce((acc, row) => acc + row.total, 0),
+  };
+
+  grandTotal.dropoutRate = grandTotal.total > 0 ? Number(((grandTotal.dropped / grandTotal.total) * 100).toFixed(1)) : 0;
+  grandTotal.retentionRate = grandTotal.total > 0 ? Number((((grandTotal.total - grandTotal.dropped) / grandTotal.total) * 100).toFixed(1)) : 0;
+  grandTotal.completionRate = grandTotal.total > 0 ? Number((((grandTotal.courseCompleted + grandTotal.placed) / grandTotal.total) * 100).toFixed(1)) : 0;
+
+  // Course Breakdown
+  const courseMap = new Map();
+  students.forEach((s) => {
+    const cName = s.course || "Other";
+    if (!courseMap.has(cName)) {
+      courseMap.set(cName, { course: cName, enrolled: 0, inTraining: 0, classroomComplete: 0, courseCompleted: 0, placed: 0, dropped: 0, total: 0 });
+    }
+    const item = courseMap.get(cName);
+    item.total += 1;
+    if (["Enrolled", "Admission", "Admission Completed"].includes(s.status)) item.enrolled += 1;
+    else if (["Fees Decided", "Fees Collected", "Active Student", "In Training"].includes(s.status)) item.inTraining += 1;
+    else if (s.status === "Classroom Complete") item.classroomComplete += 1;
+    else if (s.status === "Course Completed") item.courseCompleted += 1;
+    else if (["Placed", "Alumni"].includes(s.status)) item.placed += 1;
+    else if (s.status === "Dropped") item.dropped += 1;
+  });
+
+  const courseBreakdown = Array.from(courseMap.values()).sort((a, b) => b.total - a.total);
+
+  res.json({
+    ok: true,
+    data: {
+      summary: grandTotal,
+      matrix,
+      grandTotal,
+      courseBreakdown,
+      students,
+      filters: { timeframe, dateFrom, dateTo, centre, course, status, q },
+    },
+  });
+});
+
 app.get("/api/admin/leads", requireAuth, async (req, res) => {
-  const { q = "", stage = "", centre = "", course = "", counsellor = "" } = req.query;
+  if (!canUseLeads(req.user)) return sendError(res, 403, "Lead access is restricted to counsellor and admin accounts");
+  const { q = "", stage = "", centre = "", course = "", counsellor = "", leadFeedback = "" } = req.query;
   const filter = { ...dateFilter(req.query) };
   if (stage) filter.stage = stage;
+  if (leadFeedback) filter.leadFeedback = leadFeedback;
   if (centre) filter.centre = centre;
   if (course) filter.course = course;
-  if (counsellor) filter.counsellor = counsellor;
-  if (q) filter.$or = [{ fullName: { $regex: q, $options: "i" } }, { phone: { $regex: q, $options: "i" } }, { email: { $regex: q, $options: "i" } }];
-  const leads = await Lead.find(filter).sort({ updatedAt: -1 }).limit(250).lean();
+  if (counsellor) {
+    if (counsellor === "Unassigned") {
+      filter.counsellor = { $in: ["Unassigned", "", null] };
+    } else {
+      filter.counsellor = counsellor;
+    }
+  }
+  if (isCounsellorAccount(req.user)) filter.counsellor = req.user.name;
+  Object.assign(filter, await scopedDataFilter(req, req.query));
+  if (q) {
+    const searchFilter = [{ fullName: { $regex: q, $options: "i" } }, { phone: { $regex: q, $options: "i" } }, { email: { $regex: q, $options: "i" } }];
+    if (filter.$or) {
+      filter.$and = [{ $or: filter.$or }, { $or: searchFilter }];
+      delete filter.$or;
+    } else {
+      filter.$or = searchFilter;
+    }
+  }
+  const { page, limit, skip } = paginationFromQuery(req.query);
+  const [total, leads] = await Promise.all([
+    Lead.countDocuments(filter),
+    Lead.aggregate([
+      { $match: filter },
+      {
+        $addFields: {
+          isJunk: {
+            $cond: [
+              {
+                $or: [
+                  { $in: ["$leadFeedback", ["Junk", "Lost", "Invalid", "Not Interested"]] },
+                  { $eq: ["$stage", "Lost"] },
+                ],
+              },
+              1,
+              0,
+            ],
+          },
+        },
+      },
+      {
+        $sort: {
+          isJunk: 1,
+          createdAt: -1,
+          _id: -1,
+        },
+      },
+      { $skip: skip },
+      { $limit: limit },
+    ]),
+  ]);
+  res.json({ ok: true, data: leads, meta: paginationMeta(total, page, limit) });
+});
+
+app.get("/api/admin/leads/followups", requireAuth, async (req, res) => {
+  if (!canUseLeads(req.user)) return sendError(res, 403, "Lead access is restricted to counsellor and admin accounts");
+  const filter = { nextFollowUp: { $exists: true, $ne: null } };
+  Object.assign(filter, await scopedDataFilter(req, req.query));
+  if (isCounsellorAccount(req.user)) filter.counsellor = req.user.name;
+  const leads = await Lead.find(filter).sort({ nextFollowUp: 1 }).limit(100).lean();
   res.json({ ok: true, data: leads });
+});
+
+app.get("/api/admin/leads/assigned", requireAuth, async (req, res) => {
+  if (!canUseLeads(req.user)) return sendError(res, 403, "Lead access is restricted to counsellor and admin accounts");
+  const thirtyDaysAgo = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000);
+  const filter = {
+    $or: [
+      { assignedAt: { $exists: true, $ne: null, $gte: thirtyDaysAgo } },
+      { "activities.type": "assigned", updatedAt: { $gte: thirtyDaysAgo } },
+      { stage: { $in: ["New Lead", "New", ""] }, createdAt: { $gte: thirtyDaysAgo } },
+      { source: { $in: ["Website Enquiry", "Website"] }, createdAt: { $gte: thirtyDaysAgo } },
+    ],
+  };
+  Object.assign(filter, await scopedDataFilter(req, req.query));
+  if (isCounsellorAccount(req.user)) filter.counsellor = req.user.name;
+  const leads = await Lead.find(filter).sort({ assignedAt: -1, updatedAt: -1, createdAt: -1 }).limit(100).lean();
+  res.json({ ok: true, data: leads });
+});
+
+app.get("/api/admin/admissions", requireAuth, async (req, res) => {
+  if (!canUseLeads(req.user)) return sendError(res, 403, "Lead access is restricted to counsellor and admin accounts");
+  const leadFilter = { stage: "Admission" };
+  Object.assign(leadFilter, await scopedDataFilter(req, req.query));
+  if (isCounsellorAccount(req.user)) leadFilter.counsellor = req.user.name;
+
+  const studentFilter = { leadId: { $exists: true, $ne: null } };
+  Object.assign(studentFilter, await scopedDataFilter(req, req.query));
+  if (isCounsellorAccount(req.user)) studentFilter.counsellor = req.user.name;
+
+  const convertedLeadIds = await Student.distinct("leadId", studentFilter);
+  const leads = await Lead.find({ ...leadFilter, _id: { $nin: convertedLeadIds } })
+    .sort({ updatedAt: -1, createdAt: -1 })
+    .lean();
+  res.json({ ok: true, data: leads });
+});
+
+app.get("/api/admin/admissions/pending-count", requireAuth, async (req, res) => {
+  if (!canUseLeads(req.user)) return sendError(res, 403, "Lead access is restricted to counsellor and admin accounts");
+  const leadFilter = { stage: "Admission" };
+  Object.assign(leadFilter, await scopedDataFilter(req, req.query));
+  if (isCounsellorAccount(req.user)) leadFilter.counsellor = req.user.name;
+
+  const studentFilter = { leadId: { $exists: true, $ne: null } };
+  Object.assign(studentFilter, await scopedDataFilter(req, req.query));
+  if (isCounsellorAccount(req.user)) studentFilter.counsellor = req.user.name;
+
+  const convertedLeadIds = await Student.distinct("leadId", studentFilter);
+  const total = await Lead.countDocuments({ ...leadFilter, _id: { $nin: convertedLeadIds } });
+  res.json({ ok: true, data: { total } });
 });
 
 app.post("/api/admin/leads", requireAuth, leadDocumentUpload.fields([
   { name: "governmentProof", maxCount: 1 },
   { name: "highestQualificationCertificate", maxCount: 1 },
 ]), async (req, res) => {
+  if (!canUseLeads(req.user)) return sendError(res, 403, "Lead creation is restricted to counsellor and admin accounts");
   const body = req.body || {};
   const files = req.files || {};
-  if (!body.fullName || !body.phone) return sendError(res, 400, "Full name and phone are required");
+  if (!body.fullName || !body.phone || !body.studentLocation || !body.source || !body.centre || !body.course) {
+    return sendError(res, 400, "Full name, phone, student location, source, centre, and course are required");
+  }
+  const franchise = await resolveFranchiseFromRequest(req, body.centre || "");
+  if (isFranchiseUser(req.user) && !franchise) return sendError(res, 403, "Franchise account is not assigned");
+  const centreName = franchise?.name || body.centre || "";
+  if (!centreName) return sendError(res, 400, "Centre is required");
+  if (!isCourseAllowedForCentre(centreName, body.course || "", req.user)) return sendError(res, 400, "Kochi centre allows only AHAP and GCA courses");
+  const leadFeedback = normalizeLeadFeedbackStatus(body.leadFeedback);
+  const requestedStage = String(body.stage || "New Lead").trim();
+  if (!leadCreateStageOptions.includes(requestedStage)) return sendError(res, 400, "Use Admission and batch assignment before enrolling a lead");
   const lead = await Lead.create({
     fullName: body.fullName,
     phone: normalizePhone(body.phone),
@@ -384,59 +2612,492 @@ app.post("/api/admin/leads", requireAuth, leadDocumentUpload.fields([
     email: body.email || "",
     governmentProof: saveLeadDocument(files.governmentProof?.[0]),
     highestQualificationCertificate: saveLeadDocument(files.highestQualificationCertificate?.[0]),
+    studentLocation: body.studentLocation || "",
     source: body.source || "Website",
-    centre: body.centre || "",
+    counsellorName: body.counsellorName ? String(body.counsellorName).trim() : "",
+    scholarName: body.scholarName ? String(body.scholarName).trim() : "",
+    refereeName: body.refereeName ? String(body.refereeName).trim() : "",
+    referralAmount: body.referralAmount ? Number(body.referralAmount) || 0 : 0,
+    centre: centreName,
+    franchiseId: franchise?._id,
     course: body.course || "",
-    counsellor: body.counsellor || "Unassigned",
-    stage: body.stage || "New Lead",
-    priority: body.priority || "Warm",
+    counsellor: isCounsellorAccount(req.user) ? req.user.name : body.counsellor || "Unassigned",
+    leadFeedback,
+    stage: requestedStage,
+    priority: priorityFromLeadFeedback(leadFeedback) || normalizeLeadPriority(body.priority),
     city: body.city || "",
-    expectedFee: Number(body.expectedFee || 0),
+    expectedFee: canManageFees(req.user) ? Number(body.expectedFee || 0) : feeWithGst((await Course.findOne({ $or: [{ code: body.course }, { name: body.course }], active: true }).lean())?.fee || 0),
     notes: body.notes || "",
-    activities: [{ type: "created", message: "Lead created", by: req.user.name }],
+    activities: [{ type: "created", message: "Lead created", by: req.user.name, at: new Date() }],
   });
   res.status(201).json({ ok: true, data: lead });
 });
 
+app.post("/api/admin/leads/import", requireAuth, upload.single("file"), async (req, res) => {
+  if (!canUseLeads(req.user)) return sendError(res, 403, "Lead import is restricted to counsellor and admin accounts");
+  if (!req.file) return sendError(res, 400, "Excel file is required");
+  const extension = path.extname(req.file.originalname || "").toLowerCase();
+  if (![".xlsx", ".xls", ".csv"].includes(extension)) return sendError(res, 400, "Upload .xlsx, .xls or .csv file");
+
+  let rows = [];
+  try {
+    const workbook = XLSX.read(req.file.buffer, { type: "buffer", cellDates: true });
+    const firstSheetName = workbook.SheetNames[0];
+    rows = firstSheetName ? XLSX.utils.sheet_to_json(workbook.Sheets[firstSheetName], { defval: "" }) : [];
+  } catch {
+    return sendError(res, 400, "Unable to read Excel file");
+  }
+
+  if (!rows.length) return sendError(res, 400, "Excel file has no lead rows");
+
+  const courses = await Course.find({ active: true }).lean();
+  const docs = [];
+  const skipped = [];
+
+  for (const [index, row] of rows.entries()) {
+    const rowNumber = index + 2;
+    const fullName = excelString(row, ["Full Name", "Name", "Student Name", "Lead Name", "Lead"]);
+    const phone = normalizePhone(excelString(row, ["Phone", "Mobile", "Contact", "Contact No", "Mobile No", "Phone Number", "Contact Number"]));
+    if (!fullName || !phone) {
+      skipped.push({ row: rowNumber, reason: "Missing full name or phone" });
+      continue;
+    }
+
+    const centreInput = excelString(row, ["Centre", "Center", "Branch", "Franchise", "Location"]);
+    let franchise = await resolveFranchiseFromRequest(req, centreInput);
+    if (!franchise && isHeadBranchScoped(req.user) && req.user.franchiseId) {
+      franchise = await Centre.findOne({ _id: req.user.franchiseId, type: "branch", active: true }).lean();
+    }
+    if (isFranchiseUser(req.user) && !franchise) {
+      skipped.push({ row: rowNumber, reason: "Franchise account is not assigned" });
+      continue;
+    }
+
+    const courseInput = excelString(row, ["Course", "Program", "Course Code"]);
+    const matchedCourse = courses.find((course) => [course.code, course.name].map((value) => String(value || "").toLowerCase()).includes(courseInput.toLowerCase()));
+    const centreName = franchise?.name || centreInput || "";
+    if (!centreName) {
+      skipped.push({ row: rowNumber, reason: "Centre is required" });
+      continue;
+    }
+    const courseValue = courseInput || matchedCourse?.code || matchedCourse?.name || "";
+    if (!isCourseAllowedForCentre(centreName, courseValue, req.user)) {
+      skipped.push({ row: rowNumber, reason: "Kochi centre allows only AHAP and GCA courses" });
+      continue;
+    }
+    const rawLeadFeedback = excelString(row, ["Lead Status", "Status", "Lead Feedback", "Feedback", "Status Feedback"]) || "New";
+    const leadFeedback = normalizeLeadFeedbackStatus(rawLeadFeedback);
+    const rawStage = excelString(row, ["Stage", "Lead Stage"]) || "New Lead";
+    const stage = leadCreateStageOptions.includes(rawStage) ? rawStage : "New Lead";
+    const rawPriority = excelString(row, ["Priority"]);
+    const priority = leadPriorityOptions.includes(String(rawPriority || "").toUpperCase()) || ["Hot", "Warm", "Cold"].includes(rawPriority) ? normalizeLeadPriority(rawPriority) : priorityFromLeadFeedback(leadFeedback) || "P2";
+    const expectedFee = canManageFees(req.user)
+      ? excelNumber(row, ["Expected Fee", "Fee", "Total Fee", "Course Fee"]) || feeWithGst(matchedCourse?.fee || 0)
+      : feeWithGst(matchedCourse?.fee || 0);
+
+    docs.push({
+      fullName,
+      phone,
+      parentMobile: normalizePhone(excelString(row, ["Parent Mobile", "Parent Phone", "Parent Contact"])),
+      email: excelString(row, ["Email", "Email Id"]),
+      studentLocation: excelString(row, ["Student Location", "Student Place", "Address"]),
+      source: excelString(row, ["Source", "Lead Source"]) || "Excel import",
+      counsellorName: excelString(row, ["BTL Counsellor", "BTL Counsellor Name", "Counsellor Name", "Counsellor"]),
+      scholarName: excelString(row, ["Scholar Name", "Scholar", "BTL Scholar", "Student Scholar"]),
+      refereeName: excelString(row, ["Referee Name", "Referee", "Referral Name", "Referred By"]),
+      referralAmount: excelNumber(row, ["Referral Amount", "Referee Amount", "Referral Fee"]) || 0,
+      centre: centreName,
+      franchiseId: franchise?._id,
+      course: courseValue,
+      counsellor: isCounsellorAccount(req.user) ? req.user.name : excelString(row, ["Counsellor", "Counselor", "Assigned To"]) || "Unassigned",
+      leadFeedback,
+      stage,
+      priority,
+      city: excelString(row, ["City"]),
+      expectedFee,
+      notes: excelString(row, ["Notes", "Remark", "Remarks"]),
+      activities: [{ type: "created", message: "Lead imported from Excel", by: req.user.name, at: new Date() }],
+    });
+  }
+
+  if (!docs.length) {
+    const headers = rows[0] ? Object.keys(rows[0]).filter(Boolean).join(", ") : "";
+    return sendError(res, 400, `${skipped[0]?.reason || "No valid leads found in Excel"}${headers ? `. Found columns: ${headers}` : ""}`);
+  }
+
+  const created = await Lead.insertMany(docs, { ordered: false });
+  res.status(201).json({ ok: true, data: { inserted: created.length, skipped } });
+});
+
 app.patch("/api/admin/leads/:id", requireAuth, async (req, res) => {
-  const allowedLeadUpdates = (({ fullName, phone, parentMobile, email, governmentProof, highestQualificationCertificate, source, centre, course, counsellor, stage, priority, city, expectedFee, nextFollowUp, notes }) => ({ fullName, phone, parentMobile, email, governmentProof, highestQualificationCertificate, source, centre, course, counsellor, stage, priority, city, expectedFee, nextFollowUp, notes }))(req.body || {});
+  if (!canUseLeads(req.user)) return sendError(res, 403, "Lead updates are restricted to counsellor and admin accounts");
+  const allowedLeadUpdates = (({ fullName, phone, parentMobile, email, governmentProof, highestQualificationCertificate, studentLocation, source, counsellorName, scholarName, refereeName, refereePhone, referralAmount, centre, course, counsellor, leadFeedback, stage, priority, city, expectedFee, nextFollowUp, notes }) => ({ fullName, phone, parentMobile, email, governmentProof, highestQualificationCertificate, studentLocation, source, counsellorName, scholarName, refereeName, refereePhone, referralAmount, centre, course, counsellor, leadFeedback, stage, priority, city, expectedFee, nextFollowUp, notes }))(req.body || {});
   Object.keys(allowedLeadUpdates).forEach((key) => allowedLeadUpdates[key] === undefined && delete allowedLeadUpdates[key]);
-  const lead = await Lead.findByIdAndUpdate(req.params.id, { $set: allowedLeadUpdates }, { new: true, runValidators: true });
+  if (!canManageFees(req.user) && Object.prototype.hasOwnProperty.call(allowedLeadUpdates, "expectedFee")) {
+    return sendError(res, 403, "Fee updates are restricted to admin accounts");
+  }
+  if (!canAssignStaff(req.user)) delete allowedLeadUpdates.counsellor;
+  if (Object.prototype.hasOwnProperty.call(allowedLeadUpdates, "leadFeedback")) allowedLeadUpdates.leadFeedback = normalizeLeadFeedbackStatus(allowedLeadUpdates.leadFeedback);
+  if (allowedLeadUpdates.leadFeedback) allowedLeadUpdates.priority = priorityFromLeadFeedback(allowedLeadUpdates.leadFeedback) || allowedLeadUpdates.priority;
+  if (Object.prototype.hasOwnProperty.call(allowedLeadUpdates, "nextFollowUp")) {
+    allowedLeadUpdates.nextFollowUp = allowedLeadUpdates.nextFollowUp ? new Date(allowedLeadUpdates.nextFollowUp) : null;
+  }
+  if (["Enrolled", "Alumni"].includes(allowedLeadUpdates.stage) && !Object.prototype.hasOwnProperty.call(allowedLeadUpdates, "nextFollowUp")) {
+    allowedLeadUpdates.nextFollowUp = null;
+  }
+  if (allowedLeadUpdates.leadFeedback === "Junk") {
+    allowedLeadUpdates.nextFollowUp = null;
+  }
+  const existingLead = await Lead.findById(req.params.id).lean();
+  if (!existingLead) return sendError(res, 404, "Lead not found");
+  if (!(await canAccessRecord(req, existingLead))) return sendError(res, 403, "You can access only permitted records");
+  if (isFranchiseUser(req.user)) delete allowedLeadUpdates.centre;
+  if (allowedLeadUpdates.centre && !isFranchiseUser(req.user)) {
+    const franchise = await resolveFranchiseFromRequest(req, allowedLeadUpdates.centre);
+    if (franchise) {
+      allowedLeadUpdates.centre = franchise.name;
+      allowedLeadUpdates.franchiseId = franchise._id;
+    } else {
+      const fallbackCentre = await Centre.findOne({
+        name: { $regex: new RegExp(`^${escapeRegex(String(allowedLeadUpdates.centre).trim())}$`, "i") },
+      }).lean();
+      if (fallbackCentre) {
+        allowedLeadUpdates.centre = fallbackCentre.name;
+        allowedLeadUpdates.franchiseId = fallbackCentre._id;
+      }
+    }
+  }
+  const nextLeadCentre = Object.prototype.hasOwnProperty.call(allowedLeadUpdates, "centre") ? allowedLeadUpdates.centre : existingLead.centre;
+  const nextLeadCourse = Object.prototype.hasOwnProperty.call(allowedLeadUpdates, "course") ? allowedLeadUpdates.course : existingLead.course;
+  if (!isCourseAllowedForCentre(nextLeadCentre, nextLeadCourse, req.user)) return sendError(res, 400, "Kochi centre allows only AHAP and GCA courses");
+  if (allowedLeadUpdates.course && allowedLeadUpdates.course !== existingLead.course && !Object.prototype.hasOwnProperty.call(allowedLeadUpdates, "expectedFee")) {
+    const courseDoc = await Course.findOne({
+      $or: [
+        { code: new RegExp(`^${allowedLeadUpdates.course}$`, "i") },
+        { name: new RegExp(`^${allowedLeadUpdates.course}$`, "i") },
+      ],
+      active: true,
+      ...(existingLead.franchiseId ? { $or: [{ franchiseId: existingLead.franchiseId }, { franchiseId: { $exists: false } }, { franchiseId: null }] } : {}),
+    }).sort({ franchiseId: -1 }).lean();
+    if (courseDoc?.fee) {
+      allowedLeadUpdates.expectedFee = feeWithGst(courseDoc.fee);
+    }
+  }
+  if (["Enrolled", "Alumni"].includes(allowedLeadUpdates.stage)) {
+    const linkedStudent = await Student.findOne({ leadId: existingLead._id }).select("_id").lean();
+    if (!linkedStudent) return sendError(res, 400, "Use Admission stage and assign a batch before enrolling this lead");
+  }
+
+  const activitiesToPush = [];
+  if (allowedLeadUpdates.centre && allowedLeadUpdates.centre !== existingLead.centre) {
+    allowedLeadUpdates.assignedAt = new Date();
+    allowedLeadUpdates.assignedBy = req.user.name || "Super Admin";
+    activitiesToPush.push({
+      type: "assigned",
+      message: `Lead assigned to ${allowedLeadUpdates.centre} centre by ${req.user.name || "Super Admin"}`,
+      by: req.user.name || "Super Admin",
+      at: new Date(),
+    });
+  }
+  if (allowedLeadUpdates.counsellor && allowedLeadUpdates.counsellor !== existingLead.counsellor) {
+    if (!allowedLeadUpdates.assignedAt) {
+      allowedLeadUpdates.assignedAt = new Date();
+      allowedLeadUpdates.assignedBy = req.user.name || "Super Admin";
+    }
+    activitiesToPush.push({
+      type: "assigned",
+      message: `Assigned counsellor set to ${allowedLeadUpdates.counsellor} by ${req.user.name || "Super Admin"}`,
+      by: req.user.name || "Super Admin",
+      at: new Date(),
+    });
+  }
+
+  const updateQuery = { $set: allowedLeadUpdates };
+  if (activitiesToPush.length) {
+    updateQuery.$push = { activities: { $each: activitiesToPush } };
+  }
+  const lead = await Lead.findByIdAndUpdate(req.params.id, updateQuery, { new: true, runValidators: true });
+  if (!lead) return sendError(res, 404, "Lead not found");
+  const studentSyncUpdates = {};
+  ["fullName", "phone", "parentMobile", "email", "governmentProof", "highestQualificationCertificate", "studentLocation", "centre", "franchiseId", "course", "counsellor"].forEach((field) => {
+    if (Object.prototype.hasOwnProperty.call(allowedLeadUpdates, field)) studentSyncUpdates[field] = lead[field];
+  });
+  if (Object.prototype.hasOwnProperty.call(allowedLeadUpdates, "expectedFee")) studentSyncUpdates.totalFee = lead.expectedFee;
+  if (Object.prototype.hasOwnProperty.call(allowedLeadUpdates, "stage") && ["Enrolled", "Alumni"].includes(lead.stage)) {
+    studentSyncUpdates.status = lead.stage;
+  }
+  if (Object.keys(studentSyncUpdates).length) {
+    const linkedStudents = await Student.find({ leadId: lead._id }).select("_id").lean();
+    const linkedStudentIds = linkedStudents.map((student) => student._id);
+    await Promise.all([
+      Student.updateMany({ _id: { $in: linkedStudentIds } }, { $set: studentSyncUpdates }),
+      linkedStudentIds.length ? Attendance.updateMany({ studentId: { $in: linkedStudentIds } }, {
+        $set: {
+          ...(studentSyncUpdates.fullName ? { studentName: studentSyncUpdates.fullName } : {}),
+          ...(studentSyncUpdates.centre ? { centre: studentSyncUpdates.centre } : {}),
+          ...(studentSyncUpdates.franchiseId ? { franchiseId: studentSyncUpdates.franchiseId } : {}),
+          ...(studentSyncUpdates.course ? { course: studentSyncUpdates.course } : {}),
+          ...(studentSyncUpdates.counsellor ? { counsellor: studentSyncUpdates.counsellor } : {}),
+        }
+      }) : Promise.resolve(),
+    ]);
+  }
+  res.json({ ok: true, data: lead });
+});
+
+app.post("/api/admin/leads/bulk-assign-centre", requireAuth, async (req, res) => {
+  if (!canUseLeads(req.user)) return sendError(res, 403, "Lead access is restricted to counsellor and admin accounts");
+  if (isFranchiseUser(req.user)) return sendError(res, 403, "Franchise accounts cannot reassign leads to other centres");
+  const { ids = [], centre = "" } = req.body || {};
+  if (!Array.isArray(ids) || !ids.length) return sendError(res, 400, "No leads selected");
+  if (!centre) return sendError(res, 400, "Centre is required");
+
+  const franchise = await resolveFranchiseFromRequest(req, centre);
+  let resolvedCentre = centre;
+  let resolvedFranchiseId = null;
+  if (franchise) {
+    resolvedCentre = franchise.name;
+    resolvedFranchiseId = franchise._id;
+  } else {
+    const fallbackCentre = await Centre.findOne({
+      name: { $regex: new RegExp(`^${escapeRegex(String(centre).trim())}$`, "i") },
+    }).lean();
+    if (fallbackCentre) {
+      resolvedCentre = fallbackCentre.name;
+      resolvedFranchiseId = fallbackCentre._id;
+    }
+  }
+
+  const existingLeads = await Lead.find({ _id: { $in: ids } }).lean();
+  const accessibleLeads = [];
+  const skippedIncompatible = [];
+  for (const lead of existingLeads) {
+    if (await canAccessRecord(req, lead)) {
+      if (isCourseAllowedForCentre(resolvedCentre, lead.course, req.user)) {
+        accessibleLeads.push(lead);
+      } else {
+        skippedIncompatible.push(lead);
+      }
+    }
+  }
+
+  if (!accessibleLeads.length) {
+    if (skippedIncompatible.length) {
+      return sendError(res, 400, `${resolvedCentre} centre allows only AHAP and GCA courses`);
+    }
+    return sendError(res, 400, "No eligible leads to assign");
+  }
+
+  const targetIds = accessibleLeads.map((l) => l._id);
+  const now = new Date();
+  const userName = req.user.name || "Super Admin";
+
+  await Lead.updateMany(
+    { _id: { $in: targetIds } },
+    {
+      $set: {
+        centre: resolvedCentre,
+        ...(resolvedFranchiseId ? { franchiseId: resolvedFranchiseId } : {}),
+        assignedAt: now,
+        assignedBy: userName,
+      },
+      $push: {
+        activities: {
+          type: "assigned",
+          message: `Lead assigned to ${resolvedCentre} centre by ${userName}`,
+          by: userName,
+          at: now,
+        },
+      },
+    }
+  );
+
+  await Student.updateMany(
+    { leadId: { $in: targetIds } },
+    {
+      $set: {
+        centre: resolvedCentre,
+        ...(resolvedFranchiseId ? { franchiseId: resolvedFranchiseId } : {}),
+      },
+    }
+  );
+
+  res.json({
+    ok: true,
+    data: {
+      count: targetIds.length,
+      skipped: skippedIncompatible.length,
+    },
+  });
+});
+
+app.post("/api/admin/leads/bulk-delete", requireAuth, requireFranchiseManager, async (req, res) => {
+  const { ids = [] } = req.body || {};
+  if (!Array.isArray(ids) || !ids.length) return sendError(res, 400, "No leads selected");
+
+  const existingLeads = await Lead.find({ _id: { $in: ids } }).lean();
+  const deletableIds = [];
+  for (const lead of existingLeads) {
+    if (await canAccessRecord(req, lead)) {
+      deletableIds.push(lead._id);
+    }
+  }
+
+  if (!deletableIds.length) return sendError(res, 400, "No leads eligible for deletion");
+
+  await Lead.deleteMany({ _id: { $in: deletableIds } });
+  res.json({ ok: true, data: { count: deletableIds.length } });
+});
+
+app.delete("/api/admin/leads/:id", requireAuth, requireFranchiseManager, async (req, res) => {
+  const existingLead = await Lead.findById(req.params.id).lean();
+  if (!existingLead) return sendError(res, 404, "Lead not found");
+  if (!(await canAccessRecord(req, existingLead))) return sendError(res, 403, "You can access only permitted records");
+  await Lead.findByIdAndDelete(req.params.id);
+  res.json({ ok: true, data: existingLead });
+});
+
+app.post("/api/admin/leads/:id/activities", requireAuth, async (req, res) => {
+  if (!canUseLeads(req.user)) return sendError(res, 403, "Lead activities are restricted to counsellor and admin accounts");
+  const { message, type = "note" } = req.body || {};
+  if (!message) return sendError(res, 400, "Message is required");
+  const existingLead = await Lead.findById(req.params.id).lean();
+  if (!existingLead) return sendError(res, 404, "Lead not found");
+  if (!(await canAccessRecord(req, existingLead))) return sendError(res, 403, "You can access only permitted records");
+  const lead = await Lead.findByIdAndUpdate(req.params.id, { $push: { activities: { type, message, by: req.user.name, at: new Date() } } }, { new: true });
   if (!lead) return sendError(res, 404, "Lead not found");
   res.json({ ok: true, data: lead });
 });
 
-app.post("/api/admin/leads/:id/activities", requireAuth, async (req, res) => {
-  const { message, type = "note" } = req.body || {};
-  if (!message) return sendError(res, 400, "Message is required");
-  const lead = await Lead.findByIdAndUpdate(req.params.id, { $push: { activities: { type, message, by: req.user.name } } }, { new: true });
+app.post("/api/admin/leads/:id/followups", requireAuth, async (req, res) => {
+  if (!canUseLeads(req.user)) return sendError(res, 403, "Lead follow-ups are restricted to counsellor and admin accounts");
+  const existingLead = await Lead.findById(req.params.id).lean();
+  if (!existingLead) return sendError(res, 404, "Lead not found");
+  if (!(await canAccessRecord(req, existingLead))) return sendError(res, 403, "You can access only permitted records");
+  const status = req.body?.status || "Scheduled";
+  const isCompleted = ["Completed", "Not interested"].includes(status) || req.body?.clearReminder === true;
+  const rawScheduled = req.body?.scheduledAt;
+  const scheduledAt = rawScheduled ? new Date(rawScheduled) : null;
+  if (!isCompleted && (!scheduledAt || Number.isNaN(scheduledAt.getTime()))) {
+    return sendError(res, 400, "Follow-up date is required when scheduling");
+  }
+  const followUpDate = (scheduledAt && !Number.isNaN(scheduledAt.getTime())) ? scheduledAt : new Date();
+  const followUp = {
+    type: req.body?.type || "Call",
+    status,
+    scheduledAt: followUpDate,
+    note: String(req.body?.note || "").trim(),
+    by: req.user.name,
+  };
+
+  let nextFollowUp = null;
+  if (req.body?.nextScheduledAt) {
+    const nextDate = new Date(req.body.nextScheduledAt);
+    if (!Number.isNaN(nextDate.getTime())) nextFollowUp = nextDate;
+  } else if (!isCompleted && scheduledAt && !Number.isNaN(scheduledAt.getTime())) {
+    nextFollowUp = scheduledAt;
+  }
+
+  const lead = await Lead.findByIdAndUpdate(
+    req.params.id,
+    {
+      $set: { nextFollowUp },
+      $push: {
+        followUps: { $each: [followUp], $position: 0 },
+        activities: { type: "follow-up", message: `${followUp.status}: ${followUp.type} on ${followUpDate.toLocaleDateString("en-IN")}`, by: req.user.name, at: new Date() },
+      },
+    },
+    { new: true, runValidators: true },
+  );
   if (!lead) return sendError(res, 404, "Lead not found");
   res.json({ ok: true, data: lead });
 });
 
 app.post("/api/admin/leads/:id/convert", requireAuth, async (req, res) => {
+  if (!canUseLeads(req.user)) return sendError(res, 403, "Lead conversion is restricted to counsellor and admin accounts");
   const lead = await Lead.findById(req.params.id);
   if (!lead) return sendError(res, 404, "Lead not found");
+  if (!(await canAccessRecord(req, lead))) return sendError(res, 403, "You can access only permitted records");
   const existing = await Student.findOne({ leadId: lead._id });
   if (existing) return res.json({ ok: true, data: existing });
-  const admissionCount = await Student.countDocuments();
+  if (lead.stage !== "Admission") return sendError(res, 400, "Move lead to Admission before enrolling");
+  const batchName = String(req.body?.batch || "").trim();
+  if (!batchName) return sendError(res, 400, "Assign a batch before enrolling");
+  const batch = await Batch.findOne({
+    active: true,
+    name: batchName,
+    ...(lead.franchiseId ? { franchiseId: lead.franchiseId } : {}),
+  }).lean();
+  if (!batch) return sendError(res, 400, "Selected batch was not found");
+  if (lead.centre && batch.centre && batch.centre !== lead.centre) return sendError(res, 400, "Batch centre must match the lead centre");
+  if (lead.course && batch.course && String(batch.course).toUpperCase() !== String(lead.course).toUpperCase()) return sendError(res, 400, "Batch course must match the lead course");
+  const assignedTeacher = Array.isArray(batch.assignedFaculty) && batch.assignedFaculty.length ? String(batch.assignedFaculty[0] || "").trim() : "";
+  const assignedCounsellor = String(lead.counsellor || "").trim() && String(lead.counsellor || "").trim() !== "Unassigned"
+    ? String(lead.counsellor || "").trim()
+    : isCounsellorAccount(req.user)
+      ? req.user.name
+      : "";
+  const admissionYear = new Date().getFullYear();
+  const admissionPrefix = `IMED-${admissionYear}-`;
+  const admissionSeq = await nextCounterValue(`admission:${admissionYear}`, await maxStudentNumberSuffix("admissionNumber", admissionPrefix));
+  const matchedCourseDoc = await Course.findOne({
+    $or: [
+      { code: new RegExp(`^${lead.course}$`, "i") },
+      { name: new RegExp(`^${lead.course}$`, "i") },
+    ],
+    active: true,
+    ...(lead.franchiseId ? { $or: [{ franchiseId: lead.franchiseId }, { franchiseId: { $exists: false } }, { franchiseId: null }] } : {}),
+  }).sort({ franchiseId: -1 }).lean();
+  const defaultCourseFee = feeWithGst(matchedCourseDoc?.fee || 0);
+  const resolvedTotalFee = canManageFees(req.user)
+    ? Number(req.body?.totalFee || lead.expectedFee || defaultCourseFee || 0)
+    : Number(lead.expectedFee || defaultCourseFee || 0);
   const student = await Student.create({
     leadId: lead._id,
+    source: lead.source || "Website",
+    refereeName: lead.refereeName || "",
+    refereePhone: lead.refereePhone || "",
+    referralAmount: Number(lead.referralAmount || 0),
+    referralSettlement: {
+      status: "unsettled",
+      amount: Number(lead.referralAmount || 0),
+    },
     fullName: lead.fullName,
     phone: lead.phone,
     parentMobile: lead.parentMobile,
     email: lead.email,
     governmentProof: lead.governmentProof,
     highestQualificationCertificate: lead.highestQualificationCertificate,
+    studentLocation: lead.studentLocation,
     centre: lead.centre,
+    franchiseId: lead.franchiseId,
     course: lead.course,
-    counsellor: lead.counsellor || "Unassigned",
-    admissionNumber: `IMED-${new Date().getFullYear()}-${String(admissionCount + 1).padStart(4, "0")}`,
-    totalFee: Number(req.body?.totalFee || lead.expectedFee || 0),
-    paidAmount: Number(req.body?.paidAmount || lead.paidAmount || 0),
-    activities: [{ type: "converted", message: "Lead converted to student", by: req.user.name }],
+    counsellor: assignedCounsellor || "Unassigned",
+    counsellorName: lead.counsellorName || assignedCounsellor || "",
+    callerName: "",
+    teacher: assignedTeacher || "Unassigned",
+    batch: batch.name,
+    batchCommenceDate: batch.commenceDate,
+    admissionNumber: `${admissionPrefix}${String(admissionSeq).padStart(4, "0")}`,
+    status: "Enrolled",
+    totalFee: resolvedTotalFee,
+    paidAmount: canManageFees(req.user) ? Number(req.body?.paidAmount || lead.paidAmount || 0) : Number(lead.paidAmount || 0),
+    activities: [{ type: "converted", message: "Lead converted to student", by: req.user.name, at: new Date() }],
+  }).catch(async (error) => {
+    if (error?.code === 11000) {
+      const linkedStudent = await Student.findOne({ leadId: lead._id });
+      if (linkedStudent) return linkedStudent;
+    }
+    throw error;
   });
+  if (String(student.leadId || "") === String(lead._id) && lead.stage === "Enrolled") {
+    return res.json({ ok: true, data: student });
+  }
   lead.stage = "Enrolled";
+  lead.nextFollowUp = null;
+  if (assignedCounsellor) lead.counsellor = assignedCounsellor;
+  lead.leadFeedback = normalizeLeadFeedbackStatus(lead.leadFeedback);
+  lead.priority = priorityFromLeadFeedback(lead.leadFeedback) || normalizeLeadPriority(lead.priority);
   lead.activities.push({ type: "converted", message: "Converted to student", by: req.user.name });
   await lead.save();
   res.status(201).json({ ok: true, data: student });
@@ -448,43 +3109,1463 @@ app.get("/api/admin/documents/:type/:id/:field", requireAuth, async (req, res) =
     return sendError(res, 400, "Invalid document request");
   }
   const Model = type === "lead" ? Lead : Student;
-  const record = await Model.findById(id).select(field).lean();
+  const record = await Model.findById(id).select(`${field} franchiseId`).lean();
+  if (!record) return sendError(res, 404, "Document not found");
+  if (!(await canAccessRecord(req, record))) return sendError(res, 403, "You can access only permitted records");
   const document = record?.[field];
   if (!document?.storedName) return sendError(res, 404, "Document not found");
   const filePath = path.join(leadDocumentDir, document.storedName);
   if (!filePath.startsWith(leadDocumentDir) || !fs.existsSync(filePath)) return sendError(res, 404, "Document not found");
+  const fileName = String(document.originalName || "document").replace(/[\r\n"]/g, "");
   res.setHeader("Content-Type", document.mimeType || "application/octet-stream");
-  res.download(filePath, document.originalName || "document");
+  res.setHeader("Content-Disposition", `inline; filename="${fileName}"; filename*=UTF-8''${encodeURIComponent(fileName)}`);
+  res.sendFile(filePath);
+});
+
+app.post("/api/admin/documents/:type/:id/:field", requireAuth, leadDocumentUpload.single("file"), async (req, res) => {
+  const { type, id, field } = req.params;
+  if (!["lead", "student"].includes(type) || !["governmentProof", "highestQualificationCertificate"].includes(field)) {
+    return sendError(res, 400, "Invalid document upload target");
+  }
+  if (!req.file) {
+    return sendError(res, 400, "Please attach a document file (PDF, JPG, PNG or WEBP up to 2 MB)");
+  }
+  const Model = type === "lead" ? Lead : Student;
+  const record = await Model.findById(id);
+  if (!record) return sendError(res, 404, `${type === "lead" ? "Lead" : "Candidate"} record not found`);
+  if (!(await canAccessRecord(req, record))) return sendError(res, 403, "You can access only permitted records");
+
+  const docData = saveLeadDocument(req.file);
+  record[field] = docData;
+  if (type === "lead") {
+    record.activities = record.activities || [];
+    record.activities.push({
+      type: "document_uploaded",
+      message: `Uploaded ${field === "governmentProof" ? "Government Proof" : "Qualification Certificate"}: ${docData.originalName}`,
+      by: req.user.name,
+      at: new Date(),
+    });
+  }
+  await record.save();
+
+  if (type === "lead") {
+    await Student.findOneAndUpdate({ leadId: record._id }, { [field]: docData });
+  } else if (type === "student" && record.leadId) {
+    await Lead.findByIdAndUpdate(record.leadId, { [field]: docData });
+  }
+
+  res.json({ ok: true, data: record });
 });
 
 app.get("/api/admin/students", requireAuth, async (req, res) => {
-  const { q = "", status = "", centre = "", course = "", counsellor = "" } = req.query;
+  const { q = "", status = "", centre = "", course = "", counsellor = "", source = "", emiOnly = "" } = req.query;
   const filter = { ...dateFilter(req.query) };
   if (status) filter.status = status;
   if (centre) filter.centre = centre;
   if (course) filter.course = course;
   if (counsellor) filter.counsellor = counsellor;
-  if (q) filter.$or = [{ fullName: { $regex: q, $options: "i" } }, { phone: { $regex: q, $options: "i" } }, { email: { $regex: q, $options: "i" } }];
-  const students = await Student.find(filter).sort({ updatedAt: -1 }).limit(250).lean();
-  res.json({ ok: true, data: students });
+  if (source) {
+    const escapedSource = String(source).replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+    const matchingLeads = await Lead.find({ source: { $regex: `^${escapedSource}$`, $options: "i" } }).select("_id").lean();
+    const matchingLeadIds = matchingLeads.map((l) => l._id);
+    const sourceCondition = {
+      $or: [
+        { source: { $regex: `^${escapedSource}$`, $options: "i" } },
+        ...(matchingLeadIds.length ? [{ leadId: { $in: matchingLeadIds } }] : []),
+        ...(String(source).toLowerCase() === "website" ? [{ source: { $in: [null, ""] } }] : []),
+      ],
+    };
+    if (filter.$or) {
+      filter.$and = [...(filter.$and || []), { $or: filter.$or }, sourceCondition];
+      delete filter.$or;
+    } else {
+      filter.$and = [...(filter.$and || []), sourceCondition];
+    }
+  }
+  if (String(emiOnly) === "true") {
+    filter.emiEnabled = true;
+    filter.nextEmiDate = { $exists: true, $ne: null };
+  }
+  Object.assign(filter, await scopedDataFilter(req, req.query));
+  if (isCounsellorAccount(req.user)) filter.counsellor = req.user.name;
+  if (isTeacherAccount(req.user)) {
+    const teacherScope = await teacherAcademicBatchScope(req.user);
+    const teacherFilter = { $or: [{ teacher: req.user.name }, { batch: { $in: teacherScope.batchNames } }] };
+    if (filter.$or) {
+      filter.$and = [...(filter.$and || []), { $or: filter.$or }, teacherFilter];
+      delete filter.$or;
+    } else {
+      filter.$and = [...(filter.$and || []), teacherFilter];
+    }
+  }
+  if (q) {
+    const searchFilter = [{ fullName: { $regex: q, $options: "i" } }, { phone: { $regex: q, $options: "i" } }, { email: { $regex: q, $options: "i" } }];
+    if (filter.$or) {
+      filter.$and = [{ $or: filter.$or }, { $or: searchFilter }];
+      delete filter.$or;
+    } else {
+      filter.$or = searchFilter;
+    }
+  }
+  const { page, limit, skip } = paginationFromQuery(req.query);
+  const [total, students] = await Promise.all([
+    Student.countDocuments(filter),
+    Student.find(filter).sort({ updatedAt: -1 }).skip(skip).limit(limit).lean(),
+  ]);
+  const missingSourceLeadIds = students.filter((s) => !s.source && s.leadId).map((s) => s.leadId);
+  const fallbackLeads = missingSourceLeadIds.length ? await Lead.find({ _id: { $in: missingSourceLeadIds } }).select("source").lean() : [];
+  const leadSourceMap = new Map(fallbackLeads.map((l) => [String(l._id), l.source || "Website"]));
+  const internshipRows = await InternshipAssignment.find({ studentId: { $in: students.map((student) => student._id) } }).lean();
+  const internshipByStudent = new Map(internshipRows.map((row) => [String(row.studentId), row]));
+  const internshipLogs = internshipRows.length ? await InternshipLog.find({ assignmentId: { $in: internshipRows.map((row) => row._id) } }).sort({ date: -1 }).limit(300).lean() : [];
+  const logbookEntries = internshipRows.length ? await LogbookEntry.find({ assignmentId: { $in: internshipRows.map((row) => row._id) } }).sort({ date: -1 }).limit(300).lean() : [];
+  const logsByStudent = new Map();
+  for (const log of internshipLogs) {
+    const key = String(log.studentId);
+    const existing = logsByStudent.get(key) || [];
+    if (existing.length < 20) existing.push(log);
+    logsByStudent.set(key, existing);
+  }
+  const logbookByStudent = new Map();
+  for (const entry of logbookEntries) {
+    const key = String(entry.studentId);
+    const existing = logbookByStudent.get(key) || [];
+    if (existing.length < 20) existing.push(entry);
+    logbookByStudent.set(key, existing);
+  }
+  res.json({
+    ok: true,
+    data: students.map((student) => ({
+      ...student,
+      source: student.source || leadSourceMap.get(String(student.leadId)) || "Website",
+      internshipAssignment: internshipByStudent.get(String(student._id)) || null,
+      internshipLogs: logsByStudent.get(String(student._id)) || [],
+      logbookEntries: logbookByStudent.get(String(student._id)) || [],
+    })),
+    meta: paginationMeta(total, page, limit),
+  });
+});
+
+app.get("/api/admin/students/:id/internship-logs/:logId/:photoType", requireAuth, async (req, res) => {
+  if (!["login", "logout"].includes(req.params.photoType)) return sendError(res, 400, "Invalid internship photo request");
+  const student = await Student.findById(req.params.id).select("franchiseId centre teacher batch").lean();
+  if (!student) return sendError(res, 404, "Student not found");
+  if (!(await canAccessRecord(req, student))) return sendError(res, 403, "You can access only permitted records");
+  const log = await InternshipLog.findOne({ _id: req.params.logId, studentId: student._id }).lean();
+  if (!log) return sendError(res, 404, "Internship log not found");
+  const photo = req.params.photoType === "login" ? log.loginPhoto : log.logoutPhoto;
+  if (!photo?.storedName) return sendError(res, 404, "Internship selfie not found");
+  const filePath = path.join(leadDocumentDir, photo.storedName);
+  if (!filePath.startsWith(leadDocumentDir) || !fs.existsSync(filePath)) return sendError(res, 404, "Internship selfie not found");
+  const fileName = String(photo.originalName || `${req.params.photoType}-selfie.jpg`).replace(/[\r\n"]/g, "");
+  res.setHeader("Content-Type", photo.mimeType || "image/jpeg");
+  res.setHeader("Content-Disposition", `inline; filename="${fileName}"; filename*=UTF-8''${encodeURIComponent(fileName)}`);
+  res.sendFile(filePath);
+});
+
+app.patch("/api/admin/students/:id/logbook/:entryId", requireAuth, async (req, res) => {
+  const student = await Student.findById(req.params.id).lean();
+  if (!student) return sendError(res, 404, "Student not found");
+  if (!(await canAccessRecord(req, student))) return sendError(res, 403, "You can access only permitted records");
+  const verified = req.body?.verified !== false;
+  const entry = await LogbookEntry.findOneAndUpdate(
+    { _id: req.params.entryId, studentId: student._id },
+    { $set: { verified, verifiedBy: req.user.name, verifiedAt: verified ? new Date() : null, supervisorRemark: String(req.body?.supervisorRemark || "").trim() } },
+    { new: true, runValidators: true },
+  ).lean();
+  if (!entry) return sendError(res, 404, "Logbook entry not found");
+  res.json({ ok: true, data: entry });
+});
+
+app.get("/api/admin/attendance", requireAuth, async (req, res) => {
+  const day = attendanceDate(req.query.date || "");
+  if (!day) return sendError(res, 400, "Attendance date is required");
+  const filter = { ...(await scopedDataFilter(req, req.query)), date: day };
+  if (req.query.batch) filter.batch = String(req.query.batch);
+  if (req.query.course) filter.course = String(req.query.course);
+  if (isTeacherAccount(req.user)) filter.teacher = req.user.name;
+  const attendance = await Attendance.find(filter).sort({ studentName: 1 }).lean();
+  res.json({ ok: true, data: attendance });
+});
+
+app.get("/api/admin/attendance/logs", requireAuth, async (req, res) => {
+  const filter = { ...(await scopedDataFilter(req, req.query)), ...attendanceRangeFilter(req.query) };
+  if (req.query.status) filter.status = String(req.query.status);
+  if (req.query.nature) filter.nature = String(req.query.nature);
+  if (req.query.batch) filter.batch = String(req.query.batch);
+  if (req.query.course) filter.course = String(req.query.course);
+  if (req.query.studentId && mongoose.isValidObjectId(String(req.query.studentId))) filter.studentId = new mongoose.Types.ObjectId(String(req.query.studentId));
+  if (req.query.student) filter.studentName = { $regex: String(req.query.student), $options: "i" };
+  if (isTeacherAccount(req.user)) filter.teacher = req.user.name;
+  const { page, limit, skip } = paginationFromQuery(req.query);
+  const [total, attendance] = await Promise.all([
+    Attendance.countDocuments(filter),
+    Attendance.find(filter).sort({ date: -1, studentName: 1 }).skip(skip).limit(limit).lean(),
+  ]);
+  res.json({ ok: true, data: attendance, meta: paginationMeta(total, page, limit) });
+});
+
+app.get("/api/admin/attendance/summary", requireAuth, async (req, res) => {
+  const filter = { ...(await scopedDataFilter(req, req.query)), ...attendanceRangeFilter(req.query) };
+  if (req.query.status) filter.status = String(req.query.status);
+  if (req.query.nature) filter.nature = String(req.query.nature);
+  if (req.query.batch) filter.batch = String(req.query.batch);
+  if (req.query.course) filter.course = String(req.query.course);
+  if (req.query.student) filter.studentName = { $regex: String(req.query.student), $options: "i" };
+  if (isTeacherAccount(req.user)) filter.teacher = req.user.name;
+  const { page, limit, skip } = paginationFromQuery(req.query);
+  const groupStage = {
+    _id: "$studentId",
+    studentName: { $first: "$studentName" },
+    centre: { $first: "$centre" },
+    course: { $first: "$course" },
+    batch: { $first: "$batch" },
+    counsellor: { $first: "$counsellor" },
+    teacher: { $first: "$teacher" },
+    total: { $sum: 1 },
+    present: { $sum: { $cond: [{ $eq: ["$status", "Present"] }, 1, 0] } },
+    absent: { $sum: { $cond: [{ $eq: ["$status", "Absent"] }, 1, 0] } },
+    late: { $sum: { $cond: [{ $eq: ["$status", "Late"] }, 1, 0] } },
+    leave: { $sum: { $cond: [{ $eq: ["$status", "Leave"] }, 1, 0] } },
+    theoretical: { $sum: { $cond: [{ $eq: ["$nature", "Theoretical"] }, 1, 0] } },
+    practical: { $sum: { $cond: [{ $eq: ["$nature", "Practical"] }, 1, 0] } },
+    lastDate: { $max: "$date" },
+  };
+  const [countResult, summaries] = await Promise.all([
+    Attendance.aggregate([{ $match: filter }, { $group: groupStage }, { $count: "total" }]),
+    Attendance.aggregate([{ $match: filter }, { $group: groupStage }, { $sort: { studentName: 1 } }, { $skip: skip }, { $limit: limit }]),
+  ]);
+  const total = countResult[0]?.total || 0;
+  res.json({ ok: true, data: summaries.map((item) => ({ ...item, studentId: item._id })), meta: paginationMeta(total, page, limit) });
+});
+
+app.get("/api/nps/dashboard", requireAuth, async (req, res) => {
+  if (!(canManageNps(req.user) || isTeacherAccount(req.user))) return sendError(res, 403, "NPS dashboard is restricted");
+  const filter = { active: true, ...(await npsScopedFilter(req, req.query)) };
+  if (req.query.touchpoint) filter.touchpoint = String(req.query.touchpoint);
+  if (req.query.course) filter.courseCode = normalizeCourseCode(req.query.course);
+  if (req.query.batch) filter.batchName = String(req.query.batch);
+  if (req.query.batchId && mongoose.isValidObjectId(String(req.query.batchId))) filter.batchId = new mongoose.Types.ObjectId(String(req.query.batchId));
+  if (req.query.dateFrom || req.query.dateTo) {
+    const from = attendanceDate(req.query.dateFrom || "");
+    const to = attendanceDate(req.query.dateTo || "");
+    filter.submittedAt = {};
+    if (from) filter.submittedAt.$gte = from;
+    if (to) {
+      const end = new Date(to);
+      end.setUTCDate(end.getUTCDate() + 1);
+      filter.submittedAt.$lt = end;
+    }
+  }
+  if (isTeacherAccount(req.user)) {
+    const scope = await teacherAcademicBatchScope(req.user);
+    if (!scope.batchIds.length && !scope.batchNames.length) return res.json({ ok: true, data: { ...computeNps([]), attributes: {}, touchpoints: [], batches: [], detractorAlerts: [] } });
+    filter.$or = [{ batchId: { $in: scope.batchIds } }, { batchName: { $in: scope.batchNames } }];
+  }
+  const rows = await NpsResponse.find(filter).sort({ submittedAt: -1 }).lean();
+  const counts = computeNps(rows);
+  const attributeFields = ["attrTeachingQuality", "attrContentRelevance", "attrPracticalTraining", "attrSupportInfra", "attrPlacementAssistance"];
+  const attributes = Object.fromEntries(attributeFields.map((field) => {
+    const values = rows.map((row) => Number(row[field] || 0)).filter(Boolean);
+    return [field, values.length ? Number((values.reduce((sum, value) => sum + value, 0) / values.length).toFixed(1)) : 0];
+  }));
+  const grouped = (key) => Array.from(rows.reduce((map, row) => {
+    const label = String(row[key] || "Unassigned");
+    const list = map.get(label) || [];
+    list.push(row);
+    map.set(label, list);
+    return map;
+  }, new Map()).entries()).map(([label, items]) => ({ label, ...computeNps(items) }));
+  const totalActiveStudents = await Student.countDocuments({ ...(await scopedDataFilter(req, req.query)), status: { $nin: ["Dropped"] } });
+  const detractors = isTeacherAccount(req.user) ? [] : rows
+    .filter((row) => row.npsCategory === "detractor" && row.followUpStatus !== "Resolved")
+    .slice(0, 8);
+  const responseRate = totalActiveStudents ? Math.round((counts.total / totalActiveStudents) * 100) : 0;
+  const trend = Array.from(rows.reduce((map, row) => {
+    const date = new Date(row.submittedAt || row.createdAt || Date.now()).toISOString().slice(0, 10);
+    const list = map.get(date) || [];
+    list.push(row);
+    map.set(date, list);
+    return map;
+  }, new Map()).entries())
+    .sort(([a], [b]) => a.localeCompare(b))
+    .slice(-14)
+    .map(([date, items]) => ({ date, ...computeNps(items) }));
+  const alerts = [];
+  if (totalActiveStudents && responseRate < 50) alerts.push({ tone: "warn", label: "Low response rate", detail: `${responseRate}% response rate across ${totalActiveStudents} active candidates` });
+  if (!isTeacherAccount(req.user) && detractors.length) alerts.push({ tone: "bad", label: "Detractor follow-up", detail: `${detractors.length} unresolved low-score responses need follow-up` });
+  res.json({
+    ok: true,
+    data: {
+      ...counts,
+      responseRate,
+      attributes,
+      trend,
+      alerts,
+      touchpoints: grouped("touchpoint").map((item) => ({ ...item, label: npsTouchpointLabels[item.label] || item.label })),
+      batches: grouped("batchName"),
+      detractorAlerts: detractors,
+    },
+  });
+});
+
+app.get("/api/nps/responses", requireAuth, async (req, res) => {
+  if (!canManageNps(req.user)) return sendError(res, 403, "NPS responses are restricted to admin accounts");
+  const { page, limit, skip } = paginationFromQuery(req.query);
+  const filter = { active: true, ...(await npsScopedFilter(req, req.query)) };
+  if (req.query.touchpoint) filter.touchpoint = String(req.query.touchpoint);
+  if (req.query.course) filter.courseCode = normalizeCourseCode(req.query.course);
+  if (req.query.batch) filter.batchName = String(req.query.batch);
+  if (req.query.category) filter.npsCategory = String(req.query.category);
+  if (req.query.q) {
+    const regex = new RegExp(escapeRegex(String(req.query.q)), "i");
+    const students = await Student.find({ fullName: regex }).select("_id").lean();
+    filter.$or = [{ openFeedback: regex }, { batchName: regex }, { studentId: { $in: students.map((student) => student._id) } }];
+  }
+  const [total, rows] = await Promise.all([
+    NpsResponse.countDocuments(filter),
+    NpsResponse.find(filter).populate("studentId", "fullName admissionNumber phone").sort({ submittedAt: -1 }).skip(skip).limit(limit).lean(),
+  ]);
+  res.json({ ok: true, data: rows, meta: paginationMeta(total, page, limit) });
+});
+
+app.patch("/api/nps/responses/:id/follow-up", requireAuth, async (req, res) => {
+  if (!canManageNps(req.user)) return sendError(res, 403, "NPS follow-up is restricted to admin accounts");
+  if (!mongoose.isValidObjectId(req.params.id)) return sendError(res, 400, "Invalid NPS response");
+  const status = String(req.body?.status || "Pending").trim();
+  const note = String(req.body?.note || "").trim();
+  if (!["Pending", "In Progress", "Resolved"].includes(status)) return sendError(res, 400, "Choose a valid follow-up status");
+  const row = await NpsResponse.findById(req.params.id).lean();
+  if (!row) return sendError(res, 404, "NPS response not found");
+  if (!(await canAccessRecord(req, row))) return sendError(res, 403, "You can access only permitted records");
+  const update = { $set: { followUpStatus: status } };
+  if (note) update.$push = { followUpNotes: { note, by: req.user.name || req.user.email || "Admin", at: new Date() } };
+  const updated = await NpsResponse.findByIdAndUpdate(req.params.id, update, { returnDocument: "after" }).lean();
+  res.json({ ok: true, data: updated });
+});
+
+app.get("/api/nps/export", requireAuth, async (req, res) => {
+  if (!canManageNps(req.user)) return sendError(res, 403, "NPS export is restricted to admin accounts");
+  const filter = { active: true, ...(await npsScopedFilter(req, req.query)) };
+  if (req.query.touchpoint) filter.touchpoint = String(req.query.touchpoint);
+  const rows = await NpsResponse.find(filter).populate("studentId", "fullName admissionNumber phone").sort({ submittedAt: -1 }).lean();
+  const headers = ["Student", "Admission No", "Course", "Batch", "Centre", "Touchpoint", "Score", "Category", "Teaching", "Content", "Practical", "Support", "Placement", "Feedback", "Follow-up", "Submitted At"];
+  const csv = [
+    headers.join(","),
+    ...rows.map((row) => [
+      row.studentId?.fullName || "",
+      row.studentId?.admissionNumber || "",
+      row.courseCode || "",
+      row.batchName || "",
+      row.centre || "",
+      npsTouchpointLabels[row.touchpoint] || row.touchpoint,
+      row.npsScore,
+      row.npsCategory,
+      row.attrTeachingQuality || "",
+      row.attrContentRelevance || "",
+      row.attrPracticalTraining || "",
+      row.attrSupportInfra || "",
+      row.attrPlacementAssistance || "",
+      row.openFeedback || "",
+      row.followUpStatus || "",
+      row.submittedAt ? new Date(row.submittedAt).toISOString() : "",
+    ].map((value) => `"${String(value).replaceAll('"', '""')}"`).join(",")),
+  ].join("\n");
+  res.setHeader("Content-Type", "text/csv; charset=utf-8");
+  res.setHeader("Content-Disposition", `attachment; filename="imed-nps-${Date.now()}.csv"`);
+  res.send(csv);
+});
+
+// --- INVENTORY & STUDENT KIT APIS ---
+
+async function getInventoryScope(req) {
+  const filter = {};
+  const userFranchiseId = req.user?.franchiseId;
+  if (userFranchiseId) {
+    filter.franchiseId = userFranchiseId;
+  } else if (req.query.franchiseId && mongoose.isValidObjectId(String(req.query.franchiseId))) {
+    filter.franchiseId = new mongoose.Types.ObjectId(String(req.query.franchiseId));
+  } else if (req.query.centre) {
+    const centre = await Centre.findOne({ name: req.query.centre }).lean();
+    if (centre) filter.franchiseId = centre._id;
+  }
+  return filter;
+}
+
+async function ensureDefaultInventoryItems(franchiseId, centreName = "") {
+  const existing = await InventoryItem.countDocuments({ franchiseId });
+  if (existing > 0) return;
+  const items = [
+    { itemType: "id_card", size: "NA", quantity: 0, minThreshold: 10, franchiseId, centre: centreName },
+    { itemType: "bag", size: "NA", quantity: 0, minThreshold: 5, franchiseId, centre: centreName },
+    { itemType: "tshirt", size: "S", quantity: 0, minThreshold: 5, franchiseId, centre: centreName },
+    { itemType: "tshirt", size: "M", quantity: 0, minThreshold: 5, franchiseId, centre: centreName },
+    { itemType: "tshirt", size: "L", quantity: 0, minThreshold: 5, franchiseId, centre: centreName },
+    { itemType: "tshirt", size: "XL", quantity: 0, minThreshold: 5, franchiseId, centre: centreName },
+    { itemType: "tshirt", size: "XXL", quantity: 0, minThreshold: 5, franchiseId, centre: centreName },
+  ];
+  await InventoryItem.insertMany(items).catch(() => undefined);
+}
+
+app.get("/api/admin/inventory/summary", requireAuth, async (req, res) => {
+  if (!canManageInventory(req.user)) return sendError(res, 403, "Inventory management is restricted");
+  const scope = await getInventoryScope(req);
+  if (scope.franchiseId) {
+    const c = await Centre.findById(scope.franchiseId).lean();
+    await ensureDefaultInventoryItems(scope.franchiseId, c?.name || "");
+  }
+  const [items, tablets, recentTransactions] = await Promise.all([
+    InventoryItem.find(scope).lean(),
+    TabletAsset.find(scope).lean(),
+    InventoryTransaction.find(scope).sort({ date: -1 }).limit(6).lean(),
+  ]);
+
+  const idCardsTotal = items
+    .filter((i) => i.itemType === "id_card")
+    .reduce((sum, i) => sum + (i.quantity || 0), 0);
+  const bagsTotal = items
+    .filter((i) => i.itemType === "bag")
+    .reduce((sum, i) => sum + (i.quantity || 0), 0);
+  const tshirtItems = items.filter((i) => i.itemType === "tshirt");
+
+  const tshirtBySize = {
+    S: tshirtItems.filter((i) => i.size === "S").reduce((sum, i) => sum + (i.quantity || 0), 0),
+    M: tshirtItems.filter((i) => i.size === "M").reduce((sum, i) => sum + (i.quantity || 0), 0),
+    L: tshirtItems.filter((i) => i.size === "L").reduce((sum, i) => sum + (i.quantity || 0), 0),
+    XL: tshirtItems.filter((i) => i.size === "XL").reduce((sum, i) => sum + (i.quantity || 0), 0),
+    XXL: tshirtItems.filter((i) => i.size === "XXL").reduce((sum, i) => sum + (i.quantity || 0), 0),
+  };
+  const totalTshirts = Object.values(tshirtBySize).reduce((sum, q) => sum + q, 0);
+
+  const tabletSummary = {
+    total: tablets.length,
+    inStock: tablets.filter((t) => t.status === "In Stock").length,
+    assigned: tablets.filter((t) => t.status === "Assigned").length,
+    underRepair: tablets.filter((t) => t.status === "Under Repair").length,
+  };
+
+  const lowStockAlerts = [];
+  const idCardItem = items.find((i) => i.itemType === "id_card");
+  const bagItem = items.find((i) => i.itemType === "bag");
+  const idCardThreshold = idCardItem?.minThreshold || 10;
+  if (idCardsTotal <= idCardThreshold) {
+    lowStockAlerts.push({ item: "ID Cards", current: idCardsTotal, threshold: idCardThreshold });
+  }
+  const bagThreshold = bagItem?.minThreshold || 5;
+  if (bagsTotal <= bagThreshold) {
+    lowStockAlerts.push({ item: "Bags", current: bagsTotal, threshold: bagThreshold });
+  }
+  (["S", "M", "L", "XL", "XXL"]).forEach((sz) => {
+    const qty = tshirtBySize[sz] || 0;
+    const item = tshirtItems.find((i) => i.size === sz);
+    const thresh = item?.minThreshold || 5;
+    if (qty <= thresh) {
+      lowStockAlerts.push({ item: `T-Shirt (${sz})`, current: qty, threshold: thresh });
+    }
+  });
+
+  res.json({
+    ok: true,
+    data: {
+      idCards: idCardsTotal,
+      bags: bagsTotal,
+      tshirts: {
+        total: totalTshirts,
+        bySize: tshirtBySize,
+      },
+      tablets: tabletSummary,
+      lowStockAlerts,
+      recentTransactions,
+    },
+  });
+});
+
+app.get("/api/admin/inventory/items", requireAuth, async (req, res) => {
+  if (!canManageInventory(req.user)) return sendError(res, 403, "Inventory management is restricted");
+  const scope = await getInventoryScope(req);
+  if (scope.franchiseId) {
+    const c = await Centre.findById(scope.franchiseId).lean();
+    await ensureDefaultInventoryItems(scope.franchiseId, c?.name || "");
+  }
+  const items = await InventoryItem.find(scope).sort({ itemType: 1, size: 1 }).lean();
+  res.json({ ok: true, data: items });
+});
+
+app.get("/api/admin/inventory/tablets", requireAuth, async (req, res) => {
+  if (!canManageInventory(req.user)) return sendError(res, 403, "Inventory management is restricted");
+  const scope = await getInventoryScope(req);
+  const filter = { ...scope };
+  if (req.query.status) filter.status = String(req.query.status);
+  if (req.query.q) {
+    const q = new RegExp(escapeRegex(String(req.query.q)), "i");
+    filter.$or = [{ assetId: q }, { serialNumber: q }, { assignedStudentName: q }, { brandModel: q }];
+  }
+  const tablets = await TabletAsset.find(filter).sort({ createdAt: -1 }).lean();
+  res.json({ ok: true, data: tablets });
+});
+
+app.get("/api/admin/inventory/transactions", requireAuth, async (req, res) => {
+  if (!canManageInventory(req.user)) return sendError(res, 403, "Inventory management is restricted");
+  const scope = await getInventoryScope(req);
+  const filter = { ...scope };
+  if (req.query.itemType) filter.itemType = String(req.query.itemType);
+  if (req.query.type) filter.type = String(req.query.type);
+  const limit = Math.min(Number(req.query.limit) || 50, 200);
+  const transactions = await InventoryTransaction.find(filter).sort({ date: -1 }).limit(limit).lean();
+  res.json({ ok: true, data: transactions });
+});
+
+app.post("/api/admin/inventory/stock-in", requireAuth, async (req, res) => {
+  if (!canManageInventory(req.user)) return sendError(res, 403, "Inventory management is restricted");
+  const itemType = String(req.body?.itemType || "").trim().toLowerCase();
+  const vendorChallan = String(req.body?.vendorChallan || "").trim().toUpperCase();
+  if (vendorChallan && vendorChallan.length < 3) {
+    return sendError(res, 400, "Delivery challan / invoice reference must be at least 3 characters if provided");
+  }
+  const notes = String(req.body?.notes || "").trim();
+
+  let targetFranchiseId = req.user?.franchiseId || req.body?.franchiseId;
+  let targetCentre = "";
+  if (targetFranchiseId && mongoose.isValidObjectId(String(targetFranchiseId))) {
+    const c = await Centre.findById(targetFranchiseId).lean();
+    if (c) targetCentre = c.name;
+  } else {
+    const defaultCentre = await Centre.findOne().lean();
+    if (defaultCentre) {
+      targetFranchiseId = defaultCentre._id;
+      targetCentre = defaultCentre.name;
+    }
+  }
+
+  if (itemType === "tablet") {
+    const tablets = Array.isArray(req.body?.tablets) ? req.body.tablets : [
+      {
+        assetId: String(req.body?.assetId || "").trim(),
+        serialNumber: String(req.body?.serialNumber || "").trim(),
+        brandModel: String(req.body?.brandModel || "Android Tablet").trim(),
+        remarks: notes,
+      },
+    ];
+    if (!tablets.length) return sendError(res, 400, "Provide at least one tablet to add");
+
+    const createdTablets = [];
+    for (const t of tablets) {
+      if (!t.assetId) return sendError(res, 400, "Unique Asset ID is required for each tablet");
+      if (!t.serialNumber) return sendError(res, 400, "Serial Number is required for each tablet");
+      const existing = await TabletAsset.findOne({
+        franchiseId: targetFranchiseId,
+        $or: [{ assetId: t.assetId }, { serialNumber: t.serialNumber }],
+      }).lean();
+      if (existing) {
+        return sendError(res, 400, `Tablet with ID "${t.assetId}" or S/N "${t.serialNumber}" already exists`);
+      }
+      const tablet = await TabletAsset.create({
+        assetId: t.assetId,
+        serialNumber: t.serialNumber,
+        brandModel: t.brandModel || "Android Tablet",
+        status: "In Stock",
+        centre: targetCentre,
+        franchiseId: targetFranchiseId,
+        remarks: t.remarks || notes,
+      });
+      await InventoryTransaction.create({
+        type: "Stock In",
+        itemType: "tablet",
+        quantity: 1,
+        tabletId: tablet._id,
+        assetId: tablet.assetId,
+        serialNumber: tablet.serialNumber,
+        vendorChallan,
+        handledBy: req.user.name || "Operations",
+        notes,
+        centre: targetCentre,
+        franchiseId: targetFranchiseId,
+      });
+      createdTablets.push(tablet);
+    }
+    return res.json({ ok: true, message: `Added ${createdTablets.length} tablet(s) to stock`, data: createdTablets });
+  }
+
+  // Bulk items: id_card, bag, tshirt
+  if (!["id_card", "bag", "tshirt"].includes(itemType)) {
+    return sendError(res, 400, "Select a valid item type (id_card, tshirt, bag, tablet)");
+  }
+  const quantity = Number(req.body?.quantity || 0);
+  if (!Number.isFinite(quantity) || quantity <= 0) return sendError(res, 400, "Enter a valid positive quantity");
+
+  const size = itemType === "tshirt" ? String(req.body?.size || "M").toUpperCase().trim() : "NA";
+  if (itemType === "tshirt" && !["S", "M", "L", "XL", "XXL"].includes(size)) {
+    return sendError(res, 400, "Select a valid T-Shirt size (S, M, L, XL, XXL)");
+  }
+
+  const updatedItem = await InventoryItem.findOneAndUpdate(
+    { itemType, size, franchiseId: targetFranchiseId },
+    { $inc: { quantity }, $setOnInsert: { centre: targetCentre, minThreshold: 5 } },
+    { new: true, upsert: true },
+  );
+
+  await InventoryTransaction.create({
+    type: "Stock In",
+    itemType,
+    size,
+    quantity,
+    vendorChallan,
+    handledBy: req.user.name || "Operations",
+    notes,
+    centre: targetCentre,
+    franchiseId: targetFranchiseId,
+  });
+
+  res.json({ ok: true, message: `Added ${quantity} ${itemType === "tshirt" ? `T-Shirt (${size})` : itemType} to stock`, data: updatedItem });
+});
+
+app.post("/api/admin/inventory/stock-out", requireAuth, async (req, res) => {
+  if (!canManageInventory(req.user)) return sendError(res, 403, "Inventory management is restricted");
+  const itemType = String(req.body?.itemType || "").trim().toLowerCase();
+  const quantity = Number(req.body?.quantity || 0);
+  const notes = String(req.body?.notes || "").trim();
+  const size = itemType === "tshirt" ? String(req.body?.size || "M").toUpperCase().trim() : "NA";
+
+  let targetFranchiseId = req.user?.franchiseId || req.body?.franchiseId;
+  const item = await InventoryItem.findOne({ itemType, size, franchiseId: targetFranchiseId });
+  if (!item || item.quantity < quantity) {
+    return sendError(res, 400, `Insufficient stock. Available: ${item?.quantity || 0}`);
+  }
+
+  item.quantity = Math.max(0, item.quantity - quantity);
+  await item.save();
+
+  await InventoryTransaction.create({
+    type: "Stock Out",
+    itemType,
+    size,
+    quantity,
+    handledBy: req.user.name || "Operations",
+    notes,
+    centre: item.centre,
+    franchiseId: item.franchiseId,
+  });
+
+  res.json({ ok: true, message: `Deducted ${quantity} from stock`, data: item });
+});
+
+app.post("/api/admin/inventory/issue-kit", requireAuth, async (req, res) => {
+  if (!canManageInventory(req.user)) return sendError(res, 403, "Inventory management is restricted");
+  const studentId = String(req.body?.studentId || "").trim();
+  if (!studentId || !mongoose.isValidObjectId(studentId)) return sendError(res, 400, "Valid Student is required");
+
+  const student = await Student.findById(studentId);
+  if (!student) return sendError(res, 404, "Student not found");
+
+  const issueIdCard = Boolean(req.body?.issueIdCard);
+  const idCardNumber = String(req.body?.idCardNumber || student.admissionNumber || "").trim();
+  const issueTshirt = Boolean(req.body?.issueTshirt);
+  let tshirtsToIssue = [];
+  if (issueTshirt) {
+    if (Array.isArray(req.body?.tshirts) && req.body.tshirts.length > 0) {
+      tshirtsToIssue = req.body.tshirts
+        .map((t) => ({
+          size: String(t.size || "").toUpperCase().trim(),
+          quantity: Math.max(1, parseInt(t.quantity, 10) || 1),
+        }))
+        .filter((t) => ["S", "M", "L", "XL", "XXL"].includes(t.size));
+    } else {
+      const singleSize = String(req.body?.tshirtSize || "M").toUpperCase().trim();
+      const singleQty = Math.max(1, parseInt(req.body?.tshirtQuantity, 10) || 1);
+      if (["S", "M", "L", "XL", "XXL"].includes(singleSize)) {
+        tshirtsToIssue = [{ size: singleSize, quantity: singleQty }];
+      }
+    }
+    if (!tshirtsToIssue.length) {
+      return sendError(res, 400, "Choose at least one valid T-Shirt size and quantity");
+    }
+  }
+  const issueBag = Boolean(req.body?.issueBag);
+  const issueTablet = Boolean(req.body?.issueTablet);
+  const tabletId = String(req.body?.tabletId || "").trim();
+  const notes = String(req.body?.notes || "").trim();
+
+  if (!issueIdCard && !issueTshirt && !issueBag && !issueTablet) {
+    return sendError(res, 400, "Select at least one item to issue");
+  }
+
+  const targetFranchiseId = student.franchiseId || req.user?.franchiseId || null;
+  const targetCentre = student.centre || "";
+
+  if (issueIdCard) {
+    const idItem = await InventoryItem.findOne({ itemType: "id_card", franchiseId: targetFranchiseId });
+    if (!idItem || idItem.quantity < 1) return sendError(res, 400, "ID Cards are out of stock");
+  }
+  if (issueTshirt && tshirtsToIssue.length > 0) {
+    const aggregatedBySize = {};
+    for (const t of tshirtsToIssue) {
+      aggregatedBySize[t.size] = (aggregatedBySize[t.size] || 0) + t.quantity;
+    }
+    for (const [size, qty] of Object.entries(aggregatedBySize)) {
+      const tsItem = await InventoryItem.findOne({ itemType: "tshirt", size, franchiseId: targetFranchiseId });
+      if (!tsItem || tsItem.quantity < qty) {
+        return sendError(res, 400, `Not enough stock for T-Shirt Size ${size}. (Available: ${tsItem?.quantity || 0}, Requested: ${qty})`);
+      }
+    }
+  }
+  if (issueBag) {
+    const bagItem = await InventoryItem.findOne({ itemType: "bag", franchiseId: targetFranchiseId });
+    if (!bagItem || bagItem.quantity < 1) return sendError(res, 400, "Bags are out of stock");
+  }
+  let tabletDoc = null;
+  if (issueTablet) {
+    if (!tabletId) return sendError(res, 400, "Select a tablet from stock");
+    if (mongoose.isValidObjectId(tabletId)) {
+      tabletDoc = await TabletAsset.findById(tabletId);
+    }
+    if (!tabletDoc || tabletDoc.status !== "In Stock") {
+      tabletDoc = await TabletAsset.findOne({ assetId: String(tabletId).trim(), status: "In Stock" });
+    }
+    if (!tabletDoc || tabletDoc.status !== "In Stock") {
+      // Graceful fallback to any available in-stock tablet if available
+      tabletDoc = await TabletAsset.findOne({ status: "In Stock" });
+    }
+    if (!tabletDoc || tabletDoc.status !== "In Stock") return sendError(res, 400, "Selected tablet is not in stock");
+  }
+
+  const now = new Date();
+  const operatorName = req.user.name || "Operations";
+  if (!student.kitDistribution) student.kitDistribution = {};
+
+  if (issueIdCard) {
+    await InventoryItem.updateOne({ itemType: "id_card", franchiseId: targetFranchiseId }, { $inc: { quantity: -1 } });
+    await InventoryTransaction.create({
+      type: "Stock Out",
+      itemType: "id_card",
+      quantity: 1,
+      studentId: student._id,
+      studentName: student.fullName,
+      handledBy: operatorName,
+      notes: `Issued ID Card ${idCardNumber ? `(${idCardNumber})` : ""}. ${notes}`.trim(),
+      centre: targetCentre,
+      franchiseId: targetFranchiseId,
+    });
+    student.kitDistribution.idCardIssued = true;
+    student.kitDistribution.idCardNumber = idCardNumber;
+    student.kitDistribution.idCardIssuedAt = now;
+  }
+
+  if (issueTshirt && tshirtsToIssue.length > 0) {
+    for (const t of tshirtsToIssue) {
+      await InventoryItem.updateOne({ itemType: "tshirt", size: t.size, franchiseId: targetFranchiseId }, { $inc: { quantity: -t.quantity } });
+      await InventoryTransaction.create({
+        type: "Stock Out",
+        itemType: "tshirt",
+        size: t.size,
+        quantity: t.quantity,
+        studentId: student._id,
+        studentName: student.fullName,
+        handledBy: operatorName,
+        notes: `Issued ${t.quantity}x T-Shirt Size ${t.size}. ${notes}`.trim(),
+        centre: targetCentre,
+        franchiseId: targetFranchiseId,
+      });
+    }
+    const totalTshirts = tshirtsToIssue.reduce((sum, t) => sum + t.quantity, 0);
+    const sizeSummary = tshirtsToIssue
+      .map((t) => (t.quantity > 1 ? `${t.size} (×${t.quantity})` : t.size))
+      .join(", ");
+    student.kitDistribution.tshirtIssued = true;
+    student.kitDistribution.tshirtSize = sizeSummary;
+    student.kitDistribution.tshirtQuantity = totalTshirts;
+    student.kitDistribution.tshirts = tshirtsToIssue;
+    student.kitDistribution.tshirtIssuedAt = now;
+  }
+
+  if (issueBag) {
+    await InventoryItem.updateOne({ itemType: "bag", franchiseId: targetFranchiseId }, { $inc: { quantity: -1 } });
+    await InventoryTransaction.create({
+      type: "Stock Out",
+      itemType: "bag",
+      quantity: 1,
+      studentId: student._id,
+      studentName: student.fullName,
+      handledBy: operatorName,
+      notes: `Issued Bag. ${notes}`.trim(),
+      centre: targetCentre,
+      franchiseId: targetFranchiseId,
+    });
+    student.kitDistribution.bagIssued = true;
+    student.kitDistribution.bagIssuedAt = now;
+  }
+
+  if (issueTablet && tabletDoc) {
+    tabletDoc.status = "Assigned";
+    tabletDoc.assignedStudentId = student._id;
+    tabletDoc.assignedStudentName = student.fullName;
+    tabletDoc.assignedStudentAdmissionNo = student.admissionNumber || "";
+    tabletDoc.assignedDate = now;
+    await tabletDoc.save();
+
+    await InventoryTransaction.create({
+      type: "Stock Out",
+      itemType: "tablet",
+      quantity: 1,
+      tabletId: tabletDoc._id,
+      assetId: tabletDoc.assetId,
+      serialNumber: tabletDoc.serialNumber,
+      studentId: student._id,
+      studentName: student.fullName,
+      handledBy: operatorName,
+      notes: `Assigned Tablet ${tabletDoc.assetId} (S/N: ${tabletDoc.serialNumber}). ${notes}`.trim(),
+      centre: targetCentre,
+      franchiseId: targetFranchiseId,
+    });
+    student.kitDistribution.tabletIssued = true;
+    student.kitDistribution.tabletAssetId = tabletDoc.assetId;
+    student.kitDistribution.tabletSerialNumber = tabletDoc.serialNumber;
+    student.kitDistribution.tabletIssuedAt = now;
+  }
+
+  student.kitDistribution.issuedBy = operatorName;
+  if (notes) student.kitDistribution.notes = notes;
+  await student.save();
+
+  res.json({ ok: true, message: `Kit issued to ${student.fullName}`, data: student });
+});
+
+app.post("/api/admin/inventory/tablets/:id/return", requireAuth, async (req, res) => {
+  if (!canManageInventory(req.user)) return sendError(res, 403, "Inventory management is restricted");
+  if (!mongoose.isValidObjectId(req.params.id)) return sendError(res, 400, "Invalid tablet ID");
+
+  const tablet = await TabletAsset.findById(req.params.id);
+  if (!tablet) return sendError(res, 404, "Tablet not found");
+  if (tablet.status === "In Stock") return sendError(res, 400, "Tablet is already in stock");
+
+  const previousStudentId = tablet.assignedStudentId;
+  const previousStudentName = tablet.assignedStudentName;
+
+  tablet.status = "In Stock";
+  tablet.returnedDate = new Date();
+  tablet.assignedStudentId = undefined;
+  tablet.assignedStudentName = "";
+  tablet.assignedStudentAdmissionNo = "";
+  await tablet.save();
+
+  if (previousStudentId) {
+    await Student.findByIdAndUpdate(previousStudentId, {
+      $set: {
+        "kitDistribution.tabletIssued": false,
+        "kitDistribution.notes": `Tablet ${tablet.assetId} returned on ${new Date().toLocaleDateString("en-IN")}`,
+      },
+    });
+  }
+
+  await InventoryTransaction.create({
+    type: "Return",
+    itemType: "tablet",
+    quantity: 1,
+    tabletId: tablet._id,
+    assetId: tablet.assetId,
+    serialNumber: tablet.serialNumber,
+    studentId: previousStudentId,
+    studentName: previousStudentName,
+    handledBy: req.user.name || "Operations",
+    notes: req.body?.notes || "Tablet returned to stock",
+    centre: tablet.centre,
+    franchiseId: tablet.franchiseId,
+  });
+
+  res.json({ ok: true, message: `Tablet ${tablet.assetId} returned to stock`, data: tablet });
+});
+
+app.post("/api/admin/attendance", requireAuth, async (req, res) => {
+  if (!canUseAttendance(req.user)) return sendError(res, 403, "Attendance is restricted to teacher and admin accounts");
+  const day = attendanceDate(req.body?.date || "");
+  const records = Array.isArray(req.body?.records) ? req.body.records : [];
+  if (!day) return sendError(res, 400, "Attendance date is required");
+  if (!records.length) return sendError(res, 400, "Select at least one student");
+  const statuses = new Set(["Present", "Absent", "Late", "Leave"]);
+  const studentIds = records.map((record) => String(record.studentId || "")).filter((id) => mongoose.isValidObjectId(id));
+  const students = await Student.find({ _id: { $in: studentIds } }).lean();
+  const studentsById = new Map(students.map((student) => [String(student._id), student]));
+  const operations = [];
+
+  for (const record of records) {
+    const student = studentsById.get(String(record.studentId || ""));
+    const status = String(record.status || "");
+    if (!student || !statuses.has(status)) continue;
+    if (!(await canAccessRecord(req, student))) return sendError(res, 403, "You can access only permitted records");
+    if (isTeacherAccount(req.user)) {
+      const studentBatch = await Batch.findOne({ active: true, name: student.batch }).lean();
+      if (!(await teacherCanAccessBatch(req.user, studentBatch))) return sendError(res, 403, "Teachers can mark only assigned batch students");
+    }
+    operations.push({
+      updateOne: {
+        filter: { studentId: student._id, date: day },
+        update: {
+          $set: {
+            studentId: student._id,
+            studentName: student.fullName,
+            date: day,
+            status,
+            note: String(record.note || ""),
+            centre: student.centre || "",
+            franchiseId: student.franchiseId,
+            batch: student.batch || "",
+            course: student.course || "",
+            counsellor: student.counsellor || "",
+            teacher: isTeacherAccount(req.user) ? req.user.name : (student.teacher || ""),
+            markedBy: req.user.name,
+          },
+        },
+        upsert: true,
+      },
+    });
+  }
+
+  if (!operations.length) return sendError(res, 400, "No valid attendance records");
+  await Attendance.bulkWrite(operations);
+  const saved = await Attendance.find({ studentId: { $in: studentIds }, date: day }).sort({ studentName: 1 }).lean();
+  res.json({ ok: true, data: saved });
+});
+
+// GET /api/admin/students/deletion-approvals - List pending/reviewed candidate deletion requests
+app.get("/api/admin/students/deletion-approvals", requireAuth, async (req, res) => {
+  const { status = "pending" } = req.query;
+  const query = {};
+  if (status && status !== "all") {
+    query["deleteApproval.status"] = status;
+  } else {
+    query["deleteApproval.status"] = { $in: ["pending", "approved", "rejected"] };
+  }
+
+  Object.assign(query, await scopedDataFilter(req, req.query));
+
+  if (isCenterAdmin(req.user)) {
+    const scope = await centerAdminBranchScope(req.user);
+    const centerFilter = {
+      $or: [
+        { franchiseId: { $in: scope.ids } },
+        { centre: { $in: scope.names.map((n) => new RegExp(`^${n}$`, "i")) } },
+      ],
+    };
+    if (query.$or) {
+      query.$and = [...(query.$and || []), { $or: query.$or }, centerFilter];
+      delete query.$or;
+    } else {
+      Object.assign(query, centerFilter);
+    }
+  }
+
+  const students = await Student.find(query)
+    .select("fullName phone email admissionNumber centre course status totalFee deleteApproval createdAt")
+    .sort({ "deleteApproval.requestedAt": -1, updatedAt: -1 })
+    .lean();
+
+  const pendingCountQuery = { "deleteApproval.status": "pending" };
+  Object.assign(pendingCountQuery, await scopedDataFilter(req, {}));
+  if (isCenterAdmin(req.user)) {
+    const scope = await centerAdminBranchScope(req.user);
+    pendingCountQuery.$or = [
+      { franchiseId: { $in: scope.ids } },
+      { centre: { $in: scope.names.map((n) => new RegExp(`^${n}$`, "i")) } },
+    ];
+  }
+  const pendingCount = await Student.countDocuments(pendingCountQuery);
+
+  res.json({
+    ok: true,
+    data: students,
+    pendingCount,
+  });
+});
+
+app.get("/api/admin/students/:id", requireAuth, async (req, res) => {
+  try {
+    const student = await Student.findById(req.params.id).lean();
+    if (!student) return sendError(res, 404, "Student not found");
+    if (!student.source && student.leadId) {
+      const lead = await Lead.findById(student.leadId).select("source").lean();
+      if (lead?.source) student.source = lead.source;
+    }
+    student.source = student.source || "Website";
+    res.json({ ok: true, data: student });
+  } catch (error) {
+    sendError(res, 500, error.message || "Failed to fetch student");
+  }
 });
 
 app.patch("/api/admin/students/:id", requireAuth, async (req, res) => {
-  const allowedStudentUpdates = (({ fullName, phone, parentMobile, email, governmentProof, highestQualificationCertificate, centre, course, counsellor, batch, batchCommenceDate, admissionNumber, discountAmount, status, totalFee, paidAmount, emiEnabled, emiMonths, emiAmount, nextEmiDate, placementCompany, placementSalary, certificateNumber, certificateIssuedAt, certificateStatus }) => ({ fullName, phone, parentMobile, email, governmentProof, highestQualificationCertificate, centre, course, counsellor, batch, batchCommenceDate, admissionNumber, discountAmount, status, totalFee, paidAmount, emiEnabled, emiMonths, emiAmount, nextEmiDate, placementCompany, placementSalary, certificateNumber, certificateIssuedAt, certificateStatus }))(req.body || {});
+  const allowedStudentUpdates = (({ fullName, phone, parentMobile, email, governmentProof, highestQualificationCertificate, source, studentLocation, centre, course, counsellor, counsellorName, callerName, teacher, batch, batchCommenceDate, admissionNumber, admissionPaymentMode, admissionUpfrontAmount, discountAmount, feeApproval, status, dropoutReason, dropoutDate, dropoutNotes, totalFee, paidAmount, emiEnabled, emiMonths, emiAmount, nextEmiDate, placementStatus, placementCompany, placementRole, placementJoiningDate, placementSalary, placementHrContact, placementOfferLetterUrl, placementRemarks, testimonialText, testimonialVideoUrl, testimonialRating, testimonialApproved, referralName, referralPhone, referralStatus, refereeName, refereePhone, referralAmount, referralSettlement, certificateNumber, certificateIssuedAt, certificateStatus }) => ({ fullName, phone, parentMobile, email, governmentProof, highestQualificationCertificate, source, studentLocation, centre, course, counsellor, counsellorName, callerName, teacher, batch, batchCommenceDate, admissionNumber, admissionPaymentMode, admissionUpfrontAmount, discountAmount, feeApproval, status, dropoutReason, dropoutDate, dropoutNotes, totalFee, paidAmount, emiEnabled, emiMonths, emiAmount, nextEmiDate, placementStatus, placementCompany, placementRole, placementJoiningDate, placementSalary, placementHrContact, placementOfferLetterUrl, placementRemarks, testimonialText, testimonialVideoUrl, testimonialRating, testimonialApproved, referralName, referralPhone, referralStatus, refereeName, refereePhone, referralAmount, referralSettlement, certificateNumber, certificateIssuedAt, certificateStatus }))(req.body || {});
   Object.keys(allowedStudentUpdates).forEach((key) => allowedStudentUpdates[key] === undefined && delete allowedStudentUpdates[key]);
+  const feeFields = ["admissionPaymentMode", "admissionUpfrontAmount", "discountAmount", "totalFee", "paidAmount", "emiEnabled", "emiMonths", "emiAmount", "nextEmiDate"];
+  if (!canManageFees(req.user) && feeFields.some((field) => Object.prototype.hasOwnProperty.call(allowedStudentUpdates, field))) {
+    return sendError(res, 403, "Fee and payment updates are restricted to admin accounts");
+  }
+  const alumniFields = ["placementStatus", "placementCompany", "placementRole", "placementJoiningDate", "placementSalary", "placementHrContact", "placementOfferLetterUrl", "placementRemarks", "testimonialText", "testimonialVideoUrl", "testimonialRating", "testimonialApproved", "referralName", "referralPhone", "referralStatus"];
+  if (!canManageAlumni(req.user) && alumniFields.some((field) => Object.prototype.hasOwnProperty.call(allowedStudentUpdates, field))) {
+    return sendError(res, 403, "Alumni placement and referral updates are restricted to admin accounts");
+  }
+  if (!canAssignStaff(req.user)) delete allowedStudentUpdates.counsellor;
+  if (!(canAssignStaff(req.user) || isCounsellorAccount(req.user))) delete allowedStudentUpdates.teacher;
+  ["admissionUpfrontAmount", "discountAmount", "totalFee", "paidAmount", "emiMonths", "emiAmount", "placementSalary", "testimonialRating"].forEach((field) => {
+    if (Object.prototype.hasOwnProperty.call(allowedStudentUpdates, field)) allowedStudentUpdates[field] = Number(allowedStudentUpdates[field] || 0);
+  });
+  if (Object.prototype.hasOwnProperty.call(allowedStudentUpdates, "testimonialApproved")) {
+    allowedStudentUpdates.testimonialApproved = allowedStudentUpdates.testimonialApproved === true || allowedStudentUpdates.testimonialApproved === "true";
+  }
+  if (Object.prototype.hasOwnProperty.call(allowedStudentUpdates, "emiEnabled")) {
+    allowedStudentUpdates.emiEnabled = allowedStudentUpdates.emiEnabled === true || allowedStudentUpdates.emiEnabled === "true";
+  }
+  if (Object.prototype.hasOwnProperty.call(allowedStudentUpdates, "admissionPaymentMode")) {
+    allowedStudentUpdates.admissionPaymentMode = normalizeAdmissionPaymentMode(String(allowedStudentUpdates.admissionPaymentMode || ""));
+    if (!admissionPaymentModes.includes(allowedStudentUpdates.admissionPaymentMode)) return sendError(res, 400, "Choose a valid admission payment plan");
+  }
+  ["nextEmiDate", "batchCommenceDate", "certificateIssuedAt", "placementJoiningDate", "dropoutDate"].forEach((field) => {
+    if (Object.prototype.hasOwnProperty.call(allowedStudentUpdates, field) && !allowedStudentUpdates[field]) allowedStudentUpdates[field] = null;
+  });
+  const existingStudent = await Student.findById(req.params.id).lean();
+  if (!existingStudent) return sendError(res, 404, "Student not found");
+  if (!(await canAccessRecord(req, existingStudent))) return sendError(res, 403, "You can access only permitted records");
+  if (Object.prototype.hasOwnProperty.call(allowedStudentUpdates, "teacher") && allowedStudentUpdates.teacher) {
+    const teacherFilter = { name: allowedStudentUpdates.teacher, role: { $in: ["teacher", "franchise_teacher"] } };
+    if (existingStudent.franchiseId) teacherFilter.franchiseId = existingStudent.franchiseId;
+    const teacher = await AdminUser.findOne(teacherFilter).select("_id").lean();
+    if (!teacher) return sendError(res, 400, "Select a valid teacher for this branch or franchise");
+  }
+  if (isFranchiseUser(req.user)) delete allowedStudentUpdates.centre;
+  if (allowedStudentUpdates.centre && !isFranchiseUser(req.user)) {
+    const franchise = await resolveFranchiseFromRequest(req, allowedStudentUpdates.centre);
+    if (franchise) {
+      allowedStudentUpdates.centre = franchise.name;
+      allowedStudentUpdates.franchiseId = franchise._id;
+    }
+  }
+  const nextStudentCentre = Object.prototype.hasOwnProperty.call(allowedStudentUpdates, "centre") ? allowedStudentUpdates.centre : existingStudent.centre;
+  const nextStudentCourse = Object.prototype.hasOwnProperty.call(allowedStudentUpdates, "course") ? allowedStudentUpdates.course : existingStudent.course;
+  const nextStudentStatus = Object.prototype.hasOwnProperty.call(allowedStudentUpdates, "status") ? allowedStudentUpdates.status : existingStudent.status;
+  const nextStudentBatch = Object.prototype.hasOwnProperty.call(allowedStudentUpdates, "batch") ? allowedStudentUpdates.batch : existingStudent.batch;
+  const isSuper = isHeadSuperAdmin(req.user);
+  const isUpdatingFeePlan = Object.prototype.hasOwnProperty.call(allowedStudentUpdates, "totalFee") ||
+    Object.prototype.hasOwnProperty.call(allowedStudentUpdates, "discountAmount") ||
+    Object.prototype.hasOwnProperty.call(allowedStudentUpdates, "admissionPaymentMode");
+
+  if (isUpdatingFeePlan) {
+    if (isSuper) {
+      if (!allowedStudentUpdates.feeApproval) {
+        allowedStudentUpdates.feeApproval = {
+          status: "approved",
+          standardCourseFee: Number(allowedStudentUpdates.totalFee || existingStudent.totalFee || 0),
+          requestedFee: Math.max(0, Number(allowedStudentUpdates.totalFee || existingStudent.totalFee || 0) - Number(allowedStudentUpdates.discountAmount || existingStudent.discountAmount || 0)),
+          requestedDiscount: Number(allowedStudentUpdates.discountAmount || existingStudent.discountAmount || 0),
+          reviewedBy: req.user.name || "Super Admin",
+          reviewedByRole: req.user.role || "superadmin",
+          reviewedAt: new Date(),
+        };
+      }
+    } else {
+      const nextCourse = allowedStudentUpdates.course || existingStudent.course || "";
+      const standardCourseObj = await Course.findOne({ $or: [{ code: new RegExp(`^${nextCourse}$`, "i") }, { name: new RegExp(`^${nextCourse}$`, "i") }], active: true }).lean();
+      const stdFee = standardCourseObj ? feeWithGst(standardCourseObj.fee || 0) : Number(allowedStudentUpdates.totalFee || existingStudent.totalFee || 0);
+
+      allowedStudentUpdates.feeApproval = {
+        status: "pending",
+        standardCourseFee: stdFee,
+        requestedFee: Math.max(0, Number(allowedStudentUpdates.totalFee || existingStudent.totalFee || 0) - Number(allowedStudentUpdates.discountAmount || existingStudent.discountAmount || 0)),
+        requestedDiscount: Number(allowedStudentUpdates.discountAmount || existingStudent.discountAmount || 0),
+        reason: req.body.feeApprovalReason || existingStudent.feeApproval?.reason || "Fee plan decided/updated by staff",
+        requestedBy: req.user.name || "Staff",
+        requestedByRole: req.user.role || "counsellor",
+        requestedAt: new Date(),
+      };
+      // Keep existing totalFee and discountAmount unchanged until approved by Super Admin or Center Admin
+      delete allowedStudentUpdates.totalFee;
+      delete allowedStudentUpdates.discountAmount;
+    }
+  }
+
+  const nextTotalFee = Object.prototype.hasOwnProperty.call(allowedStudentUpdates, "totalFee") ? Number(allowedStudentUpdates.totalFee || 0) : Number(existingStudent.totalFee || 0);
+  const nextDiscount = Object.prototype.hasOwnProperty.call(allowedStudentUpdates, "discountAmount") ? Number(allowedStudentUpdates.discountAmount || 0) : Number(existingStudent.discountAmount || 0);
+  const nextPaid = Object.prototype.hasOwnProperty.call(allowedStudentUpdates, "paidAmount") ? Number(allowedStudentUpdates.paidAmount || 0) : Number(existingStudent.paidAmount || 0);
+  const nextAdmissionPaymentMode = normalizeAdmissionPaymentMode(Object.prototype.hasOwnProperty.call(allowedStudentUpdates, "admissionPaymentMode") ? allowedStudentUpdates.admissionPaymentMode : existingStudent.admissionPaymentMode);
+  const nextNetFee = Math.max(0, nextTotalFee - nextDiscount);
+  const nextAdmissionUpfront = Object.prototype.hasOwnProperty.call(allowedStudentUpdates, "admissionUpfrontAmount") ? Number(allowedStudentUpdates.admissionUpfrontAmount || 0) : Number(existingStudent.admissionUpfrontAmount || 0);
+  const nextDue = Math.max(0, nextNetFee - nextPaid);
+  const isPartialEmiPlan = isPartialEmiPaymentMode(nextAdmissionPaymentMode);
+  const isEmiAdmissionPlan = nextAdmissionPaymentMode === "EMI" || isPartialEmiPlan;
+  const nextEmiBalance = isPartialEmiPlan ? Math.max(0, nextNetFee - Math.max(nextPaid, nextAdmissionUpfront)) : nextDue;
+  const currentNormalizedStatus = normalizeStudentStatus(existingStudent.status);
+  const nextNormalizedStatus = normalizeStudentStatus(nextStudentStatus);
+  if (Object.prototype.hasOwnProperty.call(allowedStudentUpdates, "status") && nextNormalizedStatus === "Fees Collected" && nextDue > 0) {
+    return sendError(res, 400, "Collect the full pending fee before marking Fees Collected");
+  }
+  if (Object.prototype.hasOwnProperty.call(allowedStudentUpdates, "status") && nextNormalizedStatus === "Classroom Complete" && currentNormalizedStatus !== "Classroom Complete" && !isStudentStatusAtLeast(currentNormalizedStatus, "Active Student")) {
+    return sendError(res, 400, "Move the candidate to Active Student before marking Classroom Complete");
+  }
+  if (Object.prototype.hasOwnProperty.call(allowedStudentUpdates, "status") && (nextNormalizedStatus === "Dropped" || nextStudentStatus === "Dropped")) {
+    allowedStudentUpdates.status = "Dropped";
+    const reason = allowedStudentUpdates.dropoutReason || existingStudent.dropoutReason;
+    if (!reason || !String(reason).trim()) {
+      return sendError(res, 400, "Dropout reason is mandatory when marking student as Dropped");
+    }
+    if (!allowedStudentUpdates.dropoutDate && !existingStudent.dropoutDate) {
+      allowedStudentUpdates.dropoutDate = new Date();
+    }
+  }
+  if (Object.prototype.hasOwnProperty.call(allowedStudentUpdates, "status") && nextNormalizedStatus === "Course Completed" && currentNormalizedStatus !== "Course Completed") {
+    if (!isStudentStatusAtLeast(currentNormalizedStatus, "Classroom Complete")) return sendError(res, 400, "Mark Classroom Complete before Course Completed");
+    const nps = await npsEligibilityForStudent(existingStudent);
+    const postClassroom = nps.items.find((item) => item.touchpoint === "post_classroom");
+    const postInternship = nps.items.find((item) => item.touchpoint === "post_internship");
+    if (postClassroom?.eligible && !postClassroom.submitted) return sendError(res, 400, "Student must submit classroom completion NPS before Course Completed");
+    if (postInternship?.eligible && !postInternship.submitted) return sendError(res, 400, "Student must submit internship completion NPS before Course Completed");
+  }
+  if (Object.prototype.hasOwnProperty.call(allowedStudentUpdates, "status") && nextNormalizedStatus === "Alumni" && currentNormalizedStatus !== "Alumni") {
+    if (currentNormalizedStatus !== "Course Completed") return sendError(res, 400, "Mark Course Completed before moving the candidate to Alumni");
+    if (nextDue > 0) return sendError(res, 400, "Clear full fee before moving the candidate to Alumni");
+    if (!existingStudent.certificateNumber && existingStudent.certificateStatus !== "Issued") return sendError(res, 400, "Issue the certificate before moving the candidate to Alumni");
+  }
+  if (nextDiscount > nextTotalFee) return sendError(res, 400, "Discount cannot exceed final fee");
+  if (nextPaid > nextNetFee) return sendError(res, 400, "Paid amount cannot exceed net course fee");
+  if (isPartialEmiPlan) {
+    if (nextAdmissionUpfront <= 0) return sendError(res, 400, "Partial amount is required");
+    if (nextAdmissionUpfront >= nextNetFee) return sendError(res, 400, "Partial amount must be less than final payable fee");
+  } else if (Object.prototype.hasOwnProperty.call(allowedStudentUpdates, "admissionPaymentMode")) {
+    allowedStudentUpdates.admissionUpfrontAmount = 0;
+  }
+  if (allowedStudentUpdates.emiEnabled && !nextAdmissionPaymentMode) return sendError(res, 400, "Complete admission before enabling EMI");
+  if (allowedStudentUpdates.emiEnabled && !isEmiAdmissionPlan) return sendError(res, 400, "Choose EMI or Partial + EMI admission plan before enabling EMI");
+  if (allowedStudentUpdates.emiEnabled && nextDue <= 0) return sendError(res, 400, "Cannot enable EMI when fee is fully paid");
+  if (isEmiAdmissionPlan && Object.prototype.hasOwnProperty.call(allowedStudentUpdates, "admissionPaymentMode")) {
+    if (!allowedStudentUpdates.emiEnabled) return sendError(res, 400, "Enable EMI for EMI admission plan");
+    if (!allowedStudentUpdates.emiMonths || Number(allowedStudentUpdates.emiMonths || 0) < 1) {
+      const courseObj = await Course.findOne({ $or: [{ code: new RegExp(`^${nextStudentCourse}$`, "i") }, { name: new RegExp(`^${nextStudentCourse}$`, "i") }] }).lean();
+      const durStr = String(courseObj?.duration || "");
+      const m = durStr.match(/(\d+)\s*month/i);
+      const w = durStr.match(/(\d+)\s*week/i);
+      const d = durStr.match(/(\d+)\s*day/i);
+      allowedStudentUpdates.emiMonths = m
+        ? Math.max(1, parseInt(m[1], 10))
+        : w
+          ? Math.max(1, Math.round(parseInt(w[1], 10) / 4))
+          : d
+            ? Math.max(1, Math.round(parseInt(d[1], 10) / 20))
+            : 4;
+    }
+    if (Number(allowedStudentUpdates.emiMonths || 0) < 1 || Number(allowedStudentUpdates.emiMonths || 0) > 60) return sendError(res, 400, "EMI months must be between 1 and 60");
+    if (!allowedStudentUpdates.emiAmount || Number(allowedStudentUpdates.emiAmount || 0) <= 0) {
+      allowedStudentUpdates.emiAmount = Math.max(1, Math.floor(nextEmiBalance / allowedStudentUpdates.emiMonths));
+    }
+    if (Number(allowedStudentUpdates.emiAmount || 0) <= 0) return sendError(res, 400, "Monthly EMI amount is required");
+    if (!allowedStudentUpdates.nextEmiDate) return sendError(res, 400, "Next EMI date is required");
+  }
+  if (Object.prototype.hasOwnProperty.call(allowedStudentUpdates, "emiAmount") && Number(allowedStudentUpdates.emiAmount || 0) > nextEmiBalance && nextEmiBalance > 0) {
+    return sendError(res, 400, `Monthly EMI cannot exceed EMI balance of ${nextEmiBalance}`);
+  }
+  if (Object.prototype.hasOwnProperty.call(allowedStudentUpdates, "admissionPaymentMode")) {
+    allowedStudentUpdates.admissionFinalizedAt = new Date();
+    allowedStudentUpdates.admissionFinalizedBy = req.user.name || req.user.email || "Admin";
+  }
   const student = await Student.findByIdAndUpdate(req.params.id, { $set: allowedStudentUpdates }, { new: true, runValidators: true });
   if (!student) return sendError(res, 404, "Student not found");
-  res.json({ ok: true, data: student });
+  if (Object.prototype.hasOwnProperty.call(allowedStudentUpdates, "teacher")) {
+    await Attendance.updateMany({ studentId: student._id }, { $set: { teacher: student.teacher || "" } });
+  }
+  if (Object.prototype.hasOwnProperty.call(allowedStudentUpdates, "status") && student.leadId && ["Enrolled", "Alumni"].includes(student.status)) {
+    await Lead.findByIdAndUpdate(student.leadId, { $set: { stage: student.status }, $push: { activities: { type: "stage", message: `Student status synced to ${student.status}`, by: req.user.name, at: new Date() } } });
+  }
+  res.json({ ok: true, data: await studentAdminWithInternshipResponse(student) });
 });
 
-app.post("/api/admin/students/:id/certificate", requireAuth, async (req, res) => {
+app.post("/api/admin/students/:id/lms-access", requireAuth, async (req, res) => {
+  if (!canManageStudentLmsAccess(req.user)) return sendError(res, 403, "Student LMS access can be generated only by admin accounts");
+  const existingStudent = await Student.findById(req.params.id).lean();
+  if (!existingStudent) return sendError(res, 404, "Student not found");
+  if (!(await canAccessRecord(req, existingStudent))) return sendError(res, 403, "You can access only permitted records");
+  const blocked = studentLmsAccessBlockReason(existingStudent);
+  if (blocked) return sendError(res, 400, blocked);
+  const shouldUpdateStatus = !["Course Completed", "Alumni", "Classroom Complete"].includes(existingStudent.status);
+  const student = await Student.findByIdAndUpdate(
+    req.params.id,
+    {
+      $set: {
+        lmsAccessEnabled: true,
+        lmsAccessGeneratedAt: new Date(),
+        lmsAccessGeneratedBy: req.user.name || req.user.email || "Admin",
+        ...(shouldUpdateStatus ? { status: "Active Student" } : {}),
+      },
+      $push: {
+        activities: {
+          type: "lms",
+          message: shouldUpdateStatus
+            ? "Student LMS login generated & status moved to Active Student"
+            : "Student LMS login generated",
+          by: req.user.name || req.user.email || "Admin",
+        },
+      },
+    },
+    { new: true, runValidators: true }
+  );
+  res.json({ ok: true, data: await studentAdminWithInternshipResponse(student) });
+});
+
+app.put("/api/admin/students/:id/internship", requireAuth, async (req, res) => {
+  if (!canManageInternships(req.user)) return sendError(res, 403, "Internship assignment is restricted to admin accounts");
+  const student = await Student.findById(req.params.id).lean();
+  if (!student) return sendError(res, 404, "Student not found");
+  if (!(await canAccessRecord(req, student))) return sendError(res, 403, "You can access only permitted records");
+  const facilityName = String(req.body?.facilityName || "").trim();
+  const facilityLocation = String(req.body?.facilityLocation || "").trim();
+  const supervisorName = String(req.body?.supervisorName || "").trim();
+  const supervisorContact = String(req.body?.supervisorContact || "").trim();
+  const supervisorEmail = String(req.body?.supervisorEmail || "").trim().toLowerCase();
+  const facilityLatitude = req.body?.facilityLatitude === "" || req.body?.facilityLatitude === undefined ? undefined : Number(req.body.facilityLatitude);
+  const facilityLongitude = req.body?.facilityLongitude === "" || req.body?.facilityLongitude === undefined ? undefined : Number(req.body.facilityLongitude);
+  const radiusInput = Number(req.body?.allowedRadiusMeters || 200);
+  const allowedRadiusMeters = Number.isFinite(radiusInput) ? Math.max(25, radiusInput) : 200;
+  const startDate = attendanceDate(req.body?.startDate || "");
+  const durationValue = Math.max(1, Number(req.body?.durationValue || 3));
+  const durationUnit = String(req.body?.durationUnit || "months").trim();
+  const expectedEndDate = attendanceDate(req.body?.expectedEndDate || "") || (startDate ? internshipExpectedEndDate(startDate, durationValue, durationUnit) : null);
+  const status = String(req.body?.status || "Assigned").trim();
+  if (!facilityName) return sendError(res, 400, "Hospital/facility name is required");
+  if (supervisorEmail && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(supervisorEmail)) return sendError(res, 400, "Enter a valid supervisor email");
+  if (facilityLatitude !== undefined && (!Number.isFinite(facilityLatitude) || facilityLatitude < -90 || facilityLatitude > 90)) return sendError(res, 400, "Enter a valid hospital latitude");
+  if (facilityLongitude !== undefined && (!Number.isFinite(facilityLongitude) || facilityLongitude < -180 || facilityLongitude > 180)) return sendError(res, 400, "Enter a valid hospital longitude");
+  if ((facilityLatitude === undefined) !== (facilityLongitude === undefined)) return sendError(res, 400, "Enter both hospital latitude and longitude");
+  if (!startDate) return sendError(res, 400, "Start date is required");
+  if (!expectedEndDate) return sendError(res, 400, "Expected end date is required");
+  if (!["days", "weeks", "months"].includes(durationUnit)) return sendError(res, 400, "Choose a valid duration unit");
+  if (!["Assigned", "Active", "Completed", "Terminated"].includes(status)) return sendError(res, 400, "Choose a valid internship status");
+  if (expectedEndDate < startDate) return sendError(res, 400, "Expected end date cannot be before start date");
+  if (["Assigned", "Active"].includes(status)) {
+    if (!isStudentStatusAtLeast(student.status, "Classroom Complete")) return sendError(res, 400, "Mark Classroom Complete before assigning internship");
+    const nps = await npsEligibilityForStudent(student);
+    const postClassroom = nps.items.find((item) => item.touchpoint === "post_classroom");
+    if (postClassroom?.eligible && !postClassroom.submitted) return sendError(res, 400, "Student must submit classroom completion NPS before internship starts");
+  }
+  const internshipSet = {
+    studentId: student._id,
+    facilityName,
+    facilityLocation,
+    supervisorName,
+    supervisorContact,
+    supervisorEmail,
+    facilityLatitude,
+    facilityLongitude,
+    allowedRadiusMeters,
+    startDate,
+    durationValue,
+    durationUnit,
+    expectedEndDate,
+    status,
+    departmentRotation: String(req.body?.departmentRotation || "").trim(),
+    assignedBy: req.user.name || req.user.email || "Admin",
+  };
+  if (status === "Completed") internshipSet.actualEndDate = attendanceDate(req.body?.actualEndDate || "") || new Date();
+  const assignment = await InternshipAssignment.findOneAndUpdate(
+    { studentId: student._id },
+    status === "Completed" ? { $set: internshipSet } : { $set: internshipSet, $unset: { actualEndDate: "" } },
+    { returnDocument: "after", upsert: true, runValidators: true },
+  );
+  res.json({ ok: true, data: { ...(await studentAdminWithInternshipResponse(student)), internshipAssignment: assignment } });
+});
+
+app.delete("/api/admin/students/:id/internship", requireAuth, async (req, res) => {
+  if (!canManageInternships(req.user)) return sendError(res, 403, "Internship assignment is restricted to admin accounts");
+  const student = await Student.findById(req.params.id).lean();
+  if (!student) return sendError(res, 404, "Student not found");
+  if (!(await canAccessRecord(req, student))) return sendError(res, 403, "You can access only permitted records");
+  const assignment = await InternshipAssignment.findOne({ studentId: student._id }).lean();
+  if (assignment) {
+    await Promise.all([
+      InternshipAssignment.deleteOne({ _id: assignment._id }),
+      InternshipLog.deleteMany({ assignmentId: assignment._id }),
+      LogbookEntry.deleteMany({ assignmentId: assignment._id }),
+    ]);
+  }
+  res.json({ ok: true, data: await studentAdminWithInternshipResponse(student) });
+});
+
+app.delete("/api/admin/students/:id", requireAuth, async (req, res) => {
+  const existingStudent = await Student.findById(req.params.id);
+  if (!existingStudent) return sendError(res, 404, "Student not found");
+  if (!(await canAccessRecord(req, existingStudent))) return sendError(res, 403, "You can access only permitted records");
+
+  const canDirectDelete = await canApproveStudentDeletion(req.user, existingStudent);
+  if (!canDirectDelete) {
+    const branchInfo = await getStudentMultiBranchInfo(existingStudent);
+    const target = branchInfo.isMultiBranch ? "Super Admin or Center Admin" : "Super Admin";
+    return sendError(res, 403, `Direct deletion is restricted for your role. Please request deletion approval from ${target}.`);
+  }
+
+  await Promise.all([
+    Student.findByIdAndDelete(req.params.id),
+    Attendance.deleteMany({ studentId: existingStudent._id }),
+    InternshipAssignment.deleteMany({ studentId: existingStudent._id }),
+    InternshipLog.deleteMany({ studentId: existingStudent._id }),
+    LogbookEntry.deleteMany({ studentId: existingStudent._id }),
+  ]);
+  res.json({ ok: true, data: existingStudent, message: "Candidate record deleted successfully" });
+});
+
+// POST /api/admin/students/:id/request-deletion - Request deletion approval
+app.post("/api/admin/students/:id/request-deletion", requireAuth, async (req, res) => {
+  if (!canRequestStudentDeletion(req.user)) {
+    return sendError(res, 403, "You do not have permission to request candidate deletion");
+  }
   const student = await Student.findById(req.params.id);
   if (!student) return sendError(res, 404, "Student not found");
-  if (!["Course Completed", "Placed"].includes(student.status)) return sendError(res, 400, "Mark course as completed before issuing certificate");
+  if (!(await canAccessRecord(req, student))) return sendError(res, 403, "You can access only permitted records");
+
+  const reason = String(req.body?.reason || "").trim();
+  if (!reason) {
+    return sendError(res, 400, "Reason is required to request candidate deletion");
+  }
+
+  if (student.deleteApproval?.status === "pending") {
+    return sendError(res, 400, "A deletion request is already pending review for this candidate");
+  }
+
+  const branchInfo = await getStudentMultiBranchInfo(student);
+
+  student.deleteApproval = {
+    status: "pending",
+    reason,
+    requestedBy: req.user.name || "Staff",
+    requestedByRole: req.user.role || "admin",
+    requestedAt: new Date(),
+    reviewedBy: "",
+    reviewedByRole: "",
+    reviewedAt: null,
+    rejectionReason: "",
+    isMultiBranch: branchInfo.isMultiBranch,
+    approverScope: branchInfo.approverScope,
+  };
+
+  student.activities = student.activities || [];
+  student.activities.push({
+    type: "deletion_request",
+    message: `Candidate deletion requested by ${req.user.name} (${req.user.role}): "${reason}". Approval required from ${branchInfo.isMultiBranch ? "Super Admin or Center Admin" : "Super Admin"}.`,
+    by: req.user.name || "Staff",
+    at: new Date(),
+  });
+
+  await student.save();
+  res.json({
+    ok: true,
+    data: student,
+    message: `Candidate deletion requested. Requires approval from ${branchInfo.isMultiBranch ? "Super Admin or Center Admin" : "Super Admin"}.`,
+  });
+});
+
+// POST /api/admin/students/:id/review-deletion - Review (approve & delete / reject) candidate deletion
+app.post("/api/admin/students/:id/review-deletion", requireAuth, async (req, res) => {
+  const student = await Student.findById(req.params.id);
+  if (!student) return sendError(res, 404, "Student not found");
+  if (!(await canAccessRecord(req, student))) return sendError(res, 403, "You can access only permitted records");
+
+  const canApprove = await canApproveStudentDeletion(req.user, student);
+  if (!canApprove) {
+    const branchInfo = await getStudentMultiBranchInfo(student);
+    const target = branchInfo.isMultiBranch ? "Super Admin or authorized Center Admin" : "Super Admin";
+    return sendError(res, 403, `Only ${target} can review deletion requests for this candidate.`);
+  }
+
+  if (student.deleteApproval?.status !== "pending") {
+    return sendError(res, 400, "This candidate does not have a pending deletion request");
+  }
+
+  const action = String(req.body?.action || "").toLowerCase().trim();
+  const note = String(req.body?.note || "").trim();
+  if (!["approve", "reject"].includes(action)) {
+    return sendError(res, 400, "Invalid review action. Must be 'approve' or 'reject'");
+  }
+
+  if (action === "approve") {
+    const deletedStudentData = student.toObject();
+    await Promise.all([
+      Student.findByIdAndDelete(student._id),
+      Attendance.deleteMany({ studentId: student._id }),
+      InternshipAssignment.deleteMany({ studentId: student._id }),
+      InternshipLog.deleteMany({ studentId: student._id }),
+      LogbookEntry.deleteMany({ studentId: student._id }),
+    ]);
+
+    return res.json({
+      ok: true,
+      deleted: true,
+      data: deletedStudentData,
+      message: `Candidate "${deletedStudentData.fullName}" deletion approved and permanently deleted by ${req.user.name}.`,
+    });
+  }
+
+  // Reject
+  student.deleteApproval.status = "rejected";
+  student.deleteApproval.rejectionReason = note || "Deletion request rejected";
+  student.deleteApproval.reviewedBy = req.user.name || "Admin";
+  student.deleteApproval.reviewedByRole = req.user.role || "superadmin";
+  student.deleteApproval.reviewedAt = new Date();
+
+  student.activities = student.activities || [];
+  student.activities.push({
+    type: "deletion_rejected",
+    message: `Candidate deletion request rejected by ${req.user.name} (${req.user.role}): "${student.deleteApproval.rejectionReason}"`,
+    by: req.user.name || "Admin",
+    at: new Date(),
+  });
+
+  await student.save();
+  return res.json({
+    ok: true,
+    deleted: false,
+    data: student,
+    message: "Candidate deletion request was rejected. The record remains active.",
+  });
+});
+
+// POST /api/admin/students/:id/cancel-deletion-request - Retract/cancel a pending deletion request
+app.post("/api/admin/students/:id/cancel-deletion-request", requireAuth, async (req, res) => {
+  const student = await Student.findById(req.params.id);
+  if (!student) return sendError(res, 404, "Student not found");
+  if (!(await canAccessRecord(req, student))) return sendError(res, 403, "You can access only permitted records");
+
+  if (student.deleteApproval?.status !== "pending") {
+    return sendError(res, 400, "No pending deletion request to cancel");
+  }
+
+  const isRequester = student.deleteApproval.requestedBy === req.user.name;
+  const canApprove = await canApproveStudentDeletion(req.user, student);
+  if (!isRequester && !canApprove) {
+    return sendError(res, 403, "You can only cancel deletion requests you submitted or manage");
+  }
+
+  student.deleteApproval.status = "none";
+  student.deleteApproval.reason = "";
+  student.activities = student.activities || [];
+  student.activities.push({
+    type: "deletion_request_cancelled",
+    message: `Candidate deletion request was cancelled by ${req.user.name}.`,
+    by: req.user.name || "Staff",
+    at: new Date(),
+  });
+
+  await student.save();
+  res.json({ ok: true, data: student, message: "Candidate deletion request cancelled" });
+});
+
+
+app.post("/api/admin/students/:id/certificate", requireAuth, async (req, res) => {
+  if (!canManageCertificates(req.user)) return sendError(res, 403, "Certificate issuing is restricted to admin accounts");
+  const student = await Student.findById(req.params.id);
+  if (!student) return sendError(res, 404, "Student not found");
+  if (!(await canAccessRecord(req, student))) return sendError(res, 403, "You can access only permitted records");
+  if (!["Course Completed", "Alumni", "Placed"].includes(student.status)) return sendError(res, 400, "Mark course as completed before issuing certificate");
+  const nps = await npsEligibilityForStudent(student);
+  const postInternship = nps.items.find((item) => item.touchpoint === "post_internship");
+  if (postInternship?.eligible && !postInternship.submitted) return sendError(res, 400, "Student must submit internship completion NPS before certificate generation");
 
   if (!student.certificateNumber) {
-    const issuedCount = await Student.countDocuments({ certificateStatus: "Issued" });
-    student.certificateNumber = `IMED-CERT-${new Date().getFullYear()}-${String(issuedCount + 1).padStart(4, "0")}`;
+    const certificateYear = new Date().getFullYear();
+    const certificatePrefix = `IMED-CERT-${certificateYear}-`;
+    const certificateSeq = await nextCounterValue(`certificate:${certificateYear}`, await maxStudentNumberSuffix("certificateNumber", certificatePrefix));
+    student.certificateNumber = `${certificatePrefix}${String(certificateSeq).padStart(4, "0")}`;
   }
   student.certificateIssuedAt = student.certificateIssuedAt || new Date();
   student.certificateStatus = "Issued";
@@ -494,72 +4575,2307 @@ app.post("/api/admin/students/:id/certificate", requireAuth, async (req, res) =>
   res.json({ ok: true, data: student });
 });
 
-app.post("/api/admin/students/:id/payments", requireAuth, async (req, res) => {
+app.get("/api/admin/finance/collection-stats", requireAuth, async (req, res) => {
+  if (!canManageFees(req.user)) return sendError(res, 403, "Fee analytics is restricted to admin accounts");
+
+  const now = new Date();
+  const startOfToday = new Date(now.getFullYear(), now.getMonth(), now.getDate(), 0, 0, 0, 0);
+  const endOfToday = new Date(now.getFullYear(), now.getMonth(), now.getDate(), 23, 59, 59, 999);
+  const startOfYesterday = new Date(now.getFullYear(), now.getMonth(), now.getDate() - 1, 0, 0, 0, 0);
+  const endOfYesterday = new Date(now.getFullYear(), now.getMonth(), now.getDate() - 1, 23, 59, 59, 999);
+  const startOfThisMonth = new Date(now.getFullYear(), now.getMonth(), 1, 0, 0, 0, 0);
+  const endOfThisMonth = new Date(now.getFullYear(), now.getMonth() + 1, 0, 23, 59, 59, 999);
+  const startOfLastMonth = new Date(now.getFullYear(), now.getMonth() - 1, 1, 0, 0, 0, 0);
+  const endOfLastMonth = new Date(now.getFullYear(), now.getMonth(), 0, 23, 59, 59, 999);
+  const startOfThisYear = new Date(now.getFullYear(), 0, 1, 0, 0, 0, 0);
+  const endOfThisYear = new Date(now.getFullYear(), 11, 31, 23, 59, 59, 999);
+
+  const { timeframe = "this_month", dateFrom = "", dateTo = "", centre = "", course = "" } = req.query;
+
+  let filterStart = startOfThisMonth;
+  let filterEnd = endOfThisMonth;
+
+  if (dateFrom && dateTo) {
+    const sParts = String(dateFrom).split("-").map(Number);
+    const eParts = String(dateTo).split("-").map(Number);
+    if (sParts.length === 3 && eParts.length === 3) {
+      filterStart = new Date(sParts[0], sParts[1] - 1, sParts[2], 0, 0, 0, 0);
+      filterEnd = new Date(eParts[0], eParts[1] - 1, eParts[2], 23, 59, 59, 999);
+    }
+  } else if (timeframe === "today") {
+    filterStart = startOfToday;
+    filterEnd = endOfToday;
+  } else if (timeframe === "yesterday") {
+    filterStart = startOfYesterday;
+    filterEnd = endOfYesterday;
+  } else if (timeframe === "last_month") {
+    filterStart = startOfLastMonth;
+    filterEnd = endOfLastMonth;
+  } else if (timeframe === "last_3_months") {
+    filterStart = new Date(now.getFullYear(), now.getMonth() - 2, 1, 0, 0, 0, 0);
+    filterEnd = endOfThisMonth;
+  } else if (timeframe === "this_year") {
+    filterStart = startOfThisYear;
+    filterEnd = endOfThisYear;
+  } else if (timeframe === "all") {
+    filterStart = new Date(2020, 0, 1, 0, 0, 0, 0);
+    filterEnd = new Date(2099, 11, 31, 23, 59, 59, 999);
+  }
+
+  const baseFilter = { ...(await scopedDataFilter(req, req.query)) };
+  if (centre && centre !== "all") baseFilter.centre = centre;
+  if (course && course !== "all") baseFilter.course = course;
+
+  const students = await Student.find(baseFilter)
+    .select("fullName phone admissionNumber centre course status totalFee paidAmount discountAmount admissionPaymentMode admissionFinalizedAt admissionFinalizedBy payments createdAt")
+    .lean();
+
+  let todayTotal = 0;
+  let todayCount = 0;
+  let yesterdayTotal = 0;
+  let yesterdayCount = 0;
+  let thisMonthTotal = 0;
+  let thisMonthCount = 0;
+  let lastMonthTotal = 0;
+  let lastMonthCount = 0;
+  let allTimeTotal = 0;
+  let allTimeCount = 0;
+
+  let filteredTotal = 0;
+  let filteredCount = 0;
+
+  const centreMap = new Map();
+  const modeMap = new Map();
+  const courseMap = new Map();
+  const allPaymentsList = [];
+
+  // Initialize monthly trend buckets for the last 12 months
+  const monthlyTrendBuckets = [];
+  for (let i = 11; i >= 0; i--) {
+    const d = new Date(now.getFullYear(), now.getMonth() - i, 1);
+    const key = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}`;
+    const label = d.toLocaleDateString("en-US", { month: "short", year: "numeric" });
+    monthlyTrendBuckets.push({ key, label, amount: 0, count: 0 });
+  }
+  const monthlyMap = new Map(monthlyTrendBuckets.map((b) => [b.key, b]));
+
+  students.forEach((student) => {
+    const studentCentre = student.centre || "Unassigned";
+    const studentCourse = student.course || "Other";
+    const payments = Array.isArray(student.payments) ? student.payments : [];
+    let recordedSum = 0;
+
+    const processPayment = (p) => {
+      if (p.status === "pending" || p.status === "rejected") return;
+      const amount = Number(p.amount || 0);
+      if (!Number.isFinite(amount) || amount <= 0) return;
+      const paidAt = p.paidAt ? new Date(p.paidAt) : (student.createdAt ? new Date(student.createdAt) : now);
+      const mode = String(p.mode || "Cash").trim() || "Cash";
+      const purpose = String(p.paymentPurpose || "Fees Installment").trim();
+
+      allTimeTotal += amount;
+      allTimeCount += 1;
+
+      if (paidAt >= startOfToday && paidAt <= endOfToday) {
+        todayTotal += amount;
+        todayCount += 1;
+      }
+      if (paidAt >= startOfYesterday && paidAt <= endOfYesterday) {
+        yesterdayTotal += amount;
+        yesterdayCount += 1;
+      }
+      if (paidAt >= startOfThisMonth && paidAt <= endOfThisMonth) {
+        thisMonthTotal += amount;
+        thisMonthCount += 1;
+      }
+      if (paidAt >= startOfLastMonth && paidAt <= endOfLastMonth) {
+        lastMonthTotal += amount;
+        lastMonthCount += 1;
+      }
+
+      // Monthly Trend
+      const monthKey = `${paidAt.getFullYear()}-${String(paidAt.getMonth() + 1).padStart(2, "0")}`;
+      if (monthlyMap.has(monthKey)) {
+        const bucket = monthlyMap.get(monthKey);
+        bucket.amount += amount;
+        bucket.count += 1;
+      }
+
+      // Timeframe Filtered aggregations
+      if (paidAt >= filterStart && paidAt <= filterEnd) {
+        filteredTotal += amount;
+        filteredCount += 1;
+
+        // By Centre
+        const cItem = centreMap.get(studentCentre) || { centre: studentCentre, amount: 0, count: 0 };
+        cItem.amount += amount;
+        cItem.count += 1;
+        centreMap.set(studentCentre, cItem);
+
+        // By Mode
+        const mItem = modeMap.get(mode) || { mode, amount: 0, count: 0 };
+        mItem.amount += amount;
+        mItem.count += 1;
+        modeMap.set(mode, mItem);
+
+        // By Course
+        const crsItem = courseMap.get(studentCourse) || { course: studentCourse, amount: 0, count: 0 };
+        crsItem.amount += amount;
+        crsItem.count += 1;
+        courseMap.set(studentCourse, crsItem);
+
+        allPaymentsList.push({
+          studentId: student._id,
+          studentName: student.fullName,
+          studentPhone: student.phone,
+          admissionNumber: student.admissionNumber || "",
+          centre: studentCentre,
+          course: studentCourse,
+          amount,
+          mode,
+          paymentPurpose: purpose,
+          transactionId: p.transactionId || p.emiReference || "",
+          by: p.by || "Admin",
+          paidAt,
+        });
+      }
+    };
+
+    payments.forEach((p) => {
+      recordedSum += Number(p.amount || 0);
+      processPayment(p);
+    });
+
+    // Capture upfront fee if not explicitly in payments array
+    const unrecorded = Number(student.paidAmount || 0) - recordedSum;
+    if (unrecorded > 0) {
+      processPayment({
+        amount: unrecorded,
+        mode: student.admissionPaymentMode || "Cash",
+        paymentPurpose: "Admission Upfront Fee",
+        paidAt: student.admissionFinalizedAt || student.createdAt || now,
+        by: student.admissionFinalizedBy || "Admission Desk",
+      });
+    }
+  });
+
+  // Calculate percentages and sort
+  const byCentre = Array.from(centreMap.values())
+    .map((item) => ({ ...item, share: filteredTotal > 0 ? Number(((item.amount / filteredTotal) * 100).toFixed(1)) : 0 }))
+    .sort((a, b) => b.amount - a.amount);
+
+  const byMode = Array.from(modeMap.values())
+    .map((item) => ({ ...item, share: filteredTotal > 0 ? Number(((item.amount / filteredTotal) * 100).toFixed(1)) : 0 }))
+    .sort((a, b) => b.amount - a.amount);
+
+  const byCourse = Array.from(courseMap.values())
+    .map((item) => ({ ...item, share: filteredTotal > 0 ? Number(((item.amount / filteredTotal) * 100).toFixed(1)) : 0 }))
+    .sort((a, b) => b.amount - a.amount);
+
+  const momGrowth = lastMonthTotal > 0
+    ? Number((((thisMonthTotal - lastMonthTotal) / lastMonthTotal) * 100).toFixed(1))
+    : (thisMonthTotal > 0 ? 100 : 0);
+
+  const totalBilled = students.reduce((sum, s) => sum + Math.max(0, Number(s.totalFee || 0) - Number(s.discountAmount || 0)), 0);
+  const totalDue = Math.max(0, totalBilled - allTimeTotal);
+
+  allPaymentsList.sort((a, b) => new Date(b.paidAt).getTime() - new Date(a.paidAt).getTime());
+
+  res.json({
+    ok: true,
+    data: {
+      today: { total: todayTotal, count: todayCount },
+      yesterday: { total: yesterdayTotal, count: yesterdayCount },
+      thisMonth: { total: thisMonthTotal, count: thisMonthCount },
+      lastMonth: { total: lastMonthTotal, count: lastMonthCount },
+      momGrowth,
+      allTime: { total: allTimeTotal, count: allTimeCount },
+      filtered: { total: filteredTotal, count: filteredCount, timeframe, dateFrom, dateTo },
+      totals: { billed: totalBilled, collected: allTimeTotal, due: totalDue },
+      monthlyTrend: monthlyTrendBuckets,
+      byCentre,
+      byMode,
+      byCourse,
+      recentPayments: allPaymentsList.slice(0, 30),
+      totalTransactions: allPaymentsList.length,
+    },
+  });
+});
+
+// GET /api/admin/finance/emi-summary - Overall institutional EMI & Dues summary
+app.get("/api/admin/finance/emi-summary", requireAuth, async (req, res) => {
+  if (!canManageFees(req.user) && !isOperationsAccount(req.user)) {
+    return sendError(res, 403, "Access restricted to authorized admin accounts");
+  }
+
+  try {
+    const scopeFilter = await scopedDataFilter(req, req.query);
+    const query = {
+      status: { $ne: "Dropped" },
+      ...scopeFilter,
+    };
+    if (req.query?.centre && req.query.centre !== "all") {
+      query.centre = req.query.centre;
+    }
+    if (req.query?.course && req.query.course !== "all") {
+      query.course = req.query.course;
+    }
+
+    const allStudents = await Student.find(query)
+      .select("fullName phone admissionNumber course centre totalFee discountAmount paidAmount emiEnabled emiMonths emiAmount nextEmiDate payments status")
+      .lean();
+
+    const now = new Date();
+    const currentYear = now.getFullYear();
+    const currentMonthNum = now.getMonth() + 1;
+    const thisMonthPrefix = `${currentYear}-${String(currentMonthNum).padStart(2, "0")}`;
+    const todayStr = `${thisMonthPrefix}-${String(now.getDate()).padStart(2, "0")}`;
+
+    let overallDueAmount = 0;
+    let overallDueCandidatesCount = 0;
+
+    let overdueCount = 0;
+    let overdueAmount = 0;
+
+    let dueThisMonthCount = 0;
+    let dueThisMonthAmount = 0;
+
+    let upcomingThisMonthCount = 0;
+    let upcomingThisMonthAmount = 0;
+
+    const emiCandidates = [];
+
+    for (const student of allStudents) {
+      const totalFee = Number(student.totalFee || 0);
+      const discount = Number(student.discountAmount || 0);
+      const netFee = Math.max(0, totalFee - discount);
+      const totalPaid = Number(student.paidAmount || 0);
+      const totalDue = Math.max(0, netFee - totalPaid);
+      const baseEmi = Number(student.emiAmount || 0);
+      const isEmi = Boolean(student.emiEnabled && baseEmi > 0);
+
+      if (totalDue > 0) {
+        overallDueAmount += totalDue;
+        overallDueCandidatesCount++;
+      }
+
+      const hasEmiOrDue = isEmi || student.nextEmiDate || totalDue > 0;
+      if (!hasEmiOrDue) continue;
+
+      let shortfall = 0;
+      let currentDue = totalDue;
+
+      if (isEmi && totalDue > 0) {
+        const payments = student.payments || [];
+        const installmentPayments = payments.filter((p) => {
+          const purpose = p.paymentPurpose;
+          const mode = p.mode;
+          return purpose === "Fees Installment" || purpose === "EMI Installment" || mode === "EMI";
+        });
+        const installmentPaid = installmentPayments.reduce((sum, p) => sum + Number(p.amount || 0), 0);
+        const k = installmentPayments.length;
+        const expectedSoFar = k * baseEmi;
+        shortfall = Math.max(0, expectedSoFar - installmentPaid);
+        const advanceCredit = Math.max(0, installmentPaid - expectedSoFar);
+        const rawNextDue = baseEmi + shortfall - advanceCredit;
+        currentDue = Math.min(totalDue, Math.max(0, rawNextDue));
+      }
+
+      let nextEmiDateStr = "";
+      if (student.nextEmiDate) {
+        const d = new Date(student.nextEmiDate);
+        if (!isNaN(d.getTime())) {
+          nextEmiDateStr = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
+        }
+      }
+
+      const isOverdue = Boolean(nextEmiDateStr && nextEmiDateStr < todayStr);
+      const hasShortfall = shortfall > 0;
+
+      if (isOverdue || hasShortfall) {
+        overdueCount++;
+        overdueAmount += currentDue;
+      }
+
+      if (nextEmiDateStr && nextEmiDateStr.startsWith(thisMonthPrefix)) {
+        dueThisMonthCount++;
+        dueThisMonthAmount += currentDue;
+
+        if (!isOverdue && !hasShortfall) {
+          upcomingThisMonthCount++;
+          upcomingThisMonthAmount += currentDue;
+        }
+      }
+
+      emiCandidates.push(student);
+    }
+
+    res.json({
+      ok: true,
+      data: {
+        summary: {
+          overallDueAmount,
+          overallDueCandidatesCount,
+          overdueCount,
+          overdueAmount,
+          dueThisMonthCount,
+          dueThisMonthAmount,
+          upcomingThisMonthCount,
+          upcomingThisMonthAmount,
+          totalEmiCandidatesCount: emiCandidates.length,
+        },
+        students: emiCandidates,
+      },
+    });
+  } catch (err) {
+    sendError(res, 500, err.message || "Failed to calculate EMI summary");
+  }
+});
+
+// GET /api/admin/finance/referrals-summary - Summary and listing of all referral admissions & payouts
+app.get("/api/admin/finance/referrals-summary", requireAuth, async (req, res) => {
+  try {
+    const baseQuery = { ...(await scopedDataFilter(req, req.query)) };
+    const centreFilter = String(req.query?.centre || "all").trim();
+    if (centreFilter !== "all") {
+      baseQuery.centre = centreFilter;
+    }
+
+    const referralQuery = {
+      ...baseQuery,
+      $or: [
+        { source: /^referral$/i },
+        { refereeName: { $exists: true, $nin: ["", null] } },
+        { referralAmount: { $gt: 0 } },
+      ],
+    };
+
+    const students = await Student.find(referralQuery)
+      .select("fullName phone admissionNumber centre course status totalFee discountAmount paidAmount source refereeName refereePhone referralAmount referralSettlement createdAt")
+      .sort({ createdAt: -1 })
+      .lean();
+
+    let totalIncentiveAmount = 0;
+    let settledAmount = 0;
+    let settledCount = 0;
+    let pendingAmount = 0;
+    let pendingCount = 0;
+    let eligibleCount = 0;
+    let awaitingFeeCount = 0;
+
+    const items = students.map((st) => {
+      const incentive = Number(st.referralAmount || 0);
+      totalIncentiveAmount += incentive;
+      const settlement = st.referralSettlement || {};
+      const isSettled = settlement.status === "settled";
+      const paid = Number(st.paidAmount || 0);
+      const isEligible = paid > 0;
+
+      if (isSettled) {
+        settledCount++;
+        settledAmount += Number(settlement.amount || incentive);
+      } else {
+        pendingCount++;
+        pendingAmount += incentive;
+        if (isEligible) {
+          eligibleCount++;
+        } else {
+          awaitingFeeCount++;
+        }
+      }
+
+      return {
+        _id: st._id,
+        fullName: st.fullName,
+        phone: st.phone,
+        admissionNumber: st.admissionNumber,
+        centre: st.centre,
+        course: st.course,
+        status: st.status,
+        totalFee: st.totalFee || 0,
+        paidAmount: paid,
+        refereeName: st.refereeName || "-",
+        refereePhone: st.refereePhone || "-",
+        referralAmount: incentive,
+        isEligible,
+        settlement: {
+          status: settlement.status || "unsettled",
+          amount: settlement.amount || incentive,
+          settledAt: settlement.settledAt,
+          settledBy: settlement.settledBy,
+          settledByRole: settlement.settledByRole,
+          payoutMode: settlement.payoutMode,
+          transactionReference: settlement.transactionReference,
+          hasProof: Boolean(settlement.proof?.storedName),
+          proofName: settlement.proof?.originalName,
+          note: settlement.note,
+        },
+      };
+    });
+
+    res.json({
+      ok: true,
+      data: {
+        summary: {
+          totalReferralsCount: students.length,
+          totalIncentiveAmount,
+          settledCount,
+          settledAmount,
+          pendingCount,
+          pendingAmount,
+          eligibleCount,
+          awaitingFeeCount,
+        },
+        referrals: items,
+      },
+    });
+  } catch (err) {
+    sendError(res, 500, err.message || "Failed to fetch referrals summary");
+  }
+});
+
+// POST /api/admin/students/:id/settle-referral - Settle/pay referee incentive
+app.post("/api/admin/students/:id/settle-referral", requireAuth, leadDocumentUpload.single("proof"), async (req, res) => {
+  const student = await Student.findById(req.params.id);
+  if (!student) return sendError(res, 404, "Student not found");
+  if (!(await canAccessRecord(req, student))) return sendError(res, 403, "You can access only permitted records");
+
+  const amount = Number(req.body?.amount || student.referralAmount || 0);
+  if (!Number.isFinite(amount) || amount <= 0) {
+    return sendError(res, 400, "Enter a valid settlement amount greater than 0");
+  }
+
+  const payoutMode = String(req.body?.payoutMode || "UPI").trim();
+  const isCash = payoutMode.toLowerCase() === "cash";
+  const transactionReference = String(req.body?.transactionReference || "").trim();
+  const note = String(req.body?.note || "").trim();
+  const overrideEarly = req.body?.overrideEarly === "true" || req.body?.overrideEarly === true;
+
+  if (!isCash && !req.file && !student.referralSettlement?.proof) {
+    return sendError(res, 400, "Transfer proof screenshot or document is mandatory for non-cash payouts");
+  }
+
+  const candidatePaid = Number(student.paidAmount || 0);
+  if (candidatePaid <= 0 && !overrideEarly) {
+    return sendError(res, 400, "Candidate has not paid any fees yet. Settlement requires candidate fee payment first (or admin override).");
+  }
+
+  let proofDoc = null;
+  if (!isCash && req.file) {
+    proofDoc = saveLeadDocument(req.file);
+  }
+
+  student.referralSettlement = {
+    status: "settled",
+    amount,
+    settledAt: req.body?.settledAt ? new Date(req.body.settledAt) : new Date(),
+    settledBy: req.user.name || "Admin",
+    settledByRole: req.user.role || "admin",
+    payoutMode,
+    transactionReference,
+    proof: isCash ? null : (proofDoc || student.referralSettlement?.proof),
+    note,
+  };
+
+  student.activities = student.activities || [];
+  student.activities.push({
+    type: "referral_settled",
+    message: `Referral payout of ₹${amount.toLocaleString("en-IN")} settled to ${student.refereeName || "referee"} via ${payoutMode}${transactionReference ? ` (Ref: ${transactionReference})` : ""} by ${req.user.name}.`,
+    by: req.user.name || "Admin",
+    at: new Date(),
+  });
+
+  await student.save();
+
+  res.json({
+    ok: true,
+    data: student,
+    message: `Referral incentive of ₹${amount.toLocaleString("en-IN")} marked as settled.`,
+  });
+});
+
+// POST /api/admin/students/:id/revert-referral-settlement - Revert settled status back to unsettled
+app.post("/api/admin/students/:id/revert-referral-settlement", requireAuth, async (req, res) => {
+  const student = await Student.findById(req.params.id);
+  if (!student) return sendError(res, 404, "Student not found");
+  if (!(await canAccessRecord(req, student))) return sendError(res, 403, "You can access only permitted records");
+
+  student.referralSettlement = {
+    status: "unsettled",
+    amount: student.referralAmount || 0,
+    settledAt: null,
+    settledBy: "",
+    settledByRole: "",
+    payoutMode: "",
+    transactionReference: "",
+    proof: undefined,
+    note: "",
+  };
+
+  student.activities = student.activities || [];
+  student.activities.push({
+    type: "referral_settlement_reverted",
+    message: `Referral settlement status was reverted to unsettled by ${req.user.name}.`,
+    by: req.user.name || "Admin",
+    at: new Date(),
+  });
+
+  await student.save();
+
+  res.json({
+    ok: true,
+    data: student,
+    message: "Referral settlement reverted to pending",
+  });
+});
+
+// GET /api/admin/students/:id/referral/proof - Preview / download referral payout proof
+app.get("/api/admin/students/:id/referral/proof", requireAuth, async (req, res) => {
+  const existingStudent = await Student.findById(req.params.id).select("referralSettlement franchiseId").lean();
+  if (!existingStudent) return sendError(res, 404, "Student not found");
+  if (!(await canAccessRecord(req, existingStudent))) return sendError(res, 403, "You can access only permitted records");
+
+  const proof = existingStudent.referralSettlement?.proof;
+  if (!proof?.storedName) return sendError(res, 404, "Payout proof not found");
+  const filePath = path.join(leadDocumentDir, proof.storedName);
+  if (!filePath.startsWith(leadDocumentDir) || !fs.existsSync(filePath)) return sendError(res, 404, "Payout proof not found");
+
+  const fileName = String(proof.originalName || "referral-payout-proof").replace(/[\r\n"]/g, "");
+  res.setHeader("Content-Type", proof.mimeType || "application/octet-stream");
+  if (req.query.download === "1") {
+    res.download(filePath, fileName);
+  } else {
+    res.setHeader("Content-Disposition", `inline; filename="${fileName}"; filename*=UTF-8''${encodeURIComponent(fileName)}`);
+    res.sendFile(filePath);
+  }
+});
+
+// GET /api/admin/finance/fee-approvals - List all pending/reviewed fee concession approval requests
+app.get("/api/admin/finance/fee-approvals", requireAuth, async (req, res) => {
+  if (!canManageFees(req.user)) return sendError(res, 403, "Access restricted to authorized admin accounts");
+  const statusFilter = String(req.query?.status || "pending").trim().toLowerCase();
+  const centreFilter = String(req.query?.centre || "").trim();
+  const franchiseIdFilter = String(req.query?.franchiseId || "").trim();
+
+  const query = { ...(await scopedDataFilter(req, req.query)) };
+  if (statusFilter !== "all") {
+    query["feeApproval.status"] = statusFilter;
+  } else {
+    query["feeApproval.status"] = { $in: ["pending", "approved", "rejected"] };
+  }
+
+  if (centreFilter && centreFilter !== "all") {
+    const centreConditions = [
+      { centre: centreFilter },
+      { centre: { $regex: new RegExp(`^${escapeRegex(centreFilter)}$`, "i") } },
+    ];
+    if (franchiseIdFilter && mongoose.isValidObjectId(franchiseIdFilter)) {
+      centreConditions.push({ franchiseId: new mongoose.Types.ObjectId(franchiseIdFilter) });
+    }
+    if (query.$or) {
+      query.$and = [{ $or: query.$or }, { $or: centreConditions }];
+      delete query.$or;
+    } else {
+      query.$or = centreConditions;
+    }
+  } else if (franchiseIdFilter && mongoose.isValidObjectId(franchiseIdFilter)) {
+    query.franchiseId = new mongoose.Types.ObjectId(franchiseIdFilter);
+  }
+
+  const [items, pendingCount] = await Promise.all([
+    Student.find(query)
+      .select("fullName phone admissionNumber centre course status totalFee discountAmount feeApproval admissionPaymentMode createdAt")
+      .sort({ "feeApproval.requestedAt": -1, updatedAt: -1 })
+      .lean(),
+    Student.countDocuments({
+      ...query,
+      "feeApproval.status": "pending",
+    }),
+  ]);
+
+  res.json({
+    ok: true,
+    data: items,
+    pendingCount,
+  });
+});
+
+// POST /api/admin/finance/fee-approvals/:id/review - Approve or reject a candidate fee concession
+app.post("/api/admin/finance/fee-approvals/:id/review", requireAuth, async (req, res) => {
+  const isSuper = isHeadSuperAdmin(req.user);
+  const isCenter = isCenterAdmin(req.user);
+  if (!isSuper && !isCenter) {
+    return sendError(res, 403, "Only Super Admin and Center Admin are authorized to approve fee concessions");
+  }
+
+  const student = await Student.findById(req.params.id);
+  if (!student) return sendError(res, 404, "Candidate record not found");
+
+  if (isCenter && !isSuper) {
+    const scope = await centerAdminBranchScope(req.user);
+    const matchesCentre = student.centre && scope.names.map((n) => n.toLowerCase()).includes(student.centre.toLowerCase());
+    const matchesFranchise = student.franchiseId && scope.ids.map(String).includes(String(student.franchiseId));
+    if (!matchesCentre && !matchesFranchise) {
+      return sendError(res, 403, "You can only approve fee requests for branches within your center scope");
+    }
+  }
+
+  const action = String(req.body?.action || "").toLowerCase().trim();
+  const note = String(req.body?.note || "").trim();
+  if (!["approve", "reject"].includes(action)) {
+    return sendError(res, 400, "Invalid review action. Must be 'approve' or 'reject'");
+  }
+
+  if (!student.feeApproval || student.feeApproval.status !== "pending") {
+    return sendError(res, 400, "This candidate does not have a pending fee concession request");
+  }
+
+  if (action === "approve") {
+    const requestedFee = Number(student.feeApproval.requestedFee || student.totalFee || 0);
+    const requestedDiscount = Number(student.feeApproval.requestedDiscount || 0);
+    student.totalFee = requestedFee;
+    student.discountAmount = requestedDiscount;
+    student.feeApproval.status = "approved";
+    student.feeApproval.reviewedBy = req.user.name || "Admin";
+    student.feeApproval.reviewedByRole = req.user.role || "superadmin";
+    student.feeApproval.reviewedAt = new Date();
+    if (note) student.feeApproval.reason = student.feeApproval.reason ? `${student.feeApproval.reason} (Note: ${note})` : note;
+
+    student.activities = student.activities || [];
+    student.activities.push({
+      type: "fee_approval",
+      message: `Fee concession approved by ${req.user.name} (${req.user.role}): Total Fee ₹${requestedFee.toLocaleString("en-IN")}, Discount ₹${requestedDiscount.toLocaleString("en-IN")}${note ? ` - Note: "${note}"` : ""}`,
+      by: req.user.name || "Admin",
+      at: new Date(),
+    });
+  } else {
+    student.feeApproval.status = "rejected";
+    student.feeApproval.rejectionReason = note || "Concession rejected by administrative review";
+    student.feeApproval.reviewedBy = req.user.name || "Admin";
+    student.feeApproval.reviewedByRole = req.user.role || "superadmin";
+    student.feeApproval.reviewedAt = new Date();
+
+    student.activities = student.activities || [];
+    student.activities.push({
+      type: "fee_rejection",
+      message: `Fee concession request rejected by ${req.user.name}: "${student.feeApproval.rejectionReason}"`,
+      by: req.user.name || "Admin",
+      at: new Date(),
+    });
+  }
+
+  await student.save();
+  const updated = await Student.findById(student._id).lean();
+  res.json({ ok: true, data: updated, message: action === "approve" ? "Fee concession approved successfully" : "Fee concession rejected" });
+});
+
+// GET /api/admin/finance/payment-approvals - List pending and reviewed student payments
+app.get("/api/admin/finance/payment-approvals", requireAuth, async (req, res) => {
+  if (!canManageFees(req.user)) return sendError(res, 403, "Access restricted to authorized admin accounts");
+  const statusFilter = String(req.query?.status || "pending").trim().toLowerCase();
+  const centreFilter = String(req.query?.centre || "").trim();
+  const franchiseIdFilter = String(req.query?.franchiseId || "").trim();
+
+  const query = { ...(await scopedDataFilter(req, req.query)) };
+  if (centreFilter && centreFilter !== "all") {
+    const centreConditions = [
+      { centre: centreFilter },
+      { centre: { $regex: new RegExp(`^${escapeRegex(centreFilter)}$`, "i") } },
+    ];
+    if (franchiseIdFilter && mongoose.isValidObjectId(franchiseIdFilter)) {
+      centreConditions.push({ franchiseId: new mongoose.Types.ObjectId(franchiseIdFilter) });
+    }
+    if (query.$or) {
+      query.$and = [{ $or: query.$or }, { $or: centreConditions }];
+      delete query.$or;
+    } else {
+      query.$or = centreConditions;
+    }
+  } else if (franchiseIdFilter && mongoose.isValidObjectId(franchiseIdFilter)) {
+    query.franchiseId = new mongoose.Types.ObjectId(franchiseIdFilter);
+  }
+
+  const students = await Student.find(query)
+    .select("fullName phone admissionNumber centre course status totalFee discountAmount paidAmount payments createdAt")
+    .lean();
+
+  const flatPayments = [];
+  let pendingCount = 0;
+
+  students.forEach((st) => {
+    (st.payments || []).forEach((p, idx) => {
+      const pStatus = p.status || "approved";
+      if (pStatus === "pending") pendingCount++;
+      if (statusFilter === "all" || pStatus === statusFilter) {
+        flatPayments.push({
+          studentId: st._id,
+          studentName: st.fullName,
+          studentPhone: st.phone,
+          admissionNumber: st.admissionNumber,
+          centre: st.centre,
+          course: st.course,
+          totalFee: st.totalFee,
+          paidAmount: st.paidAmount,
+          paymentId: String(p._id || idx),
+          paymentIndex: idx,
+          amount: p.amount,
+          mode: p.mode,
+          paymentPurpose: p.paymentPurpose,
+          transactionId: p.transactionId,
+          emiReference: p.emiReference,
+          loanProviderName: p.loanProviderName,
+          note: p.note,
+          proof: p.proof,
+          proofs: p.proofs,
+          status: pStatus,
+          requestedBy: p.requestedBy || p.by,
+          requestedByRole: p.requestedByRole || "",
+          requestedAt: p.requestedAt || p.paidAt,
+          reviewedBy: p.reviewedBy,
+          reviewedByRole: p.reviewedByRole,
+          reviewedAt: p.reviewedAt,
+          rejectionReason: p.rejectionReason,
+          paidAt: p.paidAt,
+        });
+      }
+    });
+  });
+
+  flatPayments.sort((a, b) => new Date(b.requestedAt || b.paidAt).getTime() - new Date(a.requestedAt || a.paidAt).getTime());
+
+  res.json({
+    ok: true,
+    data: flatPayments,
+    pendingCount,
+  });
+});
+
+// POST /api/admin/finance/payment-approvals/:studentId/:paymentId/review - Approve or reject a candidate payment
+app.post("/api/admin/finance/payment-approvals/:studentId/:paymentId/review", requireAuth, async (req, res) => {
+  const isSuper = isHeadSuperAdmin(req.user);
+  const isCenter = isCenterAdmin(req.user);
+  if (!isSuper && !isCenter) {
+    return sendError(res, 403, "Only Super Admin and Center Admin are authorized to approve payments");
+  }
+
+  const student = await Student.findById(req.params.studentId);
+  if (!student) return sendError(res, 404, "Candidate record not found");
+
+  if (isCenter && !isSuper) {
+    const scope = await centerAdminBranchScope(req.user);
+    const matchesCentre = student.centre && scope.names.map((n) => n.toLowerCase()).includes(student.centre.toLowerCase());
+    const matchesFranchise = student.franchiseId && scope.ids.map(String).includes(String(student.franchiseId));
+    if (!matchesCentre && !matchesFranchise) {
+      return sendError(res, 403, "You can only approve payments for branches within your center scope");
+    }
+  }
+
+  const payment = (student.payments || []).find((p, idx) => String(p._id || idx) === String(req.params.paymentId));
+  if (!payment) return sendError(res, 404, "Payment record not found");
+  if (payment.status !== "pending") return sendError(res, 400, "This payment is not pending approval");
+
+  const action = String(req.body?.action || "").toLowerCase().trim();
+  const note = String(req.body?.note || "").trim();
+  if (!["approve", "reject"].includes(action)) {
+    return sendError(res, 400, "Invalid review action. Must be 'approve' or 'reject'");
+  }
+
+  if (action === "approve") {
+    payment.status = "approved";
+    payment.reviewedBy = req.user.name || "Admin";
+    payment.reviewedByRole = req.user.role || "admin";
+    payment.reviewedAt = new Date();
+
+    const paymentAmount = Number(payment.amount || 0);
+    student.paidAmount = Math.max(0, Number(student.paidAmount || 0) + paymentAmount);
+
+    const finalPayable = Math.max(0, Number(student.totalFee || 0) - Number(student.discountAmount || 0));
+    const remainingAfter = Math.max(0, finalPayable - student.paidAmount);
+
+    if (payment.paymentPurpose === "Fees Installment" && student.emiEnabled) {
+      if (remainingAfter <= 0) {
+        student.emiEnabled = false;
+        student.nextEmiDate = null;
+      } else {
+        const nextDate = student.nextEmiDate ? new Date(student.nextEmiDate) : new Date();
+        nextDate.setMonth(nextDate.getMonth() + 1);
+        student.nextEmiDate = nextDate;
+      }
+    }
+    if (remainingAfter <= 0 && normalizeStudentStatus(student.status) === "Fees Decided") {
+      student.status = "Fees Collected";
+    }
+
+    student.activities = student.activities || [];
+    student.activities.push({
+      type: "payment_approved",
+      message: `Payment of ₹${paymentAmount.toLocaleString("en-IN")} (${payment.mode} - ${payment.paymentPurpose}) approved by ${req.user.name} (${req.user.role})${note ? ` - Note: "${note}"` : ""}`,
+      by: req.user.name || "Admin",
+      at: new Date(),
+    });
+  } else {
+    payment.status = "rejected";
+    payment.rejectionReason = note || "Payment rejected by administrative review";
+    payment.reviewedBy = req.user.name || "Admin";
+    payment.reviewedByRole = req.user.role || "admin";
+    payment.reviewedAt = new Date();
+
+    student.activities = student.activities || [];
+    student.activities.push({
+      type: "payment_rejected",
+      message: `Payment of ₹${Number(payment.amount || 0).toLocaleString("en-IN")} (${payment.mode}) rejected by ${req.user.name}: "${payment.rejectionReason}"`,
+      by: req.user.name || "Admin",
+      at: new Date(),
+    });
+  }
+
+  await student.save();
+  const updated = await Student.findById(student._id).lean();
+  res.json({
+    ok: true,
+    data: updated,
+    message: action === "approve" ? "Payment approved successfully" : "Payment rejected",
+  });
+});
+
+// POST /api/admin/students/:id/request-fee-approval - Propose a fee concession / custom fee
+app.post("/api/admin/students/:id/request-fee-approval", requireAuth, async (req, res) => {
+  if (!canManageFees(req.user)) return sendError(res, 403, "Fee concession updates are restricted to admin and counsellor staff");
+
+  const student = await Student.findById(req.params.id);
+  if (!student) return sendError(res, 404, "Candidate record not found");
+  if (!(await canAccessRecord(req, student))) return sendError(res, 403, "You can access only permitted records");
+
+  const requestedFee = Number(req.body?.requestedFee);
+  const requestedDiscount = Number(req.body?.requestedDiscount || 0);
+  const standardCourseFee = Number(req.body?.standardCourseFee || student.totalFee || 0);
+  const reason = String(req.body?.reason || "").trim();
+
+  if (!Number.isFinite(requestedFee) || requestedFee < 0) return sendError(res, 400, "Please specify a valid requested total fee");
+  if (!reason && !isHeadSuperAdmin(req.user)) return sendError(res, 400, "Please provide a reason / justification for the fee concession");
+
+  const isSuper = isHeadSuperAdmin(req.user);
+
+  if (isSuper) {
+    // Super Admin direct change is auto-approved
+    student.totalFee = requestedFee;
+    student.discountAmount = requestedDiscount;
+    student.feeApproval = {
+      status: "approved",
+      standardCourseFee,
+      requestedFee,
+      requestedDiscount,
+      reason: reason || "Direct Super Admin update",
+      requestedBy: req.user.name || "Super Admin",
+      requestedByRole: req.user.role || "superadmin",
+      requestedAt: new Date(),
+      reviewedBy: req.user.name || "Super Admin",
+      reviewedByRole: req.user.role || "superadmin",
+      reviewedAt: new Date(),
+    };
+    student.activities = student.activities || [];
+    student.activities.push({
+      type: "fee_update",
+      message: `Total fee updated directly by ${req.user.name}: ₹${requestedFee.toLocaleString("en-IN")}${requestedDiscount > 0 ? ` (Discount: ₹${requestedDiscount.toLocaleString("en-IN")})` : ""}`,
+      by: req.user.name || "Admin",
+      at: new Date(),
+    });
+  } else {
+    // Branch staff submit for approval
+    student.feeApproval = {
+      status: "pending",
+      standardCourseFee,
+      requestedFee,
+      requestedDiscount,
+      reason,
+      requestedBy: req.user.name || "Staff",
+      requestedByRole: req.user.role || "admin",
+      requestedAt: new Date(),
+    };
+    student.activities = student.activities || [];
+    student.activities.push({
+      type: "fee_concession_requested",
+      message: `Fee concession submitted by ${req.user.name} (${req.user.role}): Proposed Total ₹${requestedFee.toLocaleString("en-IN")}, Discount ₹${requestedDiscount.toLocaleString("en-IN")}. Reason: "${reason}"`,
+      by: req.user.name || "Admin",
+      at: new Date(),
+    });
+  }
+
+  await student.save();
+  const updated = await Student.findById(student._id).lean();
+  res.json({
+    ok: true,
+    data: updated,
+    message: isSuper ? "Fee updated successfully" : "Fee concession submitted for Super Admin / Center Admin approval",
+  });
+});
+
+app.post("/api/admin/students/:id/payments", requireAuth, leadDocumentUpload.array("paymentProof", 10), async (req, res) => {
+  if (!canManageFees(req.user)) return sendError(res, 403, "Fee and payment updates are restricted to admin accounts");
   const amount = Number(req.body?.amount || 0);
-  if (amount <= 0) return sendError(res, 400, "Payment amount is required");
+  const mode = String(req.body?.mode || "Cash").trim();
+  const paymentPurpose = normalizePaymentPurpose(String(req.body?.paymentPurpose || "Fees Installment").trim(), mode);
+  let transactionId = String(req.body?.transactionId || "").trim();
+  let emiReference = String(req.body?.emiReference || "").trim();
+  const loanProviderName = String(req.body?.loanProviderName || "").trim();
+  const note = String(req.body?.note || "").trim();
+  if (!Number.isFinite(amount) || amount <= 0) return sendError(res, 400, "Enter a valid payment amount");
+  if (!paymentPurposes.includes(paymentPurpose)) return sendError(res, 400, "Choose what this payment is for");
+  if (!paymentModes.includes(mode)) return sendError(res, 400, "Choose a valid payment mode");
+  if (loanProviderName.length > 100) return sendError(res, 400, "Loan provider name cannot exceed 100 characters");
+  if (transactionId.length > paymentReferenceMaxLength) return sendError(res, 400, `Payment reference cannot exceed ${paymentReferenceMaxLength} characters`);
+  if (transactionId && !/^[A-Za-z0-9][A-Za-z0-9 ._/@:;,-]*$/.test(transactionId)) return sendError(res, 400, "Payment reference has invalid characters");
+  if (note.length > paymentNoteMaxLength) return sendError(res, 400, "Payment note cannot exceed 250 characters");
+  if (mode === "Loan Provider" && !loanProviderName) return sendError(res, 400, "Loan provider name is required");
+  const existingStudent = await Student.findById(req.params.id).lean();
+  if (!existingStudent) return sendError(res, 404, "Student not found");
+  if (!(await canAccessRecord(req, existingStudent))) return sendError(res, 403, "You can access only permitted records");
+
+  const finalPayable = Math.max(0, Number(existingStudent.totalFee || 0) - Number(existingStudent.discountAmount || 0));
+  const courseObj = await Course.findOne({
+    $or: [
+      { code: { $regex: new RegExp(`^${escapeRegex(existingStudent.course || "")}$`, "i") } },
+      { name: { $regex: new RegExp(`^${escapeRegex(existingStudent.course || "")}$`, "i") } }
+    ]
+  }).lean();
+  const isSuper = isHeadSuperAdmin(req.user) || isCenterAdmin(req.user);
+  const hasExistingPayments = Number(existingStudent.paidAmount || 0) > 0 || (Array.isArray(existingStudent.payments) && existingStudent.payments.length > 0);
+  const isApproved = (existingStudent.feeApproval && existingStudent.feeApproval.status === "approved") || hasExistingPayments;
+  const isRejected = existingStudent.feeApproval && existingStudent.feeApproval.status === "rejected" && !hasExistingPayments;
+
+  if (isRejected) {
+    return sendError(res, 400, "Cannot record payments because the student's fee plan was rejected. Please submit a revised fee plan for approval.");
+  }
+  if (!isSuper && !isApproved) {
+    return sendError(res, 400, "Cannot record payments until the student's fee plan is approved by Super Admin or Center Admin.");
+  }
+  const paymentAllowedStatuses = ["Fees Decided", "Fees Collected", "Active Student", "Course Completed", "Alumni"];
+  if (!paymentAllowedStatuses.includes(normalizeStudentStatus(existingStudent.status))) return sendError(res, 400, "Decide fees before recording payment");
+  if (!existingStudent.admissionPaymentMode || finalPayable <= 0) return sendError(res, 400, "Complete admission and final fee before recording payment");
+  const pendingDue = Math.max(0, finalPayable - Number(existingStudent.paidAmount || 0));
+  if (pendingDue <= 0) return sendError(res, 400, "Course fee is already fully paid");
+  if (amount > pendingDue) return sendError(res, 400, `Payment cannot exceed pending due of ${pendingDue}`);
+  if (paymentPurpose === "Fees Installment" && existingStudent.emiEnabled && !emiReference) {
+    const base = String(existingStudent.admissionNumber || existingStudent._id.toString().slice(-6).toUpperCase()).replace(/[^A-Z0-9-]+/gi, "").toUpperCase() || "STUDENT";
+    const nextInstallment = (existingStudent.payments || []).filter((payment) => normalizePaymentPurpose(payment.paymentPurpose, payment.mode) === "Fees Installment" && (payment.emiReference || payment.mode === "EMI")).length + 1;
+    emiReference = `EMI-${base}-${String(nextInstallment).padStart(3, "0")}`;
+  }
+  if (mode !== "Cash" && !transactionId) return sendError(res, 400, "Transaction/reference number is required for non-cash payments");
+  const uploadedFiles = Array.isArray(req.files) ? req.files : (req.file ? [req.file] : []);
+  const proofs = uploadedFiles.map((file) => saveLeadDocument(file)).filter(Boolean);
+  const proof = proofs[0] || undefined;
+  const proofMsg = proofs.length > 1 ? ` (${proofs.length} proofs attached)` : (proof?.storedName ? " (Proof attached)" : "");
+  if (mode !== "Cash" && proofs.length === 0 && !proof?.storedName) return sendError(res, 400, "Payment proof is required for non-cash payments");
+  const remainingAfterPayment = pendingDue - amount;
+  const emiShortfall = paymentPurpose === "Fees Installment" && existingStudent.emiEnabled && existingStudent.emiAmount && amount < existingStudent.emiAmount
+    ? Math.max(0, existingStudent.emiAmount - amount)
+    : 0;
+  const isSuperOnly = isHeadSuperAdmin(req.user);
+  const paymentStatus = isSuperOnly ? "approved" : "pending";
+
+  const newPayment = {
+    _id: new mongoose.Types.ObjectId(),
+    amount,
+    paymentPurpose,
+    mode,
+    transactionId,
+    emiReference,
+    loanProviderName,
+    note,
+    proof,
+    proofs,
+    by: req.user.name,
+    paidAt: new Date(),
+    status: paymentStatus,
+    requestedBy: req.user.name,
+    requestedByRole: req.user.role || "staff",
+    requestedAt: new Date(),
+    ...(isSuperOnly ? {
+      reviewedBy: req.user.name,
+      reviewedByRole: req.user.role || "superadmin",
+      reviewedAt: new Date(),
+    } : {}),
+  };
+
+  let paymentUpdate;
+  if (isSuperOnly) {
+    paymentUpdate = {
+      $inc: { paidAmount: amount },
+      $push: {
+        payments: newPayment,
+        activities: {
+          type: "payment",
+          message: emiShortfall > 0
+            ? `${paymentPurpose} received: ${amount}${proofMsg}. Shortfall of ${emiShortfall} carried forward to next EMI.`
+            : `${paymentPurpose} received: ${amount}${proofMsg}`,
+          by: req.user.name,
+        },
+      },
+    };
+    if (paymentPurpose === "Fees Installment" && existingStudent.emiEnabled) {
+      const setAfterPayment = remainingAfterPayment <= 0
+        ? { emiEnabled: false, nextEmiDate: null }
+        : { nextEmiDate: (() => { const date = existingStudent.nextEmiDate ? new Date(existingStudent.nextEmiDate) : new Date(); date.setMonth(date.getMonth() + 1); return date; })() };
+      paymentUpdate.$set = setAfterPayment;
+    }
+    if (remainingAfterPayment <= 0 && normalizeStudentStatus(existingStudent.status) === "Fees Decided") {
+      paymentUpdate.$set = { ...(paymentUpdate.$set || {}), status: "Fees Collected" };
+      paymentUpdate.$push.activities.message = `${paymentPurpose} received: ${amount}${proofMsg}. Status moved to Fees Collected`;
+    }
+  } else {
+    // Non-superadmin payment: Pending approval by Super Admin / Center Admin
+    paymentUpdate = {
+      $push: {
+        payments: newPayment,
+        activities: {
+          type: "payment_pending",
+          message: `Payment of ₹${amount.toLocaleString("en-IN")} (${mode} - ${paymentPurpose}) recorded by ${req.user.name} - Pending approval by Super Admin / Center Admin.${proofMsg}`,
+          by: req.user.name,
+        },
+      },
+    };
+  }
+
   const student = await Student.findByIdAndUpdate(
     req.params.id,
-    { $inc: { paidAmount: amount }, $push: { payments: { amount, mode: req.body?.mode || "Cash", note: req.body?.note || "" }, activities: { type: "payment", message: `Payment received: ${amount}`, by: req.user.name } } },
-    { new: true },
+    paymentUpdate,
+    { returnDocument: "after", runValidators: true },
+  );
+  if (!student) return sendError(res, 404, "Student record not found");
+  res.json({
+    ok: true,
+    data: await studentAdminWithInternshipResponse(student),
+    message: isSuperOnly
+      ? "Payment recorded and approved successfully"
+      : "Payment recorded successfully! It is now pending approval by Super Admin / Center Admin.",
+  });
+});
+
+app.get("/api/admin/students/:id/payments/:index/proof", requireAuth, async (req, res) => {
+  const existingStudent = await Student.findById(req.params.id).select("payments franchiseId").lean();
+  if (!existingStudent) return sendError(res, 404, "Student not found");
+  if (!(await canAccessRecord(req, existingStudent))) return sendError(res, 403, "You can access only permitted records");
+  const param = String(req.params.index || "").trim();
+  let payment = null;
+  if (/^\d+$/.test(param)) {
+    payment = existingStudent.payments?.[Number(param)];
+  }
+  if (!payment) {
+    payment = (existingStudent.payments || []).find((p) => String(p._id) === param);
+  }
+  if (!payment) return sendError(res, 404, "Payment not found");
+  const proofIndexParam = req.query.proofIndex !== undefined ? Number(req.query.proofIndex) : 0;
+  const proofList = (Array.isArray(payment.proofs) && payment.proofs.length > 0)
+    ? payment.proofs
+    : (payment.proof?.storedName ? [payment.proof] : []);
+  const proof = proofList[proofIndexParam] || payment.proof;
+  if (!proof?.storedName) return sendError(res, 404, "Payment proof not found");
+  const filePath = path.join(leadDocumentDir, proof.storedName);
+  if (!filePath.startsWith(leadDocumentDir) || !fs.existsSync(filePath)) return sendError(res, 404, "Payment proof file missing on server");
+  res.setHeader("Content-Type", proof.mimeType || "application/octet-stream");
+  res.download(filePath, proof.originalName || "payment-proof");
+});
+
+app.post("/api/admin/students/:id/payments/:index/cash-deposits", requireAuth, leadDocumentUpload.single("depositProof"), async (req, res) => {
+  if (!canManageFees(req.user)) return sendError(res, 403, "Cash deposit updates are restricted to admin accounts");
+  const paymentIndex = Number(req.params.index);
+  const amount = Number(req.body?.amount || 0);
+  const bank = String(req.body?.bank || "").trim();
+  const referenceNumber = String(req.body?.referenceNumber || "").trim();
+  const depositedBy = String(req.body?.depositedBy || req.user.name || "").trim();
+  const note = String(req.body?.note || "").trim();
+  const depositedAt = req.body?.depositedAt ? new Date(req.body.depositedAt) : new Date();
+  if (!Number.isInteger(paymentIndex) || paymentIndex < 0) return sendError(res, 400, "Invalid payment selected");
+  if (!Number.isFinite(amount) || amount <= 0) return sendError(res, 400, "Enter a valid deposit amount");
+  if (!bank) return sendError(res, 400, "Deposit bank/account is required");
+  if (bank.length > 100) return sendError(res, 400, "Deposit bank/account cannot exceed 100 characters");
+  if (!referenceNumber) return sendError(res, 400, "Deposit reference/slip number is required");
+  if (referenceNumber.length > paymentReferenceMaxLength) return sendError(res, 400, "Deposit reference cannot exceed 80 characters");
+  if (!/^[A-Za-z0-9][A-Za-z0-9 ._/@:-]*$/.test(referenceNumber)) return sendError(res, 400, "Deposit reference has invalid characters");
+  if (!depositedBy) return sendError(res, 400, "Deposited by name is required");
+  if (depositedBy.length > 80) return sendError(res, 400, "Deposited by name cannot exceed 80 characters");
+  if (note.length > paymentNoteMaxLength) return sendError(res, 400, "Deposit note cannot exceed 250 characters");
+  if (Number.isNaN(depositedAt.getTime())) return sendError(res, 400, "Choose a valid deposit date");
+  if (!req.file) return sendError(res, 400, "Deposit proof / challan is required");
+
+  const student = await Student.findById(req.params.id);
+  if (!student) return sendError(res, 404, "Student not found");
+  if (!(await canAccessRecord(req, student))) return sendError(res, 403, "You can access only permitted records");
+  const payment = student.payments?.[paymentIndex];
+  if (!payment) return sendError(res, 404, "Payment not found");
+  if ((payment.mode || "Cash") !== "Cash") return sendError(res, 400, "Only cash payments can be deposited");
+
+  const deposited = (payment.cashDeposits || [])
+    .filter((d) => d.status !== "rejected")
+    .reduce((sum, deposit) => sum + Number(deposit.amount || 0), 0);
+  const pendingDeposit = Math.max(0, Number(payment.amount || 0) - deposited);
+  if (pendingDeposit <= 0) return sendError(res, 400, "This cash payment is already fully deposited");
+  if (amount > pendingDeposit) return sendError(res, 400, `Deposit cannot exceed pending cash of ${pendingDeposit}`);
+
+  const proof = saveLeadDocument(req.file);
+  const multiBranchInfo = await getStudentMultiBranchInfo(student);
+  const isApprover = await canApproveCashDeposit(req.user, student);
+  const depositStatus = isApprover ? "verified" : "pending";
+  const approverScope = multiBranchInfo.approverScope;
+
+  const newDeposit = {
+    _id: new mongoose.Types.ObjectId(),
+    amount,
+    bank,
+    referenceNumber,
+    note,
+    proof,
+    depositedBy,
+    by: req.user.name,
+    depositedAt,
+    status: depositStatus,
+    approverScope,
+    isMultiBranch: multiBranchInfo.isMultiBranch,
+    ...(isApprover ? {
+      verifiedBy: req.user.name,
+      verifiedByRole: req.user.role || "admin",
+      verifiedAt: new Date(),
+    } : {}),
+  };
+
+  if (!payment.cashDeposits) payment.cashDeposits = [];
+  payment.cashDeposits.push(newDeposit);
+
+  const activityMsg = isApprover
+    ? `Cash deposited & verified: ₹${amount} by ${depositedBy} against payment #${paymentIndex + 1}`
+    : `Cash deposit challan submitted: ₹${amount} by ${depositedBy} against payment #${paymentIndex + 1} (requires ${multiBranchInfo.isMultiBranch ? "Super Admin or Center Admin" : "Super Admin"} verification)`;
+
+  student.activities.push({
+    type: "payment",
+    message: activityMsg,
+    by: req.user.name,
+    at: new Date(),
+  });
+
+  await student.save();
+  res.json({ ok: true, data: student });
+});
+
+// POST /api/admin/students/:id/payments/:paymentIndex/cash-deposits/:depositRef/review - Verify or reject cash deposit challan
+app.post("/api/admin/students/:id/payments/:paymentIndex/cash-deposits/:depositRef/review", requireAuth, async (req, res) => {
+  const student = await Student.findById(req.params.id);
+  if (!student) return sendError(res, 404, "Candidate record not found");
+
+  const canReview = await canApproveCashDeposit(req.user, student);
+  if (!canReview) {
+    const branchInfo = await getStudentMultiBranchInfo(student);
+    if (!branchInfo.isMultiBranch) {
+      return sendError(res, 403, "Verification for single-branch cash deposits is restricted to Super Admin");
+    } else {
+      return sendError(res, 403, "Verification for multi-branch cash deposits requires Super Admin or Center Admin within center scope");
+    }
+  }
+
+  const paymentIndex = Number(req.params.paymentIndex);
+  const payment = student.payments?.[paymentIndex];
+  if (!payment) return sendError(res, 404, "Payment record not found");
+
+  const depositRef = String(req.params.depositRef);
+  const deposit = (payment.cashDeposits || []).find((d, idx) => String(d._id) === depositRef || String(idx) === depositRef);
+  if (!deposit) return sendError(res, 404, "Cash deposit record not found");
+
+  const action = String(req.body?.action || "").toLowerCase().trim();
+  const note = String(req.body?.note || "").trim();
+  if (!["verify", "approve", "reject"].includes(action)) {
+    return sendError(res, 400, "Invalid review action. Must be 'verify' or 'reject'");
+  }
+
+  if (action === "verify" || action === "approve") {
+    deposit.status = "verified";
+    deposit.verifiedBy = req.user.name || "Admin";
+    deposit.verifiedByRole = req.user.role || "admin";
+    deposit.verifiedAt = new Date();
+    deposit.rejectionReason = "";
+
+    student.activities.push({
+      type: "payment",
+      message: `Cash deposit challan of ₹${deposit.amount} for payment #${paymentIndex + 1} verified by ${req.user.name || "Admin"}`,
+      by: req.user.name || "Admin",
+      at: new Date(),
+    });
+  } else {
+    deposit.status = "rejected";
+    deposit.rejectionReason = note || "Challan deposit rejected by admin";
+    deposit.verifiedBy = req.user.name || "Admin";
+    deposit.verifiedByRole = req.user.role || "admin";
+    deposit.verifiedAt = new Date();
+
+    student.activities.push({
+      type: "payment",
+      message: `Cash deposit challan of ₹${deposit.amount} for payment #${paymentIndex + 1} rejected by ${req.user.name || "Admin"}: "${deposit.rejectionReason}"`,
+      by: req.user.name || "Admin",
+      at: new Date(),
+    });
+  }
+
+  await student.save();
+  res.json({ ok: true, data: student });
+});
+
+// GET /api/admin/finance/cash-deposits/approvals - List pending and reviewed cash deposits
+app.get("/api/admin/finance/cash-deposits/approvals", requireAuth, async (req, res) => {
+  if (!canManageFees(req.user)) return sendError(res, 403, "Access restricted to authorized admin accounts");
+  const statusFilter = String(req.query?.status || "pending").trim().toLowerCase();
+
+  const query = { ...(await scopedDataFilter(req, req.query)) };
+  const students = await Student.find(query)
+    .select("fullName phone admissionNumber centre franchiseId course payments createdAt")
+    .lean();
+
+  const flatDeposits = [];
+  let pendingCount = 0;
+
+  for (const st of students) {
+    (st.payments || []).forEach((payment, pIdx) => {
+      (payment.cashDeposits || []).forEach((deposit, dIdx) => {
+        const dStatus = deposit.status || "verified";
+        if (dStatus === "pending") pendingCount++;
+        if (statusFilter === "all" || dStatus === statusFilter) {
+          flatDeposits.push({
+            studentId: st._id,
+            studentName: st.fullName,
+            phone: st.phone,
+            admissionNumber: st.admissionNumber,
+            centre: st.centre,
+            course: st.course,
+            franchiseId: st.franchiseId,
+            paymentIndex: pIdx,
+            paymentAmount: payment.amount,
+            depositId: String(deposit._id || dIdx),
+            depositIndex: dIdx,
+            amount: deposit.amount,
+            bank: deposit.bank,
+            referenceNumber: deposit.referenceNumber,
+            note: deposit.note,
+            proof: deposit.proof,
+            depositedBy: deposit.depositedBy || deposit.by,
+            depositedAt: deposit.depositedAt || deposit.createdAt,
+            status: dStatus,
+            verifiedBy: deposit.verifiedBy,
+            verifiedByRole: deposit.verifiedByRole,
+            verifiedAt: deposit.verifiedAt,
+            rejectionReason: deposit.rejectionReason,
+            approverScope: deposit.approverScope || "superadmin",
+            isMultiBranch: Boolean(deposit.isMultiBranch),
+          });
+        }
+      });
+    });
+  }
+
+  flatDeposits.sort((a, b) => new Date(b.depositedAt || 0).getTime() - new Date(a.depositedAt || 0).getTime());
+
+  res.json({
+    ok: true,
+    data: flatDeposits,
+    pendingCount,
+  });
+});
+
+app.get("/api/admin/students/:id/payments/:paymentIndex/cash-deposits/:depositIndex/proof", requireAuth, async (req, res) => {
+  const existingStudent = await Student.findById(req.params.id).select("payments franchiseId").lean();
+  if (!existingStudent) return sendError(res, 404, "Student not found");
+  if (!(await canAccessRecord(req, existingStudent))) return sendError(res, 403, "You can access only permitted records");
+  const paymentIndex = Number(req.params.paymentIndex);
+  const payment = existingStudent.payments?.[paymentIndex];
+  if (!payment) return sendError(res, 404, "Payment not found");
+  const depositIndexParam = String(req.params.depositIndex);
+  const deposit = (payment.cashDeposits || []).find((d, idx) => String(d._id) === depositIndexParam || String(idx) === depositIndexParam);
+  const proof = deposit?.proof;
+  if (!proof?.storedName) return sendError(res, 404, "Deposit proof not found");
+  const filePath = path.join(leadDocumentDir, proof.storedName);
+  if (!filePath.startsWith(leadDocumentDir) || !fs.existsSync(filePath)) return sendError(res, 404, "Deposit proof not found");
+  const fileName = String(proof.originalName || "cash-deposit-proof").replace(/[\r\n"]/g, "");
+  res.setHeader("Content-Type", proof.mimeType || "application/octet-stream");
+  if (req.query.download === "1") {
+    res.download(filePath, fileName);
+  } else {
+    res.setHeader("Content-Disposition", `inline; filename="${fileName}"; filename*=UTF-8''${encodeURIComponent(fileName)}`);
+    res.sendFile(filePath);
+  }
+});
+
+app.post("/api/admin/students/:id/feedback", requireAuth, async (req, res) => {
+  const existingStudent = await Student.findById(req.params.id).lean();
+  if (!existingStudent) return sendError(res, 404, "Student not found");
+  if (!(await canAccessRecord(req, existingStudent))) return sendError(res, 403, "You can access only permitted records");
+  const note = String(req.body?.note || "").trim();
+  if (!note) return sendError(res, 400, "Conversation note is required");
+  const feedback = {
+    type: req.body?.type || "General follow-up",
+    status: req.body?.status || "Needs follow-up",
+    note,
+    nextFollowUpDate: req.body?.nextFollowUpDate || undefined,
+    by: req.user.name,
+  };
+  const student = await Student.findByIdAndUpdate(
+    req.params.id,
+    { $push: { feedbacks: { $each: [feedback], $position: 0 }, activities: { type: "feedback", message: `${feedback.status}: ${note}`, by: req.user.name } } },
+    { new: true, runValidators: true },
   );
   if (!student) return sendError(res, 404, "Student not found");
   res.json({ ok: true, data: student });
 });
 
-app.get("/api/admin/centres", requireAuth, async (_req, res) => {
-  const centres = await Centre.find({ active: true }).sort({ name: 1 }).lean();
+app.get("/api/admin/centres", requireAuth, async (req, res) => {
+  const branchScope = isHeadBranchScoped(req.user) ? await headOfficeBranchScope(req.user) : null;
+  const filter = isFranchiseUser(req.user)
+    ? { active: true, _id: req.user.franchiseId || emptyObjectId }
+    : isCenterAdmin(req.user)
+      ? { active: true, $or: [{ parentCentreId: req.user.franchiseId || emptyObjectId }, { _id: req.user.franchiseId || emptyObjectId }] }
+      : isHeadBranchScoped(req.user)
+        ? { active: true, type: "branch", _id: { $in: branchScope.ids } }
+        : { active: true };
+  const centres = await Centre.find(filter).sort({ name: 1 }).lean();
   res.json({ ok: true, data: centres });
 });
 
-app.post("/api/admin/centres", requireAuth, async (req, res) => {
-  if (!req.body?.name) return sendError(res, 400, "Centre name is required");
-  const centre = await Centre.create(req.body);
-  res.status(201).json({ ok: true, data: centre });
+app.post("/api/admin/centres", requireAuth, requireHeadAdmin, async (req, res) => {
+  const name = String(req.body?.name || "").trim();
+  if (!name) return sendError(res, 400, "Centre name is required");
+  const type = isHeadBranchAdmin(req.user) || isCenterAdmin(req.user) ? "branch" : req.body?.type === "branch" ? "branch" : "franchise";
+  const existing = await Centre.findOne({ name }).lean();
+  if (existing) return sendError(res, 409, "Branch or franchise already exists with this name");
+  // Allow superadmin to set parentCentreId to group branches under a center admin
+  const parentCentreId = isHeadSuperAdmin(req.user) && mongoose.isValidObjectId(String(req.body?.parentCentreId || ""))
+    ? req.body.parentCentreId
+    : isCenterAdmin(req.user)
+      ? req.user.franchiseId  // center_admin's new branches always link to their parent centre
+      : undefined;
+  try {
+    const centre = await Centre.create({ ...req.body, name, type, ...(parentCentreId ? { parentCentreId } : { parentCentreId: null }) });
+    res.status(201).json({ ok: true, data: centre });
+  } catch (error) {
+    if (error?.code === 11000) return sendError(res, 409, "Branch or franchise already exists with this name");
+    throw error;
+  }
 });
 
-app.get("/api/admin/courses", requireAuth, async (_req, res) => {
-  const courses = await Course.find({ active: true }).sort({ name: 1 }).lean();
+app.patch("/api/admin/centres/:id", requireAuth, requireFranchiseManager, async (req, res) => {
+  if (!mongoose.isValidObjectId(req.params.id)) return sendError(res, 400, "Invalid centre");
+  if (isFranchiseSuperAdmin(req.user) && String(req.params.id) !== String(req.user.franchiseId || "")) return sendError(res, 403, "You can update only your franchise billing details");
+  const existingCentre = await Centre.findById(req.params.id).lean();
+  if (!existingCentre) return sendError(res, 404, "Centre not found");
+  const allowedCentreUpdates = (({ name, type, city, manager, parentCentreId, billingLegalName, billingAddress, billingGstin, billingStateName, billingStateCode, billingEmail, billingPhone, bankAccountName, bankName, bankAccountNumber, bankIfsc, bankBranch }) => ({ name, type, city, manager, parentCentreId, billingLegalName, billingAddress, billingGstin, billingStateName, billingStateCode, billingEmail, billingPhone, bankAccountName, bankName, bankAccountNumber, bankIfsc, bankBranch }))(req.body || {});
+  Object.keys(allowedCentreUpdates).forEach((key) => allowedCentreUpdates[key] === undefined && delete allowedCentreUpdates[key]);
+  if (!isHeadAdmin(req.user)) delete allowedCentreUpdates.name;
+  if (!isHeadSuperAdmin(req.user)) delete allowedCentreUpdates.parentCentreId;
+  if (allowedCentreUpdates.name !== undefined) {
+    allowedCentreUpdates.name = String(allowedCentreUpdates.name || "").trim();
+    if (!allowedCentreUpdates.name) return sendError(res, 400, "Centre name is required");
+    const duplicate = await Centre.findOne({ _id: { $ne: req.params.id }, name: allowedCentreUpdates.name }).lean();
+    if (duplicate) return sendError(res, 409, "Branch or franchise already exists with this name");
+  }
+  if (isHeadBranchAdmin(req.user) || isFranchiseSuperAdmin(req.user)) delete allowedCentreUpdates.type;
+  if (allowedCentreUpdates.type && !["branch", "franchise"].includes(allowedCentreUpdates.type)) delete allowedCentreUpdates.type;
+  const centre = await Centre.findByIdAndUpdate(req.params.id, { $set: allowedCentreUpdates }, { new: true, runValidators: true });
+  if (!centre) return sendError(res, 404, "Centre not found");
+  if (allowedCentreUpdates.name && allowedCentreUpdates.name !== existingCentre.name) {
+    await Promise.all([
+      Lead.updateMany({ franchiseId: centre._id }, { $set: { centre: centre.name } }),
+      Student.updateMany({ franchiseId: centre._id }, { $set: { centre: centre.name } }),
+      Batch.updateMany({ franchiseId: centre._id }, { $set: { centre: centre.name } }),
+      Attendance.updateMany({ franchiseId: centre._id }, { $set: { centre: centre.name } }),
+    ]);
+  }
+  res.json({ ok: true, data: centre });
+});
+
+app.get("/api/admin/courses", requireAuth, async (req, res) => {
+  const branchScope = isHeadBranchScoped(req.user) ? await headOfficeBranchScope(req.user) : null;
+  const filter = isFranchiseUser(req.user)
+    ? { active: true, $or: [{ franchiseId: req.user.franchiseId || emptyObjectId }, { franchiseId: { $exists: false } }, { franchiseId: null }] }
+    : isHeadBranchScoped(req.user)
+      ? { active: true, $or: [{ franchiseId: { $in: branchScope.ids } }, { franchiseId: { $exists: false } }, { franchiseId: null }] }
+      : { active: true };
+  const courses = await Course.find(filter).sort({ franchiseId: -1, name: 1 }).lean();
   res.json({ ok: true, data: courses });
 });
 
-app.post("/api/admin/courses", requireAuth, async (req, res) => {
+app.post("/api/admin/courses", requireAuth, requireFranchiseManager, async (req, res) => {
   if (!req.body?.name) return sendError(res, 400, "Course name is required");
-  const course = await Course.create({ ...req.body, fee: Number(req.body.fee || 0) });
+  const parsedFee = Number(req.body.fee);
+  const fee = Number.isFinite(parsedFee) ? parsedFee : 0;
+  const course = await Course.create({
+    ...req.body,
+    fee,
+    franchiseId: isFranchiseUser(req.user) || isHeadBranchAdmin(req.user) ? req.user.franchiseId : req.body.franchiseId || undefined,
+  });
   res.status(201).json({ ok: true, data: course });
 });
 
-app.get("/api/admin/batches", requireAuth, async (_req, res) => {
-  const batches = await Batch.find({ active: true }).sort({ commenceDate: -1, name: 1 }).lean();
+app.patch("/api/admin/courses/:id", requireAuth, requireFranchiseManager, async (req, res) => {
+  if (!mongoose.isValidObjectId(req.params.id)) return sendError(res, 400, "Invalid course");
+  const existingCourse = await Course.findById(req.params.id).lean();
+  if (!existingCourse) return sendError(res, 404, "Course not found");
+  if (isFranchiseUser(req.user) && existingCourse.franchiseId && String(existingCourse.franchiseId) !== String(req.user.franchiseId)) return sendError(res, 403, "You can update only your franchise course fees");
+  const updates = (({ name, code, fee, duration, franchiseId }) => ({ name, code, fee, duration, franchiseId }))(req.body || {});
+  Object.keys(updates).forEach((key) => updates[key] === undefined && delete updates[key]);
+  if (updates.name !== undefined) updates.name = String(updates.name || "").trim();
+  if (updates.code !== undefined) updates.code = String(updates.code || "").trim();
+  if (updates.duration !== undefined) updates.duration = String(updates.duration || "").trim();
+  if (updates.fee !== undefined) {
+    const parsedFee = Number(updates.fee);
+    updates.fee = Number.isFinite(parsedFee) ? parsedFee : 0;
+  }
+  if (updates.fee < 0) return sendError(res, 400, "Course fee cannot be negative");
+  if (updates.name !== undefined && !updates.name) return sendError(res, 400, "Course name is required");
+  if (isFranchiseUser(req.user) || isHeadBranchAdmin(req.user)) delete updates.franchiseId;
+  if (updates.franchiseId === "") delete updates.franchiseId;
+  if (isFranchiseUser(req.user) && !existingCourse.franchiseId) {
+    const override = await Course.findOneAndUpdate(
+      { code: existingCourse.code, name: existingCourse.name, franchiseId: req.user.franchiseId },
+      { $set: { ...updates, name: existingCourse.name, code: existingCourse.code, duration: updates.duration || existingCourse.duration, active: true } },
+      { new: true, upsert: true, runValidators: true },
+    );
+    return res.json({ ok: true, data: override });
+  }
+  const course = await Course.findByIdAndUpdate(req.params.id, { $set: updates }, { new: true, runValidators: true });
+  res.json({ ok: true, data: course });
+});
+
+app.delete("/api/admin/courses/:id", requireAuth, requireFranchiseManager, async (req, res) => {
+  if (!mongoose.isValidObjectId(req.params.id)) return sendError(res, 400, "Invalid course");
+  const existingCourse = await Course.findById(req.params.id).lean();
+  if (!existingCourse) return sendError(res, 404, "Course not found");
+  if (isFranchiseUser(req.user) && String(existingCourse.franchiseId || "") !== String(req.user.franchiseId || "")) return sendError(res, 403, "You can delete only your franchise courses");
+  const course = await Course.findByIdAndUpdate(req.params.id, { $set: { active: false } }, { new: true });
+  res.json({ ok: true, data: course });
+});
+
+app.get("/api/admin/batches", requireAuth, async (req, res) => {
+  const scopedFilter = await scopedDataFilter(req, req.query);
+  const filter = { active: true, ...scopedFilter };
+  if (isTeacherAccount(req.user)) {
+    const scope = await teacherAcademicBatchScope(req.user);
+    filter.$and = [{ $or: [{ _id: { $in: scope.batchIds } }, { name: { $in: scope.batchNames } }] }];
+  }
+  const batches = await Batch.find(filter).sort({ commenceDate: -1, name: 1 }).lean();
   res.json({ ok: true, data: batches });
 });
 
-app.post("/api/admin/batches", requireAuth, requireSuperAdmin, async (req, res) => {
+app.post("/api/admin/batches", requireAuth, requireFranchiseManager, async (req, res) => {
   if (!req.body?.name) return sendError(res, 400, "Batch name is required");
   if (!req.body?.commenceDate) return sendError(res, 400, "Batch commence date is required");
+  const franchise = await resolveFranchiseFromRequest(req, req.body.centre || "");
+  if (isFranchiseUser(req.user) && !franchise) return sendError(res, 403, "Franchise account is not assigned");
+  const centreName = franchise?.name || req.body.centre || "";
+  if (!isCourseAllowedForCentre(centreName, req.body.course || "", req.user)) return sendError(res, 400, "Kochi centre allows only AHAP and GCA courses");
+  const assignedFaculty = Array.isArray(req.body?.assignedFaculty)
+    ? req.body.assignedFaculty
+    : String(req.body?.assignedFaculty || "").split(",");
+  const cleanFaculty = [...new Set(assignedFaculty.map((name) => String(name || "").trim()).filter(Boolean))];
   const batch = await Batch.create({
     name: req.body.name,
-    centre: req.body.centre || "",
+    centre: centreName,
+    franchiseId: franchise?._id,
     course: req.body.course || "",
+    assignedFaculty: cleanFaculty,
     commenceDate: req.body.commenceDate,
   });
   res.status(201).json({ ok: true, data: batch });
 });
 
-app.post("/api/contact", async (req, res) => {
-  const { fullName, phone, email, preferredProgram, message } = req.body || {};
-  if (!fullName || !phone || !preferredProgram) return sendError(res, 400, "Full name, phone, and preferred program are required.");
-  try {
-    await transporter.sendMail({
-      from: `iMED Academy <${process.env.SMTP_USER}>`,
-      to: toAddress,
-      replyTo: email || process.env.SMTP_USER,
-      subject: `New iMED enquiry - ${preferredProgram}`,
-      html: `<h2>New iMED Academy Enquiry</h2><table cellpadding="8" cellspacing="0" border="1" style="border-collapse:collapse;font-family:Arial,sans-serif;"><tr><th align="left">Full Name</th><td>${escapeHtml(fullName)}</td></tr><tr><th align="left">Phone</th><td>${escapeHtml(phone)}</td></tr><tr><th align="left">Email</th><td>${escapeHtml(email || "Not provided")}</td></tr><tr><th align="left">Preferred Program</th><td>${escapeHtml(preferredProgram)}</td></tr><tr><th align="left">Message</th><td>${escapeHtml(message || "Not provided")}</td></tr></table>`,
+app.patch("/api/admin/batches/:id", requireAuth, requireFranchiseManager, async (req, res) => {
+  if (!mongoose.isValidObjectId(req.params.id)) return sendError(res, 400, "Invalid batch");
+  const existingBatch = await Batch.findById(req.params.id).lean();
+  if (!existingBatch) return sendError(res, 404, "Batch not found");
+  if (isFranchiseUser(req.user) && String(existingBatch.franchiseId || "") !== String(req.user.franchiseId || "")) return sendError(res, 403, "You can update only your franchise batches");
+  const updates = (({ name, centre, course, commenceDate, assignedFaculty }) => ({ name, centre, course, commenceDate, assignedFaculty }))(req.body || {});
+  Object.keys(updates).forEach((key) => updates[key] === undefined && delete updates[key]);
+  if (updates.name !== undefined) updates.name = String(updates.name || "").trim();
+  if (updates.name !== undefined && !updates.name) return sendError(res, 400, "Batch name is required");
+  if (updates.assignedFaculty !== undefined) {
+    const faculty = Array.isArray(updates.assignedFaculty) ? updates.assignedFaculty : String(updates.assignedFaculty || "").split(",");
+    updates.assignedFaculty = [...new Set(faculty.map((name) => String(name || "").trim()).filter(Boolean))];
+  }
+  if (updates.centre !== undefined) {
+    const franchise = await resolveFranchiseFromRequest(req, updates.centre || "");
+    if (isFranchiseUser(req.user) && !franchise) return sendError(res, 403, "Franchise account is not assigned");
+    updates.centre = franchise?.name || updates.centre || "";
+    updates.franchiseId = franchise?._id;
+  }
+  const nextBatchCentre = Object.prototype.hasOwnProperty.call(updates, "centre") ? updates.centre : existingBatch.centre;
+  const nextBatchCourse = Object.prototype.hasOwnProperty.call(updates, "course") ? updates.course : existingBatch.course;
+  if (!isCourseAllowedForCentre(nextBatchCentre, nextBatchCourse, req.user)) return sendError(res, 400, "Kochi centre allows only AHAP and GCA courses");
+  const batch = await Batch.findByIdAndUpdate(req.params.id, { $set: updates }, { new: true, runValidators: true });
+  if (updates.name || updates.commenceDate) {
+    const studentUpdates = {};
+    if (updates.name) studentUpdates.batch = updates.name;
+    if (updates.commenceDate) studentUpdates.batchCommenceDate = updates.commenceDate;
+    if (existingBatch.name) {
+      await Student.updateMany(
+        { batch: { $regex: new RegExp(`^${existingBatch.name.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}$`, "i") } },
+        { $set: studentUpdates }
+      );
+    }
+  }
+  res.json({ ok: true, data: batch });
+});
+
+app.delete("/api/admin/batches/:id", requireAuth, requireFranchiseManager, async (req, res) => {
+  if (!mongoose.isValidObjectId(req.params.id)) return sendError(res, 400, "Invalid batch");
+  const existingBatch = await Batch.findById(req.params.id).lean();
+  if (!existingBatch) return sendError(res, 404, "Batch not found");
+  if (isFranchiseUser(req.user) && String(existingBatch.franchiseId || "") !== String(req.user.franchiseId || "")) return sendError(res, 403, "You can delete only your franchise batches");
+  const batch = await Batch.findByIdAndUpdate(req.params.id, { $set: { active: false } }, { new: true });
+  res.json({ ok: true, data: batch });
+});
+
+app.get("/api/admin/class-schedules", requireAuth, async (req, res) => {
+  if (!canUseAttendance(req.user)) return sendError(res, 403, "Classes are restricted to academic staff");
+  const filter = { active: true, ...(await scopedDataFilter(req, req.query)) };
+  if (req.query.batchId && mongoose.isValidObjectId(String(req.query.batchId))) filter.batchId = new mongoose.Types.ObjectId(String(req.query.batchId));
+  if (isTeacherAccount(req.user)) {
+    const scope = await teacherAcademicBatchScope(req.user);
+    if (!scope.batchIds.length && !scope.batchNames.length) return res.json({ ok: true, data: [] });
+    if (filter.batchId) {
+      const allowedBatch = scope.batchIds.some((id) => String(id) === String(filter.batchId));
+      if (!allowedBatch) return res.json({ ok: true, data: [] });
+    } else {
+      filter.$or = [{ faculty: req.user.name }, { batchId: { $in: scope.batchIds } }, { batchName: { $in: scope.batchNames } }];
+    }
+  }
+  const schedules = await ClassSchedule.find(filter).sort({ batchName: 1, faculty: 1, startTime: 1 }).lean();
+  res.json({ ok: true, data: schedules });
+});
+
+app.post("/api/admin/class-schedules", requireAuth, async (req, res) => {
+  if (!canUseAttendance(req.user)) return sendError(res, 403, "Classes are restricted to academic staff");
+  const batchId = String(req.body?.batchId || "");
+  if (!mongoose.isValidObjectId(batchId)) return sendError(res, 400, "Select a valid batch");
+  const batch = await Batch.findById(batchId).lean();
+  if (!batch || !batch.active) return sendError(res, 404, "Batch not found");
+  if (!(await canAccessRecord(req, batch))) return sendError(res, 403, "You can access only permitted records");
+  if (isTeacherAccount(req.user) && !(await teacherCanAccessBatch(req.user, batch))) return sendError(res, 403, "Teachers can create classes only for assigned batches");
+  const classType = String(req.body?.classType || "Regular Class");
+  const nature = String(req.body?.nature || "Theoretical");
+  const faculty = String(req.body?.faculty || req.user.name || "").trim();
+  const days = Array.isArray(req.body?.days) ? req.body.days.map(String) : String(req.body?.days || "").split(",");
+  const cleanDays = days.map((day) => day.trim()).filter(Boolean);
+  const startTime = String(req.body?.startTime || "").trim();
+  const endTime = String(req.body?.endTime || "").trim();
+  const startDate = req.body?.startDate ? attendanceDate(req.body.startDate) : undefined;
+  const endDate = req.body?.endDate ? attendanceDate(req.body.endDate) : undefined;
+  const allowedDays = new Set(["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"]);
+  if (!["Regular Class", "One-time Class"].includes(classType)) return sendError(res, 400, "Choose a valid class type");
+  if (!["Theoretical", "Practical"].includes(nature)) return sendError(res, 400, "Choose class nature");
+  if (!faculty) return sendError(res, 400, "Faculty is required");
+  if (isTeacherAccount(req.user) && faculty !== req.user.name) return sendError(res, 403, "Teachers can create only their own classes");
+  if (classType === "Regular Class" && (!cleanDays.length || cleanDays.some((day) => !allowedDays.has(day)))) return sendError(res, 400, "Choose class days");
+  if (classType === "One-time Class" && !startDate) return sendError(res, 400, "Choose one-time class date");
+  if (!startTime || !endTime) return sendError(res, 400, "Class start and end time are required");
+  const schedule = await ClassSchedule.create({
+    batchId: batch._id,
+    batchName: batch.name,
+    course: batch.course || "",
+    centre: batch.centre || "",
+    franchiseId: batch.franchiseId,
+    classType,
+    nature,
+    faculty,
+    days: classType === "Regular Class" ? cleanDays : [dayCode(startDate)],
+    startTime,
+    endTime,
+    startDate,
+    endDate,
+    note: String(req.body?.note || ""),
+    createdBy: req.user.name,
+  });
+  res.status(201).json({ ok: true, data: schedule });
+});
+
+app.get("/api/admin/class-sessions", requireAuth, async (req, res) => {
+  if (!canUseAttendance(req.user)) return sendError(res, 403, "Classes are restricted to academic staff");
+  const filter = { ...(await scopedDataFilter(req, req.query)), ...attendanceRangeFilter(req.query) };
+  if (!filter.date) {
+    const week = weekRangeFromDate(req.query.week || "");
+    filter.date = { $gte: week.start, $lte: week.end };
+  }
+  if (req.query.batchId && mongoose.isValidObjectId(String(req.query.batchId))) filter.batchId = new mongoose.Types.ObjectId(String(req.query.batchId));
+  if (req.query.nature) filter.nature = String(req.query.nature);
+  if (isTeacherAccount(req.user)) {
+    const scope = await teacherAcademicBatchScope(req.user);
+    if (!scope.batchIds.length && !scope.batchNames.length) return res.json({ ok: true, data: [] });
+    if (filter.batchId) {
+      const allowedBatch = scope.batchIds.some((id) => String(id) === String(filter.batchId));
+      if (!allowedBatch) return res.json({ ok: true, data: [] });
+    } else {
+      filter.$or = [{ faculty: req.user.name }, { batchId: { $in: scope.batchIds } }, { batchName: { $in: scope.batchNames } }];
+    }
+  }
+  const sessions = await ClassSession.find(filter).sort({ date: 1, startTime: 1, batchName: 1 }).lean();
+  res.json({ ok: true, data: sessions });
+});
+
+app.post("/api/admin/class-sessions/generate-week", requireAuth, async (req, res) => {
+  if (!canUseAttendance(req.user)) return sendError(res, 403, "Classes are restricted to academic staff");
+  const week = weekRangeFromDate(req.body?.week || "");
+  const filter = { active: true, ...(await scopedDataFilter(req, req.body || {})) };
+  if (req.body?.batchId && mongoose.isValidObjectId(String(req.body.batchId))) filter.batchId = new mongoose.Types.ObjectId(String(req.body.batchId));
+  let teacherScope = null;
+  if (isTeacherAccount(req.user)) {
+    teacherScope = await teacherAcademicBatchScope(req.user);
+    if (!teacherScope.batchIds.length && !teacherScope.batchNames.length) return res.json({ ok: true, data: [], message: "0 classes created for the week" });
+    if (filter.batchId) {
+      const allowedBatch = teacherScope.batchIds.some((id) => String(id) === String(filter.batchId));
+      if (!allowedBatch) return res.json({ ok: true, data: [], message: "0 classes created for the week" });
+    } else {
+      filter.$or = [{ faculty: req.user.name }, { batchId: { $in: teacherScope.batchIds } }, { batchName: { $in: teacherScope.batchNames } }];
+    }
+  }
+  const schedules = await ClassSchedule.find(filter).lean();
+  let created = 0;
+  for (const schedule of schedules) {
+    for (let date = new Date(week.start); date <= week.end; date.setUTCDate(date.getUTCDate() + 1)) {
+      const sessionDate = new Date(date);
+      const code = dayCode(sessionDate);
+      if (!schedule.days?.includes(code)) continue;
+      if (schedule.startDate && sessionDate < schedule.startDate) continue;
+      if (schedule.endDate && sessionDate > schedule.endDate) continue;
+      const studentCount = await Student.countDocuments({ batch: schedule.batchName, status: { $nin: ["Dropped"] } });
+      const result = await ClassSession.updateOne(
+        { scheduleId: schedule._id, date: sessionDate, startTime: schedule.startTime },
+        {
+          $setOnInsert: {
+            scheduleId: schedule._id,
+            batchId: schedule.batchId,
+            batchName: schedule.batchName,
+            course: schedule.course,
+            centre: schedule.centre,
+            franchiseId: schedule.franchiseId,
+            classType: schedule.classType,
+            nature: schedule.nature,
+            faculty: schedule.faculty,
+            date: sessionDate,
+            startTime: schedule.startTime,
+            endTime: schedule.endTime,
+            studentCount,
+            note: schedule.note,
+            createdBy: req.user.name,
+          },
+        },
+        { upsert: true },
+      );
+      if (result.upsertedCount) created += 1;
+    }
+  }
+  const sessionFilter = { ...(await scopedDataFilter(req, req.body || {})), date: { $gte: week.start, $lte: week.end } };
+  if (req.body?.batchId && mongoose.isValidObjectId(String(req.body.batchId))) sessionFilter.batchId = new mongoose.Types.ObjectId(String(req.body.batchId));
+  if (isTeacherAccount(req.user) && teacherScope) {
+    if (!sessionFilter.batchId) sessionFilter.$or = [{ faculty: req.user.name }, { batchId: { $in: teacherScope.batchIds } }, { batchName: { $in: teacherScope.batchNames } }];
+  }
+  const sessions = await ClassSession.find(sessionFilter).sort({ date: 1, startTime: 1 }).lean();
+  const calendar = await syncClassSessionsToGoogleCalendar(sessions);
+  const syncedSessions = calendar.synced ? await ClassSession.find(sessionFilter).sort({ date: 1, startTime: 1 }).lean() : sessions;
+  const calendarMessage = googleCalendarReady()
+    ? calendar.synced
+      ? `, ${calendar.synced} synced to Google Calendar`
+      : ", Google Calendar not connected"
+    : "";
+  res.json({ ok: true, data: syncedSessions, message: `${created} classes created for the week${calendarMessage}` });
+});
+
+app.patch("/api/admin/class-sessions/:id", requireAuth, async (req, res) => {
+  if (!mongoose.isValidObjectId(req.params.id)) return sendError(res, 400, "Invalid class session ID");
+  const session = await ClassSession.findById(req.params.id).lean();
+  if (!session) return sendError(res, 404, "Class session not found");
+  const allowed = ["startTime", "endTime", "faculty", "note"];
+  const updates = {};
+  for (const key of allowed) {
+    if (req.body[key] !== undefined) updates[key] = String(req.body[key] || "");
+  }
+  if (!Object.keys(updates).length) return sendError(res, 400, "No valid fields to update");
+  const updated = await ClassSession.findByIdAndUpdate(req.params.id, { $set: updates }, { new: true }).lean();
+  res.json({ ok: true, data: updated, message: "Class updated" });
+});
+
+app.post("/api/admin/class-sessions/:id/attendance", requireAuth, async (req, res) => {
+  if (!canUseAttendance(req.user)) return sendError(res, 403, "Attendance is restricted to teacher and admin accounts");
+  if (!mongoose.isValidObjectId(req.params.id)) return sendError(res, 400, "Invalid class session");
+  const session = await ClassSession.findById(req.params.id).lean();
+  if (!session) return sendError(res, 404, "Class session not found");
+  if (!(await canAccessRecord(req, session))) return sendError(res, 403, "You can access only permitted records");
+  const sessionBatch = isTeacherAccount(req.user) ? await Batch.findById(session.batchId).lean() : null;
+  if (isTeacherAccount(req.user) && session.faculty !== req.user.name && !(await teacherCanAccessBatch(req.user, sessionBatch))) return sendError(res, 403, "Teachers can mark only assigned batch classes");
+  const records = Array.isArray(req.body?.records) ? req.body.records : [];
+  if (!records.length) return sendError(res, 400, "Select at least one student");
+  const statuses = new Set(["Present", "Absent", "Late", "Leave"]);
+  const studentIds = records.map((record) => String(record.studentId || "")).filter((id) => mongoose.isValidObjectId(id));
+  const students = await Student.find({ _id: { $in: studentIds }, batch: session.batchName }).lean();
+  const studentsById = new Map(students.map((student) => [String(student._id), student]));
+  const operations = [];
+  for (const record of records) {
+    const student = studentsById.get(String(record.studentId || ""));
+    const status = String(record.status || "");
+    if (!student || !statuses.has(status)) continue;
+    operations.push({
+      updateOne: {
+        filter: { studentId: student._id, date: session.date, nature: session.nature, classSessionId: session._id },
+        update: {
+          $set: {
+            classSessionId: session._id,
+            studentId: student._id,
+            studentName: student.fullName,
+            date: session.date,
+            nature: session.nature,
+            status,
+            note: String(record.note || ""),
+            centre: student.centre || "",
+            franchiseId: student.franchiseId,
+            batch: student.batch || "",
+            course: student.course || "",
+            counsellor: student.counsellor || "",
+            teacher: session.faculty || student.teacher || "",
+            markedBy: req.user.name,
+          },
+        },
+        upsert: true,
+      },
     });
-    await Lead.create({ fullName, phone: normalizePhone(phone), email: email || "", source: "Website Enquiry", course: preferredProgram, notes: message || "", activities: [{ type: "website", message: "Created from website enquiry", by: "Website" }] });
-    res.json({ ok: true, message: "Enquiry submitted successfully." });
+  }
+  if (!operations.length) return sendError(res, 400, "No valid attendance records");
+  await Attendance.bulkWrite(operations);
+  await ClassSession.findByIdAndUpdate(session._id, { $set: { attendanceMarked: true, studentCount: operations.length } });
+  const saved = await Attendance.find({ classSessionId: session._id }).sort({ studentName: 1 }).lean();
+  res.json({ ok: true, data: saved });
+});
+
+app.delete("/api/admin/class-sessions/:id/attendance", requireAuth, async (req, res) => {
+  if (!canUseAttendance(req.user)) return sendError(res, 403, "Attendance is restricted to teacher and admin accounts");
+  if (!mongoose.isValidObjectId(req.params.id)) return sendError(res, 400, "Invalid class session");
+  const session = await ClassSession.findById(req.params.id).lean();
+  if (!session) return sendError(res, 404, "Class session not found");
+  if (!(await canAccessRecord(req, session))) return sendError(res, 403, "You can access only permitted records");
+  const sessionBatch = isTeacherAccount(req.user) ? await Batch.findById(session.batchId).lean() : null;
+  if (isTeacherAccount(req.user) && session.faculty !== req.user.name && !(await teacherCanAccessBatch(req.user, sessionBatch))) return sendError(res, 403, "Teachers can clear only assigned batch classes");
+  await Attendance.deleteMany({ classSessionId: session._id });
+  const updated = await ClassSession.findByIdAndUpdate(session._id, { $set: { attendanceMarked: false, studentCount: 0 } }, { returnDocument: "after" }).lean();
+  res.json({ ok: true, data: updated, message: "Attendance cleared" });
+});
+
+app.get("/api/admin/topic-progress", requireAuth, async (req, res) => {
+  if (!canUseAttendance(req.user)) return sendError(res, 403, "Topic tracker is restricted to academic staff");
+  const filter = { ...(await scopedDataFilter(req, req.query)) };
+  if (req.query.batchId && mongoose.isValidObjectId(String(req.query.batchId))) filter.batchId = new mongoose.Types.ObjectId(String(req.query.batchId));
+  if (isTeacherAccount(req.user)) {
+    const scope = await teacherAcademicBatchScope(req.user);
+    if (!scope.batchIds.length && !scope.batchNames.length) return res.json({ ok: true, data: [] });
+    if (filter.batchId) {
+      const allowedBatch = scope.batchIds.some((id) => String(id) === String(filter.batchId));
+      if (!allowedBatch) return res.json({ ok: true, data: [] });
+    } else {
+      filter.$or = [{ batchId: { $in: scope.batchIds } }, { batchName: { $in: scope.batchNames } }];
+    }
+  }
+  const rows = await TopicProgress.find(filter).sort({ batchName: 1, module: 1, topic: 1 }).lean();
+  res.json({ ok: true, data: rows });
+});
+
+app.patch("/api/admin/topic-progress", requireAuth, async (req, res) => {
+  if (!canUseAttendance(req.user)) return sendError(res, 403, "Topic tracker is restricted to academic staff");
+  const batchId = String(req.body?.batchId || "");
+  if (!mongoose.isValidObjectId(batchId)) return sendError(res, 400, "Select a valid batch");
+  const batch = await Batch.findById(batchId).lean();
+  if (!batch || !batch.active) return sendError(res, 404, "Batch not found");
+  if (!(await canAccessRecord(req, batch))) return sendError(res, 403, "You can access only permitted records");
+  if (isTeacherAccount(req.user) && !(await teacherCanAccessBatch(req.user, batch))) return sendError(res, 403, "Teachers can update only assigned batches");
+  const module = String(req.body?.module || "").trim();
+  const topic = String(req.body?.topic || "").trim();
+  const status = String(req.body?.status || "Not Started");
+  const faculty = String(req.body?.faculty || req.user.name || "").trim();
+  if (!module || !topic) return sendError(res, 400, "Module and topic are required");
+  if (!["Not Started", "In Progress", "Covered"].includes(status)) return sendError(res, 400, "Choose a valid topic status");
+  if (isTeacherAccount(req.user) && faculty && faculty !== req.user.name) return sendError(res, 403, "Teachers can update only their own topic coverage");
+  const topicId = String(req.body?._id || req.body?.id || "");
+  const existingTopic = mongoose.isValidObjectId(topicId)
+    ? await TopicProgress.findById(topicId).lean()
+    : await TopicProgress.findOne({ batchId: batch._id, module, topic }).lean();
+  if (topicId && !existingTopic) return sendError(res, 404, "Topic not found");
+  if (existingTopic && !(await canAccessRecord(req, existingTopic))) return sendError(res, 403, "You can access only permitted records");
+  if (existingTopic && String(existingTopic.batchId || "") !== String(batch._id)) return sendError(res, 400, "Topic does not belong to this batch");
+  const dateCovered = req.body?.dateCovered ? attendanceDate(req.body.dateCovered) : (status === "Covered" ? new Date() : undefined);
+  const row = await TopicProgress.findOneAndUpdate(
+    existingTopic ? { _id: existingTopic._id } : { batchId: batch._id, module, topic },
+    {
+      $set: {
+        batchId: batch._id,
+        batchName: batch.name,
+        course: batch.course || "",
+        centre: batch.centre || "",
+        franchiseId: batch.franchiseId,
+        module,
+        topic,
+        status,
+        dateCovered: status === "Covered" ? dateCovered : undefined,
+        faculty,
+        updatedBy: req.user.name,
+      },
+    },
+    { new: true, upsert: true, runValidators: true },
+  );
+  res.json({ ok: true, data: row });
+});
+
+app.delete("/api/admin/topic-progress/:id", requireAuth, async (req, res) => {
+  if (!canUseAttendance(req.user)) return sendError(res, 403, "Topic tracker is restricted to academic staff");
+  if (isTeacherAccount(req.user)) return sendError(res, 403, "Teachers cannot delete syllabus topics");
+  if (!mongoose.isValidObjectId(req.params.id)) return sendError(res, 400, "Invalid topic");
+  const topic = await TopicProgress.findById(req.params.id).lean();
+  if (!topic) return sendError(res, 404, "Topic not found");
+  if (!(await canAccessRecord(req, topic))) return sendError(res, 403, "You can access only permitted records");
+  await TopicProgress.findByIdAndDelete(req.params.id);
+  res.json({ ok: true, data: topic });
+});
+
+app.get("/api/admin/practicals", requireAuth, async (req, res) => {
+  if (!canUseAttendance(req.user)) return sendError(res, 403, "Practicals are restricted to academic staff");
+  const filter = { ...(await scopedDataFilter(req, req.query)) };
+  if (req.query.batchId && mongoose.isValidObjectId(String(req.query.batchId))) filter.batchId = new mongoose.Types.ObjectId(String(req.query.batchId));
+  if (req.query.studentId && mongoose.isValidObjectId(String(req.query.studentId))) filter.studentId = new mongoose.Types.ObjectId(String(req.query.studentId));
+  if (isTeacherAccount(req.user)) {
+    const scope = await teacherAcademicBatchScope(req.user);
+    if (!scope.batchIds.length && !scope.batchNames.length) return res.json({ ok: true, data: [] });
+    if (filter.batchId) {
+      const allowedBatch = scope.batchIds.some((id) => String(id) === String(filter.batchId));
+      if (!allowedBatch) return res.json({ ok: true, data: [] });
+    } else if (req.query.batch) {
+      if (!scope.batchNames.includes(String(req.query.batch))) return res.json({ ok: true, data: [] });
+    } else {
+      filter.$or = [{ batchId: { $in: scope.batchIds } }, { batchName: { $in: scope.batchNames } }];
+    }
+    const studentFilter = { batch: { $in: scope.batchNames } };
+    if (filter.studentId) studentFilter._id = filter.studentId;
+    const assignedStudents = await Student.find(studentFilter).select("_id").lean();
+    const studentIds = assignedStudents.map((student) => student._id);
+    if (!studentIds.length) return res.json({ ok: true, data: [] });
+    if (filter.studentId) {
+      const allowedStudent = studentIds.some((id) => String(id) === String(filter.studentId));
+      if (!allowedStudent) return res.json({ ok: true, data: [] });
+    } else {
+      filter.studentId = { $in: studentIds };
+    }
+  }
+  const rows = await PracticalRecord.find(filter).sort({ batchName: 1, practicalName: 1, studentName: 1 }).lean();
+  res.json({ ok: true, data: rows });
+});
+
+app.patch("/api/admin/practicals", requireAuth, async (req, res) => {
+  if (!canUseAttendance(req.user)) return sendError(res, 403, "Practicals are restricted to academic staff");
+  const batchId = String(req.body?.batchId || "");
+  const studentId = String(req.body?.studentId || "");
+  if (!mongoose.isValidObjectId(batchId)) return sendError(res, 400, "Select a valid batch");
+  if (!mongoose.isValidObjectId(studentId)) return sendError(res, 400, "Select a valid student");
+  const [batch, student] = await Promise.all([Batch.findById(batchId).lean(), Student.findById(studentId).lean()]);
+  if (!batch || !batch.active) return sendError(res, 404, "Batch not found");
+  if (!student) return sendError(res, 404, "Student not found");
+  if (!(await canAccessRecord(req, batch)) || !(await canAccessRecord(req, student))) return sendError(res, 403, "You can access only permitted records");
+  if (student.batch !== batch.name) return sendError(res, 400, "Student is not assigned to this batch");
+  if (isTeacherAccount(req.user) && !(await teacherCanAccessBatch(req.user, batch))) return sendError(res, 403, "Teachers can update only assigned batch practicals");
+  const practicalName = String(req.body?.practicalName || "").trim();
+  const module = String(req.body?.module || "").trim();
+  const status = String(req.body?.status || "Pending");
+  if (!practicalName) return sendError(res, 400, "Practical name is required");
+  if (!["Pending", "Completed", "Needs Repeat"].includes(status)) return sendError(res, 400, "Choose a valid practical status");
+  const dateConducted = req.body?.dateConducted ? attendanceDate(req.body.dateConducted) : (status === "Completed" ? new Date() : undefined);
+  const row = await PracticalRecord.findOneAndUpdate(
+    { batchId: batch._id, practicalName, studentId: student._id },
+    {
+      $set: {
+        batchId: batch._id,
+        batchName: batch.name,
+        course: batch.course || "",
+        centre: batch.centre || "",
+        franchiseId: batch.franchiseId,
+        practicalName,
+        module,
+        studentId: student._id,
+        studentName: student.fullName,
+        dateConducted: status === "Completed" ? dateConducted : undefined,
+        status,
+        remarks: String(req.body?.remarks || ""),
+        faculty: String(req.body?.faculty || student.teacher || req.user.name || ""),
+        updatedBy: req.user.name,
+      },
+    },
+    { new: true, upsert: true, runValidators: true },
+  );
+  res.json({ ok: true, data: row });
+});
+
+app.get("/api/admin/study-notes", requireAuth, async (req, res) => {
+  if (!canUseAttendance(req.user)) return sendError(res, 403, "Study notes are restricted to academic staff");
+  const filter = { ...(await scopedDataFilter(req, req.query)) };
+  if (req.query.batchId && mongoose.isValidObjectId(String(req.query.batchId))) filter.batchId = new mongoose.Types.ObjectId(String(req.query.batchId));
+  if (isTeacherAccount(req.user)) {
+    const scope = await teacherAcademicBatchScope(req.user);
+    if (!scope.batchIds.length && !scope.batchNames.length) return res.json({ ok: true, data: [] });
+    if (filter.batchId) {
+      const allowedBatch = scope.batchIds.some((id) => String(id) === String(filter.batchId));
+      if (!allowedBatch) return res.json({ ok: true, data: [] });
+    } else {
+      filter.$or = [{ batchId: { $in: scope.batchIds } }, { batchName: { $in: scope.batchNames } }];
+    }
+  }
+  const notes = await StudyNote.find(filter).sort({ createdAt: -1 }).lean();
+  res.json({ ok: true, data: notes });
+});
+
+app.post("/api/admin/study-notes", requireAuth, studyNoteUpload.single("file"), async (req, res) => {
+  if (!canUseAttendance(req.user)) return sendError(res, 403, "Study notes are restricted to academic staff");
+  const batchId = String(req.body?.batchId || "");
+  if (!mongoose.isValidObjectId(batchId)) return sendError(res, 400, "Select a valid batch");
+  const batch = await Batch.findById(batchId).lean();
+  if (!batch || !batch.active) return sendError(res, 404, "Batch not found");
+  if (!(await canAccessRecord(req, batch))) return sendError(res, 403, "You can access only permitted records");
+  if (isTeacherAccount(req.user) && !(await teacherCanAccessBatch(req.user, batch))) return sendError(res, 403, "Teachers can upload notes only for assigned batches");
+  const title = String(req.body?.title || "").trim();
+  const referenceUrl = String(req.body?.referenceUrl || "").trim();
+  if (!title) return sendError(res, 400, "Note title is required");
+  if (!req.file && !referenceUrl) return sendError(res, 400, "Upload a file or add a reference URL");
+  if (referenceUrl && !/^https?:\/\/\S+$/i.test(referenceUrl)) return sendError(res, 400, "Enter a valid reference URL starting with http or https");
+  const resourceType = referenceUrl && /(youtube\.com|youtu\.be|vimeo\.com|video)/i.test(referenceUrl) ? "Video" : req.file ? "File" : "Reference";
+  const note = await StudyNote.create({
+    batchId: batch._id,
+    batchName: batch.name,
+    course: batch.course || "",
+    centre: batch.centre || "",
+    franchiseId: batch.franchiseId,
+    title,
+    module: String(req.body?.module || "").trim(),
+    description: String(req.body?.description || "").trim(),
+    file: req.file ? saveLeadDocument(req.file) : undefined,
+    referenceUrl,
+    resourceType,
+    uploadedBy: req.user.name || req.user.email || "Faculty",
+  });
+  res.status(201).json({ ok: true, data: note, message: "Study resource shared" });
+});
+
+app.get("/api/admin/study-notes/:id/download", requireAuth, async (req, res) => {
+  if (!canUseAttendance(req.user)) return sendError(res, 403, "Study notes are restricted to academic staff");
+  if (!mongoose.isValidObjectId(req.params.id)) return sendError(res, 400, "Invalid note");
+  const note = await StudyNote.findById(req.params.id).lean();
+  if (!note) return sendError(res, 404, "Note not found");
+  if (!(await canAccessRecord(req, note))) return sendError(res, 403, "You can access only permitted records");
+  const batch = isTeacherAccount(req.user) ? await Batch.findById(note.batchId).lean() : null;
+  if (isTeacherAccount(req.user) && !(await teacherCanAccessBatch(req.user, batch))) return sendError(res, 403, "Teachers can download notes only for assigned batches");
+  const filePath = path.join(leadDocumentDir, note.file?.storedName || "");
+  if (!note.file?.storedName || !filePath.startsWith(leadDocumentDir) || !fs.existsSync(filePath)) return sendError(res, 404, "Note file not found");
+  res.download(filePath, note.file.originalName || "study-note");
+});
+
+app.delete("/api/admin/study-notes/:id", requireAuth, async (req, res) => {
+  if (!canUseAttendance(req.user)) return sendError(res, 403, "Study notes are restricted to academic staff");
+  if (!mongoose.isValidObjectId(req.params.id)) return sendError(res, 400, "Invalid note");
+  const note = await StudyNote.findById(req.params.id).lean();
+  if (!note) return sendError(res, 404, "Note not found");
+  if (!(await canAccessRecord(req, note))) return sendError(res, 403, "You can access only permitted records");
+  const batch = isTeacherAccount(req.user) ? await Batch.findById(note.batchId).lean() : null;
+  if (isTeacherAccount(req.user) && !(await teacherCanAccessBatch(req.user, batch))) return sendError(res, 403, "Teachers can delete notes only for assigned batches");
+  await StudyNote.findByIdAndDelete(note._id);
+  res.json({ ok: true, data: note, message: "Note deleted" });
+});
+
+app.get("/api/student/study-notes/:id/download", requireStudentAuth, async (req, res) => {
+  if (!mongoose.isValidObjectId(req.params.id)) return sendError(res, 400, "Invalid note");
+  const note = await StudyNote.findById(req.params.id).lean();
+  if (!note) return sendError(res, 404, "Note not found");
+  const studentBatch = String(req.student.batch || "");
+  if (!studentBatch || note.batchName !== studentBatch) return sendError(res, 403, "You can access only your batch notes");
+  const filePath = path.join(leadDocumentDir, note.file?.storedName || "");
+  if (!note.file?.storedName || !filePath.startsWith(leadDocumentDir) || !fs.existsSync(filePath)) return sendError(res, 404, "Note file not found");
+  res.download(filePath, note.file.originalName || "study-note");
+});
+
+app.post("/api/contact", async (req, res) => {
+  const { fullName, phone, email, preferredProgram, message, city, website_url, honeypot } = req.body || {};
+
+  // Extract client IP address reliably (handling proxies, Cloudflare, etc.)
+  const clientIp = (
+    req.headers["cf-connecting-ip"] ||
+    req.headers["x-real-ip"] ||
+    (req.headers["x-forwarded-for"] ? String(req.headers["x-forwarded-for"]).split(",")[0].trim() : "") ||
+    req.socket?.remoteAddress ||
+    req.ip ||
+    ""
+  ).replace(/^::ffff:/, "").trim();
+
+  const userAgent = String(req.headers["user-agent"] || "").slice(0, 500);
+
+  // Honeypot check: If invisible bot-trap fields are filled, silently drop
+  if (website_url || honeypot) {
+    console.warn(`[Anti-Spam] Honeypot triggered from IP ${clientIp}. Silently dropping.`);
+    return res.json({ ok: true, message: "Enquiry submitted successfully." });
+  }
+
+  if (!fullName || !phone || !preferredProgram) return sendError(res, 400, "Full name, phone, and preferred program are required.");
+
+  // Strip emojis and non-alphabetic symbols from fullName
+  const cleanFullName = String(fullName || "")
+    .replace(/[\u{1F300}-\u{1F9FF}\u{2600}-\u{26FF}\u{2700}-\u{27BF}\u{1F1E6}-\u{1F1FF}\u{1F600}-\u{1F64F}\u{1F680}-\u{1F6FF}\u{1FA70}-\u{1FAFF}\p{Extended_Pictographic}]/gu, "")
+    .replace(/[^a-zA-Z\s.'-]/g, "")
+    .trim();
+
+  if (!cleanFullName || cleanFullName.length < 2) {
+    return sendError(res, 400, "Please enter a valid full name using letters only (no emojis).");
+  }
+
+  try {
+    let createdLead = null;
+    let leadCourse = preferredProgram;
+    let leadCentre = "";
+    let leadCity = city || "";
+    let isSuspectedConsultancy = false;
+    let consultancyFlagReason = "";
+
+    // IP Rate Limiting & Same-IP Detection (1-hour window)
+    if (clientIp && clientIp !== "127.0.0.1" && clientIp !== "::1") {
+      try {
+        const oneHourAgo = new Date(Date.now() - 60 * 60 * 1000);
+        const recentSameIpLeads = await Lead.find({
+          ipAddress: clientIp,
+          createdAt: { $gte: oneHourAgo },
+        }).sort({ createdAt: -1 }).lean();
+
+        const ipCount = recentSameIpLeads.length;
+
+        // If 3 or more submissions already made in the last hour: BLOCK further attempts
+        if (ipCount >= 3) {
+          console.warn(`[Anti-Spam Rate Limit] Blocked 4th+ submission from IP ${clientIp} in 1 hour.`);
+          return res.status(429).json({
+            ok: false,
+            message: "Too many applications received from this network in a short time. If you are an applicant, please contact our admissions office directly via WhatsApp.",
+          });
+        }
+
+        // When 2+ applications come from the same IP (i.e. this is application #2 or #3 in 1 hour)
+        if (ipCount >= 1) {
+          isSuspectedConsultancy = true;
+          consultancyFlagReason = `Multiple applications (${ipCount + 1}) submitted from same IP (${clientIp}) within 1 hour - Suspected Consultancy / Bulk Upload`;
+          console.warn(`[Anti-Spam Detection] Flagged as Suspected Consultancy: ${consultancyFlagReason}`);
+
+          // Retroactively flag earlier leads from this IP so counsellors are alerted
+          try {
+            await Lead.updateMany(
+              { ipAddress: clientIp, createdAt: { $gte: oneHourAgo }, isSuspectedConsultancy: false },
+              {
+                $set: {
+                  isSuspectedConsultancy: true,
+                  consultancyFlagReason: `Linked to multiple applications from same IP (${clientIp}) - Suspected Consultancy / Bulk Upload`,
+                  leadFeedback: "Junk",
+                },
+                $push: {
+                  activities: {
+                    type: "website",
+                    message: `⚠️ Auto-flagged as Suspected Consultancy: Another application was just submitted from the same IP (${clientIp}). Total: ${ipCount + 1} in 1 hr.`,
+                    by: "System Anti-Spam",
+                    at: new Date(),
+                  },
+                },
+              }
+            );
+          } catch (linkErr) {
+            console.error("Error retroactively flagging same-IP leads:", linkErr);
+          }
+        }
+      } catch (ipCheckErr) {
+        console.error("Error checking IP submission frequency:", ipCheckErr);
+      }
+    }
+
+    const progStr = String(preferredProgram);
+    if (
+      progStr === "AHAP" ||
+      progStr.startsWith("Apply Now") ||
+      progStr.toLowerCase().includes("ahap") ||
+      progStr.toLowerCase().includes("healthcare administration") ||
+      progStr.toLowerCase().includes("degree") ||
+      progStr.toLowerCase().includes("graduate")
+    ) {
+      leadCourse = "AHAP";
+      leadCentre = "Kochi";
+    }
+
+    if (!leadCentre) {
+      leadCentre = "Kochi";
+    }
+
+    let leadFranchiseId = null;
+    try {
+      const kochiCentreDoc = await Centre.findOne({ name: { $regex: /^kochi$/i }, active: true }).lean();
+      if (kochiCentreDoc) leadFranchiseId = kochiCentreDoc._id;
+    } catch (centreErr) {
+      console.error("Error resolving Kochi centre:", centreErr);
+    }
+
+    if (!leadCity && message) {
+      const cityMatch = message.match(/City:\s*([^,]+)/i);
+      if (cityMatch) leadCity = cityMatch[1].trim();
+    }
+
+    // Strip emojis and non-alphabetic symbols from city
+    if (leadCity) {
+      leadCity = String(leadCity)
+        .replace(/[\u{1F300}-\u{1F9FF}\u{2600}-\u{26FF}\u{2700}-\u{27BF}\u{1F1E6}-\u{1F1FF}\u{1F600}-\u{1F64F}\u{1F680}-\u{1F6FF}\u{1FA70}-\u{1FAFF}\p{Extended_Pictographic}]/gu, "")
+        .replace(/[^a-zA-Z\s.-]/g, "")
+        .trim();
+    }
+
+    // Deduplication check: prevent rapid continuous duplicate clicks (e.g. 3+ clicks in 60 seconds)
+    const cleanPhoneDigits = String(phone || "").replace(/\D/g, "");
+    const last10Digits = cleanPhoneDigits.slice(-10);
+
+    if (last10Digits.length >= 10) {
+      try {
+        const existingLead = await Lead.findOne({
+          phone: { $regex: `${last10Digits}$` },
+        }).sort({ createdAt: -1 });
+
+        if (existingLead) {
+          const ageInSeconds = (Date.now() - new Date(existingLead.createdAt).getTime()) / 1000;
+
+          // Rapid double-clicks within 15 seconds: ignore duplicate
+          if (ageInSeconds <= 15) {
+            console.log(`[Deduplication] Blocked rapid double-click for ${last10Digits}`);
+            return res.json({ ok: true, message: "Enquiry submitted successfully.", duplicate: true });
+          }
+
+          // Lead already exists in CRM: update the existing lead instead of creating a 2nd duplicate row!
+          console.log(`[Deduplication] Lead already exists (${existingLead._id}). Updating it instead of creating a duplicate row.`);
+          try {
+            existingLead.activities.push({
+              type: "website",
+              message: `Re-enquiry from website for ${preferredProgram}. IP: ${clientIp || "Unknown"}. ${message || ""}`.trim(),
+              by: "Website",
+              at: new Date(),
+            });
+            if (message) {
+              existingLead.notes = existingLead.notes ? `${existingLead.notes}\n[Re-enquiry]: ${message}` : message;
+            }
+            if (!existingLead.centre) existingLead.centre = leadCentre || "Kochi";
+            if (!existingLead.franchiseId && leadFranchiseId) existingLead.franchiseId = leadFranchiseId;
+            if (leadCity) existingLead.city = leadCity;
+            if (clientIp) existingLead.ipAddress = clientIp;
+            if (userAgent) existingLead.userAgent = userAgent;
+            if (isSuspectedConsultancy) {
+              existingLead.isSuspectedConsultancy = true;
+              existingLead.consultancyFlagReason = consultancyFlagReason;
+              existingLead.leadFeedback = "Junk";
+            }
+            await existingLead.save();
+
+            // Refresh timestamp in MongoDB so the existing lead moves to the top of the CRM list!
+            await mongoose.connection.collection("leads").updateOne(
+              { _id: existingLead._id },
+              {
+                $set: {
+                  createdAt: new Date(),
+                  centre: existingLead.centre || "Kochi",
+                  franchiseId: existingLead.franchiseId || leadFranchiseId,
+                  ipAddress: clientIp || existingLead.ipAddress || "",
+                  userAgent: userAgent || existingLead.userAgent || "",
+                  isSuspectedConsultancy: existingLead.isSuspectedConsultancy || isSuspectedConsultancy,
+                  consultancyFlagReason: existingLead.consultancyFlagReason || consultancyFlagReason,
+                },
+              }
+            );
+
+            // Send notification email
+            try {
+              await transporter.sendMail({
+                from: `iMED Academy <${process.env.SMTP_USER}>`,
+                to: toAddress,
+                replyTo: email || process.env.SMTP_USER,
+                subject: `${isSuspectedConsultancy ? "⚠️ [SUSPECTED CONSULTANCY] " : ""}New iMED enquiry - ${preferredProgram} - ${cleanFullName}`,
+                html: `<h2>iMED Academy Enquiry</h2>${isSuspectedConsultancy ? `<p style="color:#b91c1c;font-weight:bold;">⚠️ WARNING: ${escapeHtml(consultancyFlagReason)}</p>` : ""}<p><strong>Note:</strong> This student already exists in CRM; their profile has been updated with this new enquiry.</p><table cellpadding="8" cellspacing="0" border="1" style="border-collapse:collapse;font-family:Arial,sans-serif;"><tr><th align="left">Full Name</th><td>${escapeHtml(cleanFullName)}</td></tr><tr><th align="left">Phone</th><td>${escapeHtml(phone)}</td></tr><tr><th align="left">Email</th><td>${escapeHtml(email || "Not provided")}</td></tr><tr><th align="left">Preferred Program</th><td>${escapeHtml(preferredProgram)}</td></tr><tr><th align="left">Message</th><td>${escapeHtml(message || "Not provided")}</td></tr><tr><th align="left">IP Address</th><td>${escapeHtml(clientIp || "Unknown")}</td></tr></table>`,
+              });
+            } catch (mailError) {
+              console.error("Mail error:", mailError);
+            }
+
+            return res.json({ ok: true, message: "Enquiry submitted successfully.", updated: true });
+          } catch (updateErr) {
+            console.error("Error updating existing lead:", updateErr);
+          }
+        }
+      } catch (checkErr) {
+        console.error("Error checking for existing lead:", checkErr);
+      }
+    }
+
+    try {
+      const initialNotes = isSuspectedConsultancy
+        ? `⚠️ [SUSPECTED CONSULTANCY / BULK UPLOAD]: ${consultancyFlagReason}\n${message || ""}`.trim()
+        : (message || "");
+
+      const matchedContactCourse = await Course.findOne({
+        $or: [
+          { code: new RegExp(`^${leadCourse}$`, "i") },
+          { name: new RegExp(`^${leadCourse}$`, "i") },
+        ],
+        active: true,
+        ...(leadFranchiseId ? { $or: [{ franchiseId: leadFranchiseId }, { franchiseId: { $exists: false } }, { franchiseId: null }] } : {}),
+      }).sort({ franchiseId: -1 }).lean();
+      const expectedCourseFee = feeWithGst(matchedContactCourse?.fee || 0);
+
+      createdLead = await Lead.create({
+        fullName: cleanFullName,
+        phone: normalizePhone(phone),
+        email: email || "",
+        source: isSuspectedConsultancy ? "Suspected Consultancy / Bulk" : "Website Enquiry",
+        course: leadCourse,
+        expectedFee: expectedCourseFee,
+        centre: leadCentre,
+        franchiseId: leadFranchiseId,
+        studentLocation: leadCity,
+        city: leadCity,
+        notes: initialNotes,
+        ipAddress: clientIp,
+        userAgent: userAgent,
+        isSuspectedConsultancy: isSuspectedConsultancy,
+        consultancyFlagReason: consultancyFlagReason,
+        leadFeedback: isSuspectedConsultancy ? "Junk" : "New",
+        activities: [
+          {
+            type: "website",
+            message: isSuspectedConsultancy
+              ? `⚠️ Application auto-flagged as Suspected Consultancy (${consultancyFlagReason}). IP: ${clientIp}`
+              : `Created from website enquiry (IP: ${clientIp || "Unknown"})`,
+            by: "Website",
+            at: new Date(),
+          },
+        ],
+      });
+    } catch (dbError) {
+      console.error("Contact form DB create error:", dbError);
+    }
+
+    try {
+      await transporter.sendMail({
+        from: `iMED Academy <${process.env.SMTP_USER}>`,
+        to: toAddress,
+        replyTo: email || process.env.SMTP_USER,
+        subject: `${isSuspectedConsultancy ? "⚠️ [SUSPECTED CONSULTANCY] " : ""}New iMED enquiry - ${preferredProgram}`,
+        html: `<h2>New iMED Academy Enquiry</h2>${isSuspectedConsultancy ? `<p style="color:#b91c1c;font-weight:bold;">⚠️ WARNING: ${escapeHtml(consultancyFlagReason)}</p>` : ""}<table cellpadding="8" cellspacing="0" border="1" style="border-collapse:collapse;font-family:Arial,sans-serif;"><tr><th align="left">Full Name</th><td>${escapeHtml(cleanFullName)}</td></tr><tr><th align="left">Phone</th><td>${escapeHtml(phone)}</td></tr><tr><th align="left">Email</th><td>${escapeHtml(email || "Not provided")}</td></tr><tr><th align="left">Preferred Program</th><td>${escapeHtml(preferredProgram)}</td></tr><tr><th align="left">Message</th><td>${escapeHtml(message || "Not provided")}</td></tr><tr><th align="left">IP Address</th><td>${escapeHtml(clientIp || "Unknown")}</td></tr></table>`,
+      });
+    } catch (mailError) {
+      console.error("Contact form mail delivery error (lead was recorded if DB connected):", mailError);
+    }
+
+    if (createdLead) {
+      return res.json({ ok: true, message: "Enquiry submitted successfully." });
+    }
+
+    // If DB failed, but mail succeeded, it's still received
+    return res.json({ ok: true, message: "Enquiry submitted successfully." });
   } catch (error) {
-    console.error("Contact form mail error:", error);
+    console.error("Contact form error:", error);
     sendError(res, 500, "Unable to send enquiry right now. Please try again later.");
   }
 });
@@ -584,9 +6900,227 @@ app.post("/api/careers", upload.single("resume"), async (req, res) => {
   }
 });
 
+app.post("/api/public/college-registration", async (req, res) => {
+  const { student, parent, course, meta } = req.body || {};
+
+  const clientIp = (
+    req.headers["cf-connecting-ip"] ||
+    req.headers["x-real-ip"] ||
+    (req.headers["x-forwarded-for"] ? String(req.headers["x-forwarded-for"]).split(",")[0].trim() : "") ||
+    req.socket?.remoteAddress ||
+    req.ip ||
+    ""
+  ).replace(/^::ffff:/, "").trim();
+
+  const userAgent = String(req.headers["user-agent"] || "").slice(0, 500);
+
+  const studentName = String(student?.name || "").replace(/[^a-zA-Z\s.'-]/g, "").trim();
+  const rawPhone = String(student?.phone || "").trim();
+  const cleanPhoneDigits = rawPhone.replace(/\D/g, "");
+  const last10Digits = cleanPhoneDigits.slice(-10);
+
+  if (!studentName || studentName.length < 2) {
+    return sendError(res, 400, "Valid student name is required.");
+  }
+  if (last10Digits.length < 10) {
+    return sendError(res, 400, "Valid 10-digit student phone number is required.");
+  }
+
+  const studentEmail = String(student?.email || "").toLowerCase().trim();
+  const rollNo = String(student?.rollNo || "").trim();
+  const section = String(student?.section || "").trim();
+  const stream = String(student?.stream || "").trim();
+
+  const parentName = String(parent?.name || "").trim();
+  const parentPhone = String(parent?.phone || "").trim();
+
+  const courseName = String(course?.name || course?.code || "Foundation Certificate in Healthcare - BRAC").trim();
+  const courseFee = Number(course?.fee) || 4999;
+
+  const collegeName = String(meta?.college || "Dr. Bhim Rao Ambedkar College").trim();
+  const campaignName = String(meta?.campaign || "BRAC Seminar Oct 2026").trim();
+  const utmSource = String(meta?.utm_source || "qr").trim();
+  const utmMedium = String(meta?.utm_medium || "seminar-flyer").trim();
+
+  // Strictly assign to Delhi centre
+  const leadCentre = "Delhi";
+  let leadFranchiseId = null;
+  try {
+    const delhiCentreDoc = await Centre.findOne({ name: { $regex: /^delhi$/i }, active: true }).lean();
+    if (delhiCentreDoc) {
+      leadFranchiseId = delhiCentreDoc._id;
+    } else {
+      const fallbackDelhi = await Centre.findOne({ name: { $regex: /delhi/i }, active: true }).lean();
+      if (fallbackDelhi) leadFranchiseId = fallbackDelhi._id;
+    }
+  } catch (centreErr) {
+    console.error("Error resolving Delhi centre:", centreErr);
+  }
+
+  const formattedNotes = [
+    `College: ${collegeName}`,
+    `Roll No: ${rollNo || "N/A"}`,
+    `Stream: ${stream || "N/A"}${section ? ` (Section: ${section})` : ""}`,
+    `Parent / Guardian: ${parentName || "N/A"} (${parentPhone || "N/A"})`,
+    `Selected Course: ${courseName} (Fee: ₹${courseFee.toLocaleString("en-IN")})`,
+    `Campaign: ${campaignName} | UTM: ${utmSource}/${utmMedium}`,
+  ].join("\n");
+
+  try {
+    // Check for duplicate / existing lead
+    const existingLead = await Lead.findOne({
+      phone: { $regex: `${last10Digits}$` },
+    }).sort({ createdAt: -1 });
+
+    if (existingLead) {
+      const ageInSeconds = (Date.now() - new Date(existingLead.createdAt).getTime()) / 1000;
+      if (ageInSeconds <= 15) {
+        return res.json({ ok: true, message: "Registration received successfully.", duplicate: true, leadId: existingLead._id });
+      }
+
+      existingLead.fullName = studentName;
+      if (studentEmail) existingLead.email = studentEmail;
+      existingLead.course = courseName;
+      existingLead.source = `${collegeName} (College Partnership)`;
+      existingLead.centre = "Delhi";
+      if (leadFranchiseId) existingLead.franchiseId = leadFranchiseId;
+      if (parentPhone) existingLead.parentMobile = normalizePhone(parentPhone);
+      existingLead.expectedFee = courseFee;
+      existingLead.studentLocation = "Delhi";
+      existingLead.city = "Delhi";
+      existingLead.stage = "New Lead";
+      existingLead.leadFeedback = "Interested";
+      existingLead.priority = "P1";
+      if (clientIp) existingLead.ipAddress = clientIp;
+      if (userAgent) existingLead.userAgent = userAgent;
+
+      existingLead.activities.push({
+        type: "college_registration",
+        message: `College registration submitted via ${collegeName} form for ${courseName} (Roll: ${rollNo}, Stream: ${stream})`,
+        by: "BRAC Portal",
+        at: new Date(),
+      });
+
+      existingLead.notes = existingLead.notes ? `${existingLead.notes}\n\n[College Registration]:\n${formattedNotes}` : formattedNotes;
+
+      await existingLead.save();
+
+      // Refresh in MongoDB so it ranks high and has updated info
+      await mongoose.connection.collection("leads").updateOne(
+        { _id: existingLead._id },
+        {
+          $set: {
+            fullName: studentName,
+            email: studentEmail || existingLead.email || "",
+            course: courseName,
+            source: `${collegeName} (College Partnership)`,
+            stage: "New Lead",
+            leadFeedback: "Interested",
+            priority: "P1",
+            expectedFee: courseFee,
+            createdAt: new Date(),
+            centre: "Delhi",
+            franchiseId: existingLead.franchiseId || leadFranchiseId,
+            ipAddress: clientIp || existingLead.ipAddress || "",
+            userAgent: userAgent || existingLead.userAgent || "",
+          },
+        }
+      );
+
+      // Send email alert to admissions team
+      try {
+        await transporter.sendMail({
+          from: `iMED Academy <${process.env.SMTP_USER}>`,
+          to: toAddress,
+          replyTo: studentEmail || process.env.SMTP_USER,
+          subject: `🎓 [Delhi BRAC Registration] ${studentName} - ${courseName}`,
+          html: `<h2>BRAC College Registration (Delhi)</h2>
+            <p><strong>Note:</strong> Student already existed in CRM; profile updated with BRAC details and assigned to Delhi.</p>
+            <table cellpadding="8" cellspacing="0" border="1" style="border-collapse:collapse;font-family:Arial,sans-serif;">
+              <tr><th align="left">Student Name</th><td>${escapeHtml(studentName)}</td></tr>
+              <tr><th align="left">Phone</th><td>${escapeHtml(rawPhone)}</td></tr>
+              <tr><th align="left">Email</th><td>${escapeHtml(studentEmail || "Not provided")}</td></tr>
+              <tr><th align="left">College</th><td>${escapeHtml(collegeName)}</td></tr>
+              <tr><th align="left">Roll Number</th><td>${escapeHtml(rollNo)}</td></tr>
+              <tr><th align="left">Stream & Section</th><td>${escapeHtml(`${stream} ${section ? `(Sec ${section})` : ""}`)}</td></tr>
+              <tr><th align="left">Parent</th><td>${escapeHtml(`${parentName} - ${parentPhone}`)}</td></tr>
+              <tr><th align="left">Course Selected</th><td>${escapeHtml(courseName)} (₹${courseFee})</td></tr>
+              <tr><th align="left">Assigned Centre</th><td><strong>Delhi</strong></td></tr>
+            </table>`,
+        });
+      } catch (mailErr) {
+        console.error("College registration email notification error:", mailErr);
+      }
+
+      return res.json({ ok: true, message: "Registration recorded successfully.", updated: true, leadId: existingLead._id });
+    }
+
+    // Create new Lead for Delhi
+    const newLead = await Lead.create({
+      fullName: studentName,
+      phone: normalizePhone(rawPhone),
+      parentMobile: normalizePhone(parentPhone),
+      email: studentEmail,
+      studentLocation: "Delhi",
+      city: "Delhi",
+      centre: "Delhi",
+      franchiseId: leadFranchiseId,
+      source: `${collegeName} (College Partnership)`,
+      course: courseName,
+      expectedFee: courseFee,
+      stage: "New Lead",
+      leadFeedback: "Interested",
+      priority: "P1",
+      notes: formattedNotes,
+      ipAddress: clientIp,
+      userAgent: userAgent,
+      activities: [
+        {
+          type: "college_registration",
+          message: `Direct registration submitted from ${collegeName} portal for ${courseName} (Roll: ${rollNo}, Stream: ${stream})`,
+          by: "BRAC Portal",
+          at: new Date(),
+        },
+      ],
+    });
+
+    // Send email alert
+    try {
+      await transporter.sendMail({
+        from: `iMED Academy <${process.env.SMTP_USER}>`,
+        to: toAddress,
+        replyTo: studentEmail || process.env.SMTP_USER,
+        subject: `🎓 [Delhi BRAC Registration] New Student: ${studentName} - ${courseName}`,
+        html: `<h2>New BRAC College Registration (Delhi)</h2>
+          <table cellpadding="8" cellspacing="0" border="1" style="border-collapse:collapse;font-family:Arial,sans-serif;">
+            <tr><th align="left">Student Name</th><td>${escapeHtml(studentName)}</td></tr>
+            <tr><th align="left">Phone</th><td>${escapeHtml(rawPhone)}</td></tr>
+            <tr><th align="left">Email</th><td>${escapeHtml(studentEmail || "Not provided")}</td></tr>
+            <tr><th align="left">College</th><td>${escapeHtml(collegeName)}</td></tr>
+            <tr><th align="left">Roll Number</th><td>${escapeHtml(rollNo)}</td></tr>
+            <tr><th align="left">Stream & Section</th><td>${escapeHtml(`${stream} ${section ? `(Sec ${section})` : ""}`)}</td></tr>
+            <tr><th align="left">Parent</th><td>${escapeHtml(`${parentName} - ${parentPhone}`)}</td></tr>
+            <tr><th align="left">Course Selected</th><td>${escapeHtml(courseName)} (₹${courseFee})</td></tr>
+            <tr><th align="left">Assigned Centre</th><td><strong>Delhi</strong></td></tr>
+          </table>`,
+      });
+    } catch (mailErr) {
+      console.error("College registration email notification error:", mailErr);
+    }
+
+    return res.json({ ok: true, message: "Registration submitted successfully.", leadId: newLead._id });
+  } catch (err) {
+    console.error("Error creating college registration lead:", err);
+    return sendError(res, 500, "Unable to save registration. Please try again or reach out via WhatsApp.");
+  }
+});
+
 app.use((error, _req, res, _next) => {
   if (error instanceof multer.MulterError && error.code === "LIMIT_FILE_SIZE") {
-    return res.status(400).json({ ok: false, message: "Document file size must be below 2 MB" });
+    return res.status(400).json({ ok: false, message: error.field === "file" ? "Study note file size must be below 10 MB" : "Document file size must be below 2 MB" });
+  }
+  if (error?.message === "Only PDF, JPG, PNG or WEBP documents are allowed" || error?.message === "Only PDF, Word, PPT, Excel, image, CSV or TXT notes are allowed") {
+    return res.status(400).json({ ok: false, message: error.message });
   }
   console.error("API error:", error);
   res.status(500).json({ ok: false, message: "Server error" });
@@ -601,3 +7135,4 @@ mongoose.connect(mongoUri)
     console.error("MongoDB connection failed:", error.message);
     process.exit(1);
   });
+

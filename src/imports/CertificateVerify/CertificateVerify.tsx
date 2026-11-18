@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { Award, CheckCircle2, SearchX } from "lucide-react";
-import imedLogo from "../Ocha/36b610493eb683f0e81e17848fd143c365f117fd.png";
+import imedLogo from "../HomePage/imedLogoTMTag.svg";
 
 const API_BASE_URL = import.meta.env.PROD
   ? ((import.meta.env.VITE_PROD_API_BASE_URL as string | undefined) || "")
@@ -39,14 +39,14 @@ export default function CertificateVerify({ certificateNumber }: { certificateNu
         .verify-shell{min-height:100vh;background:#f4f7fb;display:grid;place-items:center;padding:24px;font-family:Inter,ui-sans-serif,system-ui,sans-serif;color:#061633}
         .verify-card{width:min(620px,100%);background:#fff;border:1px solid #dfe6f0;border-radius:16px;padding:28px;box-shadow:0 18px 50px rgba(17,33,61,.08)}
         .verify-brand{display:flex;align-items:center;gap:10px;margin-bottom:22px}
-        .verify-brand img{width:42px;height:42px;object-fit:contain}.verify-brand b{font-size:24px;color:#1f3471}.verify-brand strong{font-size:24px;color:#25a88d}
+        .verify-brand img{width:190px;height:42px;object-fit:contain;object-position:left center}.verify-brand b,.verify-brand strong{display:none}
         .verify-status{display:flex;align-items:center;gap:10px;color:#009c73;font-weight:900;margin-bottom:8px}.verify-status.missing{color:#b42318}
         .verify-card h1{font-size:34px;line-height:1.1;margin:0 0 8px;color:#061633}.verify-card p{color:#66728a;margin:0 0 18px}
         .verify-grid{display:grid;gap:12px;margin-top:18px}.verify-row{display:flex;justify-content:space-between;gap:16px;border-top:1px solid #eef2f7;padding-top:12px}.verify-row span{color:#66728a}.verify-row b{text-align:right}
         .verify-btn{border:0;background:#0d6efd;color:#fff;border-radius:10px;padding:12px 16px;font-weight:900;margin-top:20px}
       `}</style>
       <section className="verify-card">
-        <div className="verify-brand"><img src={imedLogo} alt="" /><b>iMED</b><strong>Academy</strong></div>
+        <div className="verify-brand"><img src={imedLogo} alt="iMED Academy" /></div>
         {state.status === "loading" && <p>Checking certificate...</p>}
         {state.status === "missing" && (
           <>

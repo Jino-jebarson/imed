@@ -1,5 +1,6 @@
-﻿import { Suspense, lazy, useEffect, useState } from "react";
+import { Suspense, lazy, useEffect, useRef, useState } from "react";
 import FloatingWhatsApp from "./components/FloatingWhatsApp";
+import { trackPixelPageView } from "../shared/metaPixel";
 
 const loadHomePage = () => import("../imports/HomePage/HomePage");
 const loadCareersPage = () => import("../imports/CareersModal/CareersPage");
@@ -7,6 +8,8 @@ const loadEmergencyMedicalTechnician = () => import("../imports/EmergencyMedical
 const loadHospitalAdministration = () => import("../imports/HospitalAdministration/HospitalAdministration");
 const loadGeneralDutyAssistance = () => import("../imports/GeneralDutyAssistance/GeneralDutyAssistance");
 const loadGeriatricCareAssistance = () => import("../imports/GeriatricCareAssistance/GeriatricCareAssistance");
+const loadMlt = () => import("../imports/Mlt/mlt");
+const loadRadiology = () => import("../imports/Radiology/radiology");
 const loadAcha = () => import("../imports/Acha/Acha.tsx");
 const loadOcha = () => import("../imports/Ocha/Ocha");
 const loadSkillbridge = () => import("../imports/Skillbrige/Skillbrige.jsx");
@@ -14,7 +17,10 @@ const loadBlogs = () => import("../imports/Blogs/Acha-1-586");
 const loadPrivacyPolicy = () => import("../imports/PrivacyPolicy/PrivacyPolicy");
 const loadTermsAndConditions = () => import("../imports/TermsAndConditions/TermsAndConditions");
 const loadAdminCrm = () => import("../imports/AdminCrm/AdminCrm");
+const loadStudentLms = () => import("../imports/StudentLms/StudentLms");
 const loadCertificateVerify = () => import("../imports/CertificateVerify/CertificateVerify");
+const loadApplyNow = () => import("../imports/ApplyNow/ApplyNow");
+const loadBracRegistration = () => import("../imports/BracRegistration/BracRegistration");
 
 const HomePage = lazy(loadHomePage);
 const CareersPage = lazy(loadCareersPage);
@@ -22,6 +28,8 @@ const EmergencyMedicalTechnician = lazy(loadEmergencyMedicalTechnician);
 const HospitalAdministration = lazy(loadHospitalAdministration);
 const GeneralDutyAssistance = lazy(loadGeneralDutyAssistance);
 const GeriatricCareAssistance = lazy(loadGeriatricCareAssistance);
+const Mlt = lazy(loadMlt);
+const Radiology = lazy(loadRadiology);
 const Acha = lazy(loadAcha);
 const Ocha = lazy(loadOcha);
 const Skillbridge = lazy(loadSkillbridge);
@@ -29,21 +37,34 @@ const BlogsPage = lazy(loadBlogs);
 const PrivacyPolicy = lazy(loadPrivacyPolicy);
 const TermsAndConditions = lazy(loadTermsAndConditions);
 const AdminCrm = lazy(loadAdminCrm);
+const StudentLms = lazy(loadStudentLms);
 const CertificateVerify = lazy(loadCertificateVerify);
+const ApplyNow = lazy(loadApplyNow);
+const BracRegistration = lazy(loadBracRegistration);
 
 const preloadByHash: Record<string, () => Promise<unknown>> = {
   "#emt": loadEmergencyMedicalTechnician,
   "#ha": loadHospitalAdministration,
   "#gda": loadGeneralDutyAssistance,
   "#gca": loadGeriatricCareAssistance,
-  "#acha": loadAcha,
+  "#mlt": loadMlt,
+  "#radiology": loadRadiology,
+  "#ahap": loadAcha,
   "#ocha": loadOcha,
   "#skillbridge": loadSkillbridge,
   "#blogs": loadBlogs,
   "#admin": loadAdminCrm,
+  "#student": loadStudentLms,
   "#careers": loadCareersPage,
   "#privacy-policy": loadPrivacyPolicy,
   "#terms-and-conditions": loadTermsAndConditions,
+  "#applynow": loadApplyNow,
+  "#apply-now": loadApplyNow,
+  "#brac": loadBracRegistration,
+  "#brac-registration": loadBracRegistration,
+  "#brac-registeration": loadBracRegistration,
+  "#bracregistration": loadBracRegistration,
+  "#bracregisteration": loadBracRegistration,
   "": loadHomePage,
 };
 
@@ -94,10 +115,22 @@ const SEO_BY_HASH: Record<string, SeoConfig> = {
       "Join iMED Academy's Geriatric Care Assistance program and build a career in elderly care support.",
     path: "/#gca",
   },
-  "#acha": {
-    title: "ACHA Program | iMED Academy",
-    description: "Explore iMED Academy's Advance Certification in Hospital Administration (ACHA) program.",
-    path: "/#acha",
+  "#mlt": {
+    title: "MLT Course | iMED Academy",
+    description:
+      "Join iMED Academy's Medical Laboratory Technician program and build a healthcare career with practical training.",
+    path: "/#mlt",
+  },
+  "#radiology": {
+    title: "Radiology Course | iMED Academy",
+    description:
+      "Join iMED Academy's Radiology X-Ray Technician program and build a healthcare career with practical training.",
+    path: "/#radiology",
+  },
+  "#ahap": {
+    title: "AHAP Program | iMED Academy",
+    description: "Explore iMED Academy's Advanced Healthcare Administration Program (AHAP) program.",
+    path: "/#ahap",
   },
   "#ocha": {
     title: "OCHA Program | iMED Academy",
@@ -123,6 +156,31 @@ const SEO_BY_HASH: Record<string, SeoConfig> = {
     title: "Admin CRM | iMED Academy",
     description: "iMED Academy CRM dashboard for admissions and student management.",
     path: "/#admin",
+  },
+  "#student": {
+    title: "Student LMS | iMED Academy",
+    description: "iMED Academy student learning portal for timetable, attendance, progress, and internship logbook.",
+    path: "/#student",
+  },
+  "#applynow": {
+    title: "Apply Now | iMED Academy",
+    description: "Apply for healthcare courses at iMED Academy and kickstart your career with hands-on hospital training.",
+    path: "/#applynow",
+  },
+  "#apply-now": {
+    title: "Apply Now | iMED Academy",
+    description: "Apply for healthcare courses at iMED Academy and kickstart your career with hands-on hospital training.",
+    path: "/#applynow",
+  },
+  "#brac": {
+    title: "Register · iMED Academy × BRAC",
+    description: "Register for iMED Academy Healthcare Career Programme at Dr. Bhim Rao Ambedkar College.",
+    path: "/#brac",
+  },
+  "#brac-registration": {
+    title: "Register · iMED Academy × BRAC",
+    description: "Register for iMED Academy Healthcare Career Programme at Dr. Bhim Rao Ambedkar College.",
+    path: "/#brac-registration",
   },
 };
 
@@ -157,7 +215,20 @@ export default function App() {
   };
 
   useEffect(() => {
-    const onHashChange = () => setHash(window.location.hash);
+    const normalizeHash = () => {
+      if (["#acha", "#aahp"].includes(window.location.hash.toLowerCase())) {
+        window.history.replaceState(null, "", "#ahap");
+      }
+      if (["#apply-now"].includes(window.location.hash.toLowerCase())) {
+        window.history.replaceState(null, "", "#applynow");
+      }
+      if (["#brac-registeration", "#bracregisteration", "#bracregistration"].includes(window.location.hash.toLowerCase())) {
+        window.history.replaceState(null, "", "#brac-registration");
+      }
+      setHash(window.location.hash);
+    };
+    normalizeHash();
+    const onHashChange = () => normalizeHash();
     window.addEventListener("hashchange", onHashChange);
     return () => window.removeEventListener("hashchange", onHashChange);
   }, []);
@@ -177,6 +248,19 @@ export default function App() {
     upsertCanonical(canonical);
   }, [hash]);
 
+  const isFirstRouteRender = useRef(true);
+  useEffect(() => {
+    if (isFirstRouteRender.current) {
+      isFirstRouteRender.current = false;
+      return;
+    }
+    const currentHash = (hash || "").toLowerCase();
+    if (currentHash.startsWith("#admin") || currentHash.startsWith("#student")) {
+      return;
+    }
+    trackPixelPageView();
+  }, [hash]);
+
   useEffect(() => {
     // Warm up likely route chunks to avoid white flashes on first route switch.
     const warm = () => {
@@ -184,8 +268,11 @@ export default function App() {
       preloadRoute("#ha");
       preloadRoute("#gda");
       preloadRoute("#gca");
-      preloadRoute("#acha");
+      preloadRoute("#mlt");
+      preloadRoute("#radiology");
+      preloadRoute("#ahap");
       preloadRoute("#blogs");
+      preloadRoute("#applynow");
     };
 
     if ("requestIdleCallback" in window) {
@@ -203,14 +290,19 @@ export default function App() {
 
   useEffect(() => {
     const normalizeLabel = (value: string) => value.replace(/\s+/g, " ").trim().toLowerCase();
-    const applyLabels = new Set(["apply now", "talk to expert", "talk to experts"]);
+    const applyLabels = new Set(["apply now", "apply now!", "talk to expert", "talk to experts"]);
     const legalRoutes: Record<string, string> = {
       "privacy policy": "#privacy-policy",
       "terms of use": "#terms-and-conditions",
       "terms and conditions": "#terms-and-conditions",
+      mlt: "#mlt",
+      "medical laboratory technician": "#mlt",
+      radiology: "#radiology",
+      "x-ray technician": "#radiology",
       ocha: "#ocha",
       skillbridge: "#skillbridge",
       blogs: "#blogs",
+      applynow: "#applynow",
     };
     const navToId: Record<string, string> = {
       about: "why-imed",
@@ -231,6 +323,16 @@ export default function App() {
     };
 
     const scrollToHomeContact = () => {
+      const isMobile = window.innerWidth <= 768;
+      if (isMobile) {
+        const mobileContainer = document.querySelector(".homepage-mobile-view");
+        const mobileEl = mobileContainer?.querySelector<HTMLElement>("#contact-us");
+        if (mobileEl) {
+          const offset = mobileEl.getBoundingClientRect().top + window.pageYOffset - 65;
+          window.scrollTo({ top: offset > 0 ? offset : 0, behavior: "smooth" });
+          return;
+        }
+      }
       const target =
         document.getElementById("contact-us") ||
         (document.querySelector("[data-name='Contact']") as HTMLElement | null);
@@ -238,8 +340,30 @@ export default function App() {
       target.scrollIntoView({ behavior: "smooth", block: "start" });
     };
 
+    const goToHomeContact = () => {
+      if (window.location.hash !== "") {
+        preloadRoute("");
+        window.location.hash = "";
+        setTimeout(scrollToHomeContact, 150);
+        return;
+      }
+      scrollToHomeContact();
+    };
+
     const scrollToSection = (sectionId: string) => {
-      const section = document.getElementById(sectionId) || (document.querySelector(`[data-nav="${sectionId}"]`) as HTMLElement | null);
+      const isMobile = window.innerWidth <= 768;
+      if (isMobile) {
+        const mobileContainer = document.querySelector(".homepage-mobile-view");
+        const mobileEl = mobileContainer?.querySelector<HTMLElement>(`#${sectionId}`);
+        if (mobileEl) {
+          const offset = mobileEl.getBoundingClientRect().top + window.pageYOffset - 65;
+          window.scrollTo({ top: offset > 0 ? offset : 0, behavior: "smooth" });
+          return;
+        }
+      }
+      const section =
+        document.getElementById(sectionId) ||
+        (document.querySelector(`[data-nav="${sectionId}"]`) as HTMLElement | null);
       if (!section) return;
       section.scrollIntoView({ behavior: "smooth", block: "start" });
     };
@@ -247,6 +371,30 @@ export default function App() {
     const onDocumentClick = (event: MouseEvent) => {
       const target = event.target as HTMLElement | null;
       if (!target) return;
+
+      // Maintain SkillBridge's own previous flow and internal section scrolling
+      if (window.location.hash.toLowerCase() === "#skillbridge") {
+        return;
+      }
+
+      // If already on the Apply Now page, scroll to form on apply clicks
+      if (window.location.hash.toLowerCase() === "#applynow" || window.location.hash.toLowerCase() === "#apply-now") {
+        const applyTarget = target.closest("[data-nav-target='applynow'], [data-nav-target='apply-now'], a[href='#applynow'], a[href='#apply-now']");
+        if (applyTarget) {
+          event.preventDefault();
+          const form = document.getElementById("apply-form") || document.querySelector("[data-name='Apply Now Page']");
+          if (form) {
+            form.scrollIntoView({ behavior: "smooth", block: "start" });
+          } else {
+            window.scrollTo({ top: 0, behavior: "smooth" });
+          }
+          return;
+        }
+      }
+
+      // ONLY when coming from AHAP (#ahap), route "Apply Now" to the new #applynow page
+      const currentHash = window.location.hash.toLowerCase();
+      const isFromAhap = currentHash === "#ahap" || currentHash === "#acha" || currentHash === "#aahp";
 
       const explicitTarget = target.closest("[data-nav-target]") as HTMLElement | null;
       if (explicitTarget) {
@@ -275,6 +423,22 @@ export default function App() {
             window.scrollTo({ top: 0, behavior: "smooth" });
             return;
           }
+          if (sectionId === "applynow" || sectionId === "apply-now") {
+            if (isFromAhap) {
+              preloadRoute("#applynow");
+              window.location.hash = "#applynow";
+              window.scrollTo({ top: 0, behavior: "smooth" });
+              return;
+            } else {
+              // Non-AHAP: route to Home page contact form section
+              goToHomeContact();
+              return;
+            }
+          }
+          if (sectionId === "contact-us" || sectionId === "contact") {
+            goToHomeContact();
+            return;
+          }
           scrollToSection(sectionId);
           return;
         }
@@ -284,6 +448,15 @@ export default function App() {
       if (!clickable) return;
 
       const label = normalizeLabel(clickable.textContent || "");
+
+      // If clicked from AHAP and label is Apply Now, navigate to #applynow
+      if (isFromAhap && (label === "apply now" || label === "apply now!" || label.startsWith("apply now"))) {
+        event.preventDefault();
+        preloadRoute("#applynow");
+        window.location.hash = "#applynow";
+        window.scrollTo({ top: 0, behavior: "smooth" });
+        return;
+      }
 
       const legalRoute = legalRoutes[label];
       if (legalRoute) {
@@ -299,19 +472,17 @@ export default function App() {
         const sectionId = navToId[label];
         if (!sectionId) return;
         event.preventDefault();
+        if (sectionId === "contact-us" || sectionId === "contact") {
+          goToHomeContact();
+          return;
+        }
         scrollToSection(sectionId);
         return;
       }
 
       if (applyLabels.has(label)) {
         event.preventDefault();
-        preloadRoute("");
-        if (window.location.hash !== "") {
-          window.location.hash = "";
-          setTimeout(scrollToHomeContact, 120);
-          return;
-        }
-        scrollToHomeContact();
+        goToHomeContact();
         return;
       }
 
@@ -349,7 +520,11 @@ export default function App() {
     page = <GeneralDutyAssistance />;
   } else if (hash === "#gca") {
     page = <GeriatricCareAssistance />;
-  } else if (hash === "#acha") {
+  } else if (hash === "#mlt") {
+    page = <Mlt />;
+  } else if (hash === "#radiology") {
+    page = <Radiology />;
+  } else if (hash === "#ahap") {
     page = <Acha />;
   } else if (hash === "#ocha") {
     page = <Ocha />;
@@ -359,17 +534,27 @@ export default function App() {
     page = <Skillbridge />;
   } else if (hash === "#blogs") {
     page = <BlogsPage />;
-  } else if (hash === "#admin") {
+  } else if (hash === "#applynow" || hash === "#apply-now") {
+    page = <ApplyNow />;
+  } else if (hash.startsWith("#admin")) {
     page = <AdminCrm />;
+  } else if (hash.startsWith("#student")) {
+    page = <StudentLms />;
   } else if (hash.startsWith("#verify=")) {
     page = <CertificateVerify certificateNumber={decodeURIComponent(hash.replace("#verify=", ""))} />;
   } else if (hash === "#privacy-policy") {
     page = <PrivacyPolicy />;
   } else if (hash === "#terms-and-conditions") {
     page = <TermsAndConditions />;
+  } else if (hash.startsWith("#brac")) {
+    page = <BracRegistration />;
   }
 
-  const showFloatingWhatsApp = hash !== "#admin" && !hash.startsWith("#verify=");
+  const showFloatingWhatsApp =
+    !hash.startsWith("#admin") &&
+    !hash.startsWith("#student") &&
+    !hash.startsWith("#verify=") &&
+    !hash.startsWith("#brac");
 
   return (
     <>

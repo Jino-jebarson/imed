@@ -1,6 +1,6 @@
-﻿import { useLayoutEffect, useRef, useState, type MouseEvent } from "react";
+import { useLayoutEffect, useRef, useState, type MouseEvent } from "react";
 import svgPaths from "./svg-xfxxydqmnt";
-import imgImage1712 from "../Ocha/36b610493eb683f0e81e17848fd143c365f117fd.png";
+import imgImage1712 from "../HomePage/imedLogoTMTag.svg";
 import imgImage1722 from "./image1722.webp";
 import imgImage1745 from "./image1745.webp";
 import imgImage1709 from "./image1709.webp";
@@ -14,7 +14,7 @@ function Group12() {
   return (
     <div className="grid-cols-[max-content] grid-rows-[max-content] inline-grid place-items-start relative shrink-0">
       <div
-        className="col-1 h-[29px] ml-0 mt-0 relative row-1 w-[22.895px]"
+        className="col-1 h-[38px] ml-0 mt-0 relative row-1 w-[203px]"
         data-name="image 1712"
       >
         <div className="absolute inset-0 overflow-hidden pointer-events-none">
@@ -22,7 +22,7 @@ function Group12() {
             loading="lazy"
             decoding="async"
             alt=""
-            className="absolute h-[131.58%] left-[-33.33%] max-w-none top-[-15.79%] w-[166.67%]"
+            className="absolute inset-0 h-full w-full max-w-none object-contain"
             src={imgImage1712}
           />
         </div>
@@ -33,7 +33,7 @@ function Group12() {
 
 function Group13() {
   return (
-    <div data-nav-target="home" className="content-stretch flex gap-[10px] items-center leading-[0] relative shrink-0 w-[203px] cursor-pointer transition-transform duration-200 hover:scale-[1.02]">
+    <div data-nav-target="home" className="content-stretch flex gap-[10px] items-center leading-[0] relative shrink-0 w-[203px] cursor-pointer [&>p]:hidden transition-transform duration-200 hover:scale-[1.02]">
       <Group12 />
       <p className="font-['Inter:Bold',sans-serif] font-bold h-[18px] not-italic relative shrink-0 text-[#1f3471] text-[22.992px] text-center w-[170px]">
         <span className="leading-[21px]">{`iMED `}</span>
@@ -1311,7 +1311,7 @@ function About2() {
     <div
       id="career-path"
       data-nav="career-path"
-      className="-translate-x-1/2 absolute bg-white content-stretch flex flex-col gap-[70px] items-center left-1/2 px-[32px] py-[60px] top-[3695px] w-[1440px]"
+      className="-translate-x-1/2 absolute bg-white content-stretch flex flex-col gap-[70px] items-center left-1/2 px-[32px] py-[60px] top-[4095px] w-[1440px]"
       data-name="About"
     >
       <Frame46 />
@@ -1377,7 +1377,7 @@ function Frame123() {
         Entry-Level GDA
       </p>
       <p className="font-['Inter:Semi_Bold',sans-serif] font-semibold leading-[normal] relative shrink-0 text-[25px] w-full">
-        ₹2 - 3 LPA
+        ?2 - 3 LPA
       </p>
     </div>
   );
@@ -1433,7 +1433,7 @@ function Frame125() {
     <div className="content-stretch flex flex-col gap-[10px] items-start not-italic relative shrink-0 text-white w-[198px]">
       <p className="font-['Inter:Medium',sans-serif] font-medium leading-[39px] relative shrink-0 text-[18px] w-[261px] whitespace-pre-wrap">{`Senior  Assistant`}</p>
       <p className="font-['Inter:Semi_Bold',sans-serif] font-semibold leading-[normal] min-w-full relative shrink-0 text-[25px] w-[min-content]">
-        ₹4.5 - 6 LPA
+        ?4.5 - 6 LPA
       </p>
     </div>
   );
@@ -1500,7 +1500,7 @@ function Frame128() {
         Ward Assistant
       </p>
       <p className="font-['Inter:Semi_Bold',sans-serif] font-semibold leading-[normal] relative shrink-0 text-[25px] w-full">
-        ₹3 - 4.5 LPA
+        ?3 - 4.5 LPA
       </p>
     </div>
   );
@@ -1558,7 +1558,7 @@ function Frame130() {
         Home Care Lead
       </p>
       <p className="font-['Inter:Semi_Bold',sans-serif] font-semibold leading-[normal] min-w-full relative shrink-0 text-[25px] w-[min-content]">
-        ₹6 LPA+
+        ?6 LPA+
       </p>
     </div>
   );
@@ -1658,7 +1658,7 @@ function Frame32() {
         <span className="leading-[22px] text-[#25a88d]">{`One Career Path `}</span>
       </p>
       <p className="absolute font-['Inter:Regular',sans-serif] font-normal leading-[0] left-[calc(50%-165.5px)] not-italic text-[#25a88d] text-[18px] top-[617px] whitespace-nowrap">
-        <span className="leading-[normal]">{`ðŸ‡®ðŸ‡³ `}</span>
+        <span className="leading-[normal]">{`🇮🇳 `}</span>
         <span className="leading-[normal] text-[#333]">
           Made in India built for Bharath Future
         </span>
@@ -2290,7 +2290,7 @@ function Container17() {
   return (
     <div className="h-[48px] relative shrink-0 w-full" data-name="Container">
       <p className="absolute font-['Inter:Bold',sans-serif] font-bold leading-[48px] left-0 not-italic text-[48px] text-white top-[-3px] whitespace-nowrap">
-        ₹22,385
+        ?22,385
       </p>
     </div>
   );
@@ -2382,7 +2382,7 @@ function Text10() {
     <div className="h-[20px] relative shrink-0 w-[50.063px]" data-name="Text">
       <div className="bg-clip-padding border-0 border-[transparent] border-solid relative size-full">
         <p className="absolute font-['Inter:Semi_Bold',sans-serif] font-semibold leading-[20px] left-0 not-italic text-[14px] text-white top-[-0.2px] whitespace-nowrap">
-          ₹18,150
+          ?18,150
         </p>
       </div>
     </div>
@@ -2394,7 +2394,7 @@ function Text11() {
     <div className="h-[20px] relative shrink-0 w-[50.025px]" data-name="Text">
       <div className="bg-clip-padding border-0 border-[transparent] border-solid relative size-full">
         <p className="absolute font-['Inter:Semi_Bold',sans-serif] font-semibold leading-[20px] left-0 not-italic text-[14px] text-white top-[-0.2px] whitespace-nowrap">
-          ₹26,620
+          ?26,620
         </p>
       </div>
     </div>
@@ -2455,7 +2455,7 @@ function Text13() {
     <div className="h-[24px] relative shrink-0 w-[54.725px]" data-name="Text">
       <div className="bg-clip-padding border-0 border-[transparent] border-solid relative size-full">
         <p className="absolute font-['Inter:Semi_Bold',sans-serif] font-semibold leading-[24px] left-0 not-italic text-[16px] text-white top-[-2.2px] whitespace-nowrap">
-          ₹15,670
+          ?15,670
         </p>
       </div>
     </div>
@@ -2491,7 +2491,7 @@ function Text15() {
     <div className="h-[24px] relative shrink-0 w-[57.213px]" data-name="Text">
       <div className="bg-clip-padding border-0 border-[transparent] border-solid relative size-full">
         <p className="absolute font-['Inter:Semi_Bold',sans-serif] font-semibold leading-[24px] left-0 not-italic text-[16px] text-white top-[-2.2px] whitespace-nowrap">
-          ₹6,715
+          ?6,715
         </p>
       </div>
     </div>
@@ -2536,7 +2536,7 @@ function Text17() {
     <div className="h-[24px] relative shrink-0 w-[69.912px]" data-name="Text">
       <div className="bg-clip-padding border-0 border-[transparent] border-solid relative size-full">
         <p className="absolute font-['Inter:Semi_Bold',sans-serif] font-semibold leading-[24px] left-0 not-italic text-[16px] text-white top-[-2.2px] whitespace-nowrap">
-          ₹2,68,620
+          ?2,68,620
         </p>
       </div>
     </div>
@@ -2572,7 +2572,7 @@ function Text19() {
     <div className="h-[28px] relative shrink-0 w-[67.013px]" data-name="Text">
       <div className="bg-clip-padding border-0 border-[transparent] border-solid relative size-full">
         <p className="absolute font-['Inter:Bold',sans-serif] font-bold leading-[28px] left-0 not-italic text-[#46ecd5] text-[18px] top-[-1.4px] whitespace-nowrap">
-          ₹19,700
+          ?19,700
         </p>
       </div>
     </div>
@@ -4828,10 +4828,10 @@ function Frame2() {
       </button>
       <button
         type="button"
-        onClick={handleProgramClick("#acha")}
+        onClick={handleProgramClick("#ahap")}
         className="min-w-full relative shrink-0 text-left transition-colors duration-200 w-[min-content] hover:text-[#8ee2d2]"
       >
-        ACHA
+        AHAP
       </button>
       <button
         type="button"
@@ -4839,6 +4839,20 @@ function Frame2() {
         className="min-w-full relative shrink-0 text-left transition-colors duration-200 w-[min-content] hover:text-[#8ee2d2]"
       >
         GCA
+      </button>
+      <button
+        type="button"
+        onClick={handleProgramClick("#mlt")}
+        className="min-w-full relative shrink-0 text-left transition-colors duration-200 w-[min-content] hover:text-[#8ee2d2]"
+      >
+        MLT
+      </button>
+      <button
+        type="button"
+        onClick={handleProgramClick("#radiology")}
+        className="min-w-full relative shrink-0 text-left transition-colors duration-200 w-[min-content] hover:text-[#8ee2d2]"
+      >
+        Radiology
       </button>
     </div>
   );
@@ -5301,7 +5315,7 @@ function Frame68() {
 
 function Frame4() {
   return (
-    <div className="bg-[#1f3471] h-[330px] relative shrink-0 w-full">
+    <div className="bg-[#1f3471] h-[420px] relative shrink-0 w-full">
       <Frame1 />
       <Frame68 />
     </div>
@@ -5383,7 +5397,8 @@ export default function GeneralDutyAssistance() {
       setPageScale(nextScale);
 
       if (pageRef.current) {
-        setScaledHeight(Math.ceil(pageRef.current.offsetHeight * nextScale));
+        const rawHeight = pageRef.current.scrollHeight || pageRef.current.offsetHeight;
+        setScaledHeight(Math.ceil(rawHeight * nextScale));
       }
     };
 
@@ -5422,9 +5437,9 @@ export default function GeneralDutyAssistance() {
           <Frame15 />
           <About />
           <About1 />
-          <About2 />
           <About3 />
           <About4 />
+          <About2 />
           <About5 />
           <About6 />
           <About7 />
