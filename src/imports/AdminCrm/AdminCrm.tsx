@@ -25,17 +25,25 @@ import {
   ChevronDown,
   ChevronUp,
   ClipboardList,
+  Cloud,
+  CloudLightning,
+  CloudRain,
+  CloudSun,
   Copy,
   CreditCard,
   Download,
+  Droplets,
   Eye,
   EyeOff,
   ExternalLink,
   FileText,
   Filter,
+  Gift,
   GraduationCap,
   History,
   Hourglass,
+  Info,
+  Landmark,
   LayoutDashboard,
   Lock,
   LogOut,
@@ -50,8 +58,12 @@ import {
   ShieldCheck,
   Shirt,
   ShoppingBag,
+  Sparkles,
   Stethoscope,
   Star,
+  Sun,
+  SunMedium,
+  Sunset,
   Tablet,
   TrendingUp,
   Trash2,
@@ -60,6 +72,7 @@ import {
   Users,
   Check,
   Clock,
+  Moon,
   UserCheck,
   X,
   XCircle,
@@ -146,7 +159,52 @@ type DocumentFile = { originalName?: string; storedName?: string; mimeType?: str
 type LeadFollowUp = { type?: string; status?: string; scheduledAt?: string; note?: string; by?: string; createdAt?: string };
 type LeadActivity = { type: string; message: string; by?: string; at?: string };
 type Lead = { _id: string; fullName: string; phone: string; parentMobile?: string; email?: string; governmentProof?: DocumentFile; highestQualificationCertificate?: DocumentFile; source?: string; counsellorName?: string; scholarName?: string; refereeName?: string; referralAmount?: number; centre?: string; franchiseId?: string; course?: string; counsellor?: string; stage: string; priority?: string; leadFeedback?: string; city?: string; studentLocation?: string; expectedFee?: number; nextFollowUp?: string; followUps?: LeadFollowUp[]; notes?: string; activities?: LeadActivity[]; ipAddress?: string; userAgent?: string; isSuspectedConsultancy?: boolean; consultancyFlagReason?: string; assignedAt?: string; assignedBy?: string; createdAt?: string; updatedAt?: string };
-type CashDeposit = { amount?: number; bank?: string; referenceNumber?: string; note?: string; proof?: DocumentFile; depositedBy?: string; by?: string; depositedAt?: string; createdAt?: string };
+type CashDeposit = {
+  _id?: string;
+  amount?: number;
+  bank?: string;
+  referenceNumber?: string;
+  note?: string;
+  proof?: DocumentFile;
+  depositedBy?: string;
+  by?: string;
+  depositedAt?: string;
+  createdAt?: string;
+  status?: "pending" | "verified" | "rejected";
+  verifiedBy?: string;
+  verifiedByRole?: string;
+  verifiedAt?: string;
+  rejectionReason?: string;
+  approverScope?: string;
+  isMultiBranch?: boolean;
+};
+type CashDepositApprovalItem = {
+  studentId: string;
+  studentName: string;
+  phone?: string;
+  admissionNumber?: string;
+  centre?: string;
+  course?: string;
+  franchiseId?: string;
+  paymentIndex: number;
+  paymentAmount: number;
+  depositId: string;
+  depositIndex: number;
+  amount: number;
+  bank: string;
+  referenceNumber: string;
+  note?: string;
+  proof?: DocumentFile;
+  depositedBy: string;
+  depositedAt: string;
+  status: "pending" | "verified" | "rejected";
+  verifiedBy?: string;
+  verifiedByRole?: string;
+  verifiedAt?: string;
+  rejectionReason?: string;
+  approverScope?: string;
+  isMultiBranch?: boolean;
+};
 type PaymentRecord = {
   _id?: string;
   amount?: number;
@@ -237,7 +295,62 @@ type FeeApprovalRecord = {
   reviewedAt?: string;
   rejectionReason?: string;
 };
-type Student = { _id: string; leadId?: string; fullName: string; phone: string; parentMobile?: string; email?: string; studentLocation?: string; centre?: string; franchiseId?: string; course?: string; counsellor?: string; counsellorName?: string; callerName?: string; teacher?: string; batch?: string; batchCommenceDate?: string; status: string; dropoutReason?: string; dropoutDate?: string | Date; dropoutNotes?: string; totalFee?: number; paidAmount?: number; admissionNumber?: string; lmsAccessEnabled?: boolean; lmsAccessGeneratedAt?: string; lmsAccessGeneratedBy?: string; admissionPaymentMode?: string; admissionUpfrontAmount?: number; admissionFinalizedAt?: string; admissionFinalizedBy?: string; discountAmount?: number; feeApproval?: FeeApprovalRecord; emiEnabled?: boolean; emiMonths?: number; emiAmount?: number; nextEmiDate?: string; certificateNumber?: string; certificateIssuedAt?: string; certificateStatus?: string; placementStatus?: string; placementCompany?: string; placementRole?: string; placementJoiningDate?: string; placementSalary?: number; placementHrContact?: string; placementOfferLetterUrl?: string; placementRemarks?: string; testimonialText?: string; testimonialVideoUrl?: string; testimonialRating?: number; testimonialApproved?: boolean; referralName?: string; referralPhone?: string; referralStatus?: string; payments?: PaymentRecord[]; feedbacks?: StudentFeedback[]; internshipAssignment?: InternshipAssignment | null; internshipLogs?: InternshipLog[]; logbookEntries?: LogbookEntry[]; kitDistribution?: KitDistribution; createdAt?: string; updatedAt?: string };
+type DeleteApprovalRecord = {
+  status: "none" | "pending" | "approved" | "rejected";
+  reason?: string;
+  requestedBy?: string;
+  requestedByRole?: string;
+  requestedAt?: string;
+  reviewedBy?: string;
+  reviewedByRole?: string;
+  reviewedAt?: string;
+  rejectionReason?: string;
+  isMultiBranch?: boolean;
+  approverScope?: string;
+};
+type ReferralSettlementData = {
+  status?: "unsettled" | "settled" | "cancelled";
+  amount?: number;
+  settledAt?: string;
+  settledBy?: string;
+  settledByRole?: string;
+  payoutMode?: string;
+  transactionReference?: string;
+  hasProof?: boolean;
+  proofName?: string;
+  proof?: DocumentFile;
+  note?: string;
+};
+
+type ReferralItem = {
+  _id: string;
+  fullName: string;
+  phone: string;
+  admissionNumber?: string;
+  centre?: string;
+  course?: string;
+  status?: string;
+  totalFee: number;
+  paidAmount: number;
+  refereeName: string;
+  refereePhone: string;
+  referralAmount: number;
+  isEligible: boolean;
+  settlement: ReferralSettlementData;
+};
+
+type ReferralSummary = {
+  totalReferralsCount: number;
+  totalIncentiveAmount: number;
+  settledCount: number;
+  settledAmount: number;
+  pendingCount: number;
+  pendingAmount: number;
+  eligibleCount: number;
+  awaitingFeeCount: number;
+};
+
+type Student = { _id: string; leadId?: string; source?: string; fullName: string; phone: string; parentMobile?: string; email?: string; studentLocation?: string; centre?: string; franchiseId?: string; course?: string; counsellor?: string; counsellorName?: string; callerName?: string; teacher?: string; batch?: string; batchCommenceDate?: string; status: string; dropoutReason?: string; dropoutDate?: string | Date; dropoutNotes?: string; totalFee?: number; paidAmount?: number; admissionNumber?: string; lmsAccessEnabled?: boolean; lmsAccessGeneratedAt?: string; lmsAccessGeneratedBy?: string; admissionPaymentMode?: string; admissionUpfrontAmount?: number; admissionFinalizedAt?: string; admissionFinalizedBy?: string; discountAmount?: number; feeApproval?: FeeApprovalRecord; deleteApproval?: DeleteApprovalRecord; emiEnabled?: boolean; emiMonths?: number; emiAmount?: number; nextEmiDate?: string; certificateNumber?: string; certificateIssuedAt?: string; certificateStatus?: string; placementStatus?: string; placementCompany?: string; placementRole?: string; placementJoiningDate?: string; placementSalary?: number; placementHrContact?: string; placementOfferLetterUrl?: string; placementRemarks?: string; testimonialText?: string; testimonialVideoUrl?: string; testimonialRating?: number; testimonialApproved?: boolean; referralName?: string; referralPhone?: string; referralStatus?: string; refereeName?: string; refereePhone?: string; referralAmount?: number; referralSettlement?: ReferralSettlementData; payments?: PaymentRecord[]; feedbacks?: StudentFeedback[]; internshipAssignment?: InternshipAssignment | null; internshipLogs?: InternshipLog[]; logbookEntries?: LogbookEntry[]; kitDistribution?: KitDistribution; createdAt?: string; updatedAt?: string };
 type Centre = { _id: string; name: string; type?: "branch" | "franchise"; parentCentreId?: string; city?: string; billingLegalName?: string; billingAddress?: string; billingGstin?: string; billingStateName?: string; billingStateCode?: string; billingEmail?: string; billingPhone?: string; bankAccountName?: string; bankName?: string; bankAccountNumber?: string; bankIfsc?: string; bankBranch?: string };
 type Course = { _id: string; name: string; code?: string; fee?: number; duration?: string; franchiseId?: string };
 type Counsellor = { _id?: string; name: string; email: string; role: string; franchiseId?: string };
@@ -253,6 +366,17 @@ type NpsResponse = { _id: string; studentId?: Student | { _id?: string; fullName
 type NpsDashboard = { total: number; promoters: number; passives: number; detractors: number | NpsResponse[]; nps: number; responseRate?: number; promoterPercent?: number; detractorPercent?: number; attributes?: Record<string, number>; trend?: { date: string; total: number; nps: number; promoters: number; passives: number; detractors: number }[]; alerts?: { tone: "good" | "warn" | "bad"; label: string; detail: string }[]; touchpoints?: { label: string; total: number; nps: number; promoters: number; passives: number; detractors: number }[]; batches?: { label: string; total: number; nps: number; promoters: number; passives: number; detractors: number }[]; detractorAlerts?: NpsResponse[] };
 type AttendanceSummary = { studentId: string; studentName?: string; centre?: string; course?: string; batch?: string; counsellor?: string; teacher?: string; total: number; present: number; absent: number; late: number; leave: number; theoretical?: number; practical?: number; lastDate?: string };
 type AttendanceDetailFilters = { dateFrom: string; dateTo: string; status: string; nature: string };
+type EmiSummary = {
+  overallDueAmount: number;
+  overallDueCandidatesCount: number;
+  overdueCount: number;
+  overdueAmount: number;
+  dueThisMonthCount: number;
+  dueThisMonthAmount: number;
+  upcomingThisMonthCount: number;
+  upcomingThisMonthAmount: number;
+  totalEmiCandidatesCount: number;
+};
 type Summary = { leadsThisMonth: number; totalLeads: number; enrolled: number; training: number; placed: number; lost: number; students: number; conversion: number; revenue: number; pending: number };
 type AttendanceStatus = Attendance["status"];
 type DatePreset = "all" | "today" | "yesterday" | "specific";
@@ -263,6 +387,7 @@ type InventorySummary = {
     total: number;
     bySize: { S: number; M: number; L: number; XL: number; XXL: number };
   };
+
   tablets: {
     total: number;
     inStock: number;
@@ -880,7 +1005,15 @@ function studentStatusBlockReason(student: Student, nextStatus = "") {
 }
 
 function depositedCashAmount(payment: PaymentRecord) {
-  return (payment.cashDeposits || []).reduce((sum, deposit) => sum + Number(deposit.amount || 0), 0);
+  return (payment.cashDeposits || [])
+    .filter((deposit) => deposit.status !== "rejected")
+    .reduce((sum, deposit) => sum + Number(deposit.amount || 0), 0);
+}
+
+function verifiedCashDepositAmount(payment: PaymentRecord) {
+  return (payment.cashDeposits || [])
+    .filter((deposit) => (deposit.status || "verified") === "verified")
+    .reduce((sum, deposit) => sum + Number(deposit.amount || 0), 0);
 }
 
 function pendingCashDepositAmount(payment: PaymentRecord) {
@@ -1409,6 +1542,9 @@ export default function AdminCrm() {
   const [documentPreview, setDocumentPreview] = useState<DocumentPreviewState>(null);
   const [feeStats, setFeeStats] = useState<FeeCollectionStats | null>(null);
   const [feeStatsLoading, setFeeStatsLoading] = useState(false);
+  const [emiSummary, setEmiSummary] = useState<EmiSummary | null>(null);
+  const [allEmiStudents, setAllEmiStudents] = useState<Student[]>([]);
+  const [emiSummaryLoading, setEmiSummaryLoading] = useState(false);
   const [feeApprovals, setFeeApprovals] = useState<Student[]>([]);
   const [pendingFeeApprovalsCount, setPendingFeeApprovalsCount] = useState(0);
   const [feeApprovalsLoading, setFeeApprovalsLoading] = useState(false);
@@ -1420,6 +1556,23 @@ export default function AdminCrm() {
   const [paymentApprovalsLoading, setPaymentApprovalsLoading] = useState(false);
   const [paymentApprovalReviewingId, setPaymentApprovalReviewingId] = useState<string | null>(null);
   const [paymentApprovalRejectPrompt, setPaymentApprovalRejectPrompt] = useState<{ item: PaymentApprovalItem; note?: string } | null>(null);
+  const [deletionApprovals, setDeletionApprovals] = useState<Student[]>([]);
+  const [pendingDeletionApprovalsCount, setPendingDeletionApprovalsCount] = useState(0);
+  const [deletionApprovalsLoading, setDeletionApprovalsLoading] = useState(false);
+  const [deletionRequestModal, setDeletionRequestModal] = useState<{ student: Student; reason: string } | null>(null);
+  const [deletionReviewModal, setDeletionReviewModal] = useState<{ student: Student; note: string; action: "approve" | "reject" } | null>(null);
+  const [deletionStatusModal, setDeletionStatusModal] = useState<Student | null>(null);
+  const [deletionSubmitting, setDeletionSubmitting] = useState(false);
+  const [cashDepositApprovals, setCashDepositApprovals] = useState<CashDepositApprovalItem[]>([]);
+  const [pendingCashDepositApprovalsCount, setPendingCashDepositApprovalsCount] = useState(0);
+  const [cashDepositApprovalsLoading, setCashDepositApprovalsLoading] = useState(false);
+  const [cashDepositReviewModal, setCashDepositReviewModal] = useState<{ item: CashDepositApprovalItem; note?: string; action?: "verify" | "reject" } | null>(null);
+  const [cashDepositSubmitting, setCashDepositSubmitting] = useState(false);
+  const [referralsSummary, setReferralsSummary] = useState<ReferralSummary | null>(null);
+  const [referralItems, setReferralItems] = useState<ReferralItem[]>([]);
+  const [referralsLoading, setReferralsLoading] = useState(false);
+  const [referralSettlementModal, setReferralSettlementModal] = useState<{ student: Student | ReferralItem } | null>(null);
+  const [referralSubmitting, setReferralSubmitting] = useState(false);
   const [feeTimeframe, setFeeTimeframe] = useState<FeeTimeframe>("this_month");
   const [feeDateFrom, setFeeDateFrom] = useState("");
   const [feeDateTo, setFeeDateTo] = useState("");
@@ -1464,6 +1617,7 @@ export default function AdminCrm() {
   const canManageNps = isHeadAdmin || isFranchiseSuperAdmin || isOperationsAccount;
   const canManageInventory = isHeadAdmin || isFranchiseSuperAdmin || isOperationsAccount;
   const canDeleteRecords = isHeadAdmin || isFranchiseSuperAdmin;
+  const canDeleteOrRequestCandidate = isHeadAdmin || isFranchiseSuperAdmin || isOperationsAccount;
   const canViewReports = isHeadSuperAdmin;
   const canUseScopeFilter = isHeadSuperAdmin;
   const selectedFranchise = canUseScopeFilter && roleScope !== "all" ? centres.find((centre) => centre._id === roleScope) : undefined;
@@ -1590,10 +1744,36 @@ export default function AdminCrm() {
     return followUpLeads.filter((lead) => new Date(lead.nextFollowUp || "").getTime() <= endToday).length;
   }, [followUpLeads]);
 
-  const canSeeFeeApprovalsNotif = isHeadSuperAdmin || isCenterAdmin || canManageFees;
-  const pendingApprovalsCountTotal = canSeeFeeApprovalsNotif ? ((pendingFeeApprovalsCount || 0) + (pendingPaymentApprovalsCount || 0)) : 0;
+  const canSeeFeeApprovalsNotif = isHeadSuperAdmin || isCenterAdmin || canManageFees || isOperationsAccount || isHeadBranchAdmin;
+  const pendingApprovalsCountTotal = canSeeFeeApprovalsNotif
+    ? ((pendingFeeApprovalsCount || 0) + (pendingPaymentApprovalsCount || 0) + (pendingDeletionApprovalsCount || 0) + (pendingCashDepositApprovalsCount || 0))
+    : 0;
   const totalNotifCount = (canUseLeads ? (followUpLeads.length + newAssignedLeads.length) : 0) + pendingApprovalsCountTotal;
   const urgentNotifCount = (canUseLeads ? (dueFollowUpCount + newAssignedLeads.length) : 0) + pendingApprovalsCountTotal;
+  const candidateDeletionPendingCount = (isHeadSuperAdmin || isCenterAdmin)
+    ? Math.max(pendingDeletionApprovalsCount || 0, students.filter((s) => s.deleteApproval?.status === "pending").length)
+    : 0;
+
+  const canUserApproveCashDeposit = (deposit: CashDeposit | CashDepositApprovalItem, student?: Student) => {
+    if (!user) return false;
+    if (isHeadSuperAdmin) return true;
+    if (isCenterAdmin) {
+      const isMulti = deposit.isMultiBranch ?? Boolean(
+        student?.franchiseId
+          ? centres.some((c) => c._id === student?.franchiseId && (c.parentCentreId || centres.some((o) => o.parentCentreId === c._id)))
+          : false
+      );
+      if (!isMulti) return false;
+      const centreName = student?.centre || ("centre" in deposit ? deposit.centre : "");
+      const franchiseId = student?.franchiseId || ("franchiseId" in deposit ? deposit.franchiseId : "");
+      return Boolean(
+        (centreName && userScopedCentres.some((c) => c.name.toLowerCase() === centreName.toLowerCase())) ||
+        (franchiseId && user.franchiseId && String(user.franchiseId) === String(franchiseId)) ||
+        (franchiseId && userScopedCentres.some((c) => String(c._id) === String(franchiseId)))
+      );
+    }
+    return false;
+  };
 
   useEffect(() => {
     if (!notifOpen) return;
@@ -1691,8 +1871,9 @@ export default function AdminCrm() {
     setTeachers(res.data || []);
   };
 
-  const loadDashboard = async () => {
-    const suffix = queryString({ franchiseId: scopedFranchiseId, counsellor: isCounsellorAccount ? user?.name || "" : "", date: activeTopbarDate });
+  const loadDashboard = async (dateParam?: string) => {
+    const effectiveDate = dateParam !== undefined ? dateParam : (showDateFilter ? selectedDate : "");
+    const suffix = queryString({ franchiseId: scopedFranchiseId, counsellor: isCounsellorAccount ? user?.name || "" : "", date: effectiveDate });
     const [summaryRes, funnelRes, centreRes] = await Promise.all([
       api<Summary>(`/api/admin/dashboard/summary${suffix}`, { headers: authedHeaders }),
       api<{ stage: string; count: number }[]>(`/api/admin/dashboard/funnel${suffix}`, { headers: authedHeaders }),
@@ -1703,10 +1884,11 @@ export default function AdminCrm() {
     setCentreStats(centreRes.data || []);
   };
 
-  const loadLeads = async (page?: number) => {
+  const loadLeads = async (page?: number, dateParam?: string) => {
     const targetPage = page !== undefined ? page : leadPageRef.current;
     const currentFilters = filtersRef.current;
     const currentFranchiseId = scopedFranchiseIdRef.current;
+    const effectiveDate = dateParam !== undefined ? dateParam : (showDateFilter ? selectedDate : "");
     const suffix = queryString({
       q: currentFilters.q,
       stage: currentFilters.stage,
@@ -1715,7 +1897,7 @@ export default function AdminCrm() {
       franchiseId: currentFranchiseId,
       counsellor: isCounsellorAccount ? user?.name || "" : currentFilters.counsellor,
       leadFeedback: currentFilters.leadFeedback,
-      date: activeTopbarDateRef.current,
+      date: effectiveDate,
       page: String(targetPage),
       limit: String(defaultPageSize),
     });
@@ -1783,12 +1965,13 @@ export default function AdminCrm() {
     }
   };
 
-  const loadStudents = async (page = studentPage) => {
+  const loadStudents = async (page = studentPage, dateParam?: string) => {
+    const effectiveDate = dateParam !== undefined ? dateParam : (showDateFilter ? selectedDate : "");
     const suffix = queryString({
       centre: "",
       franchiseId: scopedFranchiseId,
       counsellor: isCounsellorAccount ? user?.name || "" : "",
-      date: activeTopbarDate,
+      date: effectiveDate,
       page: String(page),
       limit: String(defaultPageSize),
     });
@@ -1965,12 +2148,35 @@ export default function AdminCrm() {
     }
   };
 
+  const loadEmiSummary = async () => {
+    if (!token || (!canManageFees && !isOperationsAccount)) return;
+    setEmiSummaryLoading(true);
+    try {
+      const suffix = queryString({ franchiseId: scopedFranchiseId });
+      const res = await api<{ summary: EmiSummary; students: Student[] }>(`/api/admin/finance/emi-summary${suffix}`, {
+        headers: authedHeaders,
+      });
+      if (res.data) {
+        setEmiSummary(res.data.summary);
+        setAllEmiStudents(res.data.students || []);
+      }
+    } catch (error) {
+      console.error("Unable to load EMI summary", error);
+    } finally {
+      setEmiSummaryLoading(false);
+    }
+  };
+
   const loadFeeApprovals = async (statusFilter = "pending") => {
     if (!token || !canManageFees) return;
     setFeeApprovalsLoading(true);
     try {
+      const activeCentre = (canUseScopeFilter && roleScope !== "all" ? selectedFranchise?.name : undefined) || (feeCentreFilter !== "all" ? feeCentreFilter : undefined);
+      const activeFranchiseId = canUseScopeFilter && roleScope !== "all" ? selectedFranchise?._id : scopedFranchiseId || undefined;
+      const centreQuery = activeCentre ? `&centre=${encodeURIComponent(activeCentre)}` : "";
+      const franchiseQuery = activeFranchiseId ? `&franchiseId=${encodeURIComponent(activeFranchiseId)}` : "";
       const res = await api<{ ok: boolean; data: Student[]; pendingCount: number }>(
-        `/api/admin/finance/fee-approvals?status=${statusFilter}${feeCentreFilter !== "all" ? `&centre=${encodeURIComponent(feeCentreFilter)}` : ""}`,
+        `/api/admin/finance/fee-approvals?status=${statusFilter}${centreQuery}${franchiseQuery}`,
         { headers: authedHeaders }
       );
       if (res.ok && Array.isArray(res.data)) {
@@ -1998,9 +2204,32 @@ export default function AdminCrm() {
       );
       if (res.ok) {
         toast.success(action === "approve" ? "Fee plan approved successfully!" : "Fee concession rejected.");
-        await Promise.all([loadFeeApprovals(), loadFeeStats(), loadStudents(1)]);
-        if (profile?.type === "student" && profile.data._id === studentId && res.data) {
-          setProfile({ type: "student", data: res.data });
+        const updatedStudent = res.data;
+        // Keep the student in the table and display the approved/rejected status badge immediately
+        setFeeApprovals((prev) =>
+          prev.map((s) => {
+            if (s._id === studentId) {
+              return {
+                ...s,
+                ...(updatedStudent || {}),
+                feeApproval: {
+                  ...(s.feeApproval || {}),
+                  ...(updatedStudent?.feeApproval || {}),
+                  status: action === "approve" ? "approved" : "rejected",
+                  reviewedBy: user?.name || "Admin",
+                  reviewedByRole: user?.role || "superadmin",
+                  reviewedAt: new Date().toISOString(),
+                  rejectionReason: action === "reject" ? (note || "Rejected") : s.feeApproval?.rejectionReason,
+                },
+              };
+            }
+            return s;
+          })
+        );
+        setPendingFeeApprovalsCount((count) => Math.max(0, count - 1));
+        await Promise.all([loadFeeStats(), loadStudents(1)]);
+        if (profile?.type === "student" && profile.data._id === studentId && updatedStudent) {
+          setProfile({ type: "student", data: updatedStudent });
         }
       } else {
         toast.error((res as any).message || "Failed to review fee plan");
@@ -2016,8 +2245,12 @@ export default function AdminCrm() {
     if (!token || !canManageFees) return;
     setPaymentApprovalsLoading(true);
     try {
+      const activeCentre = (canUseScopeFilter && roleScope !== "all" ? selectedFranchise?.name : undefined) || (feeCentreFilter !== "all" ? feeCentreFilter : undefined);
+      const activeFranchiseId = canUseScopeFilter && roleScope !== "all" ? selectedFranchise?._id : scopedFranchiseId || undefined;
+      const centreQuery = activeCentre ? `&centre=${encodeURIComponent(activeCentre)}` : "";
+      const franchiseQuery = activeFranchiseId ? `&franchiseId=${encodeURIComponent(activeFranchiseId)}` : "";
       const res = await api<{ ok: boolean; data: PaymentApprovalItem[]; pendingCount: number }>(
-        `/api/admin/finance/payment-approvals?status=${statusFilter}${feeCentreFilter !== "all" ? `&centre=${encodeURIComponent(feeCentreFilter)}` : ""}`,
+        `/api/admin/finance/payment-approvals?status=${statusFilter}${centreQuery}${franchiseQuery}`,
         { headers: authedHeaders }
       );
       if (res.ok && Array.isArray(res.data)) {
@@ -2045,7 +2278,21 @@ export default function AdminCrm() {
       );
       if (res.ok) {
         toast.success(action === "approve" ? "Payment approved and credited successfully!" : "Payment rejected.");
-        await Promise.all([loadPaymentApprovals(), loadFeeApprovals(), loadFeeStats(), loadStudents(1)]);
+        setPaymentApprovals((prev) =>
+          prev.map((item) =>
+            item.studentId === studentId && item.paymentId === paymentId
+              ? {
+                ...item,
+                status: action === "approve" ? "approved" : "rejected",
+                reviewedBy: user?.name || "Admin",
+                reviewedAt: new Date().toISOString(),
+                rejectionReason: action === "reject" ? (note || "Rejected") : item.rejectionReason,
+              }
+              : item
+          )
+        );
+        setPendingPaymentApprovalsCount((count) => Math.max(0, count - 1));
+        await Promise.all([loadFeeStats(), loadStudents(1)]);
         if (profile?.type === "student" && profile.data._id === studentId && res.data) {
           setProfile({ type: "student", data: res.data });
         }
@@ -2081,6 +2328,253 @@ export default function AdminCrm() {
       }
     } catch (error: any) {
       toast.error(error?.message || "Failed to submit fee concession request");
+    }
+  };
+
+  const loadDeletionApprovals = async (statusFilter = "pending") => {
+    if (!token) return;
+    setDeletionApprovalsLoading(true);
+    try {
+      const res = await api<{ ok: boolean; data: Student[]; pendingCount: number }>(
+        `/api/admin/students/deletion-approvals?status=${statusFilter}`,
+        { headers: authedHeaders }
+      );
+      if (res.ok && Array.isArray(res.data)) {
+        setDeletionApprovals(res.data);
+        setPendingDeletionApprovalsCount(res.pendingCount || 0);
+      }
+    } catch (error) {
+      console.error("Unable to load deletion approvals", error);
+    } finally {
+      setDeletionApprovalsLoading(false);
+    }
+  };
+
+  const loadCashDepositApprovals = async (statusFilter = "pending") => {
+    if (!token) return;
+    setCashDepositApprovalsLoading(true);
+    try {
+      const res = await api<{ ok: boolean; data: CashDepositApprovalItem[]; pendingCount: number }>(
+        `/api/admin/finance/cash-deposits/approvals?status=${statusFilter}`,
+        { headers: authedHeaders }
+      );
+      if (res.ok && Array.isArray(res.data)) {
+        setCashDepositApprovals(res.data);
+        setPendingCashDepositApprovalsCount(res.pendingCount || 0);
+      }
+    } catch (error) {
+      console.error("Unable to load cash deposit approvals", error);
+    } finally {
+      setCashDepositApprovalsLoading(false);
+    }
+  };
+
+  const reviewCashDeposit = async (studentId: string, paymentIndex: number, depositId: string, action: "verify" | "reject", note?: string) => {
+    if (!token) return;
+    setCashDepositSubmitting(true);
+    try {
+      const res = await api<{ ok: boolean; message?: string; data?: Student }>(
+        `/api/admin/students/${studentId}/payments/${paymentIndex}/cash-deposits/${depositId}/review`,
+        {
+          method: "POST",
+          headers: authedHeaders,
+          body: JSON.stringify({ action, note }),
+        }
+      );
+      if (res.ok) {
+        toast.success(action === "verify" ? "Cash deposit challan verified" : "Cash deposit challan rejected");
+        setCashDepositReviewModal(null);
+        await Promise.all([loadStudents(studentPage), loadCashDepositApprovals(), loadFeeStats()]);
+        if (profile?.type === "student" && profile.data._id === studentId && res.data) {
+          setProfile({ type: "student", data: res.data });
+        }
+      } else {
+        toast.error((res as any).message || "Failed to review cash deposit");
+      }
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : "Unable to review cash deposit");
+    } finally {
+      setCashDepositSubmitting(false);
+    }
+  };
+
+  const requestStudentDeletion = async (studentId: string, reason: string) => {
+    if (!token) return;
+    if (!reason.trim()) {
+      return toast.error("Please enter a reason for candidate deletion");
+    }
+    setDeletionSubmitting(true);
+    try {
+      const res = await api<{ ok: boolean; message?: string; data?: Student }>(
+        `/api/admin/students/${studentId}/request-deletion`,
+        {
+          method: "POST",
+          headers: authedHeaders,
+          body: JSON.stringify({ reason: reason.trim() }),
+        }
+      );
+      if (res.ok) {
+        toast.success(res.message || "Deletion request submitted for approval");
+        setDeletionRequestModal(null);
+        await Promise.all([loadStudents(studentPage), loadDeletionApprovals()]);
+        if (profile?.type === "student" && profile.data._id === studentId && res.data) {
+          setProfile({ type: "student", data: res.data });
+        }
+      } else {
+        toast.error((res as any).message || "Failed to submit deletion request");
+      }
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : "Unable to request deletion");
+    } finally {
+      setDeletionSubmitting(false);
+    }
+  };
+
+  const loadReferralsSummary = async (centreFilter?: string) => {
+    if (!token) return;
+    setReferralsLoading(true);
+    try {
+      const centre = centreFilter ?? feeCentreFilter;
+      const url = `/api/admin/finance/referrals-summary${centre && centre !== "all" ? `?centre=${encodeURIComponent(centre)}` : ""}`;
+      const res = await api<{ ok: boolean; data: { summary: ReferralSummary; referrals: ReferralItem[] } }>(url, { headers: authedHeaders });
+      if (res.ok && res.data) {
+        setReferralsSummary(res.data.summary);
+        setReferralItems(res.data.referrals || []);
+      }
+    } catch (err) {
+      console.error("Unable to load referrals summary", err);
+    } finally {
+      setReferralsLoading(false);
+    }
+  };
+
+  const settleReferral = async (studentId: string, formData: FormData) => {
+    if (!token) return;
+    setReferralSubmitting(true);
+    try {
+      const response = await fetch(`${API_BASE_URL}/api/admin/students/${studentId}/settle-referral`, {
+        method: "POST",
+        headers: { Authorization: `Bearer ${token}` },
+        body: formData,
+      });
+      const res = await response.json().catch(() => ({}));
+      if (!response.ok || res.ok === false) {
+        throw new Error(res.message || "Failed to settle referral");
+      }
+      toast.success(res.message || "Referral payout settled successfully");
+      setReferralSettlementModal(null);
+      await Promise.all([loadReferralsSummary(), loadStudents(studentPage), refreshAll()]);
+      if (profile?.type === "student" && profile.data._id === studentId && res.data) {
+        setProfile({ type: "student", data: res.data });
+      }
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : "Unable to settle referral");
+    } finally {
+      setReferralSubmitting(false);
+    }
+  };
+
+  const revertReferralSettlement = async (studentId: string) => {
+    if (!token) return;
+    if (!window.confirm("Revert this referral settlement back to pending?")) return;
+    try {
+      const res = await api<{ ok: boolean; data?: Student; message?: string }>(
+        `/api/admin/students/${studentId}/revert-referral-settlement`,
+        { method: "POST", headers: authedHeaders }
+      );
+      if (res.ok) {
+        toast.success(res.message || "Referral settlement reverted to pending");
+        await Promise.all([loadReferralsSummary(), loadStudents(studentPage), refreshAll()]);
+        if (profile?.type === "student" && profile.data._id === studentId && res.data) {
+          setProfile({ type: "student", data: res.data });
+        }
+      }
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : "Unable to revert referral settlement");
+    }
+  };
+
+  const previewReferralProof = async (studentId: string, fileName = "referral-proof.jpg") => {
+    await openSecurePreview(`/api/admin/students/${studentId}/referral/proof`, "Referral Payout Proof", fileName);
+  };
+
+  const downloadReferralProof = async (studentId: string, fileName = "referral-proof.jpg") => {
+    try {
+      const response = await fetch(`${API_BASE_URL}/api/admin/students/${studentId}/referral/proof?download=1`, {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      if (!response.ok) {
+        const result = await response.json().catch(() => null);
+        throw new Error(result?.message || "Unable to download payout proof");
+      }
+      const blob = await response.blob();
+      const url = URL.createObjectURL(blob);
+      const link = document.createElement("a");
+      link.href = url;
+      link.download = fileName;
+      document.body.appendChild(link);
+      link.click();
+      link.remove();
+      URL.revokeObjectURL(url);
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : "Unable to download payout proof");
+    }
+  };
+
+
+  const reviewStudentDeletion = async (studentId: string, action: "approve" | "reject", note?: string) => {
+    if (!token) return;
+    setDeletionSubmitting(true);
+    try {
+      const res = await api<{ ok: boolean; deleted?: boolean; message?: string; data?: Student }>(
+        `/api/admin/students/${studentId}/review-deletion`,
+        {
+          method: "POST",
+          headers: authedHeaders,
+          body: JSON.stringify({ action, note }),
+        }
+      );
+      if (res.ok) {
+        toast.success(action === "approve" ? "Candidate deletion approved & record removed" : "Candidate deletion request rejected");
+        setDeletionReviewModal(null);
+        if (action === "approve" && profile?.type === "student" && profile.data._id === studentId) {
+          setProfile(null);
+        } else if (profile?.type === "student" && profile.data._id === studentId && res.data) {
+          setProfile({ type: "student", data: res.data });
+        }
+        await Promise.all([loadStudents(studentPage), loadDeletionApprovals()]);
+      } else {
+        toast.error((res as any).message || "Failed to review deletion request");
+      }
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : "Unable to review deletion request");
+    } finally {
+      setDeletionSubmitting(false);
+    }
+  };
+
+  const cancelStudentDeletionRequest = async (studentId: string) => {
+    if (!token) return;
+    setDeletionSubmitting(true);
+    try {
+      const res = await api<{ ok: boolean; message?: string; data?: Student }>(
+        `/api/admin/students/${studentId}/cancel-deletion-request`,
+        { method: "POST", headers: authedHeaders }
+      );
+      if (res.ok) {
+        toast.success("Candidate deletion request cancelled");
+        setDeletionStatusModal(null);
+        await Promise.all([loadStudents(studentPage), loadDeletionApprovals()]);
+        if (profile?.type === "student" && profile.data._id === studentId && res.data) {
+          setProfile({ type: "student", data: res.data });
+        }
+      } else {
+        toast.error((res as any).message || "Failed to cancel deletion request");
+      }
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : "Unable to cancel deletion request");
+    } finally {
+      setDeletionSubmitting(false);
     }
   };
 
@@ -2244,7 +2738,7 @@ export default function AdminCrm() {
   const refreshAll = async () => {
     if (!token) return;
     try {
-      await Promise.all([loadMeta(), loadDashboard(), canUseLeads ? Promise.all([loadLeads(1), loadAdmissionPendingCount(), loadAdmissions(), loadFollowUps(), loadAssignedLeads()]) : Promise.resolve(), loadStudents(1), loadCounsellors(), loadTeachers(), isTeacherAccount ? loadGoogleCalendarStatus() : Promise.resolve(), canUseAcademics ? Promise.all([loadClassSchedules(), loadTopicProgress(), loadPracticalRecords(), loadStudyNotes()]) : Promise.resolve(), canManageNps ? loadNps(1) : Promise.resolve(), canManageInventory ? refreshInventory() : Promise.resolve(), canManageFees ? Promise.all([loadFeeStats(), loadFeeApprovals(), loadPaymentApprovals()]) : Promise.resolve()]);
+      await Promise.all([loadMeta(), loadDashboard(), canUseLeads ? Promise.all([loadLeads(1), loadAdmissionPendingCount(), loadAdmissions(), loadFollowUps(), loadAssignedLeads()]) : Promise.resolve(), loadStudents(1), loadDeletionApprovals(), loadCounsellors(), loadTeachers(), isTeacherAccount ? loadGoogleCalendarStatus() : Promise.resolve(), canUseAcademics ? Promise.all([loadClassSchedules(), loadTopicProgress(), loadPracticalRecords(), loadStudyNotes()]) : Promise.resolve(), canManageNps ? loadNps(1) : Promise.resolve(), canManageInventory ? refreshInventory() : Promise.resolve(), (canManageFees || isOperationsAccount) ? Promise.all([loadFeeStats(), loadFeeApprovals(), loadPaymentApprovals(), loadCashDepositApprovals(), loadEmiSummary(), loadReferralsSummary()]) : Promise.resolve()]);
     } catch (error) {
       toast.error(error instanceof Error ? error.message : "Unable to load CRM data");
     }
@@ -2260,13 +2754,27 @@ export default function AdminCrm() {
       });
   }, [token]);
 
-  useEffect(() => { void refreshAll(); }, [token, scopedFranchiseId, selectedDate, canUseLeads, isTeacherAccount]);
-  useEffect(() => { if (token && canUseLeads) void loadLeads(leadPage); }, [leadPage, filters.stage, filters.centre, filters.course, filters.counsellor, filters.leadFeedback, canUseLeads]);
-  useEffect(() => { if (token && canUseLeads) void loadAdmissionPendingCount(); }, [token, canUseLeads, scopedFranchiseId]);
+  // Initial bootstrap load once on token authentication
+  useEffect(() => {
+    if (!token) return;
+    void refreshAll();
+  }, [token]);
+
+  // When branch or date filter changes on dashboard
+  useEffect(() => {
+    if (token && panel === "dashboard") {
+      void loadDashboard();
+      void loadStudents(1);
+      if (canUseLeads) void loadLeads(1);
+    }
+  }, [token, panel, scopedFranchiseId, selectedDate]);
+
+  useEffect(() => { if (token && canUseLeads && (panel === "leads" || panel === "admissions")) void loadLeads(leadPage); }, [token, leadPage, panel, filters.stage, filters.centre, filters.course, filters.counsellor, filters.leadFeedback, canUseLeads, scopedFranchiseId, selectedDate]);
+  useEffect(() => { if (token && canUseLeads && (panel === "admissions" || panel === "dashboard")) void loadAdmissionPendingCount(); }, [token, canUseLeads, scopedFranchiseId, panel]);
   useEffect(() => { if (token && canUseLeads && (panel === "admissions" || panel === "leads" || panel === "dashboard")) void loadAdmissions(); }, [token, canUseLeads, scopedFranchiseId, panel]);
-  useEffect(() => { if (token && canUseLeads) void loadFollowUps(); }, [token, canUseLeads, scopedFranchiseId]);
-  useEffect(() => { if (token && canUseLeads) void loadAssignedLeads(); }, [token, canUseLeads, scopedFranchiseId]);
-  useEffect(() => { if (token && canManageFees && (panel === "finance" || panel === "dashboard")) { void loadFeeStats(); void loadFeeApprovals(); void loadPaymentApprovals(); } }, [token, panel, canManageFees, feeTimeframe, feeDateFrom, feeDateTo, feeCentreFilter, feeCourseFilter, scopedFranchiseId]);
+  useEffect(() => { if (token && canUseLeads && (panel === "leads" || panel === "dashboard")) void loadFollowUps(); }, [token, canUseLeads, scopedFranchiseId, panel]);
+  useEffect(() => { if (token && canUseLeads && (panel === "leads" || panel === "dashboard")) void loadAssignedLeads(); }, [token, canUseLeads, scopedFranchiseId, panel]);
+  useEffect(() => { if (token && (canManageFees || isOperationsAccount) && (panel === "finance" || panel === "dashboard" || panel === "emi")) { void loadFeeStats(); void loadFeeApprovals(); void loadPaymentApprovals(); void loadCashDepositApprovals(); void loadEmiSummary(); void loadReferralsSummary(); } }, [token, panel, canManageFees, isOperationsAccount, feeTimeframe, feeDateFrom, feeDateTo, feeCentreFilter, feeCourseFilter, scopedFranchiseId]);
 
   // Periodic polling every 20 seconds so admins get real-time notifications when leads are assigned or fee/payment approvals are requested
   useEffect(() => {
@@ -2281,6 +2789,7 @@ export default function AdminCrm() {
       if (canManageFees) {
         void loadFeeApprovals();
         void loadPaymentApprovals();
+        void loadCashDepositApprovals();
       }
     }, 20000);
     return () => clearInterval(interval);
@@ -2304,7 +2813,7 @@ export default function AdminCrm() {
     window.addEventListener("focus", onFocus);
     return () => window.removeEventListener("focus", onFocus);
   }, [token, canUseLeads, canManageFees, scopedFranchiseId, panel]);
-  useEffect(() => { if (token) void loadStudents(studentPage); }, [studentPage, panel]);
+  useEffect(() => { if (token && (panel === "allstudents" || panel === "mystudents")) { void loadStudents(studentPage); void loadDeletionApprovals(); } }, [token, studentPage, panel, scopedFranchiseId, selectedDate]);
   useEffect(() => { if (token && canManageSettings) void loadCounsellors(); }, [token, canManageSettings]);
   useEffect(() => { if (token && (canManageSettings || isCounsellorAccount)) void loadTeachers(); }, [token, canManageSettings, isCounsellorAccount]);
   useEffect(() => { if (token && (panel === "attendance" || (isTeacherAccount && panel === "dashboard"))) void loadAttendance(); }, [panel, isTeacherAccount, attendanceDateValue, visibleStudents.length]);
@@ -2455,21 +2964,47 @@ export default function AdminCrm() {
 
   const handleDatePreset = (preset: DatePreset) => {
     setDatePreset(preset);
-    if (preset === "all") setSelectedDate("");
-    if (preset === "today") setSelectedDate(dateInputValueFromOffset(0));
-    if (preset === "yesterday") setSelectedDate(dateInputValueFromOffset(-1));
-    if (preset === "specific") setSelectedDate((current) => current || dateInputValueFromOffset(0));
+    let nextDate = "";
+    if (preset === "all") nextDate = "";
+    else if (preset === "today") nextDate = dateInputValueFromOffset(0);
+    else if (preset === "yesterday") nextDate = dateInputValueFromOffset(-1);
+    else if (preset === "specific") nextDate = selectedDate || dateInputValueFromOffset(0);
+    setSelectedDate(nextDate);
+    if (token) {
+      if (panel === "dashboard") {
+        void loadDashboard(nextDate);
+        void loadStudents(1, nextDate);
+        if (canUseLeads) void loadLeads(1, nextDate);
+      } else if (panel === "allstudents" || panel === "mystudents") {
+        void loadStudents(1, nextDate);
+      } else if (canUseLeads && (panel === "leads" || panel === "admissions")) {
+        void loadLeads(1, nextDate);
+      }
+    }
   };
 
   const handleScopeChange = (scope: RoleScope) => {
     setRoleScope(scope);
     setLeadPage(1);
     setStudentPage(1);
+    const matched = centres.find((c) => c._id === scope);
+    setFeeCentreFilter(matched ? matched.name : "all");
   };
 
   const clearDateFilter = () => {
     setDatePreset("all");
     setSelectedDate("");
+    if (token) {
+      if (panel === "dashboard") {
+        void loadDashboard("");
+        void loadStudents(1, "");
+        if (canUseLeads) void loadLeads(1, "");
+      } else if (panel === "allstudents" || panel === "mystudents") {
+        void loadStudents(1, "");
+      } else if (canUseLeads && (panel === "leads" || panel === "admissions")) {
+        void loadLeads(1, "");
+      }
+    }
   };
 
   const confirmDeletePrompt = async () => {
@@ -2816,21 +3351,60 @@ export default function AdminCrm() {
     }
   };
 
+  const isMultiBranchStudent = (student: Student) => {
+    if (student.deleteApproval?.isMultiBranch !== undefined) {
+      return Boolean(student.deleteApproval.isMultiBranch);
+    }
+    const stCentre = centres.find(
+      (c) => (student.franchiseId && c._id === student.franchiseId) || (student.centre && c.name.toLowerCase() === student.centre.toLowerCase())
+    );
+    if (!stCentre) return false;
+    if (stCentre.parentCentreId) return true;
+    return centres.some((c) => c.parentCentreId === stCentre._id);
+  };
+
+  const canUserApproveStudentDeletion = (student: Student) => {
+    if (isHeadSuperAdmin) return true;
+    if (isCenterAdmin && user?.franchiseId) {
+      const stCentre = centres.find(
+        (c) => (student.franchiseId && c._id === student.franchiseId) || (student.centre && c.name.toLowerCase() === student.centre.toLowerCase())
+      );
+      if (!stCentre) return false;
+      return stCentre.parentCentreId === user.franchiseId || stCentre._id === user.franchiseId;
+    }
+    return false;
+  };
+
   const deleteStudent = async (student: Student) => {
-    setDeletePrompt({
-      title: "Delete student",
-      message: `Delete "${student.fullName}"? Attendance and payment history for this record will also be removed.`,
-      onConfirm: async () => {
-        try {
-          await api<Student>(`/api/admin/students/${student._id}`, { method: "DELETE", headers: authedHeaders });
-          if (profile?.type === "student" && profile.data._id === student._id) setProfile(null);
-          toast.success("Student deleted");
-          await refreshAll();
-        } catch (error) {
-          toast.error(error instanceof Error ? error.message : "Unable to delete student");
-        }
-      },
-    });
+    if (student.deleteApproval?.status === "pending") {
+      if (canUserApproveStudentDeletion(student)) {
+        setDeletionReviewModal({ student, note: "", action: "approve" });
+      } else {
+        setDeletionStatusModal(student);
+      }
+      return;
+    }
+
+    if (canUserApproveStudentDeletion(student)) {
+      setDeletePrompt({
+        title: "Delete Candidate",
+        message: `Delete "${student.fullName}"? Attendance, logs, and payment history for this record will also be permanently removed.`,
+        onConfirm: async () => {
+          try {
+            await api<Student>(`/api/admin/students/${student._id}`, { method: "DELETE", headers: authedHeaders });
+            if (profile?.type === "student" && profile.data._id === student._id) setProfile(null);
+            toast.success("Candidate record deleted");
+            await Promise.all([loadStudents(studentPage), loadDeletionApprovals()]);
+          } catch (error) {
+            toast.error(error instanceof Error ? error.message : "Unable to delete candidate");
+          }
+        },
+      });
+      return;
+    }
+
+    // Branch Admin or Operations Executive: request deletion with reason
+    setDeletionRequestModal({ student, reason: "" });
   };
 
   const saveStudentInternship = async (event: FormEvent<HTMLFormElement>, student: Student) => {
@@ -3039,8 +3613,13 @@ export default function AdminCrm() {
       const res = await api<Student>(`/api/admin/students/${student._id}/payments/${paymentIndex}/cash-deposits`, { method: "POST", headers: { Authorization: `Bearer ${token}` }, body: formData });
       if (res.data && profile?.type === "student" && profile.data._id === student._id) setProfile({ type: "student", data: res.data });
       form.reset();
-      toast.success("Cash deposit recorded");
-      await refreshAll();
+      const isApprover = canUserApproveCashDeposit({ amount }, student);
+      toast.success(
+        isApprover
+          ? "Cash deposit recorded & verified"
+          : "Cash deposit challan submitted for verification"
+      );
+      await Promise.all([refreshAll(), loadCashDepositApprovals()]);
     } catch (error) {
       toast.error(error instanceof Error ? error.message : "Unable to record cash deposit");
     }
@@ -3075,6 +3654,42 @@ export default function AdminCrm() {
       `Cash Deposit Proof (${formatCurrency(deposit.amount || 0)}) - ${student.fullName}`,
       deposit.proof.originalName || "cash-deposit-proof"
     );
+  };
+
+  const previewChallanProof = async (item: CashDepositApprovalItem) => {
+    if (!item.proof?.storedName) return toast.message("No deposit proof uploaded");
+    const depositRef = item.depositIndex ?? item.depositId;
+    await openSecurePreview(
+      `/api/admin/students/${item.studentId}/payments/${item.paymentIndex}/cash-deposits/${depositRef}/proof`,
+      `Cash Deposit Challan (${formatCurrency(item.amount || 0)}) - ${item.studentName}`,
+      item.proof.originalName || "cash-deposit-challan"
+    );
+  };
+
+  const downloadChallanProof = async (item: CashDepositApprovalItem) => {
+    if (!item.proof?.storedName) return toast.message("No deposit proof uploaded");
+    const depositRef = item.depositIndex ?? item.depositId;
+    try {
+      const response = await fetch(
+        `${API_BASE_URL}/api/admin/students/${item.studentId}/payments/${item.paymentIndex}/cash-deposits/${depositRef}/proof?download=1`,
+        { headers: { Authorization: `Bearer ${token}` } }
+      );
+      if (!response.ok) {
+        const result = await response.json().catch(() => null);
+        throw new Error(result?.message || "Unable to download deposit proof");
+      }
+      const blob = await response.blob();
+      const url = URL.createObjectURL(blob);
+      const link = document.createElement("a");
+      link.href = url;
+      link.download = item.proof.originalName || "cash-deposit-challan";
+      document.body.appendChild(link);
+      link.click();
+      link.remove();
+      URL.revokeObjectURL(url);
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : "Unable to download deposit proof");
+    }
   };
 
   const addStudentFeedback = async (event: FormEvent<HTMLFormElement>, student: Student) => {
@@ -3621,6 +4236,15 @@ export default function AdminCrm() {
                     {item.key === "admissions" && admissionPendingCount > 0 && <em className="nav-badge nav-badge-admission">{admissionPendingCount}</em>}
                     {item.key === "internship" && pendingLogbookReviewCount > 0 && <em className="nav-badge">{pendingLogbookReviewCount}</em>}
                     {item.key === "finance" && (pendingFeeApprovalsCount + pendingPaymentApprovalsCount) > 0 && <em className="nav-badge" style={{ background: "#dc2626", color: "#ffffff", fontWeight: 700 }}>{pendingFeeApprovalsCount + pendingPaymentApprovalsCount}</em>}
+                    {(item.key === "allstudents" || item.key === "mystudents") && candidateDeletionPendingCount > 0 && (
+                      <em
+                        className="nav-badge"
+                        style={{ background: "#dc2626", color: "#ffffff", fontWeight: 800 }}
+                        title={`${candidateDeletionPendingCount} candidate deletion request${candidateDeletionPendingCount > 1 ? "s" : ""} awaiting review`}
+                      >
+                        {candidateDeletionPendingCount}
+                      </em>
+                    )}
                   </button>
                 ))}
               </div>
@@ -3656,7 +4280,27 @@ export default function AdminCrm() {
                       {preset === "all" ? "All dates" : preset[0].toUpperCase() + preset.slice(1)}
                     </button>
                   ))}
-                  <input className={`df-date ${datePreset === "specific" ? "show" : ""}`} type="date" value={selectedDate} onChange={(event) => { setSelectedDate(event.target.value); setDatePreset(event.target.value ? "specific" : "all"); }} />
+                  <input
+                    className={`df-date ${datePreset === "specific" ? "show" : ""}`}
+                    type="date"
+                    value={selectedDate}
+                    onChange={(event) => {
+                      const val = event.target.value;
+                      setSelectedDate(val);
+                      setDatePreset(val ? "specific" : "all");
+                      if (token) {
+                        if (panel === "dashboard") {
+                          void loadDashboard(val);
+                          void loadStudents(1, val);
+                          if (canUseLeads) void loadLeads(1, val);
+                        } else if (panel === "allstudents" || panel === "mystudents") {
+                          void loadStudents(1, val);
+                        } else if (canUseLeads && (panel === "leads" || panel === "admissions")) {
+                          void loadLeads(1, val);
+                        }
+                      }
+                    }}
+                  />
                 </div>
                 {selectedDate && <button className="icon-btn" title="Clear date filter" onClick={clearDateFilter}>x</button>}
               </>
@@ -3720,16 +4364,18 @@ export default function AdminCrm() {
                               padding: "5px 6px",
                               fontSize: "11px",
                               height: "auto",
-                              background: notifTab === "approvals" ? (pendingFeeApprovalsCount > 0 ? "#b91c1c" : undefined) : undefined,
-                              borderColor: notifTab === "approvals" ? (pendingFeeApprovalsCount > 0 ? "#991b1b" : undefined) : undefined,
+                              background: notifTab === "approvals" ? (pendingApprovalsCountTotal > 0 ? "#b91c1c" : undefined) : undefined,
+                              borderColor: notifTab === "approvals" ? (pendingApprovalsCountTotal > 0 ? "#991b1b" : undefined) : undefined,
                             }}
                             onClick={() => {
                               setNotifTab("approvals");
                               void loadFeeApprovals();
+                              void loadDeletionApprovals();
+                              void loadCashDepositApprovals();
                             }}
                           >
-                            <ShieldAlert size={13} style={{ color: pendingFeeApprovalsCount > 0 && notifTab !== "approvals" ? "#dc2626" : undefined }} />
-                            <span>Approvals ({pendingFeeApprovalsCount})</span>
+                            <ShieldAlert size={13} style={{ color: pendingApprovalsCountTotal > 0 && notifTab !== "approvals" ? "#dc2626" : undefined }} />
+                            <span>Approvals ({pendingApprovalsCountTotal})</span>
                           </button>
                         )}
                       </div>
@@ -3758,10 +4404,10 @@ export default function AdminCrm() {
                           <span><strong>{dueFollowUpCount}</strong> follow-up{dueFollowUpCount > 1 ? "s" : ""} due today or overdue!</span>
                         </div>
                       )}
-                      {notifTab === "approvals" && pendingFeeApprovalsCount > 0 && (
+                      {notifTab === "approvals" && pendingApprovalsCountTotal > 0 && (
                         <div className="notif-alert-banner" style={{ background: "#FEF2F2", borderColor: "#FECACA", color: "#991B1B", marginTop: "8px" }}>
                           <ShieldAlert size={14} style={{ color: "#DC2626" }} />
-                          <span><strong>{pendingFeeApprovalsCount}</strong> fee approval request{pendingFeeApprovalsCount > 1 ? "s" : ""} awaiting review!</span>
+                          <span><strong>{pendingApprovalsCountTotal}</strong> pending request{pendingApprovalsCountTotal > 1 ? "s" : ""} awaiting review!</span>
                         </div>
                       )}
                     </div>
@@ -3881,14 +4527,221 @@ export default function AdminCrm() {
                           </div>
                         )
                       ) : (
-                        feeApprovals.filter((st) => (st.feeApproval?.status || "pending") === "pending").length === 0 ? (
+                        (feeApprovals.filter((st) => (st.feeApproval?.status || "pending") === "pending").length === 0 &&
+                          deletionApprovals.filter((st) => (st.deleteApproval?.status || "pending") === "pending").length === 0 &&
+                          cashDepositApprovals.filter((item) => (item.status || "pending") === "pending").length === 0) ? (
                           <div className="notif-empty">
                             <div className="notif-empty-icon" style={{ background: "#F0FDF4", color: "#16A34A" }}><ShieldCheck size={24} /></div>
-                            <div className="notif-empty-text">No pending fee approvals</div>
-                            <div className="notif-empty-sub">All fee concession and discount requests have been reviewed.</div>
+                            <div className="notif-empty-text">No pending approvals</div>
+                            <div className="notif-empty-sub">All fee concessions, challan deposits, and candidate deletion requests have been reviewed.</div>
                           </div>
                         ) : (
                           <div className="notif-list">
+                            {/* Candidate Deletion Requests */}
+                            {deletionApprovals
+                              .filter((st) => (st.deleteApproval?.status || "pending") === "pending")
+                              .slice(0, 10)
+                              .map((st) => {
+                                const approval = st.deleteApproval || { status: "pending" };
+                                const canApprove = canUserApproveStudentDeletion(st);
+
+                                return (
+                                  <div
+                                    key={`del-${st._id}`}
+                                    className="notif-item-wrap"
+                                    style={{
+                                      flexDirection: "column",
+                                      alignItems: "stretch",
+                                      padding: "10px 12px",
+                                      borderBottom: "1px solid #fee2e2",
+                                      background: "#FFFBFB",
+                                    }}
+                                  >
+                                    <div
+                                      style={{ display: "flex", gap: "10px", alignItems: "flex-start", cursor: "pointer" }}
+                                      onClick={() => {
+                                        setProfile({ type: "student", data: st });
+                                        setPanel("profile");
+                                        setNotifOpen(false);
+                                      }}
+                                      title="Click to view full student profile"
+                                    >
+                                      <div
+                                        className="notif-avatar"
+                                        style={{
+                                          background: "#FEF2F2",
+                                          color: "#DC2626",
+                                          fontWeight: 700,
+                                          flexShrink: 0,
+                                        }}
+                                      >
+                                        <Trash2 size={15} />
+                                      </div>
+                                      <div style={{ flex: 1, minWidth: 0 }}>
+                                        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: 6 }}>
+                                          <span style={{ fontWeight: 700, fontSize: "13px", color: "var(--text-main)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+                                            {st.fullName}
+                                          </span>
+                                          <span className="badge" style={{ background: "#FEF2F2", color: "#DC2626", border: "1px solid #FCA5A5", fontSize: "10px", padding: "1px 6px", fontWeight: 700 }}>
+                                            Deletion Request
+                                          </span>
+                                        </div>
+                                        <div style={{ fontSize: "11px", color: "var(--text-muted)", marginTop: "2px", display: "flex", gap: "6px", flexWrap: "wrap" }}>
+                                          <span>{st.centre || "-"}</span>
+                                          <span>•</span>
+                                          <span>{courseShortCode(st.course)}</span>
+                                          {st.admissionNumber && <><span>•</span><span>{st.admissionNumber}</span></>}
+                                        </div>
+                                        <div style={{ fontSize: "11.5px", color: "#991B1B", fontWeight: 600, marginTop: "4px" }}>
+                                          Reason: "{approval.reason || "Candidate record deletion"}"
+                                        </div>
+                                        <div style={{ fontSize: "10.5px", color: "var(--text-muted)", marginTop: "2px" }}>
+                                          Requested by {approval.requestedBy || "Staff"} ({approval.requestedByRole || "admin"}) • Scope: {approval.approverScope === "center_admin_or_superadmin" ? "Super Admin / Center Admin" : "Super Admin"}
+                                        </div>
+                                      </div>
+                                    </div>
+                                    <div style={{ display: "flex", justifyContent: "flex-end", gap: "6px", marginTop: "8px" }}>
+                                      {canApprove ? (
+                                        <>
+                                          <button
+                                            type="button"
+                                            className="btn btn-xs btn-danger"
+                                            onClick={(e) => {
+                                              e.stopPropagation();
+                                              setNotifOpen(false);
+                                              setDeletionReviewModal({ student: st, note: "", action: "approve" });
+                                            }}
+                                            style={{ display: "inline-flex", alignItems: "center", gap: 4 }}
+                                          >
+                                            <Trash2 size={11} /> Review & Delete
+                                          </button>
+                                          <button
+                                            type="button"
+                                            className="btn btn-xs btn-secondary"
+                                            onClick={(e) => {
+                                              e.stopPropagation();
+                                              setNotifOpen(false);
+                                              setDeletionReviewModal({ student: st, note: "", action: "reject" });
+                                            }}
+                                            style={{ display: "inline-flex", alignItems: "center", gap: 4 }}
+                                          >
+                                            <X size={11} /> Reject
+                                          </button>
+                                        </>
+                                      ) : (
+                                        <button
+                                          type="button"
+                                          className="btn btn-xs btn-soft"
+                                          onClick={(e) => {
+                                            e.stopPropagation();
+                                            setNotifOpen(false);
+                                            setDeletionStatusModal(st);
+                                          }}
+                                        >
+                                          <Clock size={11} /> View Status
+                                        </button>
+                                      )}
+                                    </div>
+                                  </div>
+                                );
+                              })}
+
+                            {/* Cash Deposit Challan Approvals */}
+                            {cashDepositApprovals
+                              .filter((item) => item.status === "pending")
+                              .slice(0, 15)
+                              .map((item) => {
+                                const canReview = canUserApproveCashDeposit(item);
+                                return (
+                                  <div
+                                    key={`challan-${item.depositId}`}
+                                    className="notif-item-wrap"
+                                    style={{
+                                      flexDirection: "column",
+                                      alignItems: "stretch",
+                                      padding: "10px 12px",
+                                      borderBottom: "1px solid #f1f5f9",
+                                      background: "#FFFFFF",
+                                    }}
+                                  >
+                                    <div style={{ display: "flex", gap: "10px", alignItems: "flex-start" }}>
+                                      <div
+                                        className="notif-avatar"
+                                        style={{
+                                          background: item.isMultiBranch ? "#EEF2FF" : "#FEF3C7",
+                                          color: item.isMultiBranch ? "#4F46E5" : "#D97706",
+                                          fontWeight: 700,
+                                          flexShrink: 0,
+                                        }}
+                                      >
+                                        {item.isMultiBranch ? <Building2 size={16} /> : <Landmark size={16} />}
+                                      </div>
+                                      <div style={{ flex: 1, minWidth: 0 }}>
+                                        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: 6 }}>
+                                          <span style={{ fontWeight: 700, fontSize: "13px", color: "var(--text-main)" }}>
+                                            {item.studentName}
+                                          </span>
+                                          <span className="badge badge-amber" style={{ fontSize: "10px", padding: "1px 6px", fontWeight: 700, flexShrink: 0, background: "#FFFBEB", color: "#D97706", border: "1px solid #FCD34D" }}>
+                                            Challan Pending
+                                          </span>
+                                        </div>
+                                        <div style={{ fontSize: "11px", color: "var(--text-muted)", marginTop: "2px" }}>
+                                          <strong>{formatCurrency(item.amount)}</strong> cash deposit in <strong>{item.bank}</strong> (Slip: {item.referenceNumber})
+                                        </div>
+                                        <div style={{ fontSize: "10.5px", color: "#64748B", marginTop: "2px" }}>
+                                          Centre: {item.centre || "-"} • By {item.depositedBy} • {item.isMultiBranch ? "Multi-Branch (Super/Center Admin)" : "Single Branch (Super Admin)"}
+                                        </div>
+                                      </div>
+                                    </div>
+                                    <div style={{ display: "flex", gap: "6px", justifyContent: "flex-end", marginTop: "8px" }}>
+                                      {item.proof?.storedName && (
+                                        <button
+                                          type="button"
+                                          className="btn btn-ghost"
+                                          style={{ fontSize: "11px", padding: "3px 8px", height: "auto" }}
+                                          onClick={() => previewChallanProof(item)}
+                                        >
+                                          <Eye size={12} /> Slip
+                                        </button>
+                                      )}
+                                      {canReview ? (
+                                        <>
+                                          <button
+                                            type="button"
+                                            className="btn btn-primary"
+                                            style={{ fontSize: "11px", padding: "3px 10px", height: "auto", background: "#059669", borderColor: "#047857" }}
+                                            onClick={(e) => {
+                                              e.stopPropagation();
+                                              setNotifOpen(false);
+                                              setCashDepositReviewModal({ item, action: "verify" });
+                                            }}
+                                          >
+                                            <ShieldCheck size={12} /> Verify
+                                          </button>
+                                          <button
+                                            type="button"
+                                            className="btn btn-ghost"
+                                            style={{ fontSize: "11px", padding: "3px 8px", height: "auto", color: "#DC2626" }}
+                                            onClick={(e) => {
+                                              e.stopPropagation();
+                                              setNotifOpen(false);
+                                              setCashDepositReviewModal({ item, action: "reject" });
+                                            }}
+                                          >
+                                            <X size={12} /> Reject
+                                          </button>
+                                        </>
+                                      ) : (
+                                        <span style={{ fontSize: "10.5px", color: "#D97706", display: "inline-flex", alignItems: "center", gap: 3 }}>
+                                          <Clock size={11} /> Pending Review
+                                        </span>
+                                      )}
+                                    </div>
+                                  </div>
+                                );
+                              })}
+
+                            {/* Fee Approvals */}
                             {feeApprovals
                               .filter((st) => (st.feeApproval?.status || "pending") === "pending")
                               .slice(0, 15)
@@ -4123,7 +4976,19 @@ export default function AdminCrm() {
           </header>
 
           <section className="content">
-            {panel === "dashboard" && (isCounsellorAccount ? <SalesCounsellorDashboardPanel leads={leads} students={visibleStudents} onOpenLead={openLeadDrawer} onGoLeads={() => setPanel("leads")} onGoAddLead={() => setPanel("addlead")} onGoAdmissions={() => setPanel("admissions")} onOpenStudent={(student) => openProfile({ type: "student", data: student }, "dashboard")} /> : isTeacherAccount ? <TeacherDashboardPanel batches={visibleBatches} students={visibleStudents} sessions={classSessions} schedules={classSchedulesState} topicProgress={topicProgress} practicalRecords={practicalRecords} user={user} googleCalendarStatus={googleCalendarStatus} calendarSyncing={calendarSyncing} onConnectCalendar={connectGoogleCalendar} onDisconnectCalendar={disconnectGoogleCalendar} onSyncCalendar={syncGoogleCalendar} onOpenStudent={(student) => openProfile({ type: "student", data: student }, "dashboard")} onOpenBatch={(batchId, sessionId) => { setSelectedBatchId(batchId); setSelectedClassSessionId(sessionId || ""); setPanel("batch"); }} /> : isOperationsAccount ? <OperationsDashboardPanel students={students} batches={visibleBatches} onOpenStudent={(student) => openProfile({ type: "student", data: student }, "dashboard")} onGoStudents={() => setPanel("allstudents")} onGoFinance={() => setPanel("finance")} onGoEmi={() => setPanel("emi")} onGoCert={() => setPanel("cert")} onGoInternship={() => setPanel("internship")} onGoInventory={() => setPanel("inventory")} inventorySummary={inventorySummary} /> : <DashboardPanel summary={summary} funnel={funnel} centreStats={centreStats} students={students} leads={leads} onOpenLead={openLeadDrawer} />)}
+            {panel === "dashboard" && (
+              <>
+                <DashboardGreetingBanner
+                  user={user}
+                  leads={leads}
+                  students={visibleStudents}
+                  summary={summary}
+                  activeBranch={selectedFranchise?.name || (feeCentreFilter !== "all" ? feeCentreFilter : user?.centre || undefined)}
+                  onAction={(targetPanel) => setPanel(targetPanel)}
+                />
+                {isCounsellorAccount ? <SalesCounsellorDashboardPanel leads={leads} students={visibleStudents} onOpenLead={openLeadDrawer} onGoLeads={() => setPanel("leads")} onGoAddLead={() => setPanel("addlead")} onGoAdmissions={() => setPanel("admissions")} onOpenStudent={(student) => openProfile({ type: "student", data: student }, "dashboard")} /> : isTeacherAccount ? <TeacherDashboardPanel batches={visibleBatches} students={visibleStudents} sessions={classSessions} schedules={classSchedulesState} topicProgress={topicProgress} practicalRecords={practicalRecords} user={user} googleCalendarStatus={googleCalendarStatus} calendarSyncing={calendarSyncing} onConnectCalendar={connectGoogleCalendar} onDisconnectCalendar={disconnectGoogleCalendar} onSyncCalendar={syncGoogleCalendar} onOpenStudent={(student) => openProfile({ type: "student", data: student }, "dashboard")} onOpenBatch={(batchId, sessionId) => { setSelectedBatchId(batchId); setSelectedClassSessionId(sessionId || ""); setPanel("batch"); }} /> : isOperationsAccount ? <OperationsDashboardPanel students={students} batches={visibleBatches} onOpenStudent={(student) => openProfile({ type: "student", data: student }, "dashboard")} onGoStudents={() => setPanel("allstudents")} onGoFinance={() => setPanel("finance")} onGoEmi={() => setPanel("emi")} onGoCert={() => setPanel("cert")} onGoInternship={() => setPanel("internship")} onGoInventory={() => setPanel("inventory")} inventorySummary={inventorySummary} /> : <DashboardPanel summary={summary} funnel={funnel} centreStats={centreStats} students={students} leads={leads} onOpenLead={openLeadDrawer} isFiltered={Boolean(selectedDate)} />}
+              </>
+            )}
             {panel === "statusreport" && canViewReports && (
               <StudentStatusReportPanel
                 data={reportData}
@@ -4175,8 +5040,8 @@ export default function AdminCrm() {
             {panel === "addlead" && <AddLeadPanel centres={centreOptions} courses={courseOptions} allCourses={courses} counsellors={actualCounsellors} onSubmit={addLead} isSuperAdmin={isHeadSuperAdmin} />}
             {panel === "admissions" && <AdmissionsPanel leads={admissionLeads} batches={visibleBatches} canAssign={canAssignCounsellors} counsellors={actualCounsellors} centres={centreOptions} onPatch={patchLead} onConvert={convertLead} onOpen={openLeadDrawer} />}
             {panel === "batch" && <BatchPanel batches={visibleBatches} students={students} schedules={classSchedulesState} sessions={classSessions} topicProgress={topicProgress} practicalRecords={practicalRecords} studyNotes={studyNotes} npsDashboard={npsDashboard} teachers={teachers} user={user} classWeek={classWeek} setClassWeek={setClassWeek} selectedBatchId={selectedBatchId} setSelectedBatchId={setSelectedBatchId} selectedSessionId={selectedClassSessionId} setSelectedSessionId={setSelectedClassSessionId} initialTab={batchResumeTab} classesGenerating={classesGenerating} attendanceDraft={classAttendanceDraft} setAttendanceDraft={setClassAttendanceDraft} attendanceLogs={attendanceSummaries} selectedAttendanceSummary={selectedAttendanceSummary} attendanceDetailLogs={attendanceDetailLogs} attendanceDetailFilters={attendanceDetailFilters} setAttendanceDetailFilters={setAttendanceDetailFilters} onSelectAttendanceSummary={setSelectedAttendanceSummary} onCreateSchedule={createClassSchedule} onGenerateWeek={generateWeeklyRoster} onSaveAttendance={saveClassAttendance} onResetAttendance={resetClassAttendance} onEditSession={patchClassSession} onTopicProgress={updateTopicProgress} onDeleteTopic={deleteTopicProgress} onCreateBatchPractical={createBatchPractical} onPracticalRecord={updatePracticalRecord} onUploadStudyNote={uploadStudyNote} onDownloadStudyNote={downloadStudyNote} onDeleteStudyNote={deleteStudyNote} onOpen={(student) => { setBatchResumeTab("students"); openProfile({ type: "student", data: student }, "batch"); }} />}
-            {panel === "mystudents" && <StudentsPanel title="My candidates" students={visibleStudents} meta={studentMeta} batches={visibleBatches} canAssign={canAssignTeachers} canDelete={canDeleteRecords} teachers={teachers} onPage={setStudentPage} onPatch={patchStudent} onDelete={deleteStudent} onEdit={(student) => openProfile({ type: "student", data: student, mode: "edit" }, "mystudents")} onOpen={(student) => openProfile({ type: "student", data: student }, "mystudents")} />}
-            {panel === "allstudents" && <StudentsPanel title="All candidates" students={students} meta={studentMeta} batches={visibleBatches} canAssign={canAssignTeachers} canDelete={canDeleteRecords} teachers={teachers} onPage={setStudentPage} onPatch={patchStudent} onDelete={deleteStudent} onEdit={(student) => openProfile({ type: "student", data: student, mode: "edit" }, "allstudents")} onOpen={(student) => openProfile({ type: "student", data: student }, "allstudents")} />}
+            {panel === "mystudents" && <StudentsPanel title="My candidates" students={visibleStudents} meta={studentMeta} batches={visibleBatches} canAssign={canAssignTeachers} canDelete={canDeleteOrRequestCandidate} canApproveDelete={canUserApproveStudentDeletion} onReviewDelete={(st) => setDeletionReviewModal({ student: st, note: "", action: "approve" })} onViewDeleteStatus={(st) => setDeletionStatusModal(st)} teachers={teachers} onPage={setStudentPage} onPatch={patchStudent} onDelete={deleteStudent} onEdit={(student) => openProfile({ type: "student", data: student, mode: "edit" }, "mystudents")} onOpen={(student) => openProfile({ type: "student", data: student }, "mystudents")} />}
+            {panel === "allstudents" && <StudentsPanel title="All candidates" students={students} meta={studentMeta} batches={visibleBatches} canAssign={canAssignTeachers} canDelete={canDeleteOrRequestCandidate} canApproveDelete={canUserApproveStudentDeletion} onReviewDelete={(st) => setDeletionReviewModal({ student: st, note: "", action: "approve" })} onViewDeleteStatus={(st) => setDeletionStatusModal(st)} teachers={teachers} onPage={setStudentPage} onPatch={patchStudent} onDelete={deleteStudent} onEdit={(student) => openProfile({ type: "student", data: student, mode: "edit" }, "allstudents")} onOpen={(student) => openProfile({ type: "student", data: student }, "allstudents")} />}
             {panel === "attendance" && <AttendancePanel students={visibleStudents} attendance={attendance} draft={attendanceDraft} setDraft={setAttendanceDraft} attendanceDate={attendanceDateValue} setAttendanceDate={setAttendanceDateValue} onRefresh={loadAttendance} onSave={saveAttendance} />}
             {panel === "logs" && <LogsPanel logs={attendanceSummaries} onSelect={(summary) => { setSelectedAttendanceSummary(summary); setPanel("attdetail"); }} />}
             {panel === "attdetail" && <AttendanceDetailPanel summary={selectedAttendanceSummary} logs={attendanceDetailLogs} filters={attendanceDetailFilters} setFilters={setAttendanceDetailFilters} onBack={() => setPanel("logs")} />}
@@ -4228,7 +5093,9 @@ export default function AdminCrm() {
                 setFeeCentreFilter={setFeeCentreFilter}
                 feeCourseFilter={feeCourseFilter}
                 setFeeCourseFilter={setFeeCourseFilter}
-                onRefreshStats={loadFeeStats}
+                onRefreshStats={async () => {
+                  await Promise.all([loadFeeStats(), loadCashDepositApprovals(), loadReferralsSummary(), refreshAll()]);
+                }}
                 onPage={setStudentPage}
                 onOpen={(student) => openProfile({ type: "student", data: student }, "finance")}
                 onCashDeposit={recordCashDeposit}
@@ -4236,12 +5103,27 @@ export default function AdminCrm() {
                 onPreviewCashDepositProof={previewCashDepositProof}
                 onDownloadPaymentProof={downloadPaymentProof}
                 onPreviewPaymentProof={previewPaymentProof}
+                cashDepositApprovals={cashDepositApprovals}
+                pendingCashDepositApprovalsCount={pendingCashDepositApprovalsCount}
+                onOpenCashDepositReview={(item) => setCashDepositReviewModal({ item, action: "verify" })}
+                canUserApproveCashDeposit={canUserApproveCashDeposit}
+                allCentres={centres}
+                referralsSummary={referralsSummary}
+                referralItems={referralItems}
+                referralsLoading={referralsLoading}
+                onLoadReferrals={loadReferralsSummary}
+                onOpenReferralSettlement={(student) => setReferralSettlementModal({ student })}
+                onRevertReferralSettlement={revertReferralSettlement}
+                onPreviewReferralProof={previewReferralProof}
               />
             )}
-            {panel === "emi" && canManageFees && (
+            {panel === "emi" && (canManageFees || isOperationsAccount) && (
               <EmiPanel
                 students={visibleStudents}
                 meta={studentMeta}
+                emiSummary={emiSummary}
+                allEmiStudents={allEmiStudents}
+                onRefreshSummary={loadEmiSummary}
                 onPage={setStudentPage}
                 onOpen={(student) => openProfile({ type: "student", data: student }, "emi")}
               />
@@ -4271,7 +5153,7 @@ export default function AdminCrm() {
                 onOpenStudent={(student) => openProfile({ type: "student", data: student }, "inventory")}
               />
             )}
-            {panel === "profile" && <ProfilePanel profile={profile} user={user} accessCount={visibleNavGroups.reduce((sum, group) => sum + group.items.length, 0)} isHeadSuperAdmin={isHeadSuperAdmin} isCenterAdmin={isCenterAdmin} feeApprovalReviewingId={feeApprovalReviewingId} onReviewFeeApproval={reviewFeeApproval} onRejectPrompt={(student) => setFeeApprovalRejectPrompt({ student })} paymentApprovalReviewingId={paymentApprovalReviewingId} onReviewPaymentApproval={reviewPaymentApproval} onRejectPaymentPrompt={(item) => setPaymentApprovalRejectPrompt({ item })} onRequestFeeApprovalModal={(student) => { const studentCourseObj = courses.find((c) => [c.code, c.name].map((s) => String(s || "").toLowerCase()).includes(String(student.course || "").toLowerCase())); const standardFee = studentCourseObj ? feeWithGst(studentCourseObj.fee || 0) : (student.totalFee || 0); setFeeApprovalRequestModal({ student, requestedFee: String(student.totalFee || standardFee || 0), requestedDiscount: String(student.discountAmount || 0), reason: student.feeApproval?.reason || "", standardCourseFee: standardFee }); }} canManageFees={canManageFees} canManageSettings={canManageSettings} canAssignTeachers={canAssignTeachers} canManageCertificates={canManageCertificates} canManageInternships={canManageInternships} canManageInventory={canManageInventory} onIssueKit={(st) => { setIssueKitTargetStudent(st); setIssueKitTargetTablet(null); setIssueKitModalOpen(true); }} centres={centreOptions} courses={courseOptions} allCourses={courses} batches={visibleBatches} teachers={teachers} counsellors={actualCounsellors} onBack={closeProfile} onGoSettings={() => setPanel("settings")} onLeadPatch={patchLead} onStudentPatch={patchStudent} onGenerateStudentLmsAccess={generateStudentLmsAccess} onInternshipSave={saveStudentInternship} onInternshipDelete={deleteStudentInternship} onPayment={addPayment} onDownloadPaymentProof={downloadPaymentProof} onPreviewPaymentProof={previewPaymentProof} onFeedback={addStudentFeedback} onIssue={issueCertificate} onPreviewDocument={openDocumentPreview} onPreviewInternshipPhoto={openInternshipPhotoPreview} onUploadDocument={uploadDocument} onStudentRefresh={async (studentId) => { try { const res = await api<Student>(`/api/admin/students/${studentId}`, { headers: authedHeaders }); if (res.data) { setProfile((curr) => curr?.type === "student" && curr.data._id === studentId ? { ...curr, data: res.data } : curr); await Promise.all([loadPaymentApprovals(), loadFeeApprovals(), loadFeeStats()]); } } catch { await refreshAll(); } }} />}
+            {panel === "profile" && <ProfilePanel profile={profile} user={user} accessCount={visibleNavGroups.reduce((sum, group) => sum + group.items.length, 0)} isHeadSuperAdmin={isHeadSuperAdmin} isCenterAdmin={isCenterAdmin} feeApprovalReviewingId={feeApprovalReviewingId} onReviewFeeApproval={reviewFeeApproval} onRejectPrompt={(student) => setFeeApprovalRejectPrompt({ student })} paymentApprovalReviewingId={paymentApprovalReviewingId} onReviewPaymentApproval={reviewPaymentApproval} onRejectPaymentPrompt={(item) => setPaymentApprovalRejectPrompt({ item })} onRequestFeeApprovalModal={(student) => { const studentCourseObj = courses.find((c) => [c.code, c.name].map((s) => String(s || "").toLowerCase()).includes(String(student.course || "").toLowerCase())); const standardFee = studentCourseObj ? feeWithGst(studentCourseObj.fee || 0) : (student.totalFee || 0); setFeeApprovalRequestModal({ student, requestedFee: String(student.totalFee || standardFee || 0), requestedDiscount: String(student.discountAmount || 0), reason: student.feeApproval?.reason || "", standardCourseFee: standardFee }); }} canApproveCandidateDeletion={canUserApproveStudentDeletion} onDeleteStudent={deleteStudent} onRequestStudentDeletion={(st) => setDeletionRequestModal({ student: st, reason: "" })} onReviewStudentDeletion={(st, action) => setDeletionReviewModal({ student: st, note: "", action })} onOpenReferralSettlement={(st) => setReferralSettlementModal({ student: st })} canDeleteCandidate={canDeleteOrRequestCandidate} canManageFees={canManageFees} canManageSettings={canManageSettings} canAssignTeachers={canAssignTeachers} canManageCertificates={canManageCertificates} canManageInternships={canManageInternships} canManageInventory={canManageInventory} onIssueKit={(st) => { setIssueKitTargetStudent(st); setIssueKitTargetTablet(null); setIssueKitModalOpen(true); }} centres={centreOptions} courses={courseOptions} allCourses={courses} batches={visibleBatches} teachers={teachers} counsellors={actualCounsellors} onBack={closeProfile} onGoSettings={() => setPanel("settings")} onLeadPatch={patchLead} onStudentPatch={patchStudent} onGenerateStudentLmsAccess={generateStudentLmsAccess} onInternshipSave={saveStudentInternship} onInternshipDelete={deleteStudentInternship} onPayment={addPayment} onDownloadPaymentProof={downloadPaymentProof} onPreviewPaymentProof={previewPaymentProof} onFeedback={addStudentFeedback} onIssue={issueCertificate} onPreviewDocument={openDocumentPreview} onPreviewInternshipPhoto={openInternshipPhotoPreview} onUploadDocument={uploadDocument} onStudentRefresh={async (studentId) => { try { const res = await api<Student>(`/api/admin/students/${studentId}`, { headers: authedHeaders }); if (res.data) { setProfile((curr) => curr?.type === "student" && curr.data._id === studentId ? { ...curr, data: res.data } : curr); await Promise.all([loadPaymentApprovals(), loadFeeApprovals(), loadFeeStats()]); } } catch { await refreshAll(); } }} />}
           </section>
         </div>
       </div>
@@ -4299,7 +5181,6 @@ export default function AdminCrm() {
         setSelection={setReceiptSelection}
         onClose={() => setReceiptStudent(null)}
       />
-      <DocumentPreviewModal preview={documentPreview} onClose={closeDocumentPreview} />
       <DeleteConfirmModal prompt={deletePrompt} onCancel={() => setDeletePrompt(null)} onConfirm={confirmDeletePrompt} />
       <LogbookReviewModal
         prompt={logbookReviewPrompt}
@@ -4356,6 +5237,46 @@ export default function AdminCrm() {
           setPaymentApprovalRejectPrompt(null);
         }}
       />
+      <CandidateDeletionRequestModal
+        data={deletionRequestModal}
+        centres={centres}
+        onClose={() => setDeletionRequestModal(null)}
+        onSubmit={requestStudentDeletion}
+        loading={deletionSubmitting}
+      />
+      <CandidateDeletionReviewModal
+        data={deletionReviewModal}
+        centres={centres}
+        onClose={() => setDeletionReviewModal(null)}
+        onSubmit={reviewStudentDeletion}
+        loading={deletionSubmitting}
+      />
+      <CandidateDeletionStatusModal
+        student={deletionStatusModal}
+        centres={centres}
+        onClose={() => setDeletionStatusModal(null)}
+        onCancelRequest={cancelStudentDeletionRequest}
+        loading={deletionSubmitting}
+      />
+      <CashDepositReviewModal
+        data={cashDepositReviewModal}
+        centres={centres}
+        onClose={() => setCashDepositReviewModal(null)}
+        onSubmit={reviewCashDeposit}
+        onPreviewProof={previewChallanProof}
+        onDownloadProof={downloadChallanProof}
+        onRefresh={async () => {
+          await Promise.all([loadCashDepositApprovals(), refreshAll()]);
+        }}
+        loading={cashDepositSubmitting}
+      />
+      <ReferralSettlementModal
+        data={referralSettlementModal}
+        onClose={() => setReferralSettlementModal(null)}
+        onSubmit={settleReferral}
+        loading={referralSubmitting}
+      />
+      <DocumentPreviewModal preview={documentPreview} onClose={closeDocumentPreview} />
     </main>
   );
 }
@@ -5403,7 +6324,7 @@ function StudentStatusReportPanel({
                         </div>
                         <div>
                           <div className="cell-name">{st.fullName}</div>
-                          <div className="cell-sub">{st.phone} {st.admissionNumber ? `• ${st.admissionNumber}` : ""}</div>
+                          <div className="cell-sub">{st.phone} {st.admissionNumber ? `• ${st.admissionNumber}` : ""} • <span className="badge badge-gray" style={{ fontSize: "10px", padding: "1px 6px" }}>{st.source || "Website"}</span></div>
                         </div>
                       </div>
                     </td>
@@ -5416,14 +6337,14 @@ function StudentStatusReportPanel({
                     </td>
                     <td>
                       <span className={`badge ${st.status === "Dropped"
-                          ? "badge-red"
-                          : ["Placed", "Alumni"].includes(st.status || "")
-                            ? "badge-green"
-                            : st.status === "Course Completed"
-                              ? "badge-blue"
-                              : ["In Training", "Active Student"].includes(st.status || "")
-                                ? "badge-purple"
-                                : "badge-gray"
+                        ? "badge-red"
+                        : ["Placed", "Alumni"].includes(st.status || "")
+                          ? "badge-green"
+                          : st.status === "Course Completed"
+                            ? "badge-blue"
+                            : ["In Training", "Active Student"].includes(st.status || "")
+                              ? "badge-purple"
+                              : "badge-gray"
                         }`}>
                         {studentStatusLabel(st.status || "Enrolled")}
                       </span>
@@ -5481,22 +6402,1391 @@ function StudentStatusReportPanel({
   );
 }
 
-function DashboardPanel({ summary, funnel, centreStats, students, leads, onOpenLead }: { summary: Summary | null; funnel: { stage: string; count: number }[]; centreStats: { centre: string; leads: number; enrolled: number }[]; students: Student[]; leads: Lead[]; onOpenLead: (lead: Lead) => void }) {
-  const activeLeads = summary?.totalLeads || leads.length;
-  const enrolled = summary?.enrolled || students.length;
-  const conversion = summary?.conversion || (activeLeads ? Math.round((enrolled / Math.max(activeLeads, 1)) * 100) : 0);
-  const collected = summary?.revenue || students.reduce((sum, student) => sum + (student.paidAmount || 0), 0);
-  const due = summary?.pending || students.reduce((sum, student) => sum + dueAmount(student), 0);
-  const funnelRows = stages.map((stage) => ({ stage, count: funnel.find((item) => item.stage === stage)?.count || (stage === "Enrolled" ? enrolled : 0) }));
+interface LocationCoord {
+  lat: number;
+  lon: number;
+  city: string;
+}
+
+const BRANCH_COORDINATES: Record<string, LocationCoord> = {
+  kochi: { lat: 9.9312, lon: 76.2673, city: "Kochi" },
+  cochin: { lat: 9.9312, lon: 76.2673, city: "Kochi" },
+  calicut: { lat: 11.2588, lon: 75.7804, city: "Calicut" },
+  kozhikode: { lat: 11.2588, lon: 75.7804, city: "Calicut" },
+  trivandrum: { lat: 8.5241, lon: 76.9366, city: "Trivandrum" },
+  thiruvananthapuram: { lat: 8.5241, lon: 76.9366, city: "Trivandrum" },
+  kannur: { lat: 11.8745, lon: 75.3704, city: "Kannur" },
+  kottayam: { lat: 9.5916, lon: 76.5222, city: "Kottayam" },
+  bangalore: { lat: 12.9716, lon: 77.5946, city: "Bangalore" },
+  bengaluru: { lat: 12.9716, lon: 77.5946, city: "Bangalore" },
+  chennai: { lat: 13.0827, lon: 80.2707, city: "Chennai" },
+  madurai: { lat: 9.9252, lon: 78.1198, city: "Madurai" },
+  coimbatore: { lat: 11.0168, lon: 76.9558, city: "Coimbatore" },
+  trichy: { lat: 10.7905, lon: 78.7047, city: "Trichy" },
+  tiruchirappalli: { lat: 10.7905, lon: 78.7047, city: "Trichy" },
+  salem: { lat: 11.6643, lon: 78.1460, city: "Salem" },
+  tirunelveli: { lat: 8.7139, lon: 77.7567, city: "Tirunelveli" },
+  nagercoil: { lat: 8.1833, lon: 77.4119, city: "Nagercoil" },
+  delhi: { lat: 28.6139, lon: 77.2090, city: "Delhi" },
+  mumbai: { lat: 19.0760, lon: 72.8777, city: "Mumbai" },
+  kollam: { lat: 8.8932, lon: 76.6141, city: "Kollam" },
+  thrissur: { lat: 10.5276, lon: 76.2144, city: "Thrissur" },
+  palakkad: { lat: 10.7867, lon: 76.6548, city: "Palakkad" },
+  malappuram: { lat: 11.0510, lon: 76.0711, city: "Malappuram" },
+};
+
+function resolveBranchCoord(branchName?: string): LocationCoord {
+  if (branchName) {
+    const raw = branchName.trim().toLowerCase();
+    const clean = raw.replace(/[^a-z0-9]/g, "");
+
+    // Specific branch abbreviations & codes:
+    // Delhi: DL, DL1, DL2, DEL, DEL1, DEL2, DELHI 1, DELHI 2
+    if (/^(dl|del)\d*$/i.test(clean) || clean.includes("delhi")) {
+      return BRANCH_COORDINATES.delhi;
+    }
+    // Chennai: CHN, CHN1, CHN2, MS
+    if (/^(chn|che|ms)\d*$/i.test(clean) || clean.includes("chennai")) {
+      return BRANCH_COORDINATES.chennai;
+    }
+    // Bangalore: BLR, BLR1, BLR2, BGL
+    if (/^(blr|bgl)\d*$/i.test(clean) || clean.includes("bangalore") || clean.includes("bengaluru")) {
+      return BRANCH_COORDINATES.bangalore;
+    }
+    // Kochi: COK, COK1, KOC
+    if (/^(cok|koc|cochin)\d*$/i.test(clean) || clean.includes("kochi") || clean.includes("cochin")) {
+      return BRANCH_COORDINATES.kochi;
+    }
+    // Calicut: CLT, CCJ
+    if (/^(clt|ccj)\d*$/i.test(clean) || clean.includes("calicut") || clean.includes("kozhikode")) {
+      return BRANCH_COORDINATES.calicut;
+    }
+    // Trivandrum: TVM, TRV
+    if (/^(tvm|trv)\d*$/i.test(clean) || clean.includes("trivandrum") || clean.includes("thiruvananthapuram")) {
+      return BRANCH_COORDINATES.trivandrum;
+    }
+    // Madurai: MDU, IXM
+    if (/^(mdu|ixm)\d*$/i.test(clean) || clean.includes("madurai")) {
+      return BRANCH_COORDINATES.madurai;
+    }
+    // Coimbatore: CBE, CJB
+    if (/^(cbe|cjb)\d*$/i.test(clean) || clean.includes("coimbatore")) {
+      return BRANCH_COORDINATES.coimbatore;
+    }
+    // Trichy: TRZ
+    if (/^(trz|try)\d*$/i.test(clean) || clean.includes("trichy") || clean.includes("tiruchirappalli")) {
+      return BRANCH_COORDINATES.trichy;
+    }
+    // Nagercoil: NCJ
+    if (/^(ncj)\d*$/i.test(clean) || clean.includes("nagercoil")) {
+      return BRANCH_COORDINATES.nagercoil;
+    }
+
+    // Standard substring match across all keys
+    for (const key of Object.keys(BRANCH_COORDINATES)) {
+      if (clean.includes(key) || key.includes(clean)) {
+        return BRANCH_COORDINATES[key];
+      }
+    }
+  }
+
+  try {
+    const saved = localStorage.getItem("imed_crm_selected_city");
+    if (saved && BRANCH_COORDINATES[saved.toLowerCase()]) {
+      return BRANCH_COORDINATES[saved.toLowerCase()];
+    }
+  } catch (e) { }
+
+  return BRANCH_COORDINATES.chennai || { lat: 13.0827, lon: 80.2707, city: "Chennai" };
+}
+
+interface LiveWeatherState {
+  tempC: number;
+  weatherCode: number;
+  isDay: boolean;
+  label: string;
+  city: string;
+  isRain: boolean;
+  isWarm: boolean;
+  isCloudy: boolean;
+  isThunder: boolean;
+  isNight: boolean;
+}
+
+function getWeatherConditionDetails(code: number, isDayTime: boolean, tempC: number, city: string): LiveWeatherState {
+  const isThunder = [95, 96, 99].includes(code);
+  const isRain = [51, 53, 55, 56, 57, 61, 63, 65, 66, 67, 80, 81, 82].includes(code);
+  const isCloudy = [2, 3, 45, 48].includes(code);
+  const isNight = !isDayTime;
+  const isWarm = isDayTime && tempC >= 28 && !isRain && !isThunder;
+
+  let label = "Pleasant";
+  if (isThunder) label = "Thunderstorms";
+  else if (isRain) {
+    if ([51, 53, 55].includes(code)) label = "Light Drizzle";
+    else if ([65, 82].includes(code)) label = "Heavy Rain";
+    else label = "Raining";
+  } else if (code === 0) {
+    if (isNight) label = "Clear Sky";
+    else label = tempC >= 32 ? "Warm & Sunny" : "Sunny & Clear";
+  } else if (code === 1) {
+    label = isNight ? "Clear Night" : "Mostly Sunny";
+  } else if (code === 2) {
+    label = "Partly Cloudy";
+  } else if (code === 3) {
+    label = "Overcast";
+  } else if ([45, 48].includes(code)) {
+    label = "Misty / Fog";
+  }
+
+  return {
+    tempC,
+    weatherCode: code,
+    isDay: isDayTime,
+    label,
+    city,
+    isRain,
+    isWarm,
+    isCloudy,
+    isThunder,
+    isNight,
+  };
+}
+
+function RealisticRainCanvas({
+  isDark,
+  isThunder,
+}: {
+  isDark?: boolean;
+  isThunder?: boolean;
+}) {
+  const canvasRef = useRef<HTMLCanvasElement | null>(null);
+
+  useEffect(() => {
+    const canvas = canvasRef.current;
+    if (!canvas) return;
+    const ctx = canvas.getContext("2d");
+    if (!ctx) return;
+
+    let animId: number;
+    let width = (canvas.width = canvas.parentElement?.offsetWidth || canvas.offsetWidth || 800);
+    let height = (canvas.height = canvas.parentElement?.offsetHeight || canvas.offsetHeight || 90);
+
+    const resizeObserver = new ResizeObserver(() => {
+      if (!canvas || !canvas.parentElement) return;
+      width = canvas.width = canvas.parentElement.offsetWidth;
+      height = canvas.height = canvas.parentElement.offsetHeight;
+    });
+    if (canvas.parentElement) {
+      resizeObserver.observe(canvas.parentElement);
+    }
+
+    // Natural wind slant: 14 deg for peaceful rain, 22 deg for thunderstorm gale
+    const windAngleDeg = isThunder ? 22 : 14;
+    const angle = (windAngleDeg * Math.PI) / 180;
+    const sinAngle = Math.sin(angle);
+    const cosAngle = Math.cos(angle);
+
+    interface Drop {
+      x: number;
+      y: number;
+      speed: number;
+      len: number;
+      width: number;
+      alpha: number;
+      layer: number;
+    }
+
+    interface Splash {
+      x: number;
+      y: number;
+      rx: number;
+      ry: number;
+      maxRx: number;
+      alpha: number;
+    }
+
+    interface LightningBolt {
+      main: { x: number; y: number }[];
+      branches: { x: number; y: number }[][];
+    }
+
+    const dropCount = isThunder ? 72 : 48;
+    const speedMult = isThunder ? 1.45 : 1.0;
+    const drops: Drop[] = [];
+    const splashes: Splash[] = [];
+
+    for (let i = 0; i < dropCount; i++) {
+      const layer = i % 3; // 0: background mist, 1: midground rain, 2: foreground fast streak
+      const baseSpeed =
+        layer === 2 ? 18 + Math.random() * 8 : layer === 1 ? 12 + Math.random() * 5 : 7 + Math.random() * 4;
+      const speed = baseSpeed * speedMult;
+      const len =
+        (layer === 2 ? 28 + Math.random() * 16 : layer === 1 ? 18 + Math.random() * 10 : 10 + Math.random() * 6) *
+        (isThunder ? 1.25 : 1.0);
+      const dropWidth = layer === 2 ? (isThunder ? 1.8 : 1.6) : layer === 1 ? 1.1 : 0.75;
+      const alpha =
+        layer === 2
+          ? 0.75 + Math.random() * 0.2
+          : layer === 1
+            ? 0.45 + Math.random() * 0.25
+            : 0.2 + Math.random() * 0.15;
+
+      drops.push({
+        x: Math.random() * (width + 180) - 90,
+        y: Math.random() * height * 1.5 - height * 0.5,
+        speed,
+        len,
+        width: dropWidth,
+        alpha,
+        layer,
+      });
+    }
+
+    // Static condensed water beads on glass with refraction glint
+    const beads = Array.from({ length: 9 }, () => ({
+      x: 30 + Math.random() * (width - 60),
+      y: 12 + Math.random() * (height - 24),
+      r: 1.5 + Math.random() * 1.8,
+      alpha: 0.35 + Math.random() * 0.35,
+    }));
+
+    // Realistic lightning bolt & sheet flash illumination
+    let activeBolt: LightningBolt | null = null;
+    let flashAlpha = 0;
+    let strikeTimer: ReturnType<typeof setTimeout> | null = null;
+
+    const generateBolt = (): LightningBolt => {
+      const startX = 60 + Math.random() * (width - 120);
+      const main: { x: number; y: number }[] = [{ x: startX, y: 0 }];
+      const branches: { x: number; y: number }[][] = [];
+
+      let curX = startX;
+      let curY = 0;
+      const totalSteps = 12 + Math.floor(Math.random() * 6);
+      const stepY = height / totalSteps;
+
+      for (let s = 1; s <= totalSteps; s++) {
+        curY += stepY + (Math.random() * 4 - 2);
+        curX += (Math.random() - 0.48) * 26;
+        main.push({ x: curX, y: Math.min(curY, height) });
+
+        // Branch fork chance
+        if (s > 2 && s < totalSteps - 1 && Math.random() < 0.45 && branches.length < 3) {
+          const branch: { x: number; y: number }[] = [{ x: curX, y: curY }];
+          let bX = curX;
+          let bY = curY;
+          const branchDir = Math.random() > 0.5 ? 1 : -1;
+          const bSteps = 3 + Math.floor(Math.random() * 4);
+          for (let b = 0; b < bSteps; b++) {
+            bX += branchDir * (10 + Math.random() * 14) + (Math.random() - 0.5) * 8;
+            bY += 6 + Math.random() * 10;
+            branch.push({ x: bX, y: Math.min(bY, height) });
+          }
+          branches.push(branch);
+        }
+      }
+
+      return { main, branches };
+    };
+
+    const triggerStrike = () => {
+      if (!isThunder) return;
+
+      activeBolt = generateBolt();
+      flashAlpha = 0.85;
+
+      // Realistic multi-stroke discharge flicker:
+      // Leader flash (0ms) -> Step-down (50ms) -> Return stroke (90ms) -> Secondary flicker (230ms) -> Fade
+      setTimeout(() => {
+        flashAlpha = 0.25;
+      }, 50);
+      setTimeout(() => {
+        flashAlpha = 0.95; // Blinding return stroke
+        if (Math.random() < 0.5) {
+          activeBolt = generateBolt(); // Refresh bolt path on main return stroke
+        }
+      }, 90);
+      setTimeout(() => {
+        flashAlpha = 0.45;
+      }, 160);
+      setTimeout(() => {
+        flashAlpha = 0.7; // Secondary after-pulse
+      }, 230);
+      setTimeout(() => {
+        flashAlpha = 0.15;
+      }, 310);
+      setTimeout(() => {
+        flashAlpha = 0;
+        activeBolt = null;
+      }, 430);
+
+      // Schedule next strike (between 3.2 and 5.5 seconds, or occasional quick double strike)
+      const nextDelay = Math.random() < 0.25 ? 900 + Math.random() * 600 : 3200 + Math.random() * 2300;
+      strikeTimer = setTimeout(triggerStrike, nextDelay);
+    };
+
+    if (isThunder) {
+      // First lightning strike fires quickly (500ms) so user immediately sees the thunderstorm in action!
+      strikeTimer = setTimeout(triggerStrike, 500);
+    }
+
+    const render = () => {
+      ctx.clearRect(0, 0, width, height);
+
+      // 1. Thunderstorm sheet flash illumination
+      if (isThunder && flashAlpha > 0.01) {
+        const flashGrad = ctx.createLinearGradient(0, 0, 0, height);
+        if (isDark) {
+          flashGrad.addColorStop(0, `rgba(224, 231, 255, ${flashAlpha * 0.45})`);
+          flashGrad.addColorStop(0.4, `rgba(168, 85, 247, ${flashAlpha * 0.3})`);
+          flashGrad.addColorStop(1, `rgba(59, 130, 246, ${flashAlpha * 0.15})`);
+        } else {
+          flashGrad.addColorStop(0, `rgba(255, 255, 255, ${flashAlpha * 0.55})`);
+          flashGrad.addColorStop(1, `rgba(192, 132, 252, ${flashAlpha * 0.25})`);
+        }
+        ctx.fillStyle = flashGrad;
+        ctx.fillRect(0, 0, width, height);
+      }
+
+      // 2. Forked electric lightning bolt with corona glow & white-hot core
+      if (isThunder && activeBolt && flashAlpha > 0.05) {
+        ctx.save();
+
+        // Corona / Outer electric purple glow
+        ctx.shadowColor = isDark ? "#C084FC" : "#7C3AED";
+        ctx.shadowBlur = 18;
+        ctx.lineWidth = 4.5;
+        ctx.lineCap = "round";
+        ctx.lineJoin = "miter";
+        ctx.strokeStyle = isDark
+          ? `rgba(192, 132, 252, ${flashAlpha * 0.9})`
+          : `rgba(124, 58, 237, ${flashAlpha * 0.8})`;
+
+        ctx.beginPath();
+        for (let p = 0; p < activeBolt.main.length; p++) {
+          const pt = activeBolt.main[p];
+          if (p === 0) ctx.moveTo(pt.x, pt.y);
+          else ctx.lineTo(pt.x, pt.y);
+        }
+        ctx.stroke();
+
+        for (const branch of activeBolt.branches) {
+          ctx.beginPath();
+          for (let p = 0; p < branch.length; p++) {
+            const pt = branch[p];
+            if (p === 0) ctx.moveTo(pt.x, pt.y);
+            else ctx.lineTo(pt.x, pt.y);
+          }
+          ctx.stroke();
+        }
+
+        // Intense pure white-hot center bolt
+        ctx.shadowColor = "#FFFFFF";
+        ctx.shadowBlur = 8;
+        ctx.lineWidth = 2.0;
+        ctx.strokeStyle = `rgba(255, 255, 255, ${flashAlpha})`;
+
+        ctx.beginPath();
+        for (let p = 0; p < activeBolt.main.length; p++) {
+          const pt = activeBolt.main[p];
+          if (p === 0) ctx.moveTo(pt.x, pt.y);
+          else ctx.lineTo(pt.x, pt.y);
+        }
+        ctx.stroke();
+
+        for (const branch of activeBolt.branches) {
+          ctx.beginPath();
+          ctx.lineWidth = 1.2;
+          for (let p = 0; p < branch.length; p++) {
+            const pt = branch[p];
+            if (p === 0) ctx.moveTo(pt.x, pt.y);
+            else ctx.lineTo(pt.x, pt.y);
+          }
+          ctx.stroke();
+        }
+
+        ctx.restore();
+      }
+
+      // 3. Draw static window glass beads with subtle refraction
+      for (let i = 0; i < beads.length; i++) {
+        const b = beads[i];
+        ctx.beginPath();
+        ctx.arc(b.x, b.y, b.r, 0, Math.PI * 2);
+        ctx.fillStyle = isDark
+          ? `rgba(186, 230, 253, ${b.alpha * 0.45})`
+          : `rgba(14, 165, 233, ${b.alpha * 0.3})`;
+        ctx.fill();
+
+        // Highlight glint
+        ctx.beginPath();
+        ctx.arc(b.x - b.r * 0.35, b.y - b.r * 0.35, b.r * 0.4, 0, Math.PI * 2);
+        ctx.fillStyle = isDark ? "rgba(255, 255, 255, 0.75)" : "rgba(255, 255, 255, 0.85)";
+        ctx.fill();
+      }
+
+      // 4. Draw falling raindrops (illuminated during flash)
+      for (let i = 0; i < drops.length; i++) {
+        const d = drops[i];
+
+        ctx.beginPath();
+        ctx.lineWidth = d.width;
+        ctx.lineCap = "round";
+
+        const endX = d.x + d.len * sinAngle;
+        const endY = d.y + d.len * cosAngle;
+
+        const grad = ctx.createLinearGradient(d.x, d.y, endX, endY);
+        const flashBoost = isThunder && flashAlpha > 0.1 ? 0.35 : 0;
+        const finalAlpha = Math.min(d.alpha + flashBoost, 1.0);
+
+        if (isDark) {
+          grad.addColorStop(0, "rgba(56, 189, 248, 0)");
+          grad.addColorStop(0.5, `rgba(56, 189, 248, ${finalAlpha * 0.5})`);
+          grad.addColorStop(1, `rgba(255, 255, 255, ${finalAlpha})`);
+        } else {
+          grad.addColorStop(0, "rgba(14, 165, 233, 0)");
+          grad.addColorStop(0.5, `rgba(14, 165, 233, ${finalAlpha * 0.5})`);
+          grad.addColorStop(1, `rgba(2, 132, 199, ${finalAlpha})`);
+        }
+
+        ctx.strokeStyle = grad;
+        ctx.moveTo(d.x, d.y);
+        ctx.lineTo(endX, endY);
+        ctx.stroke();
+
+        // Advance drop position
+        d.x += d.speed * sinAngle;
+        d.y += d.speed * cosAngle;
+
+        // Splash trigger at bottom boundary
+        if (d.y >= height - 3) {
+          if (d.layer >= 1 && splashes.length < 24) {
+            splashes.push({
+              x: endX,
+              y: height - 1.5,
+              rx: 1,
+              ry: 0.5,
+              maxRx: (4 + Math.random() * 5) * (isThunder ? 1.3 : 1.0),
+              alpha: isDark ? 0.65 : 0.5,
+            });
+          }
+          // Reset drop back above top edge
+          d.y = -d.len - Math.random() * 20;
+          d.x = Math.random() * (width + 180) - 90;
+        }
+      }
+
+      // 5. Draw and update splash ripples at the bottom
+      for (let i = splashes.length - 1; i >= 0; i--) {
+        const s = splashes[i];
+        ctx.beginPath();
+        ctx.ellipse(s.x, s.y, s.rx, s.ry, 0, 0, Math.PI * 2);
+        ctx.strokeStyle = isDark
+          ? `rgba(186, 230, 253, ${s.alpha})`
+          : `rgba(14, 165, 233, ${s.alpha})`;
+        ctx.lineWidth = 1;
+        ctx.stroke();
+
+        s.rx += isThunder ? 0.9 : 0.7;
+        s.ry += isThunder ? 0.35 : 0.25;
+        s.alpha *= isThunder ? 0.88 : 0.86;
+
+        if (s.alpha <= 0.05 || s.rx >= s.maxRx) {
+          splashes.splice(i, 1);
+        }
+      }
+
+      animId = requestAnimationFrame(render);
+    };
+
+    animId = requestAnimationFrame(render);
+
+    return () => {
+      cancelAnimationFrame(animId);
+      if (strikeTimer) clearTimeout(strikeTimer);
+      resizeObserver.disconnect();
+    };
+  }, [isDark, isThunder]);
+
+  return (
+    <canvas
+      ref={canvasRef}
+      style={{
+        position: "absolute",
+        inset: 0,
+        width: "100%",
+        height: "100%",
+        pointerEvents: "none",
+        zIndex: 1,
+      }}
+    />
+  );
+}
+
+function DashboardGreetingBanner({
+  user,
+  leads,
+  students,
+  summary,
+  activeBranch,
+  onAction,
+}: {
+  user: AdminUser | null;
+  leads: Lead[];
+  students: Student[];
+  summary: Summary | null;
+  activeBranch?: string;
+  onAction?: (panel: Panel) => void;
+}) {
+  const [currentHour, setCurrentHour] = useState(() => new Date().getHours());
+  const [weather, setWeather] = useState<LiveWeatherState | null>(null);
+  const [msgCycle, setMsgCycle] = useState(0);
+  const [previewWeatherMode, setPreviewWeatherMode] = useState<string | null>(null);
+
+  useEffect(() => {
+    (window as any).setWeather = (mode: string | null) => {
+      setPreviewWeatherMode(mode || null);
+    };
+  }, []);
+
+  const effectiveWeather = useMemo<LiveWeatherState>(() => {
+    if (previewWeatherMode === "thunder") {
+      return {
+        tempC: 24,
+        weatherCode: 95,
+        isDay: false,
+        label: "Thunderstorms",
+        city: "Chennai",
+        isRain: true,
+        isWarm: false,
+        isCloudy: true,
+        isThunder: true,
+        isNight: true,
+      };
+    }
+    if (previewWeatherMode === "clear_night") {
+      return {
+        tempC: 22,
+        weatherCode: 0,
+        isDay: false,
+        label: "Clear Night",
+        city: "Chennai",
+        isRain: false,
+        isWarm: false,
+        isCloudy: false,
+        isThunder: false,
+        isNight: true,
+      };
+    }
+    if (previewWeatherMode === "sunny") {
+      return {
+        tempC: 32,
+        weatherCode: 0,
+        isDay: true,
+        label: "Warm & Sunny",
+        city: "Chennai",
+        isRain: false,
+        isWarm: true,
+        isCloudy: false,
+        isThunder: false,
+        isNight: false,
+      };
+    }
+    if (previewWeatherMode === "rain") {
+      return {
+        tempC: 25,
+        weatherCode: 63,
+        isDay: false,
+        label: "Heavy Rain",
+        city: "Chennai",
+        isRain: true,
+        isWarm: false,
+        isCloudy: true,
+        isThunder: false,
+        isNight: true,
+      };
+    }
+    if (weather) return weather;
+    // Default dynamic fallback based on time of day
+    const isDay = currentHour >= 6 && currentHour < 18;
+    return {
+      tempC: isDay ? 31 : 25,
+      weatherCode: 0,
+      isDay,
+      label: isDay ? (currentHour >= 11 && currentHour <= 15 ? "Warm & Sunny" : "Sunny & Clear") : "Clear Night",
+      city: "Chennai",
+      isRain: false,
+      isWarm: isDay,
+      isCloudy: false,
+      isThunder: false,
+      isNight: !isDay,
+    };
+  }, [weather, previewWeatherMode, currentHour]);
+
+  useEffect(() => {
+    const timer = setInterval(() => {
+      setCurrentHour(new Date().getHours());
+    }, 60000);
+    const cycleTimer = setInterval(() => {
+      setMsgCycle((prev) => prev + 1);
+    }, 20000);
+    return () => {
+      clearInterval(timer);
+      clearInterval(cycleTimer);
+    };
+  }, []);
+
+  // Fetch real-time live location (GPS -> Backend IP -> ipwho.is -> Branch fallback) + live weather
+  useEffect(() => {
+    let isMounted = true;
+
+    // Helper to fetch weather for coordinates and update state & cache
+    const fetchWeatherForLocation = async (loc: LocationCoord) => {
+      const cacheKey = `imed_weather_${(loc.city || "loc").toLowerCase().replace(/[^a-z]/g, "")}_${loc.lat.toFixed(2)}_${loc.lon.toFixed(2)}`;
+      try {
+        const cached = localStorage.getItem(cacheKey);
+        if (cached) {
+          const parsed = JSON.parse(cached);
+          if (Date.now() - parsed.timestamp < 15 * 60 * 1000) {
+            if (isMounted) setWeather(parsed.data);
+          }
+        }
+      } catch (e) { }
+
+      try {
+        const res = await fetch(
+          `https://api.open-meteo.com/v1/forecast?latitude=${loc.lat}&longitude=${loc.lon}&current=temperature_2m,weather_code,is_day&timezone=auto`
+        );
+        if (!res.ok) return;
+        const data = await res.json();
+        if (!isMounted || !data?.current) return;
+
+        const tempC = Math.round(data.current.temperature_2m);
+        const code = Number(data.current.weather_code ?? 0);
+        const isDayTime = Number(data.current.is_day ?? 1) === 1;
+
+        const weatherState = getWeatherConditionDetails(code, isDayTime, tempC, loc.city);
+        if (isMounted) setWeather(weatherState);
+
+        try {
+          localStorage.setItem(
+            cacheKey,
+            JSON.stringify({ timestamp: Date.now(), data: weatherState })
+          );
+        } catch (e) { }
+      } catch (err) {
+        // Fallback gracefully without breaking UI
+      }
+    };
+
+    const detectLocation = async () => {
+      // 1. If admin explicitly filtered by a specific branch in the topbar
+      if (activeBranch && activeBranch !== "all") {
+        const branchLoc = resolveBranchCoord(activeBranch);
+        if (branchLoc) {
+          fetchWeatherForLocation(branchLoc);
+          return;
+        }
+      }
+
+      let locationFound = false;
+
+      // 2. Primary: Real device GPS coordinates (highest accuracy, zero static lists)
+      if (typeof navigator !== "undefined" && navigator.geolocation) {
+        navigator.geolocation.getCurrentPosition(
+          async (pos) => {
+            if (!isMounted) return;
+            const lat = Number(pos.coords.latitude.toFixed(4));
+            const lon = Number(pos.coords.longitude.toFixed(4));
+            let city = "Current Location";
+
+            // Reverse geocode lat/lon dynamically to get city name
+            try {
+              const geoRes = await fetch(
+                `https://api.bigdatacloud.net/data/reverse-geocode-client?latitude=${lat}&longitude=${lon}&localityLanguage=en`
+              );
+              if (geoRes.ok) {
+                const geo = await geoRes.json();
+                city = geo.city || geo.locality || geo.principalSubdivision || "Current Location";
+              }
+            } catch (e) { }
+
+            locationFound = true;
+            const loc: LocationCoord = { lat, lon, city };
+            fetchWeatherForLocation(loc);
+          },
+          () => {
+            if (!locationFound) void fallbackToIpLookup();
+          },
+          { timeout: 4000, maximumAge: 300000, enableHighAccuracy: true }
+        );
+      }
+
+      // 3. Secondary: Live ISP network IP geolocation (instant, zero permission prompt needed)
+      const fallbackToIpLookup = async () => {
+        try {
+          const res = await fetch("https://ipwho.is/");
+          if (res.ok) {
+            const data = await res.json();
+            if (data?.success && data?.latitude && data?.longitude) {
+              const loc: LocationCoord = {
+                lat: Number(data.latitude.toFixed(4)),
+                lon: Number(data.longitude.toFixed(4)),
+                city: data.city || data.region || "Current Location",
+              };
+              if (isMounted) {
+                locationFound = true;
+                fetchWeatherForLocation(loc);
+                return;
+              }
+            }
+          }
+        } catch (e) { }
+
+        // 4. Fallback if offline
+        if (!locationFound && isMounted) {
+          fetchWeatherForLocation({ lat: 13.0827, lon: 80.2707, city: "Chennai" });
+        }
+      };
+
+      // Trigger IP lookup immediately so weather renders instantly without waiting
+      void fallbackToIpLookup();
+    };
+
+    void detectLocation();
+
+    return () => {
+      isMounted = false;
+    };
+  }, [activeBranch]);
+
+  const rawName = user?.name?.trim() || "";
+  const displayName = rawName ? rawName : "Admin";
+
+  const displayHour = useMemo(() => {
+    if (previewWeatherMode === "sunny") return 14;
+    if (previewWeatherMode === "clear_night") return 22;
+    return currentHour;
+  }, [previewWeatherMode, currentHour]);
+
+  // Classic time-of-day greeting as requested: Good morning / afternoon / evening / night
+  const timeGreeting = useMemo(() => {
+    if (displayHour >= 5 && displayHour < 12) {
+      return `Good morning, ${displayName}!`;
+    }
+    if (displayHour >= 12 && displayHour < 17) {
+      return `Good afternoon, ${displayName}!`;
+    }
+    if (displayHour >= 17 && displayHour < 21) {
+      return `Good evening, ${displayName}!`;
+    }
+    return `Good night, ${displayName}!`;
+  }, [displayHour, displayName]);
+
+  // Dynamic aesthetic theme based on real-time weather & time of day
+  const greetingData = useMemo(() => {
+    const isNightTime = Boolean(
+      effectiveWeather != null
+        ? effectiveWeather.isNight
+        : (displayHour < 5 || displayHour >= 21)
+    );
+    const isEarlyMorning = !isNightTime && displayHour >= 5 && displayHour < 8;
+    const isSunset = !isNightTime && displayHour >= 17 && displayHour < 21;
+    const isThunder = Boolean(effectiveWeather?.isThunder);
+    const isRain = Boolean(effectiveWeather?.isRain);
+    const isCloudy = Boolean(effectiveWeather?.isCloudy);
+    const isWarm = Boolean(
+      effectiveWeather?.isWarm ||
+      (effectiveWeather?.weatherCode === 0 && (effectiveWeather?.tempC ?? 26) >= 28 && !isNightTime)
+    );
+
+    // 1. Thunderstorm (Night & Day)
+    if (isThunder) {
+      if (isNightTime) {
+        return {
+          greeting: timeGreeting,
+          icon: <CloudLightning size={24} style={{ color: "#C084FC", filter: "drop-shadow(0 2px 10px rgba(192, 132, 252, 0.6))" }} />,
+          bg: "linear-gradient(135deg, #090618 0%, #170E38 45%, #25104E 100%)",
+          borderColor: "rgba(168, 85, 247, 0.35)",
+          cardShadow: "0 10px 32px -4px rgba(9, 6, 24, 0.6), inset 0 1px 0 rgba(255, 255, 255, 0.12)",
+          iconBg: "linear-gradient(135deg, rgba(147, 51, 234, 0.35), rgba(168, 85, 247, 0.15))",
+          accentGlow: "rgba(168, 85, 247, 0.25)",
+          isRainyTheme: true,
+          isNightStars: false,
+          isDark: true,
+        };
+      }
+      return {
+        greeting: timeGreeting,
+        icon: <CloudLightning size={24} style={{ color: "#7C3AED", filter: "drop-shadow(0 2px 8px rgba(124, 58, 237, 0.3))" }} />,
+        bg: "linear-gradient(135deg, #EDE9FE 0%, #DDD6FE 45%, #F1F5F9 100%)",
+        borderColor: "rgba(124, 58, 237, 0.35)",
+        cardShadow: "0 6px 24px rgba(124, 58, 237, 0.1), inset 0 1px 0 rgba(255, 255, 255, 0.9)",
+        iconBg: "linear-gradient(135deg, #DDD6FE, #EDE9FE)",
+        accentGlow: "rgba(124, 58, 237, 0.16)",
+        isRainyTheme: true,
+        isNightStars: false,
+        isDark: false,
+      };
+    }
+
+    // 2. Raining / Drizzle (Night & Day realistic atmospheres)
+    if (isRain) {
+      if (isNightTime) {
+        return {
+          greeting: timeGreeting,
+          icon: <CloudRain size={24} style={{ color: "#38BDF8", filter: "drop-shadow(0 2px 10px rgba(56, 189, 248, 0.6))" }} />,
+          bg: "linear-gradient(135deg, #070D18 0%, #0E1B2E 45%, #122540 100%)",
+          borderColor: "rgba(56, 189, 248, 0.32)",
+          cardShadow: "0 10px 32px -4px rgba(2, 6, 23, 0.6), inset 0 1px 0 rgba(255, 255, 255, 0.15)",
+          iconBg: "linear-gradient(135deg, rgba(14, 165, 233, 0.3), rgba(56, 189, 248, 0.12))",
+          accentGlow: "rgba(14, 165, 233, 0.22)",
+          isRainyTheme: true,
+          isNightStars: false,
+          isDark: true,
+        };
+      }
+      return {
+        greeting: timeGreeting,
+        icon: <CloudRain size={24} style={{ color: "#0284C7", filter: "drop-shadow(0 2px 8px rgba(2, 132, 199, 0.25))" }} />,
+        bg: "linear-gradient(135deg, #E2E8F0 0%, #D5E2F0 45%, #EDF2F7 100%)",
+        borderColor: "rgba(14, 165, 233, 0.38)",
+        cardShadow: "0 6px 22px rgba(15, 23, 42, 0.08), inset 0 1px 0 rgba(255, 255, 255, 0.9)",
+        iconBg: "linear-gradient(135deg, #BAE6FD, #E0F2FE)",
+        accentGlow: "rgba(2, 132, 199, 0.15)",
+        isRainyTheme: true,
+        isNightStars: false,
+        isDark: false,
+      };
+    }
+
+    // 3. Night Atmosphere (Clear or Partly Cloudy Night)
+    if (isNightTime) {
+      return {
+        greeting: timeGreeting,
+        icon: <Moon size={24} style={{ color: "#818CF8", filter: "drop-shadow(0 2px 10px rgba(129, 140, 248, 0.65))" }} />,
+        bg: "linear-gradient(135deg, #070B16 0%, #0D162B 45%, #141D3B 100%)",
+        borderColor: "rgba(99, 102, 241, 0.3)",
+        cardShadow: "0 10px 32px -4px rgba(7, 11, 22, 0.6), inset 0 1px 0 rgba(255, 255, 255, 0.12)",
+        iconBg: "linear-gradient(135deg, rgba(79, 70, 229, 0.3), rgba(99, 102, 241, 0.12))",
+        accentGlow: "rgba(99, 102, 241, 0.22)",
+        isRainyTheme: false,
+        isNightStars: true,
+        isDark: true,
+      };
+    }
+
+    // 4. Sunset / Dusk Twilight (17:00 - 20:59)
+    if (isSunset) {
+      return {
+        greeting: timeGreeting,
+        icon: <Sunset size={24} style={{ color: "#C026D3", filter: "drop-shadow(0 2px 8px rgba(192, 38, 211, 0.3))" }} />,
+        bg: "linear-gradient(135deg, #FFF1E6 0%, #FEE2E2 40%, #EDE9FE 100%)",
+        borderColor: "rgba(236, 72, 153, 0.32)",
+        cardShadow: "0 6px 22px rgba(192, 38, 211, 0.09), inset 0 1px 0 rgba(255, 255, 255, 0.9)",
+        iconBg: "linear-gradient(135deg, #FCE7F3, #EDE9FE)",
+        accentGlow: "rgba(192, 38, 211, 0.16)",
+        isRainyTheme: false,
+        isNightStars: false,
+        isDark: false,
+      };
+    }
+
+    // 5. Early Morning Dawn (05:00 - 07:59)
+    if (isEarlyMorning) {
+      return {
+        greeting: timeGreeting,
+        icon: <Sun size={24} style={{ color: "#D97706", filter: "drop-shadow(0 2px 8px rgba(217, 119, 6, 0.3))" }} />,
+        bg: "linear-gradient(135deg, #FFFBEB 0%, #FEF3C7 45%, #F0FDF4 100%)",
+        borderColor: "rgba(245, 158, 11, 0.35)",
+        cardShadow: "0 6px 22px rgba(217, 119, 6, 0.08), inset 0 1px 0 rgba(255, 255, 255, 0.9)",
+        iconBg: "linear-gradient(135deg, #FDE68A, #FEF3C7)",
+        accentGlow: "rgba(245, 158, 11, 0.16)",
+        isRainyTheme: false,
+        isNightStars: false,
+        isDark: false,
+      };
+    }
+
+    // 6. Warm & Sunny Day
+    if (isWarm) {
+      return {
+        greeting: timeGreeting,
+        icon: <Sun size={24} style={{ color: "#D97706", filter: "drop-shadow(0 2px 8px rgba(217, 119, 6, 0.3))" }} />,
+        bg: "linear-gradient(135deg, #FFFBEB 0%, #FEF3C7 50%, #FFFFFF 100%)",
+        borderColor: "rgba(245, 158, 11, 0.38)",
+        cardShadow: "0 6px 22px rgba(217, 119, 6, 0.08), inset 0 1px 0 rgba(255, 255, 255, 0.9)",
+        iconBg: "linear-gradient(135deg, #FDE68A, #FEF3C7)",
+        accentGlow: "rgba(217, 119, 6, 0.16)",
+        isRainyTheme: false,
+        isNightStars: false,
+        isDark: false,
+      };
+    }
+
+    // 7. Cloudy / Overcast Day
+    if (isCloudy) {
+      return {
+        greeting: timeGreeting,
+        icon: <CloudSun size={24} style={{ color: "#475569" }} />,
+        bg: "linear-gradient(135deg, #F1F5F9 0%, #E2E8F0 50%, #F8FAFC 100%)",
+        borderColor: "rgba(148, 163, 184, 0.4)",
+        cardShadow: "0 6px 20px rgba(100, 116, 139, 0.07), inset 0 1px 0 rgba(255, 255, 255, 0.9)",
+        iconBg: "linear-gradient(135deg, #E2E8F0, #F1F5F9)",
+        accentGlow: "rgba(100, 116, 139, 0.12)",
+        isRainyTheme: false,
+        isNightStars: false,
+        isDark: false,
+      };
+    }
+
+    // 8. Standard Daytime Progression (Morning vs Afternoon)
+    if (displayHour >= 5 && displayHour < 12) {
+      return {
+        greeting: timeGreeting,
+        icon: <Sun size={24} style={{ color: "#D97706", filter: "drop-shadow(0 2px 8px rgba(217, 119, 6, 0.25))" }} />,
+        bg: "linear-gradient(135deg, #FFFBEB 0%, #FEF3C7 45%, #FFFFFF 100%)",
+        borderColor: "rgba(245, 158, 11, 0.32)",
+        cardShadow: "0 4px 18px rgba(217, 119, 6, 0.07), inset 0 1px 0 rgba(255, 255, 255, 0.9)",
+        iconBg: "linear-gradient(135deg, #FDE68A, #FEF3C7)",
+        accentGlow: "rgba(217, 119, 6, 0.14)",
+        isRainyTheme: false,
+        isNightStars: false,
+        isDark: false,
+      };
+    }
+
+    return {
+      greeting: timeGreeting,
+      icon: <SunMedium size={24} style={{ color: "#2563EB", filter: "drop-shadow(0 2px 8px rgba(37, 99, 235, 0.25))" }} />,
+      bg: "linear-gradient(135deg, #EFF6FF 0%, #DBEAFE 45%, #F8FAFC 100%)",
+      borderColor: "rgba(59, 130, 246, 0.32)",
+      cardShadow: "0 4px 18px rgba(37, 99, 235, 0.07), inset 0 1px 0 rgba(255, 255, 255, 0.9)",
+      iconBg: "linear-gradient(135deg, #BFDBFE, #DBEAFE)",
+      accentGlow: "rgba(37, 99, 235, 0.14)",
+      isRainyTheme: false,
+      isNightStars: false,
+      isDark: false,
+    };
+  }, [displayHour, timeGreeting, effectiveWeather]);
+
+  const scenario = useMemo(() => {
+    const todayKey = dateInputValue();
+    const role = user?.role || "";
+    const isCounsellor = role === "counsellor" || role === "franchise_counsellor";
+    const isTeacher = role === "teacher" || role === "franchise_teacher";
+    const isOperations = role === "operations_executive" || role === "franchise_operations_executive";
+
+    const todaysFollowUps = leads.filter(
+      (l) => l.nextFollowUp && dateInputValue(l.nextFollowUp) <= todayKey && !["Enrolled", "Alumni", "Lost"].includes(l.stage)
+    );
+    const hotLeads = leads.filter(
+      (l) => l.priority === "P0" && !["Enrolled", "Alumni", "Lost"].includes(l.stage)
+    );
+    const admissionReady = leads.filter(
+      (l) => l.stage === "Admission"
+    );
+    const enrolledCount = summary ? summary.enrolled : students.length;
+
+    // Helper to rotate messages smoothly so the same text isn't repeated 24/7
+    const pick = (arr: Array<{ message: string; actionLabel?: string; targetPanel?: Panel }>) => {
+      const idx = (msgCycle + new Date().getDate()) % arr.length;
+      return arr[idx];
+    };
+
+    // --- Role: Teacher ---
+    if (isTeacher) {
+      if (currentHour >= 5 && currentHour < 12) {
+        return pick([
+          {
+            message: `Ready to inspire minds today! Guiding ${students.length} candidate${students.length === 1 ? "" : "s"} across your batches.`,
+            actionLabel: "Open batches",
+            targetPanel: "batch" as Panel,
+          },
+          {
+            message: "A fresh morning for clinical excellence! Clear instruction and hands-on guidance build confident healthcare practitioners.",
+            actionLabel: "Open batches",
+            targetPanel: "batch" as Panel,
+          },
+          {
+            message: `Empowering ${students.length} future healthcare professional${students.length === 1 ? "" : "s"} today. Lead with passion and practical mastery!`,
+            actionLabel: "Open batches",
+            targetPanel: "batch" as Panel,
+          },
+        ]);
+      }
+      if (currentHour >= 12 && currentHour < 17) {
+        return pick([
+          {
+            message: `Keep classroom energy high! Mentoring ${students.length} candidate${students.length === 1 ? "" : "s"} through clinical practice and discussions.`,
+            actionLabel: "Open batches",
+            targetPanel: "batch" as Panel,
+          },
+          {
+            message: "Midday hands-on practice makes complex clinical concepts stick. Guide your students through key practicals.",
+            actionLabel: "Open batches",
+            targetPanel: "batch" as Panel,
+          },
+        ]);
+      }
+      if (currentHour >= 17 && currentHour < 21) {
+        return pick([
+          {
+            message: "Wrap up today's classroom topics and log session attendance to keep batch progress accurate.",
+            actionLabel: "View sessions",
+            targetPanel: "batch" as Panel,
+          },
+          {
+            message: `Great teaching progress today across your ${students.length} candidate${students.length === 1 ? "" : "s"}. Review attendance and clinical logs!`,
+            actionLabel: "View sessions",
+            targetPanel: "batch" as Panel,
+          },
+        ]);
+      }
+      return pick([
+        {
+          message: "Great teaching dedication today! Rest well tonight and come back ready to empower more students tomorrow.",
+        },
+        {
+          message: `Guiding ${students.length} candidate${students.length === 1 ? "" : "s"} takes true dedication. Rest up tonight for another impactful day!`,
+        },
+      ]);
+    }
+
+    // --- Role: Counsellor ---
+    if (isCounsellor) {
+      if (todaysFollowUps.length > 0) {
+        if (currentHour >= 5 && currentHour < 12) {
+          return {
+            message: `Morning focus: You have ${todaysFollowUps.length} follow-up${todaysFollowUps.length > 1 ? "s" : ""} scheduled today. A warm conversation helps a student take the next big step!`,
+            actionLabel: "Review follow-ups",
+            targetPanel: "leads" as Panel,
+          };
+        }
+        if (currentHour >= 12 && currentHour < 17) {
+          return {
+            message: `Midday momentum: ${todaysFollowUps.length} student follow-up${todaysFollowUps.length > 1 ? "s" : ""} scheduled today. Address doubts and guide them towards enrollment.`,
+            actionLabel: "Review follow-ups",
+            targetPanel: "leads" as Panel,
+          };
+        }
+        if (currentHour >= 17 && currentHour < 21) {
+          return {
+            message: `Evening follow-up check: ${todaysFollowUps.length} scheduled interaction${todaysFollowUps.length > 1 ? "s" : ""} today. Ensure call notes and next dates are saved.`,
+            actionLabel: "Review follow-ups",
+            targetPanel: "leads" as Panel,
+          };
+        }
+      }
+
+      if (admissionReady.length > 0) {
+        return {
+          message: `${admissionReady.length} candidate${admissionReady.length > 1 ? "s are" : " is"} at the admission stage. Guide them across the finish line to secure their seats!`,
+          actionLabel: "Open admissions",
+          targetPanel: "admissions" as Panel,
+        };
+      }
+
+      if (currentHour >= 5 && currentHour < 12) {
+        return pick([
+          {
+            message: "A fresh morning for high-impact calls. Focus on high-intent candidates and set a strong tone today!",
+          },
+          {
+            message: `Morning momentum! Fantastic progress with ${enrolledCount} candidate${enrolledCount === 1 ? "" : "s"} enrolled under your guidance so far.`,
+          },
+          {
+            message: "Every conversation creates an opportunity. Help prospective students discover their healthcare career path!",
+          },
+        ]);
+      }
+      if (currentHour >= 12 && currentHour < 17) {
+        return pick([
+          {
+            message: "Midday check-in! Keep the counselling momentum high, answer student doubts, and close pending queries.",
+          },
+          {
+            message: "Active listening and clear course guidance turn student inquiries into confident admissions.",
+          },
+        ]);
+      }
+      if (currentHour >= 17 && currentHour < 21) {
+        return pick([
+          {
+            message: "Great hustle today! Ensure today's call logs, interaction notes, and next follow-up dates are updated.",
+          },
+          {
+            message: "Wrapping up today's counselling sessions. Solid effort guiding students toward their ambitions!",
+          },
+        ]);
+      }
+      return pick([
+        {
+          message: "Great counselling dedication today! Rest well tonight and come back ready to empower more students tomorrow.",
+        },
+        {
+          message: "A productive counselling day completed. Rest up tonight for another great day of student impact tomorrow!",
+        },
+      ]);
+    }
+
+    // --- Role: Admin / Super Admin (Default) ---
+    if (hotLeads.length > 0) {
+      if (currentHour >= 5 && currentHour < 12) {
+        return {
+          message: `Morning priority: ${hotLeads.length} high-priority candidate${hotLeads.length > 1 ? "s" : ""} across your pipeline. Fast response times drive center growth!`,
+          actionLabel: "View hot leads",
+          targetPanel: "leads" as Panel,
+        };
+      }
+      if (currentHour >= 12 && currentHour < 17) {
+        return {
+          message: `Midday pipeline tracker: ${hotLeads.length} hot lead${hotLeads.length > 1 ? "s" : ""} ready for prompt conversion across branches.`,
+          actionLabel: "View hot leads",
+          targetPanel: "leads" as Panel,
+        };
+      }
+      if (currentHour >= 17 && currentHour < 21) {
+        return {
+          message: `End of day priority review: ${hotLeads.length} high-priority candidate${hotLeads.length > 1 ? "s" : ""} in pipeline. Ensure speedy follow-up.`,
+          actionLabel: "View hot leads",
+          targetPanel: "leads" as Panel,
+        };
+      }
+    }
+
+    if (todaysFollowUps.length > 0) {
+      if (currentHour >= 5 && currentHour < 12) {
+        return {
+          message: `Your center has ${todaysFollowUps.length} follow-up${todaysFollowUps.length > 1 ? "s" : ""} scheduled today. Keeping conversions moving across all centers.`,
+          actionLabel: "Review leads",
+          targetPanel: "leads" as Panel,
+        };
+      }
+      if (displayHour >= 12 && displayHour < 17) {
+        return {
+          message: `Midday follow-up progress: ${todaysFollowUps.length} scheduled lead conversation${todaysFollowUps.length > 1 ? "s" : ""} across centers today.`,
+          actionLabel: "Review leads",
+          targetPanel: "leads" as Panel,
+        };
+      }
+      if (displayHour >= 17 && displayHour < 21) {
+        return {
+          message: `Reviewing today's ${todaysFollowUps.length} center follow-up${todaysFollowUps.length > 1 ? "s" : ""}. Verify call outcomes and status updates before close.`,
+          actionLabel: "Review leads",
+          targetPanel: "leads" as Panel,
+        };
+      }
+    }
+
+    if (admissionReady.length > 0) {
+      return {
+        message: `${admissionReady.length} candidate${admissionReady.length > 1 ? "s" : ""} ready for admission. Ensuring seamless enrollment into upcoming batches.`,
+        actionLabel: "Open admissions",
+        targetPanel: "admissions" as Panel,
+      };
+    }
+
+    // Default time-of-day dynamic rotation with metrics blended in
+    if (displayHour >= 5 && displayHour < 12) {
+      return pick([
+        {
+          message: `A fresh day for strategic leadership. Align your team, track ${enrolledCount} enrolled candidate${enrolledCount === 1 ? "" : "s"}, and drive academy excellence.`,
+        },
+        {
+          message: "Good morning! Strategic planning and team alignment set the pace for high admissions and student success.",
+        },
+        {
+          message: `Strong momentum across centers with ${enrolledCount} candidate${enrolledCount === 1 ? "" : "s"} enrolled. Expanding healthcare training and excellence!`,
+        },
+      ]);
+    }
+    if (displayHour >= 12 && displayHour < 17) {
+      return pick([
+        {
+          message: "Reviewing daytime center metrics. Keep conversion momentum high across all branches and courses.",
+        },
+        {
+          message: `Midday academy pulse: ${enrolledCount} enrolled candidate${enrolledCount === 1 ? "" : "s"} actively progressing through medical training.`,
+        },
+        {
+          message: "Operational efficiency and quick team coordination keep student experience and inquiry conversions top tier.",
+        },
+      ]);
+    }
+    if (displayHour >= 17 && displayHour < 21) {
+      return pick([
+        {
+          message: "End of day review. Solid progress across admissions, batches, and operations today.",
+        },
+        {
+          message: `Wrapping up center activities. Strong foundation built today across ${enrolledCount} enrolled candidate${enrolledCount === 1 ? "" : "s"}.`,
+        },
+        {
+          message: "Review daily team milestones and branch reports to prepare tomorrow's strategic priorities.",
+        },
+      ]);
+    }
+    return pick([
+      {
+        message: "Visionary leadership in motion. Dedication powers the academy's growth — get some well-deserved rest.",
+      },
+      {
+        message: "All center activities concluded for the day. Recharging for another productive day of educational excellence.",
+      },
+    ]);
+  }, [user?.role, leads, students, summary, displayHour, msgCycle]);
+
+  const formattedDate = useMemo(() => {
+    return new Date().toLocaleDateString("en-IN", {
+      weekday: "short",
+      day: "numeric",
+      month: "short",
+      year: "numeric",
+    });
+  }, []);
+
+  return (
+    <div
+      className={`dashboard-greeting-banner ${greetingData.isDark ? "theme-dark" : "theme-light"}`}
+      style={{
+        background: greetingData.bg,
+        borderColor: greetingData.borderColor,
+        position: "relative",
+        overflow: "hidden",
+        boxShadow: greetingData.cardShadow,
+      }}
+    >
+      {/* Ambient background glow */}
+      <div
+        style={{
+          position: "absolute",
+          top: -24,
+          right: -24,
+          width: 150,
+          height: 150,
+          borderRadius: "50%",
+          background: greetingData.accentGlow,
+          filter: "blur(34px)",
+          pointerEvents: "none",
+        }}
+      />
+
+      {/* Twinkling starlight dots when clear night */}
+      {greetingData.isNightStars && (
+        <div className="imed-stars-overlay" aria-hidden="true">
+          {[
+            { top: "20%", left: "12%", size: 2.5, delay: "0s" },
+            { top: "50%", left: "26%", size: 1.8, delay: "1.3s" },
+            { top: "18%", left: "46%", size: 2.2, delay: "0.7s" },
+            { top: "66%", left: "60%", size: 1.6, delay: "2.1s" },
+            { top: "24%", left: "76%", size: 2.8, delay: "0.4s" },
+            { top: "55%", left: "88%", size: 2.0, delay: "1.6s" },
+          ].map((star, idx) => (
+            <div
+              key={idx}
+              className="imed-star-dot"
+              style={{
+                top: star.top,
+                left: star.left,
+                width: star.size,
+                height: star.size,
+                animationDelay: star.delay,
+              }}
+            />
+          ))}
+        </div>
+      )}
+
+      {/* Photorealistic animated rain simulation */}
+      {greetingData.isRainyTheme && (
+        <RealisticRainCanvas
+          isDark={greetingData.isDark}
+          isThunder={Boolean(effectiveWeather?.isThunder)}
+        />
+      )}
+
+      <div className="greeting-main-content" style={{ position: "relative", zIndex: 2 }}>
+        <div className="greeting-header-row">
+          <div
+            className="greeting-icon-box"
+            style={{
+              background: greetingData.iconBg,
+              boxShadow: "0 4px 14px rgba(0,0,0,0.08)",
+            }}
+          >
+            {greetingData.icon}
+          </div>
+          <div>
+            <div style={{ display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap" }}>
+              <h2 className="greeting-title-text">{greetingData.greeting}</h2>
+              {/* Real-time Weather Badge (Clickable to preview different atmospheric modes) */}
+              {effectiveWeather && (
+                <div className="greeting-weather-pill" style={{ userSelect: "none" }}>
+                  {effectiveWeather.isThunder ? (
+                    <CloudLightning size={13} style={{ color: greetingData.isDark ? "#C084FC" : "#7C3AED" }} />
+                  ) : effectiveWeather.isRain ? (
+                    <CloudRain size={13} style={{ color: greetingData.isDark ? "#38BDF8" : "#0284C7" }} />
+                  ) : effectiveWeather.isNight ? (
+                    <Moon size={13} style={{ color: greetingData.isDark ? "#818CF8" : "#4F46E5" }} />
+                  ) : effectiveWeather.isWarm ? (
+                    <Sun size={13} style={{ color: "#D97706" }} />
+                  ) : (
+                    <CloudSun size={13} style={{ color: greetingData.isDark ? "#38BDF8" : "#0284C7" }} />
+                  )}
+                  <span className="greeting-weather-temp">{effectiveWeather.tempC}°C</span>
+                  <span className="greeting-weather-label">• {effectiveWeather.label}</span>
+                </div>
+              )}
+            </div>
+            <div className="greeting-scenario-sub">
+              <span className="greeting-message-text">{scenario.message}</span>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div className="greeting-side-actions" style={{ position: "relative", zIndex: 2 }}>
+        <span className="greeting-date-pill">{formattedDate}</span>
+        {scenario.actionLabel && scenario.targetPanel && onAction && (
+          <button
+            type="button"
+            className="btn btn-primary btn-sm greeting-action-btn"
+            onClick={() => onAction(scenario.targetPanel!)}
+          >
+            <span>{scenario.actionLabel}</span>
+            <ArrowRight size={13} />
+          </button>
+        )}
+      </div>
+    </div>
+  );
+}
+
+function DashboardPanel({ summary, funnel, centreStats, students, leads, onOpenLead, isFiltered }: { summary: Summary | null; funnel: { stage: string; count: number }[]; centreStats: { centre: string; leads: number; enrolled: number }[]; students: Student[]; leads: Lead[]; onOpenLead: (lead: Lead) => void; isFiltered?: boolean }) {
+  const activeLeads = summary ? summary.totalLeads : leads.length;
+  const enrolled = summary ? summary.enrolled : students.length;
+  const conversion = summary ? summary.conversion : (activeLeads ? Math.round((enrolled / Math.max(activeLeads, 1)) * 100) : 0);
+  const collected = summary ? summary.revenue : students.reduce((sum, student) => sum + (student.paidAmount || 0), 0);
+  const due = summary ? summary.pending : students.reduce((sum, student) => sum + dueAmount(student), 0);
+  const funnelRows = stages.map((stage) => {
+    const matched = funnel.find((item) => item.stage === stage);
+    return {
+      stage,
+      count: matched ? matched.count : (summary ? 0 : (stage === "Enrolled" ? enrolled : 0)),
+    };
+  });
   const maxCount = Math.max(...funnelRows.map((item) => item.count), 1);
   return (
     <>
       <div className="grid-metrics">
-        <MetricCard label="Active leads" value={activeLeads} dot="#4F6BFF" delta="this month" />
-        <MetricCard label="Enrolled" value={enrolled} dot="#17A673" delta={`+${enrolled} total`} />
+        <MetricCard label="Active leads" value={activeLeads} dot="#4F6BFF" delta={isFiltered ? "in selected period" : "this month"} />
+        <MetricCard label="Enrolled" value={enrolled} dot="#17A673" delta={isFiltered ? "enrolled in period" : `+${enrolled} total`} />
         <MetricCard label="Conversion" value={`${conversion}%`} dot="#8B5CF6" delta="lead -> student" />
-        <MetricCard label="Collected" value={formatCurrency(collected)} dot="#14B8A6" delta={`across ${students.length} students`} />
-        <MetricCard label="Due" value={formatCurrency(due)} dot="#E5484D" delta="pending collection" down />
+        <MetricCard label="Collected" value={formatCurrency(collected)} dot="#14B8A6" delta={isFiltered ? "collected in period" : `across ${students.length} students`} />
+        <MetricCard label="Due" value={formatCurrency(due)} dot="#E5484D" delta={isFiltered ? "pending in period" : "pending collection"} down />
       </div>
       <div className="two-col">
         <div className="card"><div className="card-head"><div><h3>Admissions funnel</h3><div className="sub">New Lead {"->"} Alumni, current scope</div></div></div><div className="card-body funnel-wrap">
@@ -6482,15 +8772,35 @@ function DropoutModal({
   );
 }
 
-function StudentsPanel({ title, students, meta, batches = [], canAssign = false, canDelete = false, teachers = [], onPage, onPatch, onDelete, onEdit, onOpen }: { title: string; students: Student[]; meta: PaginationMeta | null; batches?: Batch[]; canAssign?: boolean; canDelete?: boolean; teachers?: Counsellor[]; onPage: (page: number) => void; onPatch: (id: string, updates: Partial<Student>) => void; onDelete: (student: Student) => void; onEdit: (student: Student) => void; onOpen: (student: Student) => void }) {
+function StudentsPanel({ title, students, meta, batches = [], canAssign = false, canDelete = false, canApproveDelete, onReviewDelete, onViewDeleteStatus, teachers = [], onPage, onPatch, onDelete, onEdit, onOpen }: { title: string; students: Student[]; meta: PaginationMeta | null; batches?: Batch[]; canAssign?: boolean; canDelete?: boolean; canApproveDelete?: (student: Student) => boolean; onReviewDelete?: (student: Student) => void; onViewDeleteStatus?: (student: Student) => void; teachers?: Counsellor[]; onPage: (page: number) => void; onPatch: (id: string, updates: Partial<Student>) => void; onDelete: (student: Student) => void; onEdit: (student: Student) => void; onOpen: (student: Student) => void }) {
   const [search, setSearch] = useState("");
   const [statusFilter, setStatusFilter] = useState("");
+  const [sourceFilter, setSourceFilter] = useState("");
   const [dropoutStudentTarget, setDropoutStudentTarget] = useState<Student | null>(null);
+
+  const availableSources = useMemo(() => {
+    const set = new Set<string>();
+    sources.forEach((s) => set.add(s));
+    set.add("Website");
+    students.forEach((s) => {
+      if (s.source) set.add(s.source);
+    });
+    return Array.from(set);
+  }, [students]);
+
+  const [deletionOnlyFilter, setDeletionOnlyFilter] = useState(false);
+
+  const pendingDeletionCount = useMemo(() => {
+    return students.filter((s) => s.deleteApproval?.status === "pending").length;
+  }, [students]);
+
   const normalized = search.trim().toLowerCase();
   const filteredStudents = students.filter((student) => {
-    const matchesSearch = !normalized || [student.fullName, student.admissionNumber, student.phone, student.studentLocation, student.course, student.centre, student.batch].some((value) => String(value || "").toLowerCase().includes(normalized));
+    const matchesSearch = !normalized || [student.fullName, student.admissionNumber, student.phone, student.studentLocation, student.course, student.centre, student.batch, student.source].some((value) => String(value || "").toLowerCase().includes(normalized));
     const matchesStatus = !statusFilter || normalizeStudentStatus(student.status) === statusFilter;
-    return matchesSearch && matchesStatus;
+    const matchesSource = !sourceFilter || String(student.source || "Website").toLowerCase() === sourceFilter.toLowerCase();
+    const matchesDeletion = !deletionOnlyFilter || student.deleteApproval?.status === "pending";
+    return matchesSearch && matchesStatus && matchesSource && matchesDeletion;
   });
 
   return (
@@ -6498,12 +8808,42 @@ function StudentsPanel({ title, students, meta, batches = [], canAssign = false,
       <div className="filter-bar students-filter-bar">
         <input className="fbtn" value={search} onChange={(event) => setSearch(event.target.value)} placeholder={title === "My candidates" ? "Search my candidates..." : "Search all candidates..."} />
         {canAssign && <select className="fbtn" value={statusFilter} onChange={(event) => setStatusFilter(event.target.value)}><option value="">All statuses</option>{studentStatuses.map((status) => <option key={status} value={status}>{studentStatusLabel(status)}</option>)}</select>}
+        <select className="fbtn" value={sourceFilter} onChange={(event) => setSourceFilter(event.target.value)}>
+          <option value="">All sources</option>
+          {availableSources.map((source) => (
+            <option key={source} value={source}>{source}</option>
+          ))}
+        </select>
+        {pendingDeletionCount > 0 && (
+          <button
+            type="button"
+            className={`btn btn-sm ${deletionOnlyFilter ? "btn-danger" : "btn-soft"}`}
+            style={{
+              display: "inline-flex",
+              alignItems: "center",
+              gap: 6,
+              fontSize: "12px",
+              padding: "4px 10px",
+              height: "34px",
+              background: deletionOnlyFilter ? "#DC2626" : "#FEF2F2",
+              color: deletionOnlyFilter ? "#FFFFFF" : "#DC2626",
+              borderColor: "#FCA5A5",
+              fontWeight: 600,
+            }}
+            onClick={() => setDeletionOnlyFilter((prev) => !prev)}
+            title="Filter to show only candidates with pending deletion requests"
+          >
+            <ShieldAlert size={14} />
+            <span>Deletion Requests ({pendingDeletionCount})</span>
+            {deletionOnlyFilter && <X size={12} />}
+          </button>
+        )}
         <div className="filter-spacer" />
-        <button className="btn btn-ghost" onClick={() => downloadExcelFile(["Candidate", "Admission No", "Admission Date", "Course", "Centre", "Batch", "Counsellor", "Caller", "Teacher", "Fee", "Paid", "Status", "Dropout Reason"], filteredStudents.map((student) => [student.fullName, student.admissionNumber || "-", student.createdAt ? formatDate(student.createdAt) : "-", student.course, student.centre, student.batch, student.counsellorName || student.counsellor || "-", student.callerName || "-", batchFacultyForStudent(student, batches) || "Unassigned", student.totalFee, student.paidAmount, studentStatusLabel(student.status), student.dropoutReason || "-"]), "imed-candidates")}><Download size={15} /> Download Excel</button>
+        <button className="btn btn-ghost" onClick={() => downloadExcelFile(["Candidate", "Admission No", "Admission Date", "Course", "Source", "Centre", "Batch", "Counsellor", "Caller", "Teacher", "Fee", "Paid", "Status", "Dropout Reason"], filteredStudents.map((student) => [student.fullName, student.admissionNumber || "-", student.createdAt ? formatDate(student.createdAt) : "-", student.course, student.source || "Website", student.centre, student.batch, student.counsellorName || student.counsellor || "-", student.callerName || "-", batchFacultyForStudent(student, batches) || "Unassigned", student.totalFee, student.paidAmount, studentStatusLabel(student.status), student.dropoutReason || "-"]), "imed-candidates")}><Download size={15} /> Download Excel</button>
       </div>
       <div className="card students-card">
         <div className="card-body students-table-body">
-          <StudentPrototypeTable students={filteredStudents} batches={batches} canAssign={canAssign} canDelete={canDelete} teachers={teachers} onPatch={onPatch} onDelete={onDelete} onEdit={onEdit} onOpen={onOpen} onPromptDropout={(st) => setDropoutStudentTarget(st)} />
+          <StudentPrototypeTable students={filteredStudents} batches={batches} canAssign={canAssign} canDelete={canDelete} canApproveDelete={canApproveDelete} onReviewDelete={onReviewDelete} onViewDeleteStatus={onViewDeleteStatus} teachers={teachers} onPatch={onPatch} onDelete={onDelete} onEdit={onEdit} onOpen={onOpen} onPromptDropout={(st) => setDropoutStudentTarget(st)} />
         </div>
         <Pager meta={meta} label="students" onPage={onPage} />
       </div>
@@ -6523,21 +8863,54 @@ function StudentsPanel({ title, students, meta, batches = [], canAssign = false,
   );
 }
 
-function StudentPrototypeTable({ students, batches, canAssign, canDelete, teachers, onPatch, onDelete, onEdit, onOpen, onPromptDropout }: { students: Student[]; batches: Batch[]; canAssign: boolean; canDelete: boolean; teachers: Counsellor[]; onPatch: (id: string, updates: Partial<Student>) => void; onDelete: (student: Student) => void; onEdit: (student: Student) => void; onOpen: (student: Student) => void; onPromptDropout: (student: Student) => void }) {
+function StudentPrototypeTable({ students, batches, canAssign, canDelete, canApproveDelete, onReviewDelete, onViewDeleteStatus, teachers, onPatch, onDelete, onEdit, onOpen, onPromptDropout }: { students: Student[]; batches: Batch[]; canAssign: boolean; canDelete: boolean; canApproveDelete?: (student: Student) => boolean; onReviewDelete?: (student: Student) => void; onViewDeleteStatus?: (student: Student) => void; teachers: Counsellor[]; onPatch: (id: string, updates: Partial<Student>) => void; onDelete: (student: Student) => void; onEdit: (student: Student) => void; onOpen: (student: Student) => void; onPromptDropout: (student: Student) => void }) {
   return (
     <div className="table-wrap students-table-wrap">
       <table className="students-table">
-        <thead><tr><th>Candidate</th><th>Course</th><th>Centre</th><th>Admission Date</th><th>Batch</th><th>Teacher</th><th>Fee</th><th>Paid</th><th>Status</th><th /></tr></thead>
+        <thead><tr><th>Candidate</th><th>Course</th><th>Source</th><th>Centre</th><th>Admission Date</th><th>Batch</th><th>Teacher</th><th>Fee</th><th>Paid</th><th>Status</th><th /></tr></thead>
         <tbody>
           {students.map((student) => {
             const netFee = Math.max(1, (student.totalFee || 0) - (student.discountAmount || 0));
             const paidPct = Math.min(100, Math.round(((student.paidAmount || 0) / netFee) * 100));
             const displayTeacher = batchFacultyForStudent(student, batches);
             const hasTeacherOption = !displayTeacher || teachers.some((teacher) => teacher.name === displayTeacher);
+            const isDeletionPending = student.deleteApproval?.status === "pending";
+            const canApproveThis = canApproveDelete?.(student);
             return (
               <tr className="clickable" key={student._id} onClick={() => onOpen(student)}>
-                <td><div className="lead-name-cell"><span className="avatar lead-avatar">{initials(student.fullName)}</span><div><div className="cell-name">{student.fullName}</div><div className="cell-sub">{student.admissionNumber || student.studentLocation || student.phone}</div></div></div></td>
+                <td>
+                  <div className="lead-name-cell">
+                    <span className="avatar lead-avatar">{initials(student.fullName)}</span>
+                    <div>
+                      <div className="cell-name" style={{ display: "flex", alignItems: "center", gap: 6, flexWrap: "wrap" }}>
+                        <span>{student.fullName}</span>
+                        {isDeletionPending && (
+                          <span
+                            className="badge"
+                            style={{
+                              background: "#FEF2F2",
+                              color: "#DC2626",
+                              border: "1px solid #FCA5A5",
+                              fontSize: "10px",
+                              padding: "1px 6px",
+                              fontWeight: 700,
+                              display: "inline-flex",
+                              alignItems: "center",
+                              gap: 4,
+                            }}
+                            title={`Deletion requested by ${student.deleteApproval?.requestedBy || "staff"}: "${student.deleteApproval?.reason || ""}"`}
+                          >
+                            <AlertTriangle size={11} style={{ flexShrink: 0 }} />
+                            <span>Deletion Pending</span>
+                          </span>
+                        )}
+                      </div>
+                      <div className="cell-sub">{student.admissionNumber || student.studentLocation || student.phone}</div>
+                    </div>
+                  </div>
+                </td>
                 <td>{courseShortCode(student.course)}</td>
+                <td><span className="badge badge-gray">{student.source || "Website"}</span></td>
                 <td>{student.centre || "-"}</td>
                 <td className="mono" style={{ whiteSpace: "nowrap", fontSize: "12px" }}>{student.createdAt ? formatDate(student.createdAt) : "-"}</td>
                 <td>{student.batch || <span className="cell-sub">Unassigned</span>}</td>
@@ -6570,12 +8943,42 @@ function StudentPrototypeTable({ students, batches, canAssign, canDelete, teache
                 <td onClick={(event) => event.stopPropagation()}><div className="action-icons">
                   <button className="action-icon-btn" title="View" onClick={() => onOpen(student)}><Eye size={14} /></button>
                   <button className="action-icon-btn action-icon-primary" title="Update student" onClick={() => onEdit(student)}><Pencil size={14} /></button>
-                  {canDelete && <button className="action-icon-btn action-icon-danger" title="Delete student" onClick={() => onDelete(student)}><Trash2 size={14} /></button>}
+                  {canDelete && (
+                    isDeletionPending ? (
+                      canApproveThis ? (
+                        <button
+                          className="action-icon-btn"
+                          style={{ background: "#FEF2F2", color: "#DC2626", borderColor: "#FCA5A5" }}
+                          title="Review candidate deletion request (Approve & Delete / Reject)"
+                          onClick={() => onReviewDelete ? onReviewDelete(student) : onDelete(student)}
+                        >
+                          <ShieldAlert size={14} />
+                        </button>
+                      ) : (
+                        <button
+                          className="action-icon-btn"
+                          style={{ background: "#FFFBEB", color: "#D97706", borderColor: "#FDE68A" }}
+                          title="Candidate deletion requested - Pending administrative review"
+                          onClick={() => onViewDeleteStatus ? onViewDeleteStatus(student) : onDelete(student)}
+                        >
+                          <Clock size={14} />
+                        </button>
+                      )
+                    ) : (
+                      <button
+                        className="action-icon-btn action-icon-danger"
+                        title={canApproveThis ? "Delete candidate" : "Request candidate deletion"}
+                        onClick={() => onDelete(student)}
+                      >
+                        <Trash2 size={14} />
+                      </button>
+                    )
+                  )}
                 </div></td>
               </tr>
             );
           })}
-          {!students.length && <tr><td colSpan={10}><div className="empty-state"><h4>No candidates found</h4><p>Adjust filters or check back later.</p></div></td></tr>}
+          {!students.length && <tr><td colSpan={11}><div className="empty-state"><h4>No candidates found</h4><p>Adjust filters or check back later.</p></div></td></tr>}
         </tbody>
       </table>
     </div>
@@ -7705,6 +10108,18 @@ function FinancePanel({
   onPreviewCashDepositProof,
   onDownloadPaymentProof,
   onPreviewPaymentProof,
+  cashDepositApprovals = [],
+  pendingCashDepositApprovalsCount = 0,
+  onOpenCashDepositReview,
+  canUserApproveCashDeposit,
+  allCentres = [],
+  referralsSummary = null,
+  referralItems = [],
+  referralsLoading = false,
+  onLoadReferrals,
+  onOpenReferralSettlement,
+  onRevertReferralSettlement,
+  onPreviewReferralProof,
 }: {
   students: Student[];
   meta: PaginationMeta | null;
@@ -7748,25 +10163,76 @@ function FinancePanel({
   onPreviewCashDepositProof?: (student: Student, paymentIndex: number, deposit: CashDeposit, depositIndex: number) => void;
   onDownloadPaymentProof?: (student: { _id?: string; studentId?: string; fullName?: string; studentName?: string }, payment: { amount?: number; proof?: DocumentFile; proofs?: DocumentFile[] }, index: number | string, proofIndex?: number) => void;
   onPreviewPaymentProof?: (student: { _id?: string; studentId?: string; fullName?: string; studentName?: string }, payment: { amount?: number; proof?: DocumentFile; proofs?: DocumentFile[] }, index: number | string, proofIndex?: number) => void;
+  cashDepositApprovals?: CashDepositApprovalItem[];
+  pendingCashDepositApprovalsCount?: number;
+  onOpenCashDepositReview?: (item: CashDepositApprovalItem) => void;
+  canUserApproveCashDeposit?: (deposit: CashDeposit | CashDepositApprovalItem, student?: Student) => boolean;
+  allCentres?: Centre[];
+  referralsSummary?: ReferralSummary | null;
+  referralItems?: ReferralItem[];
+  referralsLoading?: boolean;
+  onLoadReferrals?: (centreFilter?: string) => Promise<void>;
+  onOpenReferralSettlement?: (student: Student | ReferralItem) => void;
+  onRevertReferralSettlement?: (studentId: string) => Promise<void>;
+  onPreviewReferralProof?: (studentId: string, fileName?: string) => Promise<void>;
 }) {
   const showAnalytics = Boolean(isHeadSuperAdmin || isCenterAdmin);
-  const [subTab, setSubTab] = useState<"analytics" | "cash" | "ledger" | "approvals" | "paymentApprovals">(showAnalytics ? "analytics" : "cash");
+  const [subTab, setSubTab] = useState<"analytics" | "cash" | "ledger" | "approvals" | "paymentApprovals" | "referrals">(showAnalytics ? "analytics" : "cash");
   const [approvalStatusFilter, setApprovalStatusFilter] = useState<"pending" | "approved" | "rejected" | "all">("pending");
   const [approvalSearch, setApprovalSearch] = useState("");
   const [paymentApprovalStatusFilter, setPaymentApprovalStatusFilter] = useState<"pending" | "approved" | "rejected" | "all">("pending");
   const [paymentApprovalSearch, setPaymentApprovalSearch] = useState("");
+  const [referralStatusFilter, setReferralStatusFilter] = useState<"all" | "eligible" | "awaiting" | "settled">("all");
+  const [referralSearch, setReferralSearch] = useState("");
   const [breakdownTab, setBreakdownTab] = useState<"centre" | "mode" | "course">("centre");
   const [recentSearch, setRecentSearch] = useState("");
   const [recentModeFilter, setRecentModeFilter] = useState("all");
   const [recentPage, setRecentPage] = useState(1);
   const [recentPageSize, setRecentPageSize] = useState(10);
   const [hoveredMonth, setHoveredMonth] = useState<FeeMonthlyTrend | null>(null);
+  const [challanPendingOnly, setChallanPendingOnly] = useState(false);
+
+  const filteredReferrals = useMemo(() => {
+    let list = referralItems;
+    if (referralStatusFilter === "eligible") {
+      list = list.filter((r) => r.settlement?.status !== "settled" && r.isEligible);
+    } else if (referralStatusFilter === "awaiting") {
+      list = list.filter((r) => r.settlement?.status !== "settled" && !r.isEligible);
+    } else if (referralStatusFilter === "settled") {
+      list = list.filter((r) => r.settlement?.status === "settled");
+    }
+    if (referralSearch.trim()) {
+      const q = referralSearch.toLowerCase().trim();
+      list = list.filter(
+        (r) =>
+          r.fullName.toLowerCase().includes(q) ||
+          r.phone.toLowerCase().includes(q) ||
+          (r.admissionNumber || "").toLowerCase().includes(q) ||
+          r.refereeName.toLowerCase().includes(q) ||
+          (r.refereePhone || "").toLowerCase().includes(q) ||
+          (r.centre || "").toLowerCase().includes(q) ||
+          (r.course || "").toLowerCase().includes(q)
+      );
+    }
+    return list;
+  }, [referralItems, referralStatusFilter, referralSearch]);
 
   const billed = students.reduce((sum, student) => sum + (student.totalFee || 0), 0);
   const collected = students.reduce((sum, student) => sum + (student.paidAmount || 0), 0);
   const discount = students.reduce((sum, student) => sum + (student.discountAmount || 0), 0);
   const due = students.reduce((sum, student) => sum + dueAmount(student), 0);
   const cashItems = students.flatMap((student) => (student.payments || []).map((payment, index) => ({ student, payment, index })).filter(({ payment }) => (payment.mode || "Cash") === "Cash"));
+  const pendingChallanCount = useMemo(() => {
+    return cashItems.reduce((count, item) => {
+      const pendingDeposits = (item.payment.cashDeposits || []).filter((d) => d.status === "pending");
+      return count + pendingDeposits.length;
+    }, 0);
+  }, [cashItems]);
+
+  const filteredCashItems = useMemo(() => {
+    if (!challanPendingOnly) return cashItems;
+    return cashItems.filter((item) => (item.payment.cashDeposits || []).some((d) => d.status === "pending"));
+  }, [cashItems, challanPendingOnly]);
   const cashCollected = cashItems.reduce((sum, item) => sum + Number(item.payment.amount || 0), 0);
   const cashDeposited = cashItems.reduce((sum, item) => sum + depositedCashAmount(item.payment), 0);
   const pendingCash = Math.max(0, cashCollected - cashDeposited);
@@ -7925,6 +10391,21 @@ function FinancePanel({
             {pendingPaymentApprovalsCount > 0 && (
               <span className="badge badge-red" style={{ fontSize: 10, padding: "1px 5px", borderRadius: 999 }}>
                 {pendingPaymentApprovalsCount}
+              </span>
+            )}
+          </button>
+          <button
+            type="button"
+            className={`pill-tab ${subTab === "referrals" ? "active" : ""}`}
+            onClick={() => {
+              setSubTab("referrals");
+              onLoadReferrals?.(feeCentreFilter);
+            }}
+          >
+            <Gift size={14} /> <span>Referral Payouts</span>
+            {Boolean(referralsSummary && referralsSummary.eligibleCount > 0) && (
+              <span className="badge badge-amber" style={{ fontSize: 10, padding: "1px 5px", borderRadius: 999 }}>
+                {referralsSummary?.eligibleCount}
               </span>
             )}
           </button>
@@ -8646,6 +11127,55 @@ function FinancePanel({
               <h3>Cash collected - Bank Deposit</h3>
               <div className="sub">Track cash in hand and verified bank deposits</div>
             </div>
+            <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+              {pendingChallanCount > 0 && (
+                <button
+                  type="button"
+                  className={`btn btn-sm ${challanPendingOnly ? "btn-danger" : "btn-soft"}`}
+                  style={{
+                    display: "inline-flex",
+                    alignItems: "center",
+                    gap: 6,
+                    fontSize: "12px",
+                    padding: "4px 10px",
+                    height: "32px",
+                    background: challanPendingOnly ? "#DC2626" : "#FEF2F2",
+                    color: challanPendingOnly ? "#FFFFFF" : "#DC2626",
+                    borderColor: "#FCA5A5",
+                    fontWeight: 600,
+                  }}
+                  onClick={() => setChallanPendingOnly((prev) => !prev)}
+                  title="Filter to show only payments with pending challans"
+                >
+                  <ShieldCheck size={14} />
+                  <span>Pending Challans ({pendingChallanCount})</span>
+                  {challanPendingOnly && <X size={12} />}
+                </button>
+              )}
+              <button
+                type="button"
+                className="btn btn-sm btn-ghost"
+                onClick={async () => {
+                  if (onRefreshStats) await onRefreshStats();
+                  toast.success("Cash collections & challans refreshed");
+                }}
+                title="Refresh cash collections and challans"
+                style={{
+                  display: "inline-flex",
+                  alignItems: "center",
+                  gap: 6,
+                  fontSize: "12px",
+                  height: "32px",
+                  border: "1px solid var(--border)",
+                  borderRadius: "6px",
+                  padding: "4px 10px",
+                  background: "#fff",
+                }}
+              >
+                <RefreshCw size={13} />
+                <span>Refresh</span>
+              </button>
+            </div>
           </div>
           <div className="table-wrap finance-table-wrap cash-deposit-wrap">
             <table className="finance-table cash-deposit-table">
@@ -8654,15 +11184,17 @@ function FinancePanel({
                   <th>Student</th>
                   <th>Collected</th>
                   <th>Deposited</th>
-                  <th>Pending</th>
+                  <th>Status</th>
                   <th>Deposit details</th>
                   <th>Proof</th>
                 </tr>
               </thead>
               <tbody>
-                {cashItems.map(({ student, payment, index }) => {
+                {filteredCashItems.map(({ student, payment, index }) => {
                   const deposited = depositedCashAmount(payment);
+                  const verified = verifiedCashDepositAmount(payment);
                   const pending = pendingCashDepositAmount(payment);
+                  const hasPendingVerification = (payment.cashDeposits || []).some((d) => d.status === "pending");
                   return (
                     <tr key={`${student._id}-${index}`}>
                       <td>
@@ -8677,23 +11209,103 @@ function FinancePanel({
                         </button>
                       </td>
                       <td className="mono">{formatCurrency(payment.amount || 0)}</td>
-                      <td className="mono">{formatCurrency(deposited)}</td>
-                      <td>
-                        <span className={`tag ${pending <= 0 ? "green" : "amber"}`}>
-                          {pending <= 0 ? "Deposited" : formatCurrency(pending)}
-                        </span>
+                      <td className="mono">
+                        <div>{formatCurrency(deposited)}</div>
+                        {verified !== deposited && (
+                          <div style={{ fontSize: "10.5px", color: "#059669" }}>
+                            Verified: {formatCurrency(verified)}
+                          </div>
+                        )}
                       </td>
                       <td>
                         {pending <= 0 ? (
-                          <div className="cash-deposit-history">
-                            {(payment.cashDeposits || []).map((deposit, depositIndex) => (
-                              <div key={`${deposit.referenceNumber || depositIndex}-${deposit.amount || 0}`}>
-                                <b>{formatCurrency(deposit.amount || 0)}</b>
-                                <span>{deposit.bank || "-"} | {deposit.referenceNumber || "-"} | {formatDate(deposit.depositedAt)} | By {deposit.depositedBy || deposit.by || "-"}</span>
-                              </div>
-                            ))}
-                          </div>
+                          hasPendingVerification ? (
+                            <span className="badge badge-amber" style={{ background: "#FFFBEB", color: "#D97706", border: "1px solid #FCD34D", fontSize: "10.5px", display: "inline-flex", alignItems: "center", gap: 3 }}>
+                              <Clock size={11} /> Verification Pending
+                            </span>
+                          ) : (
+                            <span className="tag green">Verified</span>
+                          )
                         ) : (
+                          <span className="tag amber">
+                            Pending {formatCurrency(pending)}
+                          </span>
+                        )}
+                      </td>
+                      <td>
+                        {(payment.cashDeposits && payment.cashDeposits.length > 0) && (
+                          <div className="cash-deposit-history" style={{ marginBottom: pending > 0 ? 8 : 0 }}>
+                            {payment.cashDeposits.map((deposit, depositIndex) => {
+                              const dStatus = deposit.status || "verified";
+                              const canApprove = canUserApproveCashDeposit?.(deposit, student);
+                              return (
+                                <div key={`${deposit._id || deposit.referenceNumber || depositIndex}-${deposit.amount || 0}`} style={{ marginBottom: 6, paddingBottom: 6, borderBottom: "1px dashed var(--border)" }}>
+                                  <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 8, flexWrap: "wrap" }}>
+                                    <div>
+                                      <b>{formatCurrency(deposit.amount || 0)}</b>
+                                      <span style={{ marginLeft: 6, fontSize: "11px", color: "var(--text-muted)" }}>{deposit.bank || "-"} | {deposit.referenceNumber || "-"}</span>
+                                    </div>
+                                    <div style={{ display: "inline-flex", alignItems: "center", gap: 6 }}>
+                                      {dStatus === "verified" && (
+                                        <span className="badge badge-green" style={{ fontSize: "10px", padding: "1px 6px", display: "inline-flex", alignItems: "center", gap: 3 }}>
+                                          <CheckCircle2 size={11} /> Verified {deposit.verifiedBy ? `(${deposit.verifiedBy})` : ""}
+                                        </span>
+                                      )}
+                                      {dStatus === "pending" && (
+                                        <span className="badge badge-amber" style={{ fontSize: "10px", padding: "1px 6px", display: "inline-flex", alignItems: "center", gap: 3, background: "#FFFBEB", color: "#D97706", border: "1px solid #FCD34D" }}>
+                                          <Clock size={11} /> Pending Verification
+                                        </span>
+                                      )}
+                                      {dStatus === "rejected" && (
+                                        <span className="badge badge-danger" style={{ fontSize: "10px", padding: "1px 6px", display: "inline-flex", alignItems: "center", gap: 3, background: "#FEF2F2", color: "#DC2626", border: "1px solid #FCA5A5" }} title={deposit.rejectionReason || "Challan rejected"}>
+                                          <XCircle size={11} /> Rejected
+                                        </span>
+                                      )}
+                                      {dStatus === "pending" && canApprove && (
+                                        <button
+                                          type="button"
+                                          className="btn btn-xs btn-primary"
+                                          style={{ padding: "2px 8px", fontSize: "10.5px", height: "auto", background: "#059669", borderColor: "#047857" }}
+                                          onClick={() => onOpenCashDepositReview?.({
+                                            studentId: student._id,
+                                            studentName: student.fullName,
+                                            phone: student.phone,
+                                            admissionNumber: student.admissionNumber,
+                                            centre: student.centre,
+                                            course: student.course,
+                                            franchiseId: student.franchiseId,
+                                            paymentIndex: index,
+                                            paymentAmount: payment.amount || 0,
+                                            depositId: String(deposit._id || depositIndex),
+                                            depositIndex,
+                                            amount: deposit.amount || 0,
+                                            bank: deposit.bank || "",
+                                            referenceNumber: deposit.referenceNumber || "",
+                                            note: deposit.note,
+                                            proof: deposit.proof,
+                                            depositedBy: deposit.depositedBy || deposit.by || "",
+                                            depositedAt: deposit.depositedAt || "",
+                                            status: "pending",
+                                            approverScope: deposit.approverScope,
+                                            isMultiBranch: deposit.isMultiBranch,
+                                          })}
+                                        >
+                                          <ShieldCheck size={11} /> Verify Challan
+                                        </button>
+                                      )}
+                                    </div>
+                                  </div>
+                                  <div style={{ fontSize: "10.5px", color: "var(--text-muted)", marginTop: 2 }}>
+                                    {formatDate(deposit.depositedAt)} | By {deposit.depositedBy || deposit.by || "-"}
+                                    {deposit.isMultiBranch ? " • Multi-Branch (Super/Center Admin)" : " • Single Branch (Super Admin)"}
+                                    {deposit.rejectionReason && <span style={{ color: "#DC2626", display: "block" }}>Reason: "{deposit.rejectionReason}"</span>}
+                                  </div>
+                                </div>
+                              );
+                            })}
+                          </div>
+                        )}
+                        {pending > 0 && (
                           <form className="cash-deposit-form" onSubmit={(event) => onCashDeposit(event, student, payment, index)}>
                             <input name="amount" type="number" min="1" max={pending} step="1" required placeholder="Amount" />
                             <input name="depositedAt" type="date" defaultValue={dateInputValue()} required />
@@ -8721,12 +11333,12 @@ function FinancePanel({
                     </tr>
                   );
                 })}
-                {!cashItems.length && (
+                {!filteredCashItems.length && (
                   <tr>
                     <td colSpan={6}>
                       <div className="empty-state">
-                        <h4>No cash collections</h4>
-                        <p>Cash payments will appear here after recording.</p>
+                        <h4>{challanPendingOnly ? "No pending challans" : "No cash collections"}</h4>
+                        <p>{challanPendingOnly ? "All cash deposit challans have been verified." : "Cash payments will appear here after recording."}</p>
                       </div>
                     </td>
                   </tr>
@@ -8898,6 +11510,10 @@ function FinancePanel({
               <tbody>
                 {feeApprovals
                   .filter((item) => {
+                    const currentFilter = feeCentreFilter !== "all" ? feeCentreFilter : "";
+                    if (currentFilter && item.centre && item.centre.toLowerCase() !== currentFilter.toLowerCase()) {
+                      return false;
+                    }
                     if (!approvalSearch.trim()) return true;
                     const q = approvalSearch.toLowerCase().trim();
                     return (
@@ -8954,9 +11570,7 @@ function FinancePanel({
                         </td>
                         <td style={{ minWidth: 160, verticalAlign: "middle" }}>
                           {approval.status === "pending" && (
-                            <span className="tag amber" style={{ display: "inline-flex", alignItems: "center", gap: 5, padding: "5px 10px", fontSize: 11.5, fontWeight: 700 }}>
-                              <Clock size={12} /> Pending Approval
-                            </span>
+                            <span className="cell-sub">—</span>
                           )}
                           {approval.status === "approved" && (
                             <div>
@@ -9004,6 +11618,22 @@ function FinancePanel({
                                   <X size={12} /> Reject
                                 </button>
                               </>
+                            )}
+                            {!canReview && approval.status === "approved" && (
+                              <span
+                                className="badge badge-green"
+                                style={{ display: "inline-flex", alignItems: "center", gap: 4, fontSize: 11.5, padding: "3px 8px" }}
+                              >
+                                <Check size={12} /> Approved
+                              </span>
+                            )}
+                            {!canReview && approval.status === "rejected" && (
+                              <span
+                                className="badge badge-red"
+                                style={{ display: "inline-flex", alignItems: "center", gap: 4, fontSize: 11.5, padding: "3px 8px" }}
+                              >
+                                <X size={12} /> Rejected
+                              </span>
                             )}
                             <button
                               type="button"
@@ -9122,6 +11752,8 @@ function FinancePanel({
               <tbody>
                 {paymentApprovals
                   .filter((item) => {
+                    const currentFilter = feeCentreFilter !== "all" ? feeCentreFilter : "";
+                    if (currentFilter && item.centre && item.centre.toLowerCase() !== currentFilter.toLowerCase()) return false;
                     if (paymentApprovalStatusFilter !== "all" && (item.status || "approved") !== paymentApprovalStatusFilter) return false;
                     if (!paymentApprovalSearch.trim()) return true;
                     const q = paymentApprovalSearch.toLowerCase().trim();
@@ -9245,13 +11877,17 @@ function FinancePanel({
                           )}
                         </td>
                         <td style={{ minWidth: 160, verticalAlign: "middle" }}>
-                          <span
-                            className={`tag ${pStatus === "approved" ? "green" : pStatus === "rejected" ? "red" : "amber"}`}
-                            style={{ display: "inline-flex", alignItems: "center", gap: 5, padding: "5px 10px", fontSize: 11.5, fontWeight: 700 }}
-                            title={pStatus === "rejected" ? item.rejectionReason : undefined}
-                          >
-                            {pStatus === "approved" ? <><Check size={12} /> Approved</> : pStatus === "rejected" ? <><X size={12} /> Rejected</> : <><Clock size={12} /> Pending Verification</>}
-                          </span>
+                          {pStatus === "pending" ? (
+                            <span className="cell-sub">—</span>
+                          ) : (
+                            <span
+                              className={`tag ${pStatus === "approved" ? "green" : "red"}`}
+                              style={{ display: "inline-flex", alignItems: "center", gap: 5, padding: "5px 10px", fontSize: 11.5, fontWeight: 700 }}
+                              title={pStatus === "rejected" ? item.rejectionReason : undefined}
+                            >
+                              {pStatus === "approved" ? <><Check size={12} /> Approved</> : <><X size={12} /> Rejected</>}
+                            </span>
+                          )}
                           {pStatus === "rejected" && item.rejectionReason && (
                             <div className="cell-sub" style={{ color: "var(--red-700)", maxWidth: 160, marginTop: 4, whiteSpace: "normal" }}>
                               {item.rejectionReason}
@@ -9299,27 +11935,521 @@ function FinancePanel({
                       </tr>
                     );
                   })}
-                {paymentApprovals.filter((item) => paymentApprovalStatusFilter === "all" || (item.status || "approved") === paymentApprovalStatusFilter).length === 0 && (
-                  <tr>
-                    <td colSpan={10}>
-                      <div className="empty-state" style={{ padding: "36px 16px", textAlign: "center" }}>
-                        <ShieldCheck size={36} style={{ color: "var(--text-400)", opacity: 0.5, marginBottom: 8 }} />
-                        <h4>No payment requests in this view</h4>
-                        <p style={{ margin: 0, fontSize: 12 }}>
-                          {paymentApprovalStatusFilter === "pending"
-                            ? "All candidate payments have been verified and approved!"
-                            : "No payment history matching your criteria."}
-                        </p>
-                      </div>
-                    </td>
-                  </tr>
-                )}
+                {paymentApprovals.filter((item) => {
+                  const currentFilter = feeCentreFilter !== "all" ? feeCentreFilter : "";
+                  if (currentFilter && item.centre && item.centre.toLowerCase() !== currentFilter.toLowerCase()) return false;
+                  return paymentApprovalStatusFilter === "all" || (item.status || "approved") === paymentApprovalStatusFilter;
+                }).length === 0 && (
+                    <tr>
+                      <td colSpan={10}>
+                        <div className="empty-state" style={{ padding: "36px 16px", textAlign: "center" }}>
+                          <ShieldCheck size={36} style={{ color: "var(--text-400)", opacity: 0.5, marginBottom: 8 }} />
+                          <h4>No payment requests in this view</h4>
+                          <p style={{ margin: 0, fontSize: 12 }}>
+                            {paymentApprovalStatusFilter === "pending"
+                              ? "All candidate payments have been verified and approved!"
+                              : "No payment history matching your criteria."}
+                          </p>
+                        </div>
+                      </td>
+                    </tr>
+                  )}
               </tbody>
             </table>
           </div>
         </div>
       )}
+      {subTab === "referrals" && (
+        <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
+          {/* Top 4 Metrics Cards */}
+          <div className="finance-metrics" style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(210px, 1fr))", gap: 12 }}>
+            <div className="card stat-card" style={{ padding: "14px 16px" }}>
+              <div style={{ fontSize: 11, color: "var(--text-400)", fontWeight: 600, textTransform: "uppercase", letterSpacing: "0.5px" }}>
+                Total Referrals
+              </div>
+              <div style={{ fontSize: 24, fontWeight: 800, color: "var(--text-900)", marginTop: 4 }}>
+                {referralsSummary?.totalReferralsCount ?? 0}
+              </div>
+              <div style={{ fontSize: 11.5, color: "var(--text-500)", marginTop: 4 }}>
+                Referred candidate admissions
+              </div>
+            </div>
+
+            <div className="card stat-card" style={{ padding: "14px 16px" }}>
+              <div style={{ fontSize: 11, color: "var(--text-400)", fontWeight: 600, textTransform: "uppercase", letterSpacing: "0.5px" }}>
+                Total Incentive
+              </div>
+              <div style={{ fontSize: 24, fontWeight: 800, color: "var(--indigo-600)", marginTop: 4 }}>
+                {formatCurrency(referralsSummary?.totalIncentiveAmount ?? 0)}
+              </div>
+              <div style={{ fontSize: 11.5, color: "var(--text-500)", marginTop: 4 }}>
+                Overall promised liability
+              </div>
+            </div>
+
+            <div className="card stat-card" style={{ padding: "14px 16px" }}>
+              <div style={{ fontSize: 11, color: "var(--text-400)", fontWeight: 600, textTransform: "uppercase", letterSpacing: "0.5px" }}>
+                Settled Payouts
+              </div>
+              <div style={{ fontSize: 24, fontWeight: 800, color: "var(--green-700)", marginTop: 4 }}>
+                {formatCurrency(referralsSummary?.settledAmount ?? 0)}
+              </div>
+              <div style={{ fontSize: 11.5, color: "var(--green-600)", marginTop: 4 }}>
+                ✓ {referralsSummary?.settledCount ?? 0} referees paid
+              </div>
+            </div>
+
+            <div className="card stat-card" style={{ padding: "14px 16px" }}>
+              <div style={{ fontSize: 11, color: "var(--text-400)", fontWeight: 600, textTransform: "uppercase", letterSpacing: "0.5px" }}>
+                Pending Settlement
+              </div>
+              <div style={{ fontSize: 24, fontWeight: 800, color: "#D97706", marginTop: 4 }}>
+                {formatCurrency(referralsSummary?.pendingAmount ?? 0)}
+              </div>
+              <div style={{ fontSize: 11.5, color: "var(--text-500)", marginTop: 4 }}>
+                <span style={{ color: "#D97706", fontWeight: 700 }}>{referralsSummary?.eligibleCount ?? 0} eligible</span>
+                {" • "}
+                <span>{referralsSummary?.awaitingFeeCount ?? 0} awaiting fee</span>
+              </div>
+            </div>
+          </div>
+
+          {/* Referral Payouts Table Card */}
+          <div className="card finance-card">
+            <div className="card-head" style={{ display: "flex", justifyContent: "space-between", alignItems: "center", flexWrap: "wrap", gap: 10 }}>
+              <div>
+                <h3 style={{ margin: 0, fontSize: 16 }}>Referral Payouts Directory</h3>
+                <div className="sub">Track referee incentives and settlement payouts</div>
+              </div>
+              <div style={{ display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap" }}>
+                <div className="search-box" style={{ width: 220, height: 32 }}>
+                  <Search size={13} />
+                  <input
+                    type="text"
+                    placeholder="Search candidate, referee..."
+                    value={referralSearch}
+                    onChange={(e) => setReferralSearch(e.target.value)}
+                    style={{ fontSize: 12 }}
+                  />
+                </div>
+                <select
+                  value={referralStatusFilter}
+                  onChange={(e) => setReferralStatusFilter(e.target.value as any)}
+                  className="fbtn"
+                  style={{ height: 32, fontSize: 12, padding: "0 8px" }}
+                >
+                  <option value="all">All Referrals</option>
+                  <option value="eligible">🟡 Eligible for Payout</option>
+                  <option value="awaiting">⏳ Awaiting Candidate Fee</option>
+                  <option value="settled">🟢 Settled</option>
+                </select>
+                <button
+                  type="button"
+                  className="btn btn-sm btn-ghost"
+                  onClick={() => onLoadReferrals?.(feeCentreFilter)}
+                  title="Refresh Referrals"
+                  style={{ height: 32, padding: "0 10px", display: "inline-flex", alignItems: "center", gap: 5, border: "1px solid var(--border)", borderRadius: 6 }}
+                >
+                  <RefreshCw size={13} className={referralsLoading ? "spin-icon" : ""} />
+                  <span>Refresh</span>
+                </button>
+              </div>
+            </div>
+
+            <div className="table-wrap finance-table-wrap">
+              <table className="finance-table">
+                <thead>
+                  <tr>
+                    <th>Candidate</th>
+                    <th>Course & Branch</th>
+                    <th>Fee Collected</th>
+                    <th>Referee Name & Contact</th>
+                    <th style={{ textAlign: "right" }}>Incentive</th>
+                    <th>Status</th>
+                    <th style={{ textAlign: "center" }}>Action</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {filteredReferrals.length === 0 ? (
+                    <tr>
+                      <td colSpan={7} style={{ textAlign: "center", padding: 32, color: "var(--text-400)" }}>
+                        {referralsLoading ? "Loading referrals..." : "No referral records match the selected filters."}
+                      </td>
+                    </tr>
+                  ) : (
+                    filteredReferrals.map((item) => {
+                      const isSettled = item.settlement?.status === "settled";
+                      const feePercent = item.totalFee > 0 ? Math.round((item.paidAmount / item.totalFee) * 100) : 0;
+                      return (
+                        <tr key={item._id}>
+                          <td>
+                            <div className="cell-name">{item.fullName}</div>
+                            <div className="cell-sub mono">{item.admissionNumber || item.phone}</div>
+                          </td>
+                          <td>
+                            <div>{item.course || "—"}</div>
+                            <div className="cell-sub">{item.centre || "—"}</div>
+                          </td>
+                          <td>
+                            <div style={{ fontWeight: 600 }}>{formatCurrency(item.paidAmount)} / <span style={{ color: "var(--text-400)", fontWeight: 400 }}>{formatCurrency(item.totalFee)}</span></div>
+                            <div style={{ width: 100, height: 4, background: "#E2E8F0", borderRadius: 2, marginTop: 4, overflow: "hidden" }}>
+                              <div style={{ width: `${Math.min(100, feePercent)}%`, height: "100%", background: feePercent >= 100 ? "#10B981" : "#3B82F6" }} />
+                            </div>
+                          </td>
+                          <td>
+                            <div style={{ fontWeight: 700, color: "var(--text-main)" }}>{item.refereeName || "—"}</div>
+                            {item.refereePhone && item.refereePhone !== "-" && (
+                              <div className="cell-sub mono">{item.refereePhone}</div>
+                            )}
+                          </td>
+                          <td style={{ textAlign: "right", fontWeight: 800, color: "#059669", fontSize: 13 }}>
+                            {formatCurrency(item.referralAmount || 0)}
+                          </td>
+                          <td>
+                            {isSettled ? (
+                              <div>
+                                <span className="badge badge-green" style={{ display: "inline-flex", alignItems: "center", gap: 4 }}>
+                                  <CheckCircle2 size={11} /> Settled
+                                </span>
+                                <div className="cell-sub" style={{ marginTop: 2, fontSize: 11 }}>
+                                  {item.settlement.payoutMode || "Payout"}
+                                  {item.settlement.transactionReference ? ` • ${item.settlement.transactionReference}` : ""}
+                                  {item.settlement.settledAt ? ` • ${formatDate(item.settlement.settledAt)}` : ""}
+                                </div>
+                              </div>
+                            ) : item.isEligible ? (
+                              <span className="badge badge-amber" style={{ background: "#FFFBEB", color: "#D97706", border: "1px solid #FCD34D", display: "inline-flex", alignItems: "center", gap: 4 }}>
+                                <Clock size={11} /> Eligible for Payout
+                              </span>
+                            ) : (
+                              <span className="badge badge-gray" style={{ display: "inline-flex", alignItems: "center", gap: 4 }} title="Candidate has not paid any fees yet">
+                                <Hourglass size={11} /> Awaiting Fee
+                              </span>
+                            )}
+                          </td>
+                          <td style={{ textAlign: "center" }}>
+                            {isSettled ? (
+                              <div style={{ display: "inline-flex", gap: 4, alignItems: "center" }}>
+                                {item.settlement.hasProof && (
+                                  <button
+                                    type="button"
+                                    className="btn btn-xs btn-ghost"
+                                    onClick={() => onPreviewReferralProof?.(item._id, item.settlement.proofName)}
+                                    title="View payout transfer proof"
+                                    style={{ fontSize: 11, padding: "2px 6px" }}
+                                  >
+                                    <Eye size={12} /> Proof
+                                  </button>
+                                )}
+                                <button
+                                  type="button"
+                                  className="btn btn-xs btn-outline-danger"
+                                  onClick={() => onRevertReferralSettlement?.(item._id)}
+                                  title="Revert settlement back to pending"
+                                  style={{ fontSize: 11, padding: "2px 6px" }}
+                                >
+                                  Revert
+                                </button>
+                              </div>
+                            ) : (
+                              <button
+                                type="button"
+                                className={`btn btn-xs ${item.isEligible ? "btn-primary" : "btn-soft"}`}
+                                onClick={() => onOpenReferralSettlement?.(item)}
+                                style={{ fontSize: 11, padding: "3px 8px" }}
+                                title={item.isEligible ? "Disburse referee incentive" : "Candidate fee not collected yet. Click to view or override."}
+                              >
+                                <CreditCard size={12} /> Settle Payout
+                              </button>
+                            )}
+                          </td>
+                        </tr>
+                      );
+                    })
+                  )}
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+      )}
     </>
+  );
+}
+
+function ReferralSettlementModal({
+  data,
+  onClose,
+  onSubmit,
+  loading,
+}: {
+  data: { student: Student | ReferralItem } | null;
+  onClose: () => void;
+  onSubmit: (studentId: string, formData: FormData) => Promise<void>;
+  loading: boolean;
+}) {
+  if (!data) return null;
+  const student = data.student;
+  const referralAmount = student.referralAmount || 0;
+  const paidAmount = student.paidAmount || 0;
+  const isAwaitingFee = paidAmount <= 0;
+
+  const [payoutMode, setPayoutMode] = useState("UPI");
+  const [overrideEarly, setOverrideEarly] = useState(false);
+
+  const handleSubmit = (e: FormEvent<HTMLFormElement>) => {
+    e.preventDefault();
+    const formData = new FormData(e.currentTarget);
+    if (isAwaitingFee && !overrideEarly) {
+      toast.error("Candidate has not paid any fees yet. Check override box if you want to disburse advance anyway.");
+      return;
+    }
+    if (payoutMode !== "Cash") {
+      const proofFile = formData.get("proof") as File | null;
+      if (!proofFile || !proofFile.name || proofFile.size === 0) {
+        toast.error("Transfer proof / screenshot is mandatory for non-cash payouts.");
+        return;
+      }
+    }
+    onSubmit(student._id, formData);
+  };
+
+  return (
+    <div
+      className="modal-overlay show"
+      style={{
+        position: "fixed",
+        inset: 0,
+        zIndex: 1300,
+        display: "flex",
+        alignItems: "center",
+        justifyContent: "center",
+        background: "rgba(15, 23, 42, 0.65)",
+        backdropFilter: "blur(4px)",
+      }}
+      onClick={onClose}
+    >
+      <div
+        className="modal"
+        style={{
+          background: "#FFFFFF",
+          maxWidth: 580,
+          width: "92%",
+          maxHeight: "92vh",
+          overflowY: "auto",
+          padding: "20px 24px",
+          borderRadius: 14,
+          boxShadow: "0 25px 50px -12px rgba(0, 0, 0, 0.35)",
+        }}
+        onClick={(e) => e.stopPropagation()}
+      >
+        {/* Header with Title and Close button */}
+        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: 12 }}>
+          <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+            <div
+              style={{
+                width: 38,
+                height: 38,
+                borderRadius: 10,
+                background: "#F3E8FF",
+                color: "#7E22CE",
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "center",
+                flexShrink: 0,
+              }}
+            >
+              <Gift size={20} />
+            </div>
+            <div>
+              <h3 style={{ margin: 0, fontSize: 16, fontWeight: 700, color: "var(--text-main)" }}>
+                Settle Referee Payout
+              </h3>
+              <p style={{ margin: 0, fontSize: 11.5, color: "var(--text-muted)", marginTop: 2 }}>
+                Disburse promised referral incentive to the referee.
+              </p>
+            </div>
+          </div>
+          <button
+            type="button"
+            onClick={onClose}
+            className="close-x"
+            style={{
+              background: "transparent",
+              border: "none",
+              cursor: "pointer",
+              fontSize: 18,
+              color: "var(--text-400)",
+              padding: "2px 6px",
+              borderRadius: 6,
+              lineHeight: 1,
+            }}
+            title="Close"
+          >
+            ✕
+          </button>
+        </div>
+
+        {/* Candidate & Referee Info Box */}
+        <div style={{ background: "#F8FAFC", border: "1px solid #E2E8F0", borderRadius: 8, padding: "10px 14px", marginBottom: 10 }}>
+          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 6, flexWrap: "wrap", gap: 4 }}>
+            <div>
+              <span style={{ fontSize: 11, color: "var(--text-muted)", marginRight: 5 }}>Candidate:</span>
+              <strong style={{ fontSize: 13, color: "var(--text-main)" }}>{student.fullName}</strong>
+              <span className="mono" style={{ fontSize: 11.5, color: "var(--text-muted)", marginLeft: 6 }}>({student.admissionNumber || student.phone})</span>
+              <span style={{ fontSize: 11, color: "var(--text-muted)", marginLeft: 6 }}>• {student.centre || "-"} • {courseShortCode(student.course)}</span>
+            </div>
+            <div style={{ textAlign: "right", whiteSpace: "nowrap" }}>
+              <span style={{ fontSize: 11, color: "var(--text-muted)", marginRight: 5 }}>Fee Paid:</span>
+              <span style={{ fontSize: 12.5, fontWeight: 700, color: paidAmount > 0 ? "#059669" : "#DC2626" }}>
+                {formatCurrency(paidAmount)} / {formatCurrency(student.totalFee || 0)}
+              </span>
+            </div>
+          </div>
+
+          <div style={{ borderTop: "1px solid #E2E8F0", paddingTop: 6, display: "grid", gridTemplateColumns: "repeat(4, 1fr)", gap: "4px 8px", fontSize: 11.5 }}>
+            <div><span style={{ color: "var(--text-muted)" }}>Referee:</span> <strong>{student.refereeName || "—"}</strong></div>
+            <div><span style={{ color: "var(--text-muted)" }}>Phone:</span> <span className="mono">{student.refereePhone || "—"}</span></div>
+            <div><span style={{ color: "var(--text-muted)" }}>Branch:</span> <span>{student.centre || "—"}</span></div>
+            <div><span style={{ color: "var(--text-muted)" }}>Incentive Due:</span> <strong style={{ color: "#059669" }}>{formatCurrency(referralAmount)}</strong></div>
+          </div>
+        </div>
+
+        {/* Warning if candidate has not paid fees yet */}
+        {isAwaitingFee && (
+          <div style={{ background: "#FEF3C7", border: "1px solid #FCD34D", borderRadius: 8, padding: "8px 12px", marginBottom: 10, fontSize: 11.5, color: "#92400E" }}>
+            <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", flexWrap: "wrap", gap: 6 }}>
+              <div style={{ display: "flex", alignItems: "center", gap: 6, fontWeight: 600 }}>
+                <AlertTriangle size={14} color="#D97706" style={{ flexShrink: 0 }} />
+                <span>Candidate has not paid fees yet. Policy recommends collecting fee before payout.</span>
+              </div>
+              <label style={{ display: "inline-flex", alignItems: "center", gap: 5, cursor: "pointer", fontWeight: 700, color: "#78350F" }}>
+                <input
+                  type="checkbox"
+                  name="overrideEarly"
+                  value="true"
+                  checked={overrideEarly}
+                  onChange={(e) => setOverrideEarly(e.target.checked)}
+                  style={{ accentColor: "#D97706", width: 14, height: 14, margin: 0, cursor: "pointer" }}
+                />
+                <span>Override & Pay Advance</span>
+              </label>
+            </div>
+          </div>
+        )}
+
+        {/* Payout Form */}
+        <form onSubmit={handleSubmit} style={{ display: "flex", flexDirection: "column", gap: 10 }}>
+          {/* Row 1: Amount & Mode */}
+          <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 }}>
+            <div className="field" style={{ margin: 0 }}>
+              <label style={{ fontSize: 12, fontWeight: 600 }}>Payout Amount (₹) *</label>
+              <input
+                type="number"
+                name="amount"
+                required
+                min={1}
+                defaultValue={referralAmount || ""}
+                placeholder="Enter amount"
+                style={{ height: 36, fontSize: 12.5 }}
+              />
+            </div>
+            <div className="field" style={{ margin: 0 }}>
+              <label style={{ fontSize: 12, fontWeight: 600 }}>Payout Mode *</label>
+              <select
+                name="payoutMode"
+                value={payoutMode}
+                onChange={(e) => setPayoutMode(e.target.value)}
+                style={{ height: 36, fontSize: 12.5 }}
+              >
+                <option value="UPI">UPI (GPay / PhonePe / Paytm)</option>
+                <option value="Bank Transfer">Bank Transfer (IMPS / NEFT)</option>
+                <option value="Card">Card</option>
+                <option value="Cash">Cash Voucher</option>
+                <option value="Cheque">Cheque</option>
+              </select>
+            </div>
+          </div>
+
+          {/* Row 2: Ref & Date */}
+          <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 }}>
+            <div className="field" style={{ margin: 0 }}>
+              <label style={{ fontSize: 12, fontWeight: 600 }}>
+                {payoutMode === "Cash" ? "Cash Voucher / Ref (Optional)" : "Transaction Ref / UTR *"}
+              </label>
+              <input
+                type="text"
+                name="transactionReference"
+                required={payoutMode !== "Cash"}
+                placeholder={payoutMode === "Cash" ? "Cash voucher # (optional)" : "Enter UTR / Ref number"}
+                style={{ height: 36, fontSize: 12.5 }}
+              />
+            </div>
+            <div className="field" style={{ margin: 0 }}>
+              <label style={{ fontSize: 12, fontWeight: 600 }}>Payout Date *</label>
+              <input
+                type="date"
+                name="settledAt"
+                defaultValue={new Date().toISOString().slice(0, 10)}
+                required
+                style={{ height: 36, fontSize: 12.5 }}
+              />
+            </div>
+          </div>
+
+          {/* Row 3: Proof (if non-cash) + Note side-by-side */}
+          <div style={{ display: "grid", gridTemplateColumns: payoutMode !== "Cash" ? "1fr 1fr" : "1fr", gap: 12 }}>
+            {payoutMode !== "Cash" && (
+              <div className="field" style={{ margin: 0 }}>
+                <label style={{ fontSize: 12, fontWeight: 600 }}>Transfer Proof / Screenshot *</label>
+                <input
+                  type="file"
+                  name="proof"
+                  accept="image/*,.pdf"
+                  required
+                  style={{
+                    fontSize: 11.5,
+                    height: 36,
+                    padding: "4px 8px",
+                    border: "1px dashed var(--border, #CBD5E1)",
+                    borderRadius: 6,
+                    background: "#F8FAFC",
+                    cursor: "pointer",
+                    width: "100%",
+                  }}
+                />
+              </div>
+            )}
+
+            <div className="field" style={{ margin: 0 }}>
+              <label style={{ fontSize: 12, fontWeight: 600 }}>Payout Note (Optional)</label>
+              <input
+                type="text"
+                name="note"
+                placeholder={payoutMode === "Cash" ? "e.g. Paid cash voucher to Ramesh in person" : "e.g. Paid via GPay to Ramesh mobile"}
+                style={{ height: 36, fontSize: 12.5 }}
+              />
+            </div>
+          </div>
+
+          {/* Action Buttons */}
+          <div style={{ display: "flex", justifyContent: "flex-end", gap: 8, marginTop: 8, paddingTop: 10, borderTop: "1px solid #F1F5F9" }}>
+            <button type="button" className="btn btn-ghost" onClick={onClose} disabled={loading} style={{ height: 34, fontSize: 12 }}>
+              Cancel
+            </button>
+            <button
+              type="submit"
+              className="btn btn-primary"
+              style={{ background: "#7E22CE", borderColor: "#6B21A8", height: 34, fontSize: 12, display: "inline-flex", alignItems: "center", gap: 6 }}
+              disabled={loading || (isAwaitingFee && !overrideEarly)}
+            >
+              <CreditCard size={13} />
+              <span>{loading ? "Recording..." : "Confirm Settlement"}</span>
+            </button>
+          </div>
+        </form>
+      </div>
+    </div>
   );
 }
 
@@ -9611,12 +12741,770 @@ function FeeApprovalRequestModal({
   );
 }
 
-function EmiPanel({ students, meta, onPage, onOpen }: { students: Student[]; meta: PaginationMeta | null; onPage: (page: number) => void; onOpen: (student: Student) => void }) {
+function CandidateDeletionRequestModal({
+  data,
+  centres,
+  onClose,
+  onSubmit,
+  loading,
+}: {
+  data: { student: Student; reason: string } | null;
+  centres: Centre[];
+  onClose: () => void;
+  onSubmit: (studentId: string, reason: string) => Promise<void>;
+  loading: boolean;
+}) {
+  const [reason, setReason] = useState("");
+
+  useEffect(() => {
+    if (data) setReason(data.reason || "");
+  }, [data]);
+
+  if (!data) return null;
+  const student = data.student;
+
+  const stCentre = centres.find(
+    (c) => (student.franchiseId && c._id === student.franchiseId) || (student.centre && c.name.toLowerCase() === student.centre.toLowerCase())
+  );
+  const isMultiBranch = Boolean(
+    student.deleteApproval?.isMultiBranch ?? (stCentre?.parentCentreId || centres.some((c) => c.parentCentreId === stCentre?._id))
+  );
+
+  return (
+    <div
+      className="modal-overlay show"
+      style={{
+        position: "fixed",
+        inset: 0,
+        zIndex: 1300,
+        display: "flex",
+        alignItems: "center",
+        justifyContent: "center",
+        background: "rgba(15, 23, 42, 0.65)",
+        backdropFilter: "blur(4px)",
+      }}
+      onClick={onClose}
+    >
+      <div
+        className="modal"
+        style={{
+          background: "#FFFFFF",
+          maxWidth: 500,
+          width: "92%",
+          padding: 24,
+          borderRadius: 14,
+          boxShadow: "0 25px 50px -12px rgba(0, 0, 0, 0.35)",
+        }}
+        onClick={(e) => e.stopPropagation()}
+      >
+        <div style={{ display: "flex", alignItems: "center", gap: 12, marginBottom: 16 }}>
+          <div
+            style={{
+              width: 42,
+              height: 42,
+              borderRadius: 10,
+              background: "#FEE2E2",
+              color: "#DC2626",
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "center",
+              flexShrink: 0,
+            }}
+          >
+            <Trash2 size={22} />
+          </div>
+          <div>
+            <h3 style={{ margin: 0, fontSize: 17, fontWeight: 700, color: "var(--text-main)" }}>Request Candidate Deletion</h3>
+            <p style={{ margin: 0, fontSize: 12, color: "var(--text-muted)", marginTop: 2 }}>
+              Administrative approval is required before candidate records can be removed.
+            </p>
+          </div>
+        </div>
+
+        {/* Approval Scope Info Tag */}
+        <div
+          style={{
+            background: isMultiBranch ? "#EEF2FF" : "#FEF3C7",
+            border: isMultiBranch ? "1px solid #C7D2FE" : "1px solid #FCD34D",
+            borderRadius: 8,
+            padding: "8px 12px",
+            marginBottom: 14,
+            fontSize: 12,
+            color: isMultiBranch ? "#3730A3" : "#92400E",
+            display: "flex",
+            alignItems: "center",
+            gap: 8,
+          }}
+        >
+          {isMultiBranch ? (
+            <span style={{ display: "inline-flex", alignItems: "center", gap: 7 }}>
+              <Building2 size={16} style={{ flexShrink: 0, color: "#4F46E5" }} />
+              <span><strong>Multi-Branch Group:</strong> Approval required from <strong>Super Admin or Center Admin</strong></span>
+            </span>
+          ) : (
+            <span style={{ display: "inline-flex", alignItems: "center", gap: 7 }}>
+              <Landmark size={16} style={{ flexShrink: 0, color: "#D97706" }} />
+              <span><strong>Single Branch:</strong> Approval required from <strong>Super Admin</strong></span>
+            </span>
+          )}
+        </div>
+
+        {/* Candidate Summary Card */}
+        <div style={{ background: "#F8FAFC", border: "1px solid #E2E8F0", borderRadius: 8, padding: 12, marginBottom: 14 }}>
+          <div style={{ fontWeight: 700, fontSize: 14, color: "var(--text-main)", marginBottom: 4 }}>
+            {student.fullName}
+          </div>
+          <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "6px 12px", fontSize: 12, color: "var(--text-muted)" }}>
+            <div><strong>Admission No:</strong> {student.admissionNumber || "-"}</div>
+            <div><strong>Phone:</strong> {student.phone || "-"}</div>
+            <div><strong>Branch:</strong> {student.centre || "-"}</div>
+            <div><strong>Course:</strong> {courseShortCode(student.course)}</div>
+            <div><strong>Status:</strong> {student.status}</div>
+            <div><strong>Total Fee:</strong> {formatCurrency(student.totalFee || 0)}</div>
+          </div>
+        </div>
+
+        <form
+          onSubmit={async (e) => {
+            e.preventDefault();
+            if (!reason.trim()) return toast.error("Please provide a reason for the deletion request");
+            await onSubmit(student._id, reason.trim());
+          }}
+        >
+          <div className="field" style={{ marginBottom: 16 }}>
+            <label style={{ display: "block", fontSize: 12.5, fontWeight: 700, color: "var(--text-main)", marginBottom: 6 }}>
+              Reason for Deletion <span style={{ color: "#DC2626" }}>*</span>
+            </label>
+            <textarea
+              className="fbtn"
+              style={{ width: "100%", minHeight: 90, padding: 10, fontSize: 13, borderRadius: 8, border: "1px solid var(--border)", resize: "vertical" }}
+              value={reason}
+              onChange={(e) => setReason(e.target.value)}
+              placeholder="Explain why this candidate should be deleted (e.g., Duplicate entry, candidate cancelled admission, entered under wrong branch, etc.)..."
+              required
+            />
+          </div>
+
+          <div style={{ display: "flex", justifyContent: "flex-end", gap: 10 }}>
+            <button type="button" className="btn btn-ghost" onClick={onClose} disabled={loading}>
+              Cancel
+            </button>
+            <button
+              type="submit"
+              className="btn btn-danger"
+              disabled={loading || !reason.trim()}
+              style={{ display: "inline-flex", alignItems: "center", gap: 6 }}
+            >
+              {loading && <RefreshCw size={13} className="spin-icon" />}
+              Submit Deletion Request
+            </button>
+          </div>
+        </form>
+      </div>
+    </div>
+  );
+}
+
+function CandidateDeletionReviewModal({
+  data,
+  centres,
+  onClose,
+  onSubmit,
+  loading,
+}: {
+  data: { student: Student; note: string; action: "approve" | "reject" } | null;
+  centres: Centre[];
+  onClose: () => void;
+  onSubmit: (studentId: string, action: "approve" | "reject", note?: string) => Promise<void>;
+  loading: boolean;
+}) {
+  const [action, setAction] = useState<"approve" | "reject">("approve");
+  const [note, setNote] = useState("");
+
+  useEffect(() => {
+    if (data) {
+      setAction(data.action || "approve");
+      setNote(data.note || "");
+    }
+  }, [data]);
+
+  if (!data) return null;
+  const student = data.student;
+  const approval = student.deleteApproval;
+
+  const stCentre = centres.find(
+    (c) => (student.franchiseId && c._id === student.franchiseId) || (student.centre && c.name.toLowerCase() === student.centre.toLowerCase())
+  );
+  const isMultiBranch = Boolean(
+    approval?.isMultiBranch ?? (stCentre?.parentCentreId || centres.some((c) => c.parentCentreId === stCentre?._id))
+  );
+
+  return (
+    <div
+      className="modal-overlay show"
+      style={{
+        position: "fixed",
+        inset: 0,
+        zIndex: 1300,
+        display: "flex",
+        alignItems: "center",
+        justifyContent: "center",
+        background: "rgba(15, 23, 42, 0.65)",
+        backdropFilter: "blur(4px)",
+      }}
+      onClick={onClose}
+    >
+      <div
+        className="modal"
+        style={{
+          background: "#FFFFFF",
+          maxWidth: 520,
+          width: "92%",
+          padding: 24,
+          borderRadius: 14,
+          boxShadow: "0 25px 50px -12px rgba(0, 0, 0, 0.35)",
+        }}
+        onClick={(e) => e.stopPropagation()}
+      >
+        <div style={{ display: "flex", alignItems: "center", gap: 12, marginBottom: 14 }}>
+          <div
+            style={{
+              width: 42,
+              height: 42,
+              borderRadius: 10,
+              background: "#FEE2E2",
+              color: "#DC2626",
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "center",
+              flexShrink: 0,
+            }}
+          >
+            <ShieldAlert size={22} />
+          </div>
+          <div>
+            <h3 style={{ margin: 0, fontSize: 17, fontWeight: 700, color: "var(--text-main)" }}>Review Candidate Deletion</h3>
+            <p style={{ margin: 0, fontSize: 12, color: "var(--text-muted)", marginTop: 2 }}>
+              A staff member has requested permanent deletion of this candidate record.
+            </p>
+          </div>
+        </div>
+
+        {/* Request Details Box */}
+        <div style={{ background: "#FEF2F2", border: "1px solid #FECACA", borderRadius: 10, padding: 14, marginBottom: 14 }}>
+          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 6 }}>
+            <span style={{ fontSize: 12, fontWeight: 700, color: "#991B1B", display: "inline-flex", alignItems: "center", gap: 5 }}>
+              <Clock size={13} /> Deletion Request Details
+            </span>
+            <span style={{ fontSize: 11, background: "#FFF", padding: "2px 8px", borderRadius: 4, border: "1px solid #FECACA", color: "#B91C1C", fontWeight: 600, display: "inline-flex", alignItems: "center", gap: 5 }}>
+              {isMultiBranch ? <Building2 size={12} /> : <Landmark size={12} />}
+              <span>{isMultiBranch ? "Multi-Branch Scope" : "Single Branch"}</span>
+            </span>
+          </div>
+          <div style={{ fontSize: 13, color: "var(--text-main)", fontWeight: 600, marginBottom: 4 }}>
+            Reason: "{approval?.reason || "No reason given"}"
+          </div>
+          <div style={{ fontSize: 11.5, color: "#7F1D1D" }}>
+            Requested by <strong>{approval?.requestedBy || "Staff"}</strong> ({approval?.requestedByRole || "admin"})
+            {approval?.requestedAt ? ` on ${formatDate(approval.requestedAt)}` : ""}
+          </div>
+        </div>
+
+        {/* Candidate Info */}
+        <div style={{ background: "#F8FAFC", border: "1px solid #E2E8F0", borderRadius: 8, padding: 12, marginBottom: 14 }}>
+          <div style={{ fontWeight: 700, fontSize: 13.5, color: "var(--text-main)", marginBottom: 4 }}>
+            {student.fullName} ({student.admissionNumber || student.phone})
+          </div>
+          <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "4px 10px", fontSize: 11.5, color: "var(--text-muted)" }}>
+            <div><strong>Centre:</strong> {student.centre || "-"}</div>
+            <div><strong>Course:</strong> {courseShortCode(student.course)}</div>
+            <div><strong>Status:</strong> {student.status}</div>
+            <div><strong>Paid Fee:</strong> {formatCurrency(student.paidAmount || 0)} / {formatCurrency(student.totalFee || 0)}</div>
+          </div>
+        </div>
+
+        {/* Action Toggle */}
+        <div style={{ display: "flex", gap: 10, marginBottom: 14 }}>
+          <button
+            type="button"
+            className={`btn ${action === "approve" ? "btn-danger" : "btn-soft"}`}
+            style={{ flex: 1, justifyContent: "center" }}
+            onClick={() => setAction("approve")}
+          >
+            <Trash2 size={14} /> Approve & Delete Record
+          </button>
+          <button
+            type="button"
+            className={`btn ${action === "reject" ? "btn-secondary" : "btn-soft"}`}
+            style={{ flex: 1, justifyContent: "center" }}
+            onClick={() => setAction("reject")}
+          >
+            <X size={14} /> Reject Request
+          </button>
+        </div>
+
+        {action === "approve" ? (
+          <div style={{ background: "#FFF1F2", border: "1px solid #FDA4AF", borderRadius: 8, padding: "10px 12px", marginBottom: 14, fontSize: 12, color: "#9F1239", lineHeight: 1.4, display: "flex", alignItems: "flex-start", gap: 8 }}>
+            <AlertTriangle size={16} style={{ flexShrink: 0, color: "#E11D48", marginTop: 1 }} />
+            <div>
+              <strong>Permanent Action:</strong> Approving will immediately delete this candidate record, attendance history, logs, and payment records from the database. This action cannot be undone.
+            </div>
+          </div>
+        ) : (
+          <div className="field" style={{ marginBottom: 14 }}>
+            <label style={{ display: "block", fontSize: 12, fontWeight: 700, color: "var(--text-main)", marginBottom: 4 }}>
+              Rejection Note / Reason <span style={{ color: "#DC2626" }}>*</span>
+            </label>
+            <textarea
+              className="fbtn"
+              style={{ width: "100%", minHeight: 70, padding: 8, fontSize: 12.5, borderRadius: 6, border: "1px solid var(--border)", resize: "vertical" }}
+              value={note}
+              onChange={(e) => setNote(e.target.value)}
+              placeholder="Provide reason for rejecting the candidate deletion..."
+              required
+            />
+          </div>
+        )}
+
+        <div style={{ display: "flex", justifyContent: "flex-end", gap: 10 }}>
+          <button type="button" className="btn btn-ghost" onClick={onClose} disabled={loading}>
+            Cancel
+          </button>
+          <button
+            type="button"
+            className={`btn ${action === "approve" ? "btn-danger" : "btn-secondary"}`}
+            disabled={loading || (action === "reject" && !note.trim())}
+            onClick={async () => {
+              if (action === "reject" && !note.trim()) {
+                return toast.error("Please provide a rejection reason");
+              }
+              await onSubmit(student._id, action, note);
+            }}
+            style={{ display: "inline-flex", alignItems: "center", gap: 6 }}
+          >
+            {loading && <RefreshCw size={13} className="spin-icon" />}
+            {action === "approve" ? "Confirm Approve & Delete" : "Confirm Rejection"}
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function CandidateDeletionStatusModal({
+  student,
+  centres,
+  onClose,
+  onCancelRequest,
+  loading,
+}: {
+  student: Student | null;
+  centres: Centre[];
+  onClose: () => void;
+  onCancelRequest: (studentId: string) => Promise<void>;
+  loading: boolean;
+}) {
+  if (!student) return null;
+  const approval = student.deleteApproval;
+
+  const stCentre = centres.find(
+    (c) => (student.franchiseId && c._id === student.franchiseId) || (student.centre && c.name.toLowerCase() === student.centre.toLowerCase())
+  );
+  const isMultiBranch = Boolean(
+    approval?.isMultiBranch ?? (stCentre?.parentCentreId || centres.some((c) => c.parentCentreId === stCentre?._id))
+  );
+
+  return (
+    <div
+      className="modal-overlay show"
+      style={{
+        position: "fixed",
+        inset: 0,
+        zIndex: 1300,
+        display: "flex",
+        alignItems: "center",
+        justifyContent: "center",
+        background: "rgba(15, 23, 42, 0.65)",
+        backdropFilter: "blur(4px)",
+      }}
+      onClick={onClose}
+    >
+      <div
+        className="modal"
+        style={{
+          background: "#FFFFFF",
+          maxWidth: 480,
+          width: "92%",
+          padding: 24,
+          borderRadius: 14,
+          boxShadow: "0 25px 50px -12px rgba(0, 0, 0, 0.35)",
+        }}
+        onClick={(e) => e.stopPropagation()}
+      >
+        <div style={{ display: "flex", alignItems: "center", gap: 12, marginBottom: 14 }}>
+          <div
+            style={{
+              width: 40,
+              height: 40,
+              borderRadius: 10,
+              background: "#FFFBEB",
+              color: "#D97706",
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "center",
+              flexShrink: 0,
+            }}
+          >
+            <Clock size={20} />
+          </div>
+          <div>
+            <h3 style={{ margin: 0, fontSize: 16, fontWeight: 700, color: "var(--text-main)" }}>Deletion Pending Review</h3>
+            <p style={{ margin: 0, fontSize: 12, color: "var(--text-muted)", marginTop: 2 }}>
+              A deletion request has been submitted and is currently pending review.
+            </p>
+          </div>
+        </div>
+
+        <div style={{ background: "#F8FAFC", border: "1px solid #E2E8F0", borderRadius: 8, padding: 12, marginBottom: 14 }}>
+          <div style={{ fontWeight: 700, fontSize: 14, color: "var(--text-main)", marginBottom: 4 }}>
+            {student.fullName} ({student.admissionNumber || student.phone})
+          </div>
+          <div style={{ fontSize: 12, color: "var(--text-muted)", marginBottom: 8 }}>
+            {student.centre || "-"} • {courseShortCode(student.course)}
+          </div>
+          <div style={{ background: "#FFF", border: "1px solid #E2E8F0", borderRadius: 6, padding: "8px 10px", fontSize: 12.5 }}>
+            <strong>Reason:</strong> "{approval?.reason || "Candidate record deletion"}"
+          </div>
+          <div style={{ fontSize: 11.5, color: "var(--text-muted)", marginTop: 6 }}>
+            Requested by {approval?.requestedBy || "Staff"} ({approval?.requestedByRole || "admin"})
+            {approval?.requestedAt ? ` on ${formatDate(approval.requestedAt)}` : ""}
+          </div>
+        </div>
+
+        <div style={{ background: "#EFF6FF", border: "1px solid #BFDBFE", borderRadius: 8, padding: "10px 12px", marginBottom: 16, fontSize: 12, color: "#1E40AF", display: "flex", alignItems: "center", gap: 8 }}>
+          <Info size={16} style={{ flexShrink: 0, color: "#2563EB" }} />
+          <div>This request requires review by <strong>{isMultiBranch ? "Super Admin or Center Admin" : "Super Admin"}</strong>. You will be notified once reviewed.</div>
+        </div>
+
+        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+          <button
+            type="button"
+            className="btn btn-outline-danger"
+            style={{ fontSize: 12 }}
+            disabled={loading}
+            onClick={async () => {
+              if (window.confirm("Cancel this deletion request and keep the candidate record active?")) {
+                await onCancelRequest(student._id);
+              }
+            }}
+          >
+            Cancel Request
+          </button>
+          <button type="button" className="btn btn-ghost" onClick={onClose}>
+            Close
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function CashDepositReviewModal({
+  data,
+  centres,
+  onClose,
+  onSubmit,
+  onPreviewProof,
+  onDownloadProof,
+  onRefresh,
+  loading,
+}: {
+  data: { item: CashDepositApprovalItem; note?: string; action?: "verify" | "reject" } | null;
+  centres: Centre[];
+  onClose: () => void;
+  onSubmit: (studentId: string, paymentIndex: number, depositId: string, action: "verify" | "reject", note?: string) => Promise<void>;
+  onPreviewProof?: (item: CashDepositApprovalItem) => void;
+  onDownloadProof?: (item: CashDepositApprovalItem) => void;
+  onRefresh?: () => Promise<void>;
+  loading: boolean;
+}) {
+  const [action, setAction] = useState<"verify" | "reject">("verify");
+  const [note, setNote] = useState("");
+
+  useEffect(() => {
+    if (data) {
+      setAction(data.action || "verify");
+      setNote(data.note || "");
+    }
+  }, [data]);
+
+  if (!data) return null;
+  const item = data.item;
+
+  const stCentre = centres.find(
+    (c) => (item.franchiseId && c._id === item.franchiseId) || (item.centre && c.name.toLowerCase() === item.centre.toLowerCase())
+  );
+  const isMultiBranch = Boolean(
+    item.isMultiBranch ?? (stCentre?.parentCentreId || centres.some((c) => c.parentCentreId === stCentre?._id))
+  );
+
+  return (
+    <div
+      className="modal-overlay show"
+      style={{
+        position: "fixed",
+        inset: 0,
+        zIndex: 1300,
+        display: "flex",
+        alignItems: "center",
+        justifyContent: "center",
+        background: "rgba(15, 23, 42, 0.65)",
+        backdropFilter: "blur(4px)",
+      }}
+      onClick={onClose}
+    >
+      <div
+        className="modal"
+        style={{
+          background: "#FFFFFF",
+          maxWidth: 540,
+          width: "92%",
+          padding: 24,
+          borderRadius: 14,
+          boxShadow: "0 25px 50px -12px rgba(0, 0, 0, 0.35)",
+        }}
+        onClick={(e) => e.stopPropagation()}
+      >
+        <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 14 }}>
+          <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
+            <div
+              style={{
+                width: 42,
+                height: 42,
+                borderRadius: 10,
+                background: "#ECFDF5",
+                color: "#059669",
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "center",
+                flexShrink: 0,
+              }}
+            >
+              <ShieldCheck size={22} />
+            </div>
+            <div>
+              <h3 style={{ margin: 0, fontSize: 17, fontWeight: 700, color: "var(--text-main)" }}>Verify Cash Deposit Challan</h3>
+              <p style={{ margin: 0, fontSize: 12, color: "var(--text-muted)", marginTop: 2 }}>
+                Confirm bank deposit slip and receipt of branch cash collection.
+              </p>
+            </div>
+          </div>
+          {onRefresh && (
+            <button
+              type="button"
+              className="btn btn-xs btn-ghost"
+              onClick={async () => {
+                await onRefresh();
+                toast.success("Refreshed");
+              }}
+              title="Refresh details"
+              style={{ display: "inline-flex", alignItems: "center", gap: 5, fontSize: "11.5px", padding: "4px 8px", border: "1px solid var(--border)", borderRadius: "6px" }}
+            >
+              <RefreshCw size={12} />
+              <span>Refresh</span>
+            </button>
+          )}
+        </div>
+
+        {/* Approval Scope Info Tag */}
+        <div
+          style={{
+            background: isMultiBranch ? "#EEF2FF" : "#FEF3C7",
+            border: isMultiBranch ? "1px solid #C7D2FE" : "1px solid #FCD34D",
+            borderRadius: 8,
+            padding: "8px 12px",
+            marginBottom: 14,
+            fontSize: 12,
+            color: isMultiBranch ? "#3730A3" : "#92400E",
+            display: "flex",
+            alignItems: "center",
+            gap: 8,
+          }}
+        >
+          {isMultiBranch ? (
+            <span style={{ display: "inline-flex", alignItems: "center", gap: 7 }}>
+              <Building2 size={16} style={{ flexShrink: 0, color: "#4F46E5" }} />
+              <span><strong>Multi-Branch Group:</strong> Verification authorized for <strong>Super Admin or Center Admin</strong></span>
+            </span>
+          ) : (
+            <span style={{ display: "inline-flex", alignItems: "center", gap: 7 }}>
+              <Landmark size={16} style={{ flexShrink: 0, color: "#D97706" }} />
+              <span><strong>Single Branch:</strong> Verification authorized for <strong>Super Admin only</strong></span>
+            </span>
+          )}
+        </div>
+
+        {/* Candidate & Deposit Info Card */}
+        <div style={{ background: "#F8FAFC", border: "1px solid #E2E8F0", borderRadius: 8, padding: 12, marginBottom: 14 }}>
+          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: 6 }}>
+            <div>
+              <div style={{ fontWeight: 700, fontSize: 14, color: "var(--text-main)" }}>
+                {item.studentName} ({item.admissionNumber || item.phone || "-"})
+              </div>
+              <div style={{ fontSize: 12, color: "var(--text-muted)" }}>
+                {item.centre || "-"} • {courseShortCode(item.course)}
+              </div>
+            </div>
+            <div style={{ textAlign: "right" }}>
+              <div style={{ fontSize: 11, color: "var(--text-muted)" }}>Deposit Amount</div>
+              <div style={{ fontSize: 16, fontWeight: 800, color: "#059669" }}>{formatCurrency(item.amount)}</div>
+            </div>
+          </div>
+
+          <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "6px 12px", fontSize: 12, color: "var(--text-muted)", marginTop: 8, paddingTop: 8, borderTop: "1px solid #E2E8F0" }}>
+            <div><strong>Bank / Account:</strong> {item.bank}</div>
+            <div><strong>Slip / Ref No:</strong> {item.referenceNumber}</div>
+            <div><strong>Deposited By:</strong> {item.depositedBy}</div>
+            <div><strong>Deposit Date:</strong> {formatDate(item.depositedAt)}</div>
+          </div>
+
+          {item.note && (
+            <div style={{ fontSize: 11.5, color: "var(--text-muted)", marginTop: 6, fontStyle: "italic" }}>
+              Note: "{item.note}"
+            </div>
+          )}
+
+          {/* Challan Slip Proof View / Download */}
+          {item.proof?.storedName && (
+            <div style={{ marginTop: 10, paddingTop: 8, borderTop: "1px solid #E2E8F0", display: "flex", alignItems: "center", justifyContent: "space-between" }}>
+              <span style={{ fontSize: 12, fontWeight: 600, color: "var(--text-main)", display: "inline-flex", alignItems: "center", gap: 5 }}>
+                <FileText size={14} style={{ color: "#4F46E5" }} />
+                <span>Uploaded Challan: {item.proof.originalName || "Deposit Proof"}</span>
+              </span>
+              <div style={{ display: "inline-flex", gap: 6 }}>
+                <button
+                  type="button"
+                  className="btn btn-xs btn-soft"
+                  style={{ fontSize: 11 }}
+                  onClick={() => onPreviewProof?.(item)}
+                >
+                  <Eye size={12} /> Preview
+                </button>
+                <button
+                  type="button"
+                  className="btn btn-xs btn-ghost"
+                  style={{ fontSize: 11 }}
+                  onClick={() => onDownloadProof?.(item)}
+                >
+                  <Download size={12} /> Download
+                </button>
+              </div>
+            </div>
+          )}
+        </div>
+
+        {/* Action Toggle */}
+        <div style={{ display: "flex", gap: 10, marginBottom: 14 }}>
+          <button
+            type="button"
+            className={`btn ${action === "verify" ? "btn-primary" : "btn-soft"}`}
+            style={{ flex: 1, justifyContent: "center", background: action === "verify" ? "#059669" : undefined, borderColor: action === "verify" ? "#047857" : undefined }}
+            onClick={() => setAction("verify")}
+          >
+            <ShieldCheck size={14} /> Verify & Approve
+          </button>
+          <button
+            type="button"
+            className={`btn ${action === "reject" ? "btn-secondary" : "btn-soft"}`}
+            style={{ flex: 1, justifyContent: "center" }}
+            onClick={() => setAction("reject")}
+          >
+            <X size={14} /> Reject Challan
+          </button>
+        </div>
+
+        {action === "verify" ? (
+          <div style={{ background: "#ECFDF5", border: "1px solid #A7F3D0", borderRadius: 8, padding: "10px 12px", marginBottom: 14, fontSize: 12, color: "#065F46", lineHeight: 1.4, display: "flex", alignItems: "flex-start", gap: 8 }}>
+            <CheckCircle2 size={16} style={{ flexShrink: 0, color: "#059669", marginTop: 1 }} />
+            <div>
+              <strong>Confirm Deposit:</strong> Verifying will mark this cash deposit of <strong>{formatCurrency(item.amount)}</strong> as verified in the academy accounts.
+            </div>
+          </div>
+        ) : (
+          <div className="field" style={{ marginBottom: 14 }}>
+            <label style={{ display: "block", fontSize: 12, fontWeight: 700, color: "var(--text-main)", marginBottom: 4 }}>
+              Rejection Reason <span style={{ color: "#DC2626" }}>*</span>
+            </label>
+            <textarea
+              className="fbtn"
+              style={{ width: "100%", minHeight: 70, padding: 8, fontSize: 12.5, borderRadius: 6, border: "1px solid var(--border)", resize: "vertical" }}
+              value={note}
+              onChange={(e) => setNote(e.target.value)}
+              placeholder="Explain why the challan was rejected (e.g. illegible slip, amount mismatch, wrong account)..."
+              required
+            />
+          </div>
+        )}
+
+        <div style={{ display: "flex", justifyContent: "flex-end", gap: 10 }}>
+          <button type="button" className="btn btn-ghost" onClick={onClose} disabled={loading}>
+            Cancel
+          </button>
+          <button
+            type="button"
+            className={`btn ${action === "verify" ? "btn-primary" : "btn-danger"}`}
+            disabled={loading || (action === "reject" && !note.trim())}
+            onClick={async () => {
+              if (action === "reject" && !note.trim()) {
+                return toast.error("Please provide a rejection reason");
+              }
+              await onSubmit(item.studentId, item.paymentIndex, item.depositId, action, note);
+            }}
+            style={{
+              display: "inline-flex",
+              alignItems: "center",
+              gap: 6,
+              background: action === "verify" ? "#059669" : undefined,
+              borderColor: action === "verify" ? "#047857" : undefined,
+            }}
+          >
+            {loading && <RefreshCw size={13} className="spin-icon" />}
+            {action === "verify" ? "Confirm Verification" : "Confirm Rejection"}
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function EmiPanel({
+  students,
+  meta,
+  emiSummary,
+  allEmiStudents = [],
+  onRefreshSummary,
+  onPage,
+  onOpen,
+}: {
+  students: Student[];
+  meta: PaginationMeta | null;
+  emiSummary?: EmiSummary | null;
+  allEmiStudents?: Student[];
+  onRefreshSummary?: () => void;
+  onPage: (page: number) => void;
+  onOpen: (student: Student) => void;
+}) {
   const [search, setSearch] = useState("");
   const [filterType, setFilterType] = useState<"all" | "overdue" | "upcoming" | "shortfall">("all");
+  const [localPage, setLocalPage] = useState(1);
+  const pageSize = 25;
   const today = dateInputValue();
   const month = today.slice(0, 7);
-  const emiStudents = students
+
+  // If allEmiStudents was fetched from backend, use it so user sees all real EMI candidates across the system
+  const sourceStudents = (allEmiStudents && allEmiStudents.length > 0) ? allEmiStudents : students;
+
+  const emiStudents = sourceStudents
     .filter((student) => student.emiEnabled || student.nextEmiDate || dueAmount(student) > 0)
     .map((student) => {
       const breakdown = studentEmiBreakdown(student);
@@ -9630,9 +13518,19 @@ function EmiPanel({ students, meta, onPage, onOpen }: { students: Student[]; met
       };
     })
     .sort((a, b) => Number(b.overdue || b.breakdown.shortfall > 0) - Number(a.overdue || a.breakdown.shortfall > 0));
-  const overdueCount = emiStudents.filter((item) => item.overdue || item.breakdown.shortfall > 0).length;
-  const upcomingThisMonth = emiStudents.filter((item) => !item.overdue && item.breakdown.shortfall <= 0 && (item.student.nextEmiDate || "").startsWith(month)).length;
-  const totalDue = emiStudents.reduce((sum, item) => sum + item.amount, 0);
+
+  // Overall metric values from backend summary (or calculated fallback from candidate list)
+  const overdueCount = emiSummary ? emiSummary.overdueCount : emiStudents.filter((item) => item.overdue || item.breakdown.shortfall > 0).length;
+  const overdueAmount = emiSummary ? emiSummary.overdueAmount : emiStudents.filter((item) => item.overdue || item.breakdown.shortfall > 0).reduce((sum, item) => sum + item.amount, 0);
+
+  const dueThisMonthCount = emiSummary ? emiSummary.dueThisMonthCount : emiStudents.filter((item) => (item.student.nextEmiDate || "").startsWith(month)).length;
+  const dueThisMonthAmount = emiSummary ? emiSummary.dueThisMonthAmount : emiStudents.filter((item) => (item.student.nextEmiDate || "").startsWith(month)).reduce((sum, item) => sum + item.amount, 0);
+
+  const upcomingThisMonth = emiSummary ? emiSummary.upcomingThisMonthCount : emiStudents.filter((item) => !item.overdue && item.breakdown.shortfall <= 0 && (item.student.nextEmiDate || "").startsWith(month)).length;
+  const upcomingThisMonthAmount = emiSummary ? emiSummary.upcomingThisMonthAmount : emiStudents.filter((item) => !item.overdue && item.breakdown.shortfall <= 0 && (item.student.nextEmiDate || "").startsWith(month)).reduce((sum, item) => sum + item.amount, 0);
+
+  const overallDue = emiSummary ? emiSummary.overallDueAmount : emiStudents.reduce((sum, item) => sum + item.amount, 0);
+  const overallDueCandidates = emiSummary ? emiSummary.overallDueCandidatesCount : emiStudents.length;
 
   const query = search.trim().toLowerCase();
   const filtered = emiStudents.filter(({ student, overdue, breakdown }) => {
@@ -9645,23 +13543,48 @@ function EmiPanel({ students, meta, onPage, onOpen }: { students: Student[]; met
     );
   });
 
+  const totalPages = Math.ceil(filtered.length / pageSize) || 1;
+  const pagedList = allEmiStudents && allEmiStudents.length > 0 ? filtered.slice((localPage - 1) * pageSize, localPage * pageSize) : filtered;
+
   return (
     <>
-      <div className="grid-metrics emi-metrics">
-        <MetricCard label="Due / overdue" value={overdueCount} dot="#E5484D" delta="" down={overdueCount > 0} />
-        <MetricCard label="Upcoming this month" value={upcomingThisMonth} dot="#F59E0B" delta="" />
-        <MetricCard label="Total due amount" value={formatCurrency(totalDue)} dot="#4F6BFF" delta="" />
+      <div className="grid-metrics emi-metrics" style={{ gridTemplateColumns: "repeat(auto-fit, minmax(230px, 1fr))" }}>
+        <MetricCard
+          label="Due / Overdue"
+          value={overdueCount}
+          dot="#E5484D"
+          delta={overdueAmount > 0 ? `${formatCurrency(overdueAmount)} overdue` : "Zero overdue"}
+          down={overdueCount > 0}
+        />
+        <MetricCard
+          label="Due this month"
+          value={dueThisMonthCount}
+          dot="#F97316"
+          delta={`${formatCurrency(dueThisMonthAmount)} this month`}
+        />
+        <MetricCard
+          label="Upcoming this month"
+          value={upcomingThisMonth}
+          dot="#F59E0B"
+          delta={`${formatCurrency(upcomingThisMonthAmount)} upcoming`}
+        />
+        <MetricCard
+          label="Overall due amount"
+          value={formatCurrency(overallDue)}
+          dot="#4F6BFF"
+          delta={`${overallDueCandidates} candidate${overallDueCandidates === 1 ? "" : "s"} with balance`}
+        />
       </div>
       <div className="filter-bar emi-filter-bar">
         <div className="search-box">
           <Search size={14} />
           <input
             value={search}
-            onChange={(event) => setSearch(event.target.value)}
+            onChange={(event) => { setSearch(event.target.value); setLocalPage(1); }}
             placeholder="Search candidate, phone, admission no..."
           />
         </div>
-        <select className="fbtn" value={filterType} onChange={(event) => setFilterType(event.target.value as any)}>
+        <select className="fbtn" value={filterType} onChange={(event) => { setFilterType(event.target.value as any); setLocalPage(1); }}>
           <option value="all">All EMI candidates</option>
           <option value="overdue">Overdue / Shortfall</option>
           <option value="upcoming">Upcoming</option>
@@ -9675,7 +13598,7 @@ function EmiPanel({ students, meta, onPage, onOpen }: { students: Student[]; met
           <table className="emi-table">
             <thead><tr><th>Student</th><th>Course & Branch</th><th>Next EMI date</th><th>Amount due</th><th>Status</th><th /></tr></thead>
             <tbody>
-              {filtered.map(({ student, overdue, breakdown, amount }) => (
+              {pagedList.map(({ student, overdue, breakdown, amount }) => (
                 <tr className="clickable" key={student._id} onClick={() => onOpen(student)}>
                   <td><div className="lead-name-cell"><span className="avatar lead-avatar">{initials(student.fullName)}</span><div><div className="cell-name">{student.fullName}</div><div className="cell-sub">{student.admissionNumber || student.phone}</div></div></div></td>
                   <td>{courseShortCode(student.course)}<div className="cell-sub">{student.centre || "—"}</div></td>
@@ -9710,7 +13633,20 @@ function EmiPanel({ students, meta, onPage, onOpen }: { students: Student[]; met
             </tbody>
           </table>
         </div>
-        <Pager meta={meta} label="students" onPage={onPage} />
+        {allEmiStudents && allEmiStudents.length > 0 ? (
+          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", padding: "10px 16px", borderTop: "1px solid var(--border-soft)", fontSize: "12px", color: "var(--text-muted)", flexWrap: "wrap", gap: 8 }}>
+            <span>Showing {filtered.length === 0 ? 0 : (localPage - 1) * pageSize + 1}–{Math.min(localPage * pageSize, filtered.length)} of {filtered.length} candidate{filtered.length === 1 ? "" : "s"}</span>
+            {totalPages > 1 && (
+              <div style={{ display: "flex", gap: "6px", alignItems: "center" }}>
+                <button className="btn btn-xs btn-ghost" disabled={localPage <= 1} onClick={() => setLocalPage((p) => Math.max(1, p - 1))}>Previous</button>
+                <span style={{ padding: "4px 8px", fontWeight: 600 }}>Page {localPage} of {totalPages}</span>
+                <button className="btn btn-xs btn-ghost" disabled={localPage >= totalPages} onClick={() => setLocalPage((p) => Math.min(totalPages, p + 1))}>Next</button>
+              </div>
+            )}
+          </div>
+        ) : (
+          <Pager meta={meta} label="students" onPage={onPage} />
+        )}
       </div>
     </>
   );
@@ -12487,6 +16423,12 @@ function ProfilePanel({
   onReviewPaymentApproval,
   onRejectPaymentPrompt,
   onRequestFeeApprovalModal,
+  canApproveCandidateDeletion,
+  onDeleteStudent,
+  onRequestStudentDeletion,
+  onReviewStudentDeletion,
+  onOpenReferralSettlement,
+  canDeleteCandidate = false,
   canManageFees,
   canManageSettings,
   canAssignTeachers,
@@ -12529,6 +16471,12 @@ function ProfilePanel({
   onReviewPaymentApproval?: (studentId: string, paymentId: string, action: "approve" | "reject", note?: string) => Promise<void>;
   onRejectPaymentPrompt?: (item: PaymentApprovalItem) => void;
   onRequestFeeApprovalModal?: (student: Student) => void;
+  canApproveCandidateDeletion?: (student: Student) => boolean;
+  onDeleteStudent?: (student: Student) => void;
+  onRequestStudentDeletion?: (student: Student) => void;
+  onReviewStudentDeletion?: (student: Student, action: "approve" | "reject") => void;
+  onOpenReferralSettlement?: (student: Student) => void;
+  canDeleteCandidate?: boolean;
   canManageFees: boolean;
   canManageSettings: boolean;
   canAssignTeachers: boolean;
@@ -12627,7 +16575,7 @@ function ProfilePanel({
     const initCourse = profile ? profile.data.course || "" : "";
     setEditCourseDraft(initCourse);
     setEditCentreDraft(profile ? profile.data.centre || "" : "");
-    setEditSourceDraft(profile?.type === "lead" ? (profile.data.source || "") : "");
+    setEditSourceDraft(profile?.type === "lead" ? (profile.data.source || "") : profile?.type === "student" ? (profile.data.source || "Website") : "");
     setEditBatchDraft(profile?.type === "student" ? profile.data.batch || "" : "");
     setEditStatusDraft(profile?.type === "student" ? normalizeStudentStatus(profile.data.status) : "");
     setEditDropoutReasonDraft(profile?.type === "student" ? (profile.data.dropoutReason || "") : "");
@@ -13175,6 +17123,10 @@ function ProfilePanel({
         phone: String(form.phone || ""),
         parentMobile: String(form.parentMobile || ""),
         email: String(form.email || ""),
+        source: String(form.source || student.source || "Website"),
+        refereeName: String(form.refereeName || student.refereeName || ""),
+        refereePhone: String(form.refereePhone || student.refereePhone || ""),
+        referralAmount: form.referralAmount !== undefined ? Number(form.referralAmount || 0) : Number(student.referralAmount || 0),
         studentLocation: String(form.studentLocation || ""),
         admissionNumber: String(form.admissionNumber || ""),
         course: String(form.course || ""),
@@ -13215,6 +17167,39 @@ function ProfilePanel({
           <EditField name="phone" label="Phone" defaultValue={student.phone} required />
           <EditField name="parentMobile" label="Parent mobile" defaultValue={student.parentMobile} />
           <EditField name="email" label="Email" type="email" defaultValue={student.email} />
+          <div className="field">
+            <label>Source</label>
+            <select
+              name="source"
+              value={editSourceDraft}
+              onChange={(e) => setEditSourceDraft(e.target.value)}
+            >
+              {Array.from(new Set([...sources, "Website", student.source].filter(Boolean))).map((src) => (
+                <option key={src} value={src}>{src}</option>
+              ))}
+            </select>
+          </div>
+          {editSourceDraft.trim().toLowerCase() === "referral" && (
+            <>
+              <EditField
+                name="refereeName"
+                label="Referee Name"
+                defaultValue={student.refereeName || ""}
+                required
+              />
+              <EditField
+                name="refereePhone"
+                label="Referee Phone"
+                defaultValue={student.refereePhone || ""}
+              />
+              <EditField
+                name="referralAmount"
+                label="Referral Incentive (₹)"
+                type="number"
+                defaultValue={student.referralAmount ? String(student.referralAmount) : ""}
+              />
+            </>
+          )}
           <EditField name="studentLocation" label="Student location" defaultValue={student.studentLocation} />
           <EditField name="admissionNumber" label="Admission no." defaultValue={student.admissionNumber} />
           <div className="field"><label>Course</label><select name="course" value={editCourseDraft} onChange={(event) => {
@@ -13303,8 +17288,22 @@ function ProfilePanel({
     <div className="card profile-shell">
       <div className="profile-head">
         <div className="avatar drawer-avatar">{initials(student.fullName)}</div>
-        <div className="profile-title"><h3>{student.fullName}</h3><div className="cell-sub mono">{student.admissionNumber || student.phone} - <span className={`badge badge-${stageTag(normalizedStatus)}`}>{studentStatusLabel(normalizedStatus)}</span></div></div>
-        <button className="close-x" onClick={onBack}>x</button>
+        <div className="profile-title"><h3>{student.fullName}</h3><div className="cell-sub mono">{student.admissionNumber || student.phone} • <span className="badge badge-gray">{student.source || "Website"}</span> • <span className={`badge badge-${stageTag(normalizedStatus)}`}>{studentStatusLabel(normalizedStatus)}</span></div></div>
+        <div style={{ display: "flex", alignItems: "center", gap: 8, marginLeft: "auto" }}>
+          {canDeleteCandidate && (
+            <button
+              type="button"
+              className="btn btn-xs btn-outline-danger"
+              style={{ display: "inline-flex", alignItems: "center", gap: 5 }}
+              onClick={() => onDeleteStudent?.(student)}
+              title={canApproveCandidateDeletion?.(student) ? "Delete candidate" : "Request candidate deletion"}
+            >
+              <Trash2 size={13} />
+              <span>{student.deleteApproval?.status === "pending" ? (canApproveCandidateDeletion?.(student) ? "Review Deletion" : "Deletion Pending") : (canApproveCandidateDeletion?.(student) ? "Delete" : "Request Delete")}</span>
+            </button>
+          )}
+          <button className="close-x" onClick={onBack}>x</button>
+        </div>
       </div>
       <div className="dtabs profile-tabs">{tabs.map((tab) => <button type="button" key={tab.key} className={`dtab ${activeStudentTab === tab.key ? "active" : ""}`} onClick={() => setStudentTab(tab.key)}>{tab.label}</button>)}</div>
       <div className="drawer-body profile-drawer-body">
@@ -13322,6 +17321,7 @@ function ProfilePanel({
           <div className="kv-row"><span className="k">Due</span><span className="v">{formatCurrency(due || Math.max(0, (student.totalFee || dynamicCoursePayable || 0) - (student.discountAmount || 0) - (student.paidAmount || 0)))}</span></div>
           <div className="kv-row"><span className="k">Discount</span><span className="v">{formatCurrency(student.discountAmount || 0)}</span></div>
           <div className="kv-row"><span className="k">Admission date</span><span className="v mono">{student.createdAt ? formatDate(student.createdAt) : "-"}</span></div>
+          <div className="kv-row"><span className="k">Source</span><span className="v"><span className="badge badge-gray">{student.source || "Website"}</span></span></div>
           <div className="kv-row"><span className="k">Course</span><span className="v">{courseShortCode(student.course)}</span></div>
           <div className="kv-row"><span className="k">Centre</span><span className="v">{student.centre || "-"}</span></div>
           <div className="kv-row"><span className="k">Phone</span><span className="v">{student.phone || "-"}</span></div>
@@ -13334,6 +17334,50 @@ function ProfilePanel({
           {student.callerName && <div className="kv-row"><span className="k">Caller</span><span className="v">{student.callerName}</span></div>}
           <div className="kv-row"><span className="k">Teacher</span><span className="v">{student.teacher || "Unassigned"}</span></div>
           <div className="kv-row"><span className="k">LMS access</span><span className="v">{student.lmsAccessEnabled ? <span className="badge badge-green">Enabled</span> : <span className="badge badge-gray">Not generated</span>}</span></div>
+
+          {student.deleteApproval?.status === "pending" && (
+            <div style={{ background: "#FEF2F2", border: "1px solid #FCA5A5", borderRadius: 10, padding: "12px 14px", margin: "14px 0" }}>
+              <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", flexWrap: "wrap", gap: 8, marginBottom: 6 }}>
+                <div style={{ display: "flex", alignItems: "center", gap: 6, color: "#B91C1C", fontWeight: 700, fontSize: 13 }}>
+                  <AlertTriangle size={15} /> Candidate Deletion Pending Approval
+                </div>
+                {canApproveCandidateDeletion?.(student) && (
+                  <div style={{ display: "inline-flex", gap: 6 }}>
+                    <button
+                      type="button"
+                      className="btn btn-xs btn-danger"
+                      onClick={() => onReviewStudentDeletion?.(student, "approve")}
+                      style={{ display: "inline-flex", alignItems: "center", gap: 4 }}
+                    >
+                      <Trash2 size={12} /> Approve & Delete
+                    </button>
+                    <button
+                      type="button"
+                      className="btn btn-xs btn-secondary"
+                      onClick={() => onReviewStudentDeletion?.(student, "reject")}
+                      style={{ display: "inline-flex", alignItems: "center", gap: 4 }}
+                    >
+                      <X size={12} /> Reject
+                    </button>
+                  </div>
+                )}
+              </div>
+              <div style={{ fontSize: 12.5, color: "var(--text-main)" }}>
+                <strong>Reason:</strong> "{student.deleteApproval.reason || "Candidate record deletion"}"
+              </div>
+              <div className="cell-sub" style={{ marginTop: 4 }}>
+                Requested by {student.deleteApproval.requestedBy || "Staff"} ({student.deleteApproval.requestedByRole || "admin"}) {student.deleteApproval.requestedAt ? `on ${formatDate(student.deleteApproval.requestedAt)}` : ""} • Scope: {student.deleteApproval.approverScope === "center_admin_or_superadmin" ? "Super Admin or Center Admin" : "Super Admin"}
+              </div>
+            </div>
+          )}
+
+          {student.deleteApproval?.status === "rejected" && (
+            <div style={{ background: "#F3F4F6", border: "1px solid #E5E7EB", borderRadius: 8, padding: "8px 12px", margin: "10px 0", fontSize: 12, color: "#4B5563", display: "flex", alignItems: "center", justifyContent: "space-between", flexWrap: "wrap", gap: 6 }}>
+              <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
+                <Info size={14} /> Deletion request was rejected: "{student.deleteApproval.rejectionReason || "Declined by management"}"
+              </div>
+            </div>
+          )}
 
           {student.feeApproval?.status === "pending" && (
             <div style={{ background: "#FFFBEB", border: "1px solid #FCD34D", borderRadius: 10, padding: "12px 14px", margin: "14px 0" }}>
@@ -13497,6 +17541,67 @@ function ProfilePanel({
               </div>
             )}
           </div>
+
+          {/* Referral & Referee Payout Card */}
+          {(student.refereeName || (student.referralAmount && student.referralAmount > 0) || String(student.source || "").toLowerCase() === "referral") && (
+            <div style={{ marginTop: 18, borderTop: "1px solid var(--border)", paddingTop: 14 }}>
+              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 10 }}>
+                <div style={{ fontWeight: 600, fontSize: 13, color: "var(--text-strong)", display: "flex", alignItems: "center", gap: 6 }}>
+                  <Gift size={15} color="#8B5CF6" /> Referral & Referee Payout
+                </div>
+                {student.referralSettlement?.status === "settled" ? (
+                  <span className="badge badge-green" style={{ display: "inline-flex", alignItems: "center", gap: 4 }}>
+                    <CheckCircle2 size={12} /> Settled
+                  </span>
+                ) : (
+                  <button
+                    type="button"
+                    className="btn btn-xs btn-primary"
+                    style={{ fontSize: 11, padding: "3px 8px" }}
+                    onClick={() => onOpenReferralSettlement?.(student)}
+                  >
+                    <CreditCard size={12} /> Settle Payout
+                  </button>
+                )}
+              </div>
+              <div className="kv-row">
+                <span className="k">Referee Name</span>
+                <span className="v font-semibold">{student.refereeName || "—"}</span>
+              </div>
+              {student.refereePhone && (
+                <div className="kv-row">
+                  <span className="k">Referee Phone</span>
+                  <span className="v mono">{student.refereePhone}</span>
+                </div>
+              )}
+              <div className="kv-row">
+                <span className="k">Referral Incentive</span>
+                <span className="v font-bold" style={{ color: "#059669" }}>{formatCurrency(student.referralAmount || 0)}</span>
+              </div>
+              <div className="kv-row">
+                <span className="k">Settlement Status</span>
+                <span className="v">
+                  {student.referralSettlement?.status === "settled" ? (
+                    <div>
+                      <span className="badge badge-green">Settled: {formatCurrency(student.referralSettlement.amount || student.referralAmount || 0)}</span>
+                      <div className="cell-sub" style={{ marginTop: 2, fontSize: 11 }}>
+                        via {student.referralSettlement.payoutMode || "Payment"}{student.referralSettlement.transactionReference ? ` (Ref: ${student.referralSettlement.transactionReference})` : ""}
+                        {student.referralSettlement.settledAt ? ` on ${formatDate(student.referralSettlement.settledAt)}` : ""}
+                      </div>
+                    </div>
+                  ) : (student.paidAmount || 0) > 0 ? (
+                    <span className="badge badge-amber" style={{ background: "#FFFBEB", color: "#D97706", border: "1px solid #FCD34D" }}>
+                      Eligible for Payout
+                    </span>
+                  ) : (
+                    <span className="badge badge-gray" title="Candidate has not paid fees yet">
+                      Awaiting Candidate Fee
+                    </span>
+                  )}
+                </span>
+              </div>
+            </div>
+          )}
         </div>}
         {activeStudentTab === "docs" && (
           <div className="dpane active">
@@ -13925,6 +18030,19 @@ function ProfilePanel({
                               <span className="badge badge-gray">
                                 {payment.mode || "-"}
                               </span>
+                              {payment.mode === "Cash" && payment.cashDeposits && payment.cashDeposits.length > 0 && (
+                                <div style={{ marginTop: 3 }}>
+                                  {payment.cashDeposits.some((d) => d.status === "pending") ? (
+                                    <span className="badge badge-amber" style={{ fontSize: 9.5, padding: "1px 5px", background: "#FFFBEB", color: "#D97706", border: "1px solid #FCD34D", display: "inline-flex", alignItems: "center", gap: 3 }}>
+                                      <Clock size={9} /> Challan Pending
+                                    </span>
+                                  ) : payment.cashDeposits.every((d) => (d.status || "verified") === "verified") ? (
+                                    <span className="badge badge-green" style={{ fontSize: 9.5, padding: "1px 5px", display: "inline-flex", alignItems: "center", gap: 3 }}>
+                                      <CheckCircle2 size={9} /> Challan Verified
+                                    </span>
+                                  ) : null}
+                                </div>
+                              )}
                             </td>
                             <td className="mono" style={{ textAlign: "left" }}>
                               {payment.transactionId || "—"}
@@ -14526,25 +18644,35 @@ function SelectField({ name, label, options, defaultValue = "" }: { name: string
 function DocumentPreviewModal({ preview, onClose }: { preview: DocumentPreviewState; onClose: () => void }) {
   const isLoaded = Boolean(preview && "url" in preview);
   return (
-    <div className={`modal-overlay ${preview ? "show" : ""}`} onClick={onClose}>
-      {preview && <div className="modal document-preview-modal" onClick={(event) => event.stopPropagation()}>
-        <div className="modal-head document-preview-head">
-          <h3>{preview.title}</h3>
-          <div className="document-preview-actions">
-            {isLoaded && <a className="btn btn-ghost btn-sm" href={(preview as Extract<DocumentPreviewState, { url: string }>).url} download={(preview as Extract<DocumentPreviewState, { url: string }>).fileName}><Download size={14} /> Download</a>}
-            <button className="close-x" onClick={onClose}>x</button>
+    <div
+      className={`modal-overlay ${preview ? "show" : ""}`}
+      style={{ zIndex: 2200 }}
+      onClick={onClose}
+    >
+      {preview && (
+        <div
+          className="modal document-preview-modal"
+          style={{ zIndex: 2201 }}
+          onClick={(event) => event.stopPropagation()}
+        >
+          <div className="modal-head document-preview-head">
+            <h3>{preview.title}</h3>
+            <div className="document-preview-actions">
+              {isLoaded && <a className="btn btn-ghost btn-sm" href={(preview as Extract<DocumentPreviewState, { url: string }>).url} download={(preview as Extract<DocumentPreviewState, { url: string }>).fileName}><Download size={14} /> Download</a>}
+              <button className="close-x" onClick={onClose}>x</button>
+            </div>
+          </div>
+          <div className="document-preview-body">
+            {"loading" in preview ? <div className="empty-state"><h4>Loading document...</h4></div> : preview.mimeType === "application/pdf" ? (
+              <iframe title={preview.title} className="document-preview-frame" src={preview.url} />
+            ) : preview.mimeType.startsWith("image/") ? (
+              <img className="document-preview-image" src={preview.url} alt={preview.title} />
+            ) : (
+              <div className="empty-state"><h4>Preview not available</h4><p>Download this document to view it.</p></div>
+            )}
           </div>
         </div>
-        <div className="document-preview-body">
-          {"loading" in preview ? <div className="empty-state"><h4>Loading document...</h4></div> : preview.mimeType === "application/pdf" ? (
-            <iframe title={preview.title} className="document-preview-frame" src={preview.url} />
-          ) : preview.mimeType.startsWith("image/") ? (
-            <img className="document-preview-image" src={preview.url} alt={preview.title} />
-          ) : (
-            <div className="empty-state"><h4>Preview not available</h4><p>Download this document to view it.</p></div>
-          )}
-        </div>
-      </div>}
+      )}
     </div>
   );
 }
@@ -14630,7 +18758,7 @@ function CrmStyles() {
       .nav-scroll{flex:1;overflow-y:auto;padding:12px 10px}.nav-group-label{font-size:10px;font-weight:700;letter-spacing:.8px;text-transform:uppercase;color:#5D6588;padding:14px 10px 6px}.nav-item{position:relative;width:100%;border:0;display:flex;align-items:center;gap:10px;padding:9px 10px;border-radius:8px;margin-bottom:2px;background:transparent;color:#AEB4CE;font-size:13px;font-weight:500;text-align:left}.nav-item svg{width:16px;height:16px}.nav-item:hover{background:var(--navy-800);color:#fff}.nav-item.active{background:var(--indigo-500);color:#fff;box-shadow:0 4px 12px rgba(79,107,255,.35)}.nav-badge{margin-left:auto;min-width:19px;height:19px;border-radius:999px;background:var(--amber-500);color:#fff;display:inline-grid;place-items:center;padding:0 6px;font-size:10.5px;font-style:normal;font-weight:800;line-height:1;box-shadow:0 4px 10px rgba(245,158,11,.28)}.nav-badge-admission{min-width:24px;height:20px;background:#EAFBF3;color:#0E7A54;border:1px solid rgba(23,166,115,.28);box-shadow:0 0 0 3px rgba(23,166,115,.08);font-size:10px}.nav-item.active .nav-badge-admission{background:#fff;color:var(--indigo-600);border-color:rgba(255,255,255,.65);box-shadow:none}.mobile-logout{display:none}
       .sidebar-footer{padding:12px;border-top:1px solid var(--navy-line)}.role-pill{display:flex;align-items:center;gap:9px;background:var(--navy-800);border:1px solid var(--navy-line);border-radius:10px;padding:8px 10px}.role-avatar{width:28px;height:28px;border-radius:8px;background:linear-gradient(135deg,#F5A524,#E5484D);display:flex;align-items:center;justify-content:center;font-weight:700;color:#fff;font-size:12px}.role-meta{line-height:1.2;overflow:hidden}.role-meta b{font-size:12px;color:#fff;display:block;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}.role-meta span{font-size:10.5px;color:#8A91B0}.role-pill .icon-btn{margin-left:auto;background:transparent;border:0;color:#8A91B0}
       .main{flex:1;display:flex;flex-direction:column;height:100vh;overflow:hidden;width:100%;max-width:100%;min-width:0;box-sizing:border-box}.topbar{height:60px;flex:0 0 60px;background:#fff;border-bottom:1px solid var(--border);display:flex;align-items:center;gap:12px;padding:0 22px;width:100%;max-width:100%;min-width:0;box-sizing:border-box;position:relative;z-index:40;overflow:visible}.page-title{font-size:16px;font-weight:700}.page-sub{font-size:11.5px;color:var(--text-400);margin-top:1px}.topbar-spacer{flex:1}.scope-select,.df-select,.fbtn{border:1px solid var(--border);background:#fff;border-radius:8px;padding:7px 10px;font-size:12.5px;color:var(--text-700);font-weight:500;font-family:inherit}.scope-select{height:36px;box-sizing:border-box;display:inline-flex;align-items:center;padding:0 12px;flex-shrink:0}.scope-select-locked{background:var(--bg);color:var(--text-400)}.date-filter{display:inline-flex;align-items:center;gap:4px;background:var(--bg);border:1px solid var(--border);border-radius:9px;padding:3px;height:36px;box-sizing:border-box;flex-shrink:0}.df-btn{border:none;background:transparent;padding:0 11px;height:28px;border-radius:7px;font-size:12px;font-weight:600;color:var(--text-600);white-space:nowrap;display:inline-flex;align-items:center;justify-content:center;line-height:1;flex-shrink:0}.df-btn.active{background:#fff;color:var(--indigo-600);box-shadow:0 1px 2px rgba(16,20,40,.05)}.df-date{border:1px solid var(--border);border-radius:7px;padding:5px 8px;font-size:12px;display:none;height:28px;box-sizing:border-box}.df-date.show{display:inline-block}.icon-btn{width:36px;height:36px;border-radius:9px;border:1px solid var(--border);background:#fff;display:inline-flex;align-items:center;justify-content:center;color:var(--text-600);box-sizing:border-box;flex-shrink:0}.search-box{display:flex;align-items:center;gap:7px;background:var(--bg);border:1px solid var(--border);border-radius:9px;padding:0 12px;width:230px;height:36px;box-sizing:border-box;flex-shrink:0}.search-box input{border:none;background:transparent;outline:none;font-size:12.5px;width:100%;color:var(--text-900);padding:0}
-      .content{flex:1;overflow-y:auto;overflow-x:hidden;padding:22px;width:100%;max-width:100%;min-width:0;box-sizing:border-box}.grid-metrics{display:grid;grid-template-columns:repeat(auto-fit,minmax(170px,1fr));gap:14px;margin-bottom:18px}.metric-card,.card{background:#fff;border:1px solid var(--border);border-radius:14px;box-shadow:0 1px 2px rgba(16,20,40,.05)}.metric-card{padding:16px 18px;position:relative;overflow:hidden}.m-label{font-size:11.5px;color:var(--text-600);font-weight:600;display:flex;align-items:center;gap:6px}.m-value{font-size:24px;font-weight:800;margin-top:8px;color:#061633;font-family:JetBrains Mono,monospace}.m-delta{font-size:11px;font-weight:600;margin-top:6px}.m-delta.up{color:var(--green-700)}.m-delta.down{color:var(--red-700)}.m-dot{width:9px;height:9px;border-radius:3px;display:inline-block}.two-col{display:grid;grid-template-columns:1.3fr 1fr;gap:16px;margin-bottom:16px}.lower-grid{grid-template-columns:1fr 1fr .75fr}.card-head{display:flex;align-items:center;gap:12px;padding:16px 18px;border-bottom:1px solid var(--border-soft)}.card-head h3{font-size:13.5px;font-weight:700;margin:0}.card-head .sub{font-size:11px;color:var(--text-400);margin-top:2px}.card-head button,.card-head input{margin-left:auto}.card-body{padding:16px 18px}.funnel-wrap{display:flex;flex-direction:column;gap:6px}.funnel-row{display:grid;grid-template-columns:120px 1fr 90px;align-items:center;gap:10px}.flabel{font-size:12px;font-weight:600;color:var(--text-600)}.funnel-bar-track{background:var(--border-soft);border-radius:6px;height:22px;overflow:hidden}.funnel-bar-fill{height:100%;border-radius:6px;background:linear-gradient(90deg,var(--indigo-500),#8A6BFF);display:flex;align-items:center;justify-content:flex-end;padding-right:8px}.funnel-bar-fill span{color:#fff;font-size:10.5px;font-weight:700}.fval{font-size:12px;color:var(--text-400);text-align:right;font-family:JetBrains Mono,monospace}
+      .content{flex:1;overflow-y:auto;overflow-x:hidden;padding:22px;width:100%;max-width:100%;min-width:0;box-sizing:border-box}.dashboard-greeting-banner{position:relative;overflow:hidden;display:flex;align-items:center;justify-content:space-between;gap:20px;border:1px solid var(--border);border-radius:18px;padding:18px 24px;margin-bottom:20px;backdrop-filter:blur(16px);-webkit-backdrop-filter:blur(16px);transition:all .3s ease}.dashboard-greeting-banner::before{content:"";position:absolute;top:0;left:0;right:0;height:1px;background:linear-gradient(90deg,transparent 0%,rgba(255,255,255,.3) 20%,rgba(255,255,255,.75) 50%,rgba(255,255,255,.3) 80%,transparent 100%);pointer-events:none;z-index:3}.dashboard-greeting-banner:hover{transform:translateY(-1px)}.greeting-main-content{flex:1;min-width:0}.greeting-header-row{display:flex;align-items:center;gap:16px}.greeting-icon-box{width:50px;height:50px;border-radius:15px;display:flex;align-items:center;justify-content:center;flex:0 0 50px;border:1px solid rgba(255,255,255,.85);box-shadow:0 6px 18px rgba(0,0,0,.08);transition:transform .25s ease;position:relative;overflow:hidden}.greeting-icon-box::after{content:"";position:absolute;inset:0;background:radial-gradient(circle at 30% 25%,rgba(255,255,255,.45) 0%,transparent 65%);pointer-events:none}.dashboard-greeting-banner:hover .greeting-icon-box{transform:scale(1.06) rotate(3deg)}.greeting-text-group{display:flex;flex-direction:column;gap:3px;min-width:0}.greeting-title-wrap{display:flex;align-items:center;gap:8px}.greeting-title-text{font-size:19.5px;font-weight:800;letter-spacing:-.02em;color:#0F172A;margin:0;line-height:1.2}.greeting-wave-emoji{display:inline-block;font-size:18px;transform-origin:70% 70%;animation:wave-hand 2.2s infinite ease-in-out}@keyframes wave-hand{0%,100%{transform:rotate(0deg)}20%,60%{transform:rotate(14deg)}40%,80%{transform:rotate(-8deg)}}.greeting-scenario-sub{display:flex;align-items:baseline;gap:8px;margin:3px 0 0}.greeting-quote-bullet{font-size:11px;color:var(--indigo-500);line-height:1;flex-shrink:0}.greeting-message-text{font-size:13px;font-weight:500;color:#334155;line-height:1.45;margin:0}.greeting-side-actions{display:flex;align-items:center;gap:12px;flex-shrink:0}.greeting-date-pill{font-size:12px;font-weight:600;color:#475569;background:rgba(255,255,255,.85);backdrop-filter:blur(8px);-webkit-backdrop-filter:blur(8px);border:1px solid rgba(226,232,240,.9);padding:7px 14px;border-radius:999px;white-space:nowrap;display:inline-flex;align-items:center;gap:6px;box-shadow:0 1px 3px rgba(15,23,42,.04)}.greeting-action-btn{white-space:nowrap;height:34px;border-radius:999px;padding:0 16px;font-size:12px;font-weight:700;box-shadow:0 4px 12px rgba(79,107,255,.28);transition:all .2s ease}.greeting-action-btn:hover{transform:translateY(-1px);box-shadow:0 6px 16px rgba(79,107,255,.38)}.greeting-action-btn:hover .action-arrow-icon{transform:translateX(3px)}.action-arrow-icon{transition:transform .2s ease}.greeting-weather-pill{display:inline-flex;align-items:center;gap:6px;background:rgba(255,255,255,0.85);backdrop-filter:blur(8px);-webkit-backdrop-filter:blur(8px);border:1px solid rgba(0,0,0,0.08);padding:3px 11px;border-radius:999px;font-size:11.5px;box-shadow:0 2px 6px rgba(16,20,40,.04);line-height:1}.greeting-weather-temp{font-weight:800;color:var(--text-900);font-family:JetBrains Mono,monospace}.greeting-weather-label{font-weight:600;color:var(--text-600)}.dashboard-greeting-banner.theme-dark .greeting-title-text{color:#FFFFFF!important;text-shadow:0 1px 10px rgba(0,0,0,.5)}.dashboard-greeting-banner.theme-dark .greeting-message-text{color:#94A3B8!important}.dashboard-greeting-banner.theme-dark .greeting-weather-pill{background:rgba(255,255,255,.08)!important;backdrop-filter:blur(12px)!important;-webkit-backdrop-filter:blur(12px)!important;border:1px solid rgba(255,255,255,.16)!important;box-shadow:0 4px 12px rgba(0,0,0,.25)!important}.dashboard-greeting-banner.theme-dark .greeting-weather-temp{color:#FFFFFF!important}.dashboard-greeting-banner.theme-dark .greeting-weather-label{color:#CBD5E1!important}.dashboard-greeting-banner.theme-dark .greeting-date-pill{background:rgba(255,255,255,.08)!important;backdrop-filter:blur(12px)!important;-webkit-backdrop-filter:blur(12px)!important;border:1px solid rgba(255,255,255,.16)!important;color:#E2E8F0!important;box-shadow:0 4px 12px rgba(0,0,0,.25)!important}.dashboard-greeting-banner.theme-dark .greeting-icon-box{border:1px solid rgba(255,255,255,.2)!important;box-shadow:0 6px 20px rgba(0,0,0,.35)!important}.imed-rain-overlay{position:absolute;inset:0;pointer-events:none;overflow:hidden;z-index:1}.imed-raindrop{position:absolute;top:-28px;border-radius:999px;animation:imedRainFall linear infinite}.dashboard-greeting-banner.theme-dark .imed-raindrop{background:linear-gradient(180deg,rgba(56,189,248,0) 0%,rgba(56,189,248,.45) 55%,rgba(255,255,255,.95) 100%);filter:drop-shadow(0 0 3px rgba(56,189,248,.65))}.dashboard-greeting-banner.theme-light .imed-raindrop{background:linear-gradient(180deg,rgba(14,165,233,0) 0%,rgba(14,165,233,.45) 60%,rgba(2,132,199,.85) 100%)}@keyframes imedRainFall{0%{transform:translateY(-28px) rotate(14deg);opacity:0}15%{opacity:.85}85%{opacity:.85}100%{transform:translateY(140px) rotate(14deg);opacity:0}}.imed-stars-overlay{position:absolute;inset:0;pointer-events:none;overflow:hidden;z-index:1}.imed-star-dot{position:absolute;background:#FFFFFF;border-radius:50%;animation:imedStarTwinkle 3s infinite ease-in-out;box-shadow:0 0 4px rgba(255,255,255,.9)}@keyframes imedStarTwinkle{0%,100%{opacity:.2;transform:scale(.8)}50%{opacity:.95;transform:scale(1.35)}}@media(max-width:820px){.dashboard-greeting-banner{flex-direction:column;align-items:flex-start;padding:16px 18px;gap:14px}.greeting-side-actions{width:100%;justify-content:space-between;padding-top:6px;border-top:1px solid rgba(0,0,0,.05)}}.grid-metrics{display:grid;grid-template-columns:repeat(auto-fit,minmax(170px,1fr));gap:14px;margin-bottom:18px}.metric-card,.card{background:#fff;border:1px solid var(--border);border-radius:14px;box-shadow:0 1px 2px rgba(16,20,40,.05)}.metric-card{padding:16px 18px;position:relative;overflow:hidden}.m-label{font-size:11.5px;color:var(--text-600);font-weight:600;display:flex;align-items:center;gap:6px}.m-value{font-size:24px;font-weight:800;margin-top:8px;color:#061633;font-family:JetBrains Mono,monospace}.m-delta{font-size:11px;font-weight:600;margin-top:6px}.m-delta.up{color:var(--green-700)}.m-delta.down{color:var(--red-700)}.m-dot{width:9px;height:9px;border-radius:3px;display:inline-block}.two-col{display:grid;grid-template-columns:1.3fr 1fr;gap:16px;margin-bottom:16px}.lower-grid{grid-template-columns:1fr 1fr .75fr}.card-head{display:flex;align-items:center;gap:12px;padding:16px 18px;border-bottom:1px solid var(--border-soft)}.card-head h3{font-size:13.5px;font-weight:700;margin:0}.card-head .sub{font-size:11px;color:var(--text-400);margin-top:2px}.card-head button,.card-head input{margin-left:auto}.card-body{padding:16px 18px}.funnel-wrap{display:flex;flex-direction:column;gap:6px}.funnel-row{display:grid;grid-template-columns:120px 1fr 90px;align-items:center;gap:10px}.flabel{font-size:12px;font-weight:600;color:var(--text-600)}.funnel-bar-track{background:var(--border-soft);border-radius:6px;height:22px;overflow:hidden}.funnel-bar-fill{height:100%;border-radius:6px;background:linear-gradient(90deg,var(--indigo-500),#8A6BFF);display:flex;align-items:center;justify-content:flex-end;padding-right:8px}.funnel-bar-fill span{color:#fff;font-size:10.5px;font-weight:700}.fval{font-size:12px;color:var(--text-400);text-align:right;font-family:JetBrains Mono,monospace}
       .filter-bar{display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin-bottom:14px}.btn{border:none;border-radius:8px;padding:8px 14px;font-size:12.5px;font-weight:600;display:inline-flex;align-items:center;gap:6px;text-decoration:none}.btn-primary{background:var(--indigo-500);color:#fff;box-shadow:0 4px 10px rgba(79,107,255,.28)}.btn-ghost{background:#fff;border:1px solid var(--border);color:var(--text-700)}.btn-soft{background:var(--indigo-100);color:var(--indigo-600)}.btn-whatsapp{background:#e8f8ef;color:#047a43}.btn-danger{background:var(--red-700);color:#fff;box-shadow:0 4px 10px rgba(229,72,77,.22)}.btn-sm{padding:5px 10px;font-size:11.5px;border-radius:7px}.btn:disabled{opacity:.55;cursor:not-allowed}.file-upload-btn{position:relative;overflow:hidden;cursor:pointer}.file-upload-btn input{position:absolute;inset:0;opacity:0;cursor:pointer}.action-icons{display:flex;align-items:center;gap:6px}.action-icon-btn{width:30px;height:30px;border:1px solid var(--border);border-radius:8px;background:#fff;color:var(--text-600);display:inline-flex;align-items:center;justify-content:center}.action-icon-btn:hover{background:var(--bg);color:var(--text-900)}.action-icon-primary{background:var(--indigo-100);border-color:#dbe2ff;color:var(--indigo-600)}.action-icon-danger{background:var(--red-50);border-color:#f7d7d7;color:var(--red-700)}.action-icon-whatsapp{background:#e8f8ef;border-color:#c8eed9;color:#047a43}.delete-modal,.forgot-modal{width:390px;max-width:92vw;overflow:hidden}.delete-modal .modal-head,.forgot-modal .modal-head{padding:18px 18px 16px}.delete-modal-body,.forgot-modal-body{display:flex;gap:14px;align-items:center;padding:20px 18px}.delete-modal-body p,.forgot-modal-body p{margin:0;color:var(--text-700);line-height:1.45;min-width:0}.forgot-email-field{margin-top:12px}.forgot-email-field input{height:38px}.delete-icon{width:38px;height:38px;border-radius:10px;background:var(--red-50);color:var(--red-700);display:flex;align-items:center;justify-content:center;flex:0 0 38px}.logout-icon{background:var(--indigo-100);color:var(--indigo-600)}.delete-modal-actions{display:flex;justify-content:flex-end;gap:10px;padding:0 18px 18px}.delete-modal-actions .btn{min-width:66px;justify-content:center}.pamphlet-select{height:32px;border:1px solid #dbe2ff;border-radius:8px;background:var(--indigo-100);color:var(--indigo-600);font-size:11.5px;font-weight:700;padding:0 8px;max-width:150px}.pamphlet-select.compact{width:92px;height:30px;padding:0 6px}.table-wrap{overflow-x:auto}table{width:100%;border-collapse:collapse;font-size:12.5px}thead th{text-align:left;font-size:10.5px;text-transform:uppercase;letter-spacing:.4px;color:var(--text-400);font-weight:700;padding:10px 12px;border-bottom:1px solid var(--border);white-space:nowrap;background:#FAFBFD}tbody td,tfoot td{padding:11px 12px;border-bottom:1px solid var(--border-soft);color:var(--text-700);white-space:nowrap;vertical-align:middle}tbody tr:hover{background:#F8F9FD}.approvals-table thead th{vertical-align:middle}.approvals-table tbody td{vertical-align:middle}.clickable{cursor:pointer}.cell-name,.nm{font-weight:700;color:var(--text-900)}.cell-sub,.mt{font-size:11px;color:var(--text-400)}.mini-select,.mini-input{max-width:160px;border:1px solid var(--border);border-radius:7px;padding:5px 7px;background:#fff}.tag{font-size:12px;border-radius:999px;padding:6px 10px;font-weight:700}.tag.green{background:var(--green-50);color:var(--green-700)}.tag.purple{background:var(--purple-50);color:var(--purple-700)}.tag.amber{background:var(--amber-50);color:var(--amber-700)}.tag.blue{background:var(--blue-50);color:var(--indigo-600)}.tag.red{background:var(--red-50);color:var(--red-700)}
       .badge{display:inline-flex;align-items:center;gap:5px;padding:3px 9px;border-radius:20px;font-size:11px;font-weight:700;white-space:nowrap}.badge-gray{background:#f1f2f6;color:var(--text-600)}.badge-amber{background:var(--amber-50);color:var(--amber-700)}.badge-red{background:var(--red-50);color:var(--red-700)}.badge-green{background:var(--green-50);color:var(--green-700)}.badge-blue{background:var(--blue-50);color:var(--indigo-600)}.badge-purple{background:var(--purple-50);color:var(--purple-700)}.badge-junk{background:#fee2e2;color:#991b1b;border:1px solid #fecaca}.btn-green{background:var(--green-50);color:var(--green-700)}.leads-filter-bar{gap:10px;margin-bottom:14px}.leads-filter-bar .fbtn{height:34px}.leads-filter-bar .lead-search-input{width:200px}.leads-filter-bar .filter-spacer{flex:1}.leads-card{border-radius:14px;overflow:hidden}.leads-table-wrap{overflow-x:auto}.leads-table{min-width:1300px}.leads-table thead th{height:38px;padding:10px 12px;background:#fafbfd;color:#99a1b3;font-size:10.5px;letter-spacing:.4px}.leads-table tbody td{height:58px;padding:10px 12px;color:#333a56}.leads-table tbody tr:hover{background:#f8f9fd}.lead-name-cell{display:flex;align-items:center;gap:9px}.avatar{width:30px;height:30px;border-radius:8px;display:flex;align-items:center;justify-content:center;color:#fff;font-weight:700;font-size:11.5px;flex:0 0 30px}.lead-avatar{background:#eef3ff;color:#4f6bff;border-radius:8px}.leads-table .cell-name{font-size:12.5px;font-weight:700;color:#161b33}.leads-table .cell-sub{font-size:11px;color:#99a1b3;margin-top:3px}.leads-table .mini-select,.leads-table .stage-select{height:29px;max-width:150px;border:1px solid var(--border);border-radius:7px;background:#fff;padding:5px 8px;font-size:11.5px;color:var(--text-700)}.leads-table .stage-select{max-width:118px}.leads-table .feedback-select{max-width:132px;font-weight:700;border-radius:999px}.feedback-select.badge-red{background:var(--red-50);color:var(--red-700);border-color:#f7d7d7}.feedback-select.badge-gray{background:#f1f2f6;color:var(--text-600)}.feedback-select.badge-amber{background:var(--amber-50);color:var(--amber-700);border-color:#f5dfaf}.feedback-select.badge-blue{background:var(--blue-50);color:var(--indigo-600);border-color:#dbe2ff}.feedback-select.badge-green{background:var(--green-50);color:var(--green-700);border-color:#caefdf}.feedback-select.badge-purple{background:var(--purple-50);color:var(--purple-700);border-color:#ded2fb}.feedback-select.badge-junk{background:#fee2e2;color:#991b1b;border-color:#fecaca}.leads-table .btn-soft{background:var(--indigo-100);color:var(--indigo-600);box-shadow:none}.leads-table .empty-state h4{margin:0 0 4px;color:var(--text-600);font-size:13px}.leads-table .empty-state p{margin:0;font-size:12px;color:var(--text-400)}.pill-tabs{display:inline-flex;align-items:center;gap:4px;background:#EAEFF8;border:1px solid #D2DCEE;border-radius:999px;padding:4px;box-shadow:inset 0 1px 2px rgba(16,20,40,.04);max-width:100%;overflow-x:auto;scrollbar-width:none;-ms-overflow-style:none}.pill-tabs::-webkit-scrollbar{display:none}.pill-tab{display:inline-flex;align-items:center;justify-content:center;gap:7px;padding:7px 14px;border-radius:999px;font-size:12px;font-weight:600;color:var(--text-600);background:transparent;border:1px solid transparent;white-space:nowrap;line-height:1;cursor:pointer;transition:all .15s ease;flex-shrink:0}.pill-tab svg{flex-shrink:0}.pill-tab:hover{color:var(--text-900);background:rgba(255,255,255,.55)}.pill-tab.active{background:#FFFFFF;color:var(--indigo-600);font-weight:700;border-color:rgba(79,107,255,.22);box-shadow:0 2px 6px rgba(16,20,40,.08)}.admissions-tabs{width:max-content;margin-bottom:16px}.admissions-card{border-radius:14px;overflow:hidden}.admissions-table{width:100%;min-width:980px;border-collapse:collapse}.admissions-table thead th{height:42px;padding:11px 16px;background:#fafbfd;color:#99a1b3;font-size:10.5px;letter-spacing:.4px;font-weight:700;white-space:nowrap;border-bottom:1px solid var(--border)}.admissions-table thead th:last-child{text-align:right}.admissions-table tbody td{height:70px;padding:12px 16px;color:#333a56;vertical-align:middle;border-bottom:1px solid var(--border-soft)}.admissions-table tbody tr:hover{background:#f8f9fd}.admissions-table th:nth-child(1),.admissions-table td:nth-child(1){width:24%;min-width:200px}.admissions-table th:nth-child(2),.admissions-table td:nth-child(2){width:10%;min-width:85px}.admissions-table th:nth-child(3),.admissions-table td:nth-child(3){width:12%;min-width:100px}.admissions-table th:nth-child(4),.admissions-table td:nth-child(4){width:13%;min-width:110px}.admissions-table th:nth-child(5),.admissions-table td:nth-child(5){width:11%;min-width:100px}.admissions-table th:nth-child(6),.admissions-table td:nth-child(6){width:12%;min-width:110px}.admissions-table th:nth-child(7),.admissions-table td:nth-child(7){width:18%;min-width:180px}.admissions-table th:nth-child(8),.admissions-table td:nth-child(8){width:8%;min-width:85px;text-align:right}.admissions-table .cell-name{font-size:12.5px;font-weight:700;color:#161b33}.admissions-table .cell-sub{font-size:11px;color:#99a1b3;margin-top:3px}.admission-batch-cell{display:grid;align-content:center;gap:5px;max-width:220px}.admissions-table .student-mini-select{width:100%;max-width:180px;height:32px}.admission-batch-hint{display:grid;gap:1px;max-width:220px;color:var(--text-400);margin-top:0}.admission-batch-hint b{color:var(--amber-700);font-size:10.5px;line-height:1.2;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}.admission-batch-hint span{font-size:10px;line-height:1.2;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}.admission-action-cell{text-align:right}.admission-action-cell .btn{height:32px;min-width:82px;justify-content:center}.mono{font-family:JetBrains Mono,monospace}.admissions-table .btn-primary{box-shadow:0 4px 10px rgba(79,107,255,.22)}.admissions-table .empty-state{padding:54px 20px;text-align:center}.admissions-table .empty-state h4{margin:0 0 6px;color:var(--text-600);font-size:14px;font-weight:700}.admissions-table .empty-state p{margin:0;font-size:12.5px;color:var(--text-400)}
       .leads-bulk-bar{display:flex;align-items:center;gap:12px;padding:10px 16px;background:linear-gradient(90deg,#eef3ff,#f8faff);border:1px solid #c7d7fe;border-radius:10px;margin-bottom:14px;box-shadow:0 2px 8px rgba(79,107,255,.08);flex-wrap:wrap}.leads-bulk-count{font-weight:700;color:var(--indigo-600);font-size:12.5px;display:inline-flex;align-items:center;gap:6px}.leads-bulk-actions{display:inline-flex;align-items:center;gap:8px;margin-left:auto;flex-wrap:wrap}.leads-table th.col-select,.leads-table td.col-select{width:42px;min-width:42px;text-align:center;padding:0 8px}.lead-checkbox{width:16px;height:16px;cursor:pointer;accent-color:var(--indigo-500);border-radius:4px;vertical-align:middle}.leads-table tbody tr.row-selected{background:#eef3ff!important}.leads-table tbody tr.row-selected:hover{background:#e4ebff!important}
@@ -14644,7 +18772,7 @@ function CrmStyles() {
       .study-note-form{grid-template-columns:1fr 1fr 240px 1fr auto}.study-note-form .field.full{grid-column:1 / -2}.study-note-list{display:grid;gap:10px;padding:14px 18px 18px}.study-note-row{display:grid;grid-template-columns:42px minmax(0,1fr) auto;align-items:center;gap:12px;border:1px solid var(--border-soft);border-radius:12px;background:#fff;padding:12px 14px}.study-note-icon{width:42px;height:42px;border-radius:12px;background:var(--indigo-100);color:var(--indigo-600);display:grid;place-items:center}.study-note-row b{display:block;font-size:13px;color:var(--text-900);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}.study-note-row p{margin:4px 0 0;color:var(--text-400);font-size:11.5px;line-height:1.35}.study-note-row small{display:block;margin-top:5px;color:var(--text-600);font-size:11.5px;line-height:1.35}.study-notes-card .empty-state{border:1px dashed var(--border);border-radius:12px;background:#fbfcff}
       .attdetail-back{margin-bottom:14px}.attdetail-grid{grid-template-columns:1.2fr .8fr;gap:16px}.attdetail-card{border-radius:14px;overflow:hidden}.cal-grid{display:grid;grid-template-columns:repeat(7,1fr);gap:6px}.cal-dow{text-align:center;font-size:10.5px;font-weight:800;color:var(--text-400);padding:0 0 4px}.cal-cell{aspect-ratio:1;border-radius:8px;display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:700;border:1px solid var(--border-soft);color:var(--text-600);background:#fff}.cal-cell.present{background:var(--teal-100);color:var(--teal-700);border-color:#8ee8dc}.cal-cell.absent{background:var(--red-100);color:var(--red-700);border-color:#f7b7b9}.cal-cell.late{background:var(--amber-50);color:var(--amber-700);border-color:#f5dfaf}.cal-cell.leave{background:var(--purple-50);color:var(--purple-700);border-color:#ded2fb}.cal-cell.blank{background:transparent;border-color:transparent}.legend{display:flex;gap:14px;font-size:11.5px;color:var(--text-600);margin-top:12px;flex-wrap:wrap}.legend span{display:inline-flex;align-items:center;gap:6px}.legend i{width:9px;height:9px;border-radius:3px;display:inline-block}.date-range-row{display:flex;gap:8px}.date-range-row .fbtn{flex:1;min-width:0}.attdetail-status{width:100%}.attdetail-download{width:100%;justify-content:center;margin-top:14px}
       .finance-metrics{grid-template-columns:repeat(4,1fr)}.finance-grid{grid-template-columns:1.15fr 1fr}.finance-card{border-radius:14px;overflow:hidden}.finance-table-wrap{overflow-x:auto}.finance-table{min-width:920px}.finance-table thead th{height:38px;padding:10px 12px;background:#fafbfd;color:#99a1b3;font-size:10.5px;letter-spacing:.4px}.finance-table tbody td{height:58px;padding:10px 12px;color:#333a56}.finance-table tbody tr:hover{background:#f8f9fd}.finance-table .cell-name{font-size:12.5px;font-weight:700;color:#161b33}.finance-table .cell-sub{font-size:11px;color:#99a1b3;margin-top:3px}.finance-chart-body{display:flex;flex-direction:column;align-items:center;gap:18px}.finance-chart-body .donut-legend{width:100%;min-width:0}
-      .emi-metrics{grid-template-columns:repeat(3,1fr)}.emi-filter-bar{gap:10px;margin-bottom:14px}.emi-filter-bar .filter-spacer{flex:1}.emi-card{border-radius:14px;overflow:hidden}.emi-table-wrap{overflow-x:auto}.emi-table{min-width:880px}.emi-table thead th{height:38px;padding:10px 12px;background:#fafbfd;color:#99a1b3;font-size:10.5px;letter-spacing:.4px}.emi-table tbody td{height:58px;padding:10px 12px;color:#333a56}.emi-table tbody tr:hover{background:#f8f9fd}.emi-table .cell-name{font-size:12.5px;font-weight:700;color:#161b33}.emi-table .cell-sub{font-size:11px;color:#99a1b3;margin-top:3px}.emi-table .btn-green{white-space:nowrap}
+      .emi-metrics{grid-template-columns:repeat(4,minmax(0,1fr))}.emi-filter-bar{gap:10px;margin-bottom:14px}.emi-filter-bar .filter-spacer{flex:1}.emi-card{border-radius:14px;overflow:hidden}.emi-table-wrap{overflow-x:auto}.emi-table{min-width:880px}.emi-table thead th{height:38px;padding:10px 12px;background:#fafbfd;color:#99a1b3;font-size:10.5px;letter-spacing:.4px}.emi-table tbody td{height:58px;padding:10px 12px;color:#333a56}.emi-table tbody tr:hover{background:#f8f9fd}.emi-table .cell-name{font-size:12.5px;font-weight:700;color:#161b33}.emi-table .cell-sub{font-size:11px;color:#99a1b3;margin-top:3px}.emi-table .btn-green{white-space:nowrap}
       .receipts-filter-bar{gap:10px;margin-bottom:14px}.receipts-filter-bar .fbtn{height:34px;width:240px}.receipts-filter-bar .filter-spacer{flex:1}.receipts-card{border-radius:14px;overflow:hidden}.receipts-table-wrap{overflow-x:auto}.receipts-table{min-width:900px}.receipts-table thead th{height:38px;padding:10px 12px;background:#fafbfd;color:#99a1b3;font-size:10.5px;letter-spacing:.4px}.receipts-table tbody td{height:58px;padding:10px 12px;color:#333a56}.receipts-table tbody tr:hover{background:#f8f9fd}.receipts-table .cell-name{font-size:12.5px;font-weight:700;color:#161b33}.receipts-table .cell-sub{font-size:11px;color:#99a1b3;margin-top:3px}.receipt-drawer{width:720px;max-width:96vw}.receipt-tabs{overflow-x:auto}.receipt-tabs .dtab{white-space:nowrap}.receipt-drawer-body{padding:18px 0 28px;background:#fff}.invoice-card{background:#fff!important;border:0!important;box-shadow:none!important;border-radius:0!important;padding:0 18px!important;overflow:auto!important}.invoice-actions{width:min(820px,100%);margin:14px auto 0;display:flex;justify-content:flex-end;gap:10px;flex-wrap:wrap}.tax-invoice{width:820px;max-width:none;margin:0 auto;background:#fff;color:#111;font-family:Arial,Helvetica,sans-serif;font-size:11px;line-height:1.32;border:1px solid #555}.tax-title{text-align:center;font-weight:700;padding:8px 0;border-bottom:1px solid #555}.invoice-top-grid{display:grid;grid-template-columns:1fr 1fr;border-bottom:1px solid #555}.invoice-seller{padding:8px;display:grid;gap:2px;border-right:1px solid #555;min-height:190px}.invoice-seller strong,.invoice-buyer strong{font-size:12px}.invoice-meta-grid{display:grid;grid-template-columns:1fr 1fr}.invoice-meta-grid>div{min-height:31px;padding:5px 6px;border-right:1px solid #777;border-bottom:1px solid #777;display:grid;align-content:start;gap:2px}.invoice-meta-grid>div:nth-child(2n){border-right:0}.invoice-meta-grid span,.invoice-buyer>span:first-child,.amount-words span,.tax-words span{font-size:10px}.invoice-meta-grid b{font-size:10.5px}.invoice-terms{grid-column:1/-1;min-height:58px!important;border-bottom:0!important}.invoice-buyer{padding:8px;display:grid;gap:2px;border-bottom:1px solid #555;min-height:95px}.invoice-items,.gst-summary{width:100%;border-collapse:collapse;table-layout:fixed}.invoice-items th,.invoice-items td,.gst-summary th,.gst-summary td{border-right:1px solid #777;border-bottom:1px solid #777;padding:5px 6px;vertical-align:top;line-height:1.28}.invoice-items th:last-child,.invoice-items td:last-child,.gst-summary th:last-child,.gst-summary td:last-child{border-right:0;text-align:right}.invoice-items th{font-weight:400;text-align:center;vertical-align:middle;height:24px}.invoice-items td:nth-child(1){width:42px;text-align:center}.invoice-items td:nth-child(2){width:38%}.invoice-items td:nth-child(3),.invoice-items td:nth-child(4),.invoice-items td:nth-child(5),.invoice-items td:nth-child(6){text-align:center}.payment-items td:nth-child(2){width:42%;text-align:left}.payment-items td:nth-child(3),.payment-items td:nth-child(4){text-align:center}.payment-items td:nth-child(5){text-align:right}.payment-summary th,.payment-summary td{text-align:right!important}.payment-summary th:first-child,.payment-summary td:first-child{text-align:left!important}.invoice-items tbody tr:not(.invoice-total-row){height:32px}.invoice-items small{display:block;font-size:10px;margin-top:2px;line-height:1.25}.tax-line{text-align:right;font-weight:700}.invoice-total-row td{font-weight:700;border-top:1px solid #555}.invoice-total-row td:first-child{text-align:right}.amount-words{position:relative;padding:6px 8px;border-bottom:1px solid #555;display:grid;gap:2px}.amount-words em{position:absolute;right:8px;top:6px;font-style:normal;font-size:10px}.gst-summary th{font-size:10px;font-weight:400;text-align:center;vertical-align:middle}.gst-summary td{text-align:right}.gst-summary td:first-child{text-align:left}.tax-words{padding:6px 8px;border-bottom:1px solid #555;display:flex;gap:8px}.invoice-bottom{display:grid;grid-template-columns:1.1fr .9fr;min-height:112px}.invoice-bottom>div{padding:8px;display:grid;align-content:start;gap:3px}.bank-details{border-left:1px solid #555}.bank-details>b{margin-top:10px;text-align:right}.bank-details em{text-align:right;font-style:normal;margin-top:20px}.paid-due{margin-top:8px;font-weight:700}.invoice-footer{text-align:center;font-size:10px;padding:5px;border-top:1px solid #555}
       .tax-invoice th,.tax-invoice td{white-space:normal;overflow-wrap:anywhere}.tax-invoice td:last-child,.tax-invoice .invoice-total-row td:last-child,.tax-invoice .gst-summary td:not(:first-child){white-space:nowrap}.invoice-col-sl{width:46px}.invoice-col-particulars{width:31%}.invoice-col-hsn{width:84px}.invoice-col-qty{width:76px}.invoice-col-rate{width:70px}.invoice-col-per{width:64px}.invoice-col-amount{width:126px}.gst-col-hsn{width:98px}.gst-col-taxable{width:116px}.gst-col-rate{width:94px}.gst-col-amount{width:112px}.gst-col-total{width:124px}
       .cert-filter-bar{gap:10px;margin-bottom:14px}.cert-filter-bar .fbtn{height:34px;width:240px}.cert-filter-bar .filter-spacer{flex:1}.cert-card-table{border-radius:14px;overflow:hidden}.cert-table-wrap{overflow-x:auto}.cert-table{min-width:880px}.cert-table thead th{height:38px;padding:10px 12px;background:#fafbfd;color:#99a1b3;font-size:10.5px;letter-spacing:.4px}.cert-table tbody td{height:58px;padding:10px 12px;color:#333a56}.cert-table tbody tr:hover{background:#f8f9fd}.cert-table .cell-name{font-size:12.5px;font-weight:700;color:#161b33}.cert-table .cell-sub{font-size:11px;color:#99a1b3;margin-top:3px}.modal-overlay{position:fixed;inset:0;background:rgba(10,14,29,.45);display:none;align-items:center;justify-content:center;z-index:220;padding:18px}.modal-overlay.show{display:flex}

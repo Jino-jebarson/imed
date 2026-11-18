@@ -1,0 +1,11 @@
+node_modules
+dist
+server
+uploads
+.env
+.env.*
+*.log
+*.zip
+.agents
+.codex
+.aws

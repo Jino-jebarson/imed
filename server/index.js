@@ -275,6 +275,7 @@ const leadSchema = new mongoose.Schema({
   counsellorName: { type: String, default: "", trim: true },
   scholarName: { type: String, default: "", trim: true },
   refereeName: { type: String, default: "", trim: true },
+  refereePhone: { type: String, default: "", trim: true },
   referralAmount: { type: Number, default: 0 },
   centre: { type: String, default: "" },
   franchiseId: { type: mongoose.Schema.Types.ObjectId, ref: "Centre" },
@@ -303,6 +304,7 @@ const leadSchema = new mongoose.Schema({
 }, { timestamps: true });
 
 const cashDepositSchema = new mongoose.Schema({
+  _id: { type: mongoose.Schema.Types.ObjectId, default: () => new mongoose.Types.ObjectId() },
   amount: { type: Number, required: true },
   bank: { type: String, required: true, trim: true },
   referenceNumber: { type: String, default: "", trim: true },
@@ -312,7 +314,14 @@ const cashDepositSchema = new mongoose.Schema({
   by: { type: String, default: "" },
   depositedAt: { type: Date, default: Date.now },
   createdAt: { type: Date, default: Date.now },
-}, { _id: false });
+  status: { type: String, enum: ["pending", "verified", "rejected"], default: "pending" },
+  verifiedBy: { type: String, default: "" },
+  verifiedByRole: { type: String, default: "" },
+  verifiedAt: { type: Date },
+  rejectionReason: { type: String, default: "" },
+  approverScope: { type: String, default: "superadmin" }, // "superadmin" or "center_admin_or_superadmin"
+  isMultiBranch: { type: Boolean, default: false },
+});
 
 const paymentSchema = new mongoose.Schema({
   _id: { type: mongoose.Schema.Types.ObjectId, default: () => new mongoose.Types.ObjectId() },
@@ -349,6 +358,7 @@ const studentFeedbackSchema = new mongoose.Schema({
 
 const studentSchema = new mongoose.Schema({
   leadId: { type: mongoose.Schema.Types.ObjectId, ref: "Lead" },
+  source: { type: String, default: "Website" },
   fullName: { type: String, required: true, trim: true },
   phone: { type: String, required: true, trim: true },
   parentMobile: { type: String, default: "", trim: true },
@@ -393,6 +403,19 @@ const studentSchema = new mongoose.Schema({
     reviewedAt: { type: Date },
     rejectionReason: { type: String, default: "" },
   },
+  deleteApproval: {
+    status: { type: String, enum: ["none", "pending", "approved", "rejected"], default: "none" },
+    reason: { type: String, default: "" },
+    requestedBy: { type: String, default: "" },
+    requestedByRole: { type: String, default: "" },
+    requestedAt: { type: Date },
+    reviewedBy: { type: String, default: "" },
+    reviewedByRole: { type: String, default: "" },
+    reviewedAt: { type: Date },
+    rejectionReason: { type: String, default: "" },
+    isMultiBranch: { type: Boolean, default: false },
+    approverScope: { type: String, default: "" },
+  },
   paidAmount: { type: Number, default: 0 },
   emiEnabled: { type: Boolean, default: false },
   emiMonths: { type: Number, default: 0 },
@@ -413,6 +436,20 @@ const studentSchema = new mongoose.Schema({
   referralName: { type: String, default: "" },
   referralPhone: { type: String, default: "" },
   referralStatus: { type: String, enum: ["New", "Contacted", "Converted", "Lost", ""], default: "New" },
+  refereeName: { type: String, default: "", trim: true },
+  refereePhone: { type: String, default: "", trim: true },
+  referralAmount: { type: Number, default: 0 },
+  referralSettlement: {
+    status: { type: String, enum: ["unsettled", "settled", "cancelled"], default: "unsettled" },
+    amount: { type: Number, default: 0 },
+    settledAt: { type: Date },
+    settledBy: { type: String, default: "" },
+    settledByRole: { type: String, default: "" },
+    payoutMode: { type: String, default: "" },
+    transactionReference: { type: String, default: "" },
+    proof: { type: documentFileSchema, default: undefined },
+    note: { type: String, default: "" },
+  },
   certificateNumber: { type: String, default: "" },
   certificateIssuedAt: { type: Date },
   certificateStatus: { type: String, enum: ["Not Issued", "Issued"], default: "Not Issued" },
@@ -896,7 +933,7 @@ async function requireAuth(req, res, next) {
     const user = await AdminUser.findById(payload.id).lean();
     if (!user) return sendError(res, 401, "Invalid login session");
     req.user = user;
-    next();  
+    next();
   } catch {
     return sendError(res, 401, "Invalid login session");
   }
@@ -1027,6 +1064,78 @@ function canAssignStaff(user) {
 
 function canManageStudentLmsAccess(user) {
   return isHeadAdmin(user) || isFranchiseSuperAdmin(user) || isOperationsAccount(user);
+}
+
+function canRequestStudentDeletion(user) {
+  return isHeadAdmin(user) || isFranchiseSuperAdmin(user) || isOperationsAccount(user);
+}
+
+// Determines if a candidate's branch setup is multi-branch or single branch
+async function getStudentMultiBranchInfo(student) {
+  let centreDoc = null;
+  if (student?.franchiseId && mongoose.isValidObjectId(String(student.franchiseId))) {
+    centreDoc = await Centre.findById(student.franchiseId).lean();
+  }
+  if (!centreDoc && student?.centre) {
+    const escapedCentre = String(student.centre).replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+    centreDoc = await Centre.findOne({ name: { $regex: new RegExp(`^${escapedCentre}$`, "i") } }).lean();
+  }
+  if (!centreDoc) {
+    return { isMultiBranch: false, centreDoc: null, approverScope: "superadmin" };
+  }
+
+  const parentCentreId = centreDoc.parentCentreId;
+  const isChildBranch = Boolean(parentCentreId);
+  const childCount = await Centre.countDocuments({ parentCentreId: centreDoc._id, active: true });
+  const isParentBranch = childCount > 0;
+
+  const parentOrSelfId = parentCentreId || centreDoc._id;
+  const centerAdminCount = await AdminUser.countDocuments({
+    role: "center_admin",
+    franchiseId: { $in: [centreDoc._id, parentOrSelfId].filter(Boolean) },
+    active: true,
+  });
+
+  const isMultiBranch = isChildBranch || isParentBranch || centerAdminCount > 0;
+  return {
+    isMultiBranch,
+    centreDoc,
+    approverScope: isMultiBranch ? "center_admin_or_superadmin" : "superadmin",
+  };
+}
+
+// Checks if the user is authorized to approve/reject candidate deletion:
+// - Super admin can approve for any candidate (single or multi-branch).
+// - Center admin can approve if candidate belongs to their multi-branch scope.
+// - Branch admins and operations executives cannot approve; they can only request.
+async function canApproveStudentDeletion(user, student) {
+  if (!user || !student) return false;
+  if (isHeadSuperAdmin(user)) return true;
+  if (isCenterAdmin(user)) {
+    const scope = await centerAdminBranchScope(user);
+    const matchesCentre = student.centre && scope.names.map((n) => n.toLowerCase()).includes(student.centre.toLowerCase());
+    const matchesFranchise = student.franchiseId && scope.ids.map(String).includes(String(student.franchiseId));
+    return Boolean(matchesCentre || matchesFranchise);
+  }
+  return false;
+}
+
+// Checks if the user is authorized to verify/approve cash deposit challans:
+// - Single branch: Only Super Admin can verify.
+// - Multi-branch: Both Super Admin and Center Admin (within their branch scope) can verify.
+// - Branch admins and operations executives cannot verify; their uploads require approval.
+async function canApproveCashDeposit(user, student) {
+  if (!user || !student) return false;
+  if (isHeadSuperAdmin(user)) return true;
+  if (isCenterAdmin(user)) {
+    const multiBranchInfo = await getStudentMultiBranchInfo(student);
+    if (!multiBranchInfo.isMultiBranch) return false;
+    const scope = await centerAdminBranchScope(user);
+    const matchesCentre = student.centre && scope.names.map((n) => n.toLowerCase()).includes(student.centre.toLowerCase());
+    const matchesFranchise = student.franchiseId && scope.ids.map(String).includes(String(student.franchiseId));
+    return Boolean(matchesCentre || matchesFranchise);
+  }
+  return false;
 }
 
 function studentLmsAccessBlockReason(student = {}) {
@@ -2053,6 +2162,52 @@ app.patch("/api/admin/me/password", requireAuth, async (req, res) => {
   res.json({ ok: true, message: "Password updated" });
 });
 
+app.get("/api/admin/geo-location", async (req, res) => {
+  const clientIp = (
+    req.headers["cf-connecting-ip"] ||
+    req.headers["x-real-ip"] ||
+    (req.headers["x-forwarded-for"] ? String(req.headers["x-forwarded-for"]).split(",")[0].trim() : "") ||
+    req.socket?.remoteAddress ||
+    req.ip ||
+    ""
+  ).replace(/^.*:/, "");
+
+  const isLocal = !clientIp || clientIp === "1" || clientIp === "127.0.0.1";
+
+  // 1. Try ipwho.is
+  try {
+    const geoUrl = isLocal ? "https://ipwho.is/" : `https://ipwho.is/${clientIp}`;
+    const geoRes = await fetch(geoUrl, { signal: AbortSignal.timeout(3000) });
+    if (geoRes.ok) {
+      const data = await geoRes.json();
+      if (data?.success && data?.latitude && data?.longitude) {
+        let city = data.city || data.region || "Chennai";
+        if (/tamil nadu|chennai|poonamalle/i.test(`${data.region || ""} ${data.city || ""}`)) {
+          city = "Chennai";
+        }
+        return res.json({ ok: true, data: { lat: data.latitude, lon: data.longitude, city } });
+      }
+    }
+  } catch (e) { }
+
+  // 2. Try geojs
+  try {
+    const geoRes = await fetch("https://get.geojs.io/v1/ip/geo.json", { signal: AbortSignal.timeout(3000) });
+    if (geoRes.ok) {
+      const data = await geoRes.json();
+      if (data?.latitude && data?.longitude) {
+        let city = data.city || data.region || "Chennai";
+        if (/tamil nadu|chennai|poonamalle/i.test(`${data.region || ""} ${data.city || ""}`)) {
+          city = "Chennai";
+        }
+        return res.json({ ok: true, data: { lat: parseFloat(data.latitude), lon: parseFloat(data.longitude), city } });
+      }
+    }
+  } catch (e) { }
+
+  return res.json({ ok: true, data: { lat: 13.0827, lon: 80.2707, city: "Chennai" } });
+});
+
 app.get("/api/admin/dashboard/summary", requireAuth, async (req, res) => {
   const leadFilter = { ...(await scopedDataFilter(req, req.query)), ...dateFilter(req.query) };
   const studentFilter = { ...(await scopedDataFilter(req, req.query)), ...dateFilter(req.query) };
@@ -2218,7 +2373,7 @@ app.get("/api/admin/reports/student-status", requireAuth, async (req, res) => {
 
   // Fetch student records matching the filter
   const students = await Student.find(baseFilter)
-    .select("fullName phone email parentMobile centre course batch counsellor counsellorName status totalFee paidAmount admissionNumber createdAt placementCompany placementSalary")
+    .select("fullName phone email parentMobile centre course batch counsellor counsellorName source status totalFee paidAmount admissionNumber createdAt placementCompany placementSalary")
     .sort({ createdAt: -1 })
     .lean();
 
@@ -2576,7 +2731,7 @@ app.post("/api/admin/leads/import", requireAuth, upload.single("file"), async (r
 
 app.patch("/api/admin/leads/:id", requireAuth, async (req, res) => {
   if (!canUseLeads(req.user)) return sendError(res, 403, "Lead updates are restricted to counsellor and admin accounts");
-  const allowedLeadUpdates = (({ fullName, phone, parentMobile, email, governmentProof, highestQualificationCertificate, studentLocation, source, counsellorName, scholarName, refereeName, referralAmount, centre, course, counsellor, leadFeedback, stage, priority, city, expectedFee, nextFollowUp, notes }) => ({ fullName, phone, parentMobile, email, governmentProof, highestQualificationCertificate, studentLocation, source, counsellorName, scholarName, refereeName, referralAmount, centre, course, counsellor, leadFeedback, stage, priority, city, expectedFee, nextFollowUp, notes }))(req.body || {});
+  const allowedLeadUpdates = (({ fullName, phone, parentMobile, email, governmentProof, highestQualificationCertificate, studentLocation, source, counsellorName, scholarName, refereeName, refereePhone, referralAmount, centre, course, counsellor, leadFeedback, stage, priority, city, expectedFee, nextFollowUp, notes }) => ({ fullName, phone, parentMobile, email, governmentProof, highestQualificationCertificate, studentLocation, source, counsellorName, scholarName, refereeName, refereePhone, referralAmount, centre, course, counsellor, leadFeedback, stage, priority, city, expectedFee, nextFollowUp, notes }))(req.body || {});
   Object.keys(allowedLeadUpdates).forEach((key) => allowedLeadUpdates[key] === undefined && delete allowedLeadUpdates[key]);
   if (!canManageFees(req.user) && Object.prototype.hasOwnProperty.call(allowedLeadUpdates, "expectedFee")) {
     return sendError(res, 403, "Fee updates are restricted to admin accounts");
@@ -2676,13 +2831,15 @@ app.patch("/api/admin/leads/:id", requireAuth, async (req, res) => {
     const linkedStudentIds = linkedStudents.map((student) => student._id);
     await Promise.all([
       Student.updateMany({ _id: { $in: linkedStudentIds } }, { $set: studentSyncUpdates }),
-      linkedStudentIds.length ? Attendance.updateMany({ studentId: { $in: linkedStudentIds } }, { $set: {
-        ...(studentSyncUpdates.fullName ? { studentName: studentSyncUpdates.fullName } : {}),
-        ...(studentSyncUpdates.centre ? { centre: studentSyncUpdates.centre } : {}),
-        ...(studentSyncUpdates.franchiseId ? { franchiseId: studentSyncUpdates.franchiseId } : {}),
-        ...(studentSyncUpdates.course ? { course: studentSyncUpdates.course } : {}),
-        ...(studentSyncUpdates.counsellor ? { counsellor: studentSyncUpdates.counsellor } : {}),
-      } }) : Promise.resolve(),
+      linkedStudentIds.length ? Attendance.updateMany({ studentId: { $in: linkedStudentIds } }, {
+        $set: {
+          ...(studentSyncUpdates.fullName ? { studentName: studentSyncUpdates.fullName } : {}),
+          ...(studentSyncUpdates.centre ? { centre: studentSyncUpdates.centre } : {}),
+          ...(studentSyncUpdates.franchiseId ? { franchiseId: studentSyncUpdates.franchiseId } : {}),
+          ...(studentSyncUpdates.course ? { course: studentSyncUpdates.course } : {}),
+          ...(studentSyncUpdates.counsellor ? { counsellor: studentSyncUpdates.counsellor } : {}),
+        }
+      }) : Promise.resolve(),
     ]);
   }
   res.json({ ok: true, data: lead });
@@ -2897,6 +3054,14 @@ app.post("/api/admin/leads/:id/convert", requireAuth, async (req, res) => {
     : Number(lead.expectedFee || defaultCourseFee || 0);
   const student = await Student.create({
     leadId: lead._id,
+    source: lead.source || "Website",
+    refereeName: lead.refereeName || "",
+    refereePhone: lead.refereePhone || "",
+    referralAmount: Number(lead.referralAmount || 0),
+    referralSettlement: {
+      status: "unsettled",
+      amount: Number(lead.referralAmount || 0),
+    },
     fullName: lead.fullName,
     phone: lead.phone,
     parentMobile: lead.parentMobile,
@@ -2993,12 +3158,30 @@ app.post("/api/admin/documents/:type/:id/:field", requireAuth, leadDocumentUploa
 });
 
 app.get("/api/admin/students", requireAuth, async (req, res) => {
-  const { q = "", status = "", centre = "", course = "", counsellor = "", emiOnly = "" } = req.query;
+  const { q = "", status = "", centre = "", course = "", counsellor = "", source = "", emiOnly = "" } = req.query;
   const filter = { ...dateFilter(req.query) };
   if (status) filter.status = status;
   if (centre) filter.centre = centre;
   if (course) filter.course = course;
   if (counsellor) filter.counsellor = counsellor;
+  if (source) {
+    const escapedSource = String(source).replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+    const matchingLeads = await Lead.find({ source: { $regex: `^${escapedSource}$`, $options: "i" } }).select("_id").lean();
+    const matchingLeadIds = matchingLeads.map((l) => l._id);
+    const sourceCondition = {
+      $or: [
+        { source: { $regex: `^${escapedSource}$`, $options: "i" } },
+        ...(matchingLeadIds.length ? [{ leadId: { $in: matchingLeadIds } }] : []),
+        ...(String(source).toLowerCase() === "website" ? [{ source: { $in: [null, ""] } }] : []),
+      ],
+    };
+    if (filter.$or) {
+      filter.$and = [...(filter.$and || []), { $or: filter.$or }, sourceCondition];
+      delete filter.$or;
+    } else {
+      filter.$and = [...(filter.$and || []), sourceCondition];
+    }
+  }
   if (String(emiOnly) === "true") {
     filter.emiEnabled = true;
     filter.nextEmiDate = { $exists: true, $ne: null };
@@ -3029,6 +3212,9 @@ app.get("/api/admin/students", requireAuth, async (req, res) => {
     Student.countDocuments(filter),
     Student.find(filter).sort({ updatedAt: -1 }).skip(skip).limit(limit).lean(),
   ]);
+  const missingSourceLeadIds = students.filter((s) => !s.source && s.leadId).map((s) => s.leadId);
+  const fallbackLeads = missingSourceLeadIds.length ? await Lead.find({ _id: { $in: missingSourceLeadIds } }).select("source").lean() : [];
+  const leadSourceMap = new Map(fallbackLeads.map((l) => [String(l._id), l.source || "Website"]));
   const internshipRows = await InternshipAssignment.find({ studentId: { $in: students.map((student) => student._id) } }).lean();
   const internshipByStudent = new Map(internshipRows.map((row) => [String(row.studentId), row]));
   const internshipLogs = internshipRows.length ? await InternshipLog.find({ assignmentId: { $in: internshipRows.map((row) => row._id) } }).sort({ date: -1 }).limit(300).lean() : [];
@@ -3051,6 +3237,7 @@ app.get("/api/admin/students", requireAuth, async (req, res) => {
     ok: true,
     data: students.map((student) => ({
       ...student,
+      source: student.source || leadSourceMap.get(String(student.leadId)) || "Website",
       internshipAssignment: internshipByStudent.get(String(student._id)) || null,
       internshipLogs: logsByStudent.get(String(student._id)) || [],
       logbookEntries: logbookByStudent.get(String(student._id)) || [],
@@ -3838,10 +4025,66 @@ app.post("/api/admin/attendance", requireAuth, async (req, res) => {
   res.json({ ok: true, data: saved });
 });
 
+// GET /api/admin/students/deletion-approvals - List pending/reviewed candidate deletion requests
+app.get("/api/admin/students/deletion-approvals", requireAuth, async (req, res) => {
+  const { status = "pending" } = req.query;
+  const query = {};
+  if (status && status !== "all") {
+    query["deleteApproval.status"] = status;
+  } else {
+    query["deleteApproval.status"] = { $in: ["pending", "approved", "rejected"] };
+  }
+
+  Object.assign(query, await scopedDataFilter(req, req.query));
+
+  if (isCenterAdmin(req.user)) {
+    const scope = await centerAdminBranchScope(req.user);
+    const centerFilter = {
+      $or: [
+        { franchiseId: { $in: scope.ids } },
+        { centre: { $in: scope.names.map((n) => new RegExp(`^${n}$`, "i")) } },
+      ],
+    };
+    if (query.$or) {
+      query.$and = [...(query.$and || []), { $or: query.$or }, centerFilter];
+      delete query.$or;
+    } else {
+      Object.assign(query, centerFilter);
+    }
+  }
+
+  const students = await Student.find(query)
+    .select("fullName phone email admissionNumber centre course status totalFee deleteApproval createdAt")
+    .sort({ "deleteApproval.requestedAt": -1, updatedAt: -1 })
+    .lean();
+
+  const pendingCountQuery = { "deleteApproval.status": "pending" };
+  Object.assign(pendingCountQuery, await scopedDataFilter(req, {}));
+  if (isCenterAdmin(req.user)) {
+    const scope = await centerAdminBranchScope(req.user);
+    pendingCountQuery.$or = [
+      { franchiseId: { $in: scope.ids } },
+      { centre: { $in: scope.names.map((n) => new RegExp(`^${n}$`, "i")) } },
+    ];
+  }
+  const pendingCount = await Student.countDocuments(pendingCountQuery);
+
+  res.json({
+    ok: true,
+    data: students,
+    pendingCount,
+  });
+});
+
 app.get("/api/admin/students/:id", requireAuth, async (req, res) => {
   try {
     const student = await Student.findById(req.params.id).lean();
     if (!student) return sendError(res, 404, "Student not found");
+    if (!student.source && student.leadId) {
+      const lead = await Lead.findById(student.leadId).select("source").lean();
+      if (lead?.source) student.source = lead.source;
+    }
+    student.source = student.source || "Website";
     res.json({ ok: true, data: student });
   } catch (error) {
     sendError(res, 500, error.message || "Failed to fetch student");
@@ -3849,7 +4092,7 @@ app.get("/api/admin/students/:id", requireAuth, async (req, res) => {
 });
 
 app.patch("/api/admin/students/:id", requireAuth, async (req, res) => {
-  const allowedStudentUpdates = (({ fullName, phone, parentMobile, email, governmentProof, highestQualificationCertificate, studentLocation, centre, course, counsellor, counsellorName, callerName, teacher, batch, batchCommenceDate, admissionNumber, admissionPaymentMode, admissionUpfrontAmount, discountAmount, feeApproval, status, dropoutReason, dropoutDate, dropoutNotes, totalFee, paidAmount, emiEnabled, emiMonths, emiAmount, nextEmiDate, placementStatus, placementCompany, placementRole, placementJoiningDate, placementSalary, placementHrContact, placementOfferLetterUrl, placementRemarks, testimonialText, testimonialVideoUrl, testimonialRating, testimonialApproved, referralName, referralPhone, referralStatus, certificateNumber, certificateIssuedAt, certificateStatus }) => ({ fullName, phone, parentMobile, email, governmentProof, highestQualificationCertificate, studentLocation, centre, course, counsellor, counsellorName, callerName, teacher, batch, batchCommenceDate, admissionNumber, admissionPaymentMode, admissionUpfrontAmount, discountAmount, feeApproval, status, dropoutReason, dropoutDate, dropoutNotes, totalFee, paidAmount, emiEnabled, emiMonths, emiAmount, nextEmiDate, placementStatus, placementCompany, placementRole, placementJoiningDate, placementSalary, placementHrContact, placementOfferLetterUrl, placementRemarks, testimonialText, testimonialVideoUrl, testimonialRating, testimonialApproved, referralName, referralPhone, referralStatus, certificateNumber, certificateIssuedAt, certificateStatus }))(req.body || {});
+  const allowedStudentUpdates = (({ fullName, phone, parentMobile, email, governmentProof, highestQualificationCertificate, source, studentLocation, centre, course, counsellor, counsellorName, callerName, teacher, batch, batchCommenceDate, admissionNumber, admissionPaymentMode, admissionUpfrontAmount, discountAmount, feeApproval, status, dropoutReason, dropoutDate, dropoutNotes, totalFee, paidAmount, emiEnabled, emiMonths, emiAmount, nextEmiDate, placementStatus, placementCompany, placementRole, placementJoiningDate, placementSalary, placementHrContact, placementOfferLetterUrl, placementRemarks, testimonialText, testimonialVideoUrl, testimonialRating, testimonialApproved, referralName, referralPhone, referralStatus, refereeName, refereePhone, referralAmount, referralSettlement, certificateNumber, certificateIssuedAt, certificateStatus }) => ({ fullName, phone, parentMobile, email, governmentProof, highestQualificationCertificate, source, studentLocation, centre, course, counsellor, counsellorName, callerName, teacher, batch, batchCommenceDate, admissionNumber, admissionPaymentMode, admissionUpfrontAmount, discountAmount, feeApproval, status, dropoutReason, dropoutDate, dropoutNotes, totalFee, paidAmount, emiEnabled, emiMonths, emiAmount, nextEmiDate, placementStatus, placementCompany, placementRole, placementJoiningDate, placementSalary, placementHrContact, placementOfferLetterUrl, placementRemarks, testimonialText, testimonialVideoUrl, testimonialRating, testimonialApproved, referralName, referralPhone, referralStatus, refereeName, refereePhone, referralAmount, referralSettlement, certificateNumber, certificateIssuedAt, certificateStatus }))(req.body || {});
   Object.keys(allowedStudentUpdates).forEach((key) => allowedStudentUpdates[key] === undefined && delete allowedStudentUpdates[key]);
   const feeFields = ["admissionPaymentMode", "admissionUpfrontAmount", "discountAmount", "totalFee", "paidAmount", "emiEnabled", "emiMonths", "emiAmount", "nextEmiDate"];
   if (!canManageFees(req.user) && feeFields.some((field) => Object.prototype.hasOwnProperty.call(allowedStudentUpdates, field))) {
@@ -4140,16 +4383,173 @@ app.delete("/api/admin/students/:id/internship", requireAuth, async (req, res) =
   res.json({ ok: true, data: await studentAdminWithInternshipResponse(student) });
 });
 
-app.delete("/api/admin/students/:id", requireAuth, requireFranchiseManager, async (req, res) => {
-  const existingStudent = await Student.findById(req.params.id).lean();
+app.delete("/api/admin/students/:id", requireAuth, async (req, res) => {
+  const existingStudent = await Student.findById(req.params.id);
   if (!existingStudent) return sendError(res, 404, "Student not found");
   if (!(await canAccessRecord(req, existingStudent))) return sendError(res, 403, "You can access only permitted records");
+
+  const canDirectDelete = await canApproveStudentDeletion(req.user, existingStudent);
+  if (!canDirectDelete) {
+    const branchInfo = await getStudentMultiBranchInfo(existingStudent);
+    const target = branchInfo.isMultiBranch ? "Super Admin or Center Admin" : "Super Admin";
+    return sendError(res, 403, `Direct deletion is restricted for your role. Please request deletion approval from ${target}.`);
+  }
+
   await Promise.all([
     Student.findByIdAndDelete(req.params.id),
     Attendance.deleteMany({ studentId: existingStudent._id }),
+    InternshipAssignment.deleteMany({ studentId: existingStudent._id }),
+    InternshipLog.deleteMany({ studentId: existingStudent._id }),
+    LogbookEntry.deleteMany({ studentId: existingStudent._id }),
   ]);
-  res.json({ ok: true, data: existingStudent });
+  res.json({ ok: true, data: existingStudent, message: "Candidate record deleted successfully" });
 });
+
+// POST /api/admin/students/:id/request-deletion - Request deletion approval
+app.post("/api/admin/students/:id/request-deletion", requireAuth, async (req, res) => {
+  if (!canRequestStudentDeletion(req.user)) {
+    return sendError(res, 403, "You do not have permission to request candidate deletion");
+  }
+  const student = await Student.findById(req.params.id);
+  if (!student) return sendError(res, 404, "Student not found");
+  if (!(await canAccessRecord(req, student))) return sendError(res, 403, "You can access only permitted records");
+
+  const reason = String(req.body?.reason || "").trim();
+  if (!reason) {
+    return sendError(res, 400, "Reason is required to request candidate deletion");
+  }
+
+  if (student.deleteApproval?.status === "pending") {
+    return sendError(res, 400, "A deletion request is already pending review for this candidate");
+  }
+
+  const branchInfo = await getStudentMultiBranchInfo(student);
+
+  student.deleteApproval = {
+    status: "pending",
+    reason,
+    requestedBy: req.user.name || "Staff",
+    requestedByRole: req.user.role || "admin",
+    requestedAt: new Date(),
+    reviewedBy: "",
+    reviewedByRole: "",
+    reviewedAt: null,
+    rejectionReason: "",
+    isMultiBranch: branchInfo.isMultiBranch,
+    approverScope: branchInfo.approverScope,
+  };
+
+  student.activities = student.activities || [];
+  student.activities.push({
+    type: "deletion_request",
+    message: `Candidate deletion requested by ${req.user.name} (${req.user.role}): "${reason}". Approval required from ${branchInfo.isMultiBranch ? "Super Admin or Center Admin" : "Super Admin"}.`,
+    by: req.user.name || "Staff",
+    at: new Date(),
+  });
+
+  await student.save();
+  res.json({
+    ok: true,
+    data: student,
+    message: `Candidate deletion requested. Requires approval from ${branchInfo.isMultiBranch ? "Super Admin or Center Admin" : "Super Admin"}.`,
+  });
+});
+
+// POST /api/admin/students/:id/review-deletion - Review (approve & delete / reject) candidate deletion
+app.post("/api/admin/students/:id/review-deletion", requireAuth, async (req, res) => {
+  const student = await Student.findById(req.params.id);
+  if (!student) return sendError(res, 404, "Student not found");
+  if (!(await canAccessRecord(req, student))) return sendError(res, 403, "You can access only permitted records");
+
+  const canApprove = await canApproveStudentDeletion(req.user, student);
+  if (!canApprove) {
+    const branchInfo = await getStudentMultiBranchInfo(student);
+    const target = branchInfo.isMultiBranch ? "Super Admin or authorized Center Admin" : "Super Admin";
+    return sendError(res, 403, `Only ${target} can review deletion requests for this candidate.`);
+  }
+
+  if (student.deleteApproval?.status !== "pending") {
+    return sendError(res, 400, "This candidate does not have a pending deletion request");
+  }
+
+  const action = String(req.body?.action || "").toLowerCase().trim();
+  const note = String(req.body?.note || "").trim();
+  if (!["approve", "reject"].includes(action)) {
+    return sendError(res, 400, "Invalid review action. Must be 'approve' or 'reject'");
+  }
+
+  if (action === "approve") {
+    const deletedStudentData = student.toObject();
+    await Promise.all([
+      Student.findByIdAndDelete(student._id),
+      Attendance.deleteMany({ studentId: student._id }),
+      InternshipAssignment.deleteMany({ studentId: student._id }),
+      InternshipLog.deleteMany({ studentId: student._id }),
+      LogbookEntry.deleteMany({ studentId: student._id }),
+    ]);
+
+    return res.json({
+      ok: true,
+      deleted: true,
+      data: deletedStudentData,
+      message: `Candidate "${deletedStudentData.fullName}" deletion approved and permanently deleted by ${req.user.name}.`,
+    });
+  }
+
+  // Reject
+  student.deleteApproval.status = "rejected";
+  student.deleteApproval.rejectionReason = note || "Deletion request rejected";
+  student.deleteApproval.reviewedBy = req.user.name || "Admin";
+  student.deleteApproval.reviewedByRole = req.user.role || "superadmin";
+  student.deleteApproval.reviewedAt = new Date();
+
+  student.activities = student.activities || [];
+  student.activities.push({
+    type: "deletion_rejected",
+    message: `Candidate deletion request rejected by ${req.user.name} (${req.user.role}): "${student.deleteApproval.rejectionReason}"`,
+    by: req.user.name || "Admin",
+    at: new Date(),
+  });
+
+  await student.save();
+  return res.json({
+    ok: true,
+    deleted: false,
+    data: student,
+    message: "Candidate deletion request was rejected. The record remains active.",
+  });
+});
+
+// POST /api/admin/students/:id/cancel-deletion-request - Retract/cancel a pending deletion request
+app.post("/api/admin/students/:id/cancel-deletion-request", requireAuth, async (req, res) => {
+  const student = await Student.findById(req.params.id);
+  if (!student) return sendError(res, 404, "Student not found");
+  if (!(await canAccessRecord(req, student))) return sendError(res, 403, "You can access only permitted records");
+
+  if (student.deleteApproval?.status !== "pending") {
+    return sendError(res, 400, "No pending deletion request to cancel");
+  }
+
+  const isRequester = student.deleteApproval.requestedBy === req.user.name;
+  const canApprove = await canApproveStudentDeletion(req.user, student);
+  if (!isRequester && !canApprove) {
+    return sendError(res, 403, "You can only cancel deletion requests you submitted or manage");
+  }
+
+  student.deleteApproval.status = "none";
+  student.deleteApproval.reason = "";
+  student.activities = student.activities || [];
+  student.activities.push({
+    type: "deletion_request_cancelled",
+    message: `Candidate deletion request was cancelled by ${req.user.name}.`,
+    by: req.user.name || "Staff",
+    at: new Date(),
+  });
+
+  await student.save();
+  res.json({ ok: true, data: student, message: "Candidate deletion request cancelled" });
+});
+
 
 app.post("/api/admin/students/:id/certificate", requireAuth, async (req, res) => {
   if (!canManageCertificates(req.user)) return sendError(res, 403, "Certificate issuing is restricted to admin accounts");
@@ -4402,11 +4802,360 @@ app.get("/api/admin/finance/collection-stats", requireAuth, async (req, res) => 
   });
 });
 
+// GET /api/admin/finance/emi-summary - Overall institutional EMI & Dues summary
+app.get("/api/admin/finance/emi-summary", requireAuth, async (req, res) => {
+  if (!canManageFees(req.user) && !isOperationsAccount(req.user)) {
+    return sendError(res, 403, "Access restricted to authorized admin accounts");
+  }
+
+  try {
+    const scopeFilter = await scopedDataFilter(req, req.query);
+    const query = {
+      status: { $ne: "Dropped" },
+      ...scopeFilter,
+    };
+    if (req.query?.centre && req.query.centre !== "all") {
+      query.centre = req.query.centre;
+    }
+    if (req.query?.course && req.query.course !== "all") {
+      query.course = req.query.course;
+    }
+
+    const allStudents = await Student.find(query)
+      .select("fullName phone admissionNumber course centre totalFee discountAmount paidAmount emiEnabled emiMonths emiAmount nextEmiDate payments status")
+      .lean();
+
+    const now = new Date();
+    const currentYear = now.getFullYear();
+    const currentMonthNum = now.getMonth() + 1;
+    const thisMonthPrefix = `${currentYear}-${String(currentMonthNum).padStart(2, "0")}`;
+    const todayStr = `${thisMonthPrefix}-${String(now.getDate()).padStart(2, "0")}`;
+
+    let overallDueAmount = 0;
+    let overallDueCandidatesCount = 0;
+
+    let overdueCount = 0;
+    let overdueAmount = 0;
+
+    let dueThisMonthCount = 0;
+    let dueThisMonthAmount = 0;
+
+    let upcomingThisMonthCount = 0;
+    let upcomingThisMonthAmount = 0;
+
+    const emiCandidates = [];
+
+    for (const student of allStudents) {
+      const totalFee = Number(student.totalFee || 0);
+      const discount = Number(student.discountAmount || 0);
+      const netFee = Math.max(0, totalFee - discount);
+      const totalPaid = Number(student.paidAmount || 0);
+      const totalDue = Math.max(0, netFee - totalPaid);
+      const baseEmi = Number(student.emiAmount || 0);
+      const isEmi = Boolean(student.emiEnabled && baseEmi > 0);
+
+      if (totalDue > 0) {
+        overallDueAmount += totalDue;
+        overallDueCandidatesCount++;
+      }
+
+      const hasEmiOrDue = isEmi || student.nextEmiDate || totalDue > 0;
+      if (!hasEmiOrDue) continue;
+
+      let shortfall = 0;
+      let currentDue = totalDue;
+
+      if (isEmi && totalDue > 0) {
+        const payments = student.payments || [];
+        const installmentPayments = payments.filter((p) => {
+          const purpose = p.paymentPurpose;
+          const mode = p.mode;
+          return purpose === "Fees Installment" || purpose === "EMI Installment" || mode === "EMI";
+        });
+        const installmentPaid = installmentPayments.reduce((sum, p) => sum + Number(p.amount || 0), 0);
+        const k = installmentPayments.length;
+        const expectedSoFar = k * baseEmi;
+        shortfall = Math.max(0, expectedSoFar - installmentPaid);
+        const advanceCredit = Math.max(0, installmentPaid - expectedSoFar);
+        const rawNextDue = baseEmi + shortfall - advanceCredit;
+        currentDue = Math.min(totalDue, Math.max(0, rawNextDue));
+      }
+
+      let nextEmiDateStr = "";
+      if (student.nextEmiDate) {
+        const d = new Date(student.nextEmiDate);
+        if (!isNaN(d.getTime())) {
+          nextEmiDateStr = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
+        }
+      }
+
+      const isOverdue = Boolean(nextEmiDateStr && nextEmiDateStr < todayStr);
+      const hasShortfall = shortfall > 0;
+
+      if (isOverdue || hasShortfall) {
+        overdueCount++;
+        overdueAmount += currentDue;
+      }
+
+      if (nextEmiDateStr && nextEmiDateStr.startsWith(thisMonthPrefix)) {
+        dueThisMonthCount++;
+        dueThisMonthAmount += currentDue;
+
+        if (!isOverdue && !hasShortfall) {
+          upcomingThisMonthCount++;
+          upcomingThisMonthAmount += currentDue;
+        }
+      }
+
+      emiCandidates.push(student);
+    }
+
+    res.json({
+      ok: true,
+      data: {
+        summary: {
+          overallDueAmount,
+          overallDueCandidatesCount,
+          overdueCount,
+          overdueAmount,
+          dueThisMonthCount,
+          dueThisMonthAmount,
+          upcomingThisMonthCount,
+          upcomingThisMonthAmount,
+          totalEmiCandidatesCount: emiCandidates.length,
+        },
+        students: emiCandidates,
+      },
+    });
+  } catch (err) {
+    sendError(res, 500, err.message || "Failed to calculate EMI summary");
+  }
+});
+
+// GET /api/admin/finance/referrals-summary - Summary and listing of all referral admissions & payouts
+app.get("/api/admin/finance/referrals-summary", requireAuth, async (req, res) => {
+  try {
+    const baseQuery = { ...(await scopedDataFilter(req, req.query)) };
+    const centreFilter = String(req.query?.centre || "all").trim();
+    if (centreFilter !== "all") {
+      baseQuery.centre = centreFilter;
+    }
+
+    const referralQuery = {
+      ...baseQuery,
+      $or: [
+        { source: /^referral$/i },
+        { refereeName: { $exists: true, $nin: ["", null] } },
+        { referralAmount: { $gt: 0 } },
+      ],
+    };
+
+    const students = await Student.find(referralQuery)
+      .select("fullName phone admissionNumber centre course status totalFee discountAmount paidAmount source refereeName refereePhone referralAmount referralSettlement createdAt")
+      .sort({ createdAt: -1 })
+      .lean();
+
+    let totalIncentiveAmount = 0;
+    let settledAmount = 0;
+    let settledCount = 0;
+    let pendingAmount = 0;
+    let pendingCount = 0;
+    let eligibleCount = 0;
+    let awaitingFeeCount = 0;
+
+    const items = students.map((st) => {
+      const incentive = Number(st.referralAmount || 0);
+      totalIncentiveAmount += incentive;
+      const settlement = st.referralSettlement || {};
+      const isSettled = settlement.status === "settled";
+      const paid = Number(st.paidAmount || 0);
+      const isEligible = paid > 0;
+
+      if (isSettled) {
+        settledCount++;
+        settledAmount += Number(settlement.amount || incentive);
+      } else {
+        pendingCount++;
+        pendingAmount += incentive;
+        if (isEligible) {
+          eligibleCount++;
+        } else {
+          awaitingFeeCount++;
+        }
+      }
+
+      return {
+        _id: st._id,
+        fullName: st.fullName,
+        phone: st.phone,
+        admissionNumber: st.admissionNumber,
+        centre: st.centre,
+        course: st.course,
+        status: st.status,
+        totalFee: st.totalFee || 0,
+        paidAmount: paid,
+        refereeName: st.refereeName || "-",
+        refereePhone: st.refereePhone || "-",
+        referralAmount: incentive,
+        isEligible,
+        settlement: {
+          status: settlement.status || "unsettled",
+          amount: settlement.amount || incentive,
+          settledAt: settlement.settledAt,
+          settledBy: settlement.settledBy,
+          settledByRole: settlement.settledByRole,
+          payoutMode: settlement.payoutMode,
+          transactionReference: settlement.transactionReference,
+          hasProof: Boolean(settlement.proof?.storedName),
+          proofName: settlement.proof?.originalName,
+          note: settlement.note,
+        },
+      };
+    });
+
+    res.json({
+      ok: true,
+      data: {
+        summary: {
+          totalReferralsCount: students.length,
+          totalIncentiveAmount,
+          settledCount,
+          settledAmount,
+          pendingCount,
+          pendingAmount,
+          eligibleCount,
+          awaitingFeeCount,
+        },
+        referrals: items,
+      },
+    });
+  } catch (err) {
+    sendError(res, 500, err.message || "Failed to fetch referrals summary");
+  }
+});
+
+// POST /api/admin/students/:id/settle-referral - Settle/pay referee incentive
+app.post("/api/admin/students/:id/settle-referral", requireAuth, leadDocumentUpload.single("proof"), async (req, res) => {
+  const student = await Student.findById(req.params.id);
+  if (!student) return sendError(res, 404, "Student not found");
+  if (!(await canAccessRecord(req, student))) return sendError(res, 403, "You can access only permitted records");
+
+  const amount = Number(req.body?.amount || student.referralAmount || 0);
+  if (!Number.isFinite(amount) || amount <= 0) {
+    return sendError(res, 400, "Enter a valid settlement amount greater than 0");
+  }
+
+  const payoutMode = String(req.body?.payoutMode || "UPI").trim();
+  const isCash = payoutMode.toLowerCase() === "cash";
+  const transactionReference = String(req.body?.transactionReference || "").trim();
+  const note = String(req.body?.note || "").trim();
+  const overrideEarly = req.body?.overrideEarly === "true" || req.body?.overrideEarly === true;
+
+  if (!isCash && !req.file && !student.referralSettlement?.proof) {
+    return sendError(res, 400, "Transfer proof screenshot or document is mandatory for non-cash payouts");
+  }
+
+  const candidatePaid = Number(student.paidAmount || 0);
+  if (candidatePaid <= 0 && !overrideEarly) {
+    return sendError(res, 400, "Candidate has not paid any fees yet. Settlement requires candidate fee payment first (or admin override).");
+  }
+
+  let proofDoc = null;
+  if (!isCash && req.file) {
+    proofDoc = saveLeadDocument(req.file);
+  }
+
+  student.referralSettlement = {
+    status: "settled",
+    amount,
+    settledAt: req.body?.settledAt ? new Date(req.body.settledAt) : new Date(),
+    settledBy: req.user.name || "Admin",
+    settledByRole: req.user.role || "admin",
+    payoutMode,
+    transactionReference,
+    proof: isCash ? null : (proofDoc || student.referralSettlement?.proof),
+    note,
+  };
+
+  student.activities = student.activities || [];
+  student.activities.push({
+    type: "referral_settled",
+    message: `Referral payout of ₹${amount.toLocaleString("en-IN")} settled to ${student.refereeName || "referee"} via ${payoutMode}${transactionReference ? ` (Ref: ${transactionReference})` : ""} by ${req.user.name}.`,
+    by: req.user.name || "Admin",
+    at: new Date(),
+  });
+
+  await student.save();
+
+  res.json({
+    ok: true,
+    data: student,
+    message: `Referral incentive of ₹${amount.toLocaleString("en-IN")} marked as settled.`,
+  });
+});
+
+// POST /api/admin/students/:id/revert-referral-settlement - Revert settled status back to unsettled
+app.post("/api/admin/students/:id/revert-referral-settlement", requireAuth, async (req, res) => {
+  const student = await Student.findById(req.params.id);
+  if (!student) return sendError(res, 404, "Student not found");
+  if (!(await canAccessRecord(req, student))) return sendError(res, 403, "You can access only permitted records");
+
+  student.referralSettlement = {
+    status: "unsettled",
+    amount: student.referralAmount || 0,
+    settledAt: null,
+    settledBy: "",
+    settledByRole: "",
+    payoutMode: "",
+    transactionReference: "",
+    proof: undefined,
+    note: "",
+  };
+
+  student.activities = student.activities || [];
+  student.activities.push({
+    type: "referral_settlement_reverted",
+    message: `Referral settlement status was reverted to unsettled by ${req.user.name}.`,
+    by: req.user.name || "Admin",
+    at: new Date(),
+  });
+
+  await student.save();
+
+  res.json({
+    ok: true,
+    data: student,
+    message: "Referral settlement reverted to pending",
+  });
+});
+
+// GET /api/admin/students/:id/referral/proof - Preview / download referral payout proof
+app.get("/api/admin/students/:id/referral/proof", requireAuth, async (req, res) => {
+  const existingStudent = await Student.findById(req.params.id).select("referralSettlement franchiseId").lean();
+  if (!existingStudent) return sendError(res, 404, "Student not found");
+  if (!(await canAccessRecord(req, existingStudent))) return sendError(res, 403, "You can access only permitted records");
+
+  const proof = existingStudent.referralSettlement?.proof;
+  if (!proof?.storedName) return sendError(res, 404, "Payout proof not found");
+  const filePath = path.join(leadDocumentDir, proof.storedName);
+  if (!filePath.startsWith(leadDocumentDir) || !fs.existsSync(filePath)) return sendError(res, 404, "Payout proof not found");
+
+  const fileName = String(proof.originalName || "referral-payout-proof").replace(/[\r\n"]/g, "");
+  res.setHeader("Content-Type", proof.mimeType || "application/octet-stream");
+  if (req.query.download === "1") {
+    res.download(filePath, fileName);
+  } else {
+    res.setHeader("Content-Disposition", `inline; filename="${fileName}"; filename*=UTF-8''${encodeURIComponent(fileName)}`);
+    res.sendFile(filePath);
+  }
+});
+
 // GET /api/admin/finance/fee-approvals - List all pending/reviewed fee concession approval requests
 app.get("/api/admin/finance/fee-approvals", requireAuth, async (req, res) => {
   if (!canManageFees(req.user)) return sendError(res, 403, "Access restricted to authorized admin accounts");
   const statusFilter = String(req.query?.status || "pending").trim().toLowerCase();
-  const centreFilter = String(req.query?.centre || "all").trim();
+  const centreFilter = String(req.query?.centre || "").trim();
+  const franchiseIdFilter = String(req.query?.franchiseId || "").trim();
 
   const query = { ...(await scopedDataFilter(req, req.query)) };
   if (statusFilter !== "all") {
@@ -4415,8 +5164,22 @@ app.get("/api/admin/finance/fee-approvals", requireAuth, async (req, res) => {
     query["feeApproval.status"] = { $in: ["pending", "approved", "rejected"] };
   }
 
-  if (centreFilter !== "all") {
-    query.centre = centreFilter;
+  if (centreFilter && centreFilter !== "all") {
+    const centreConditions = [
+      { centre: centreFilter },
+      { centre: { $regex: new RegExp(`^${escapeRegex(centreFilter)}$`, "i") } },
+    ];
+    if (franchiseIdFilter && mongoose.isValidObjectId(franchiseIdFilter)) {
+      centreConditions.push({ franchiseId: new mongoose.Types.ObjectId(franchiseIdFilter) });
+    }
+    if (query.$or) {
+      query.$and = [{ $or: query.$or }, { $or: centreConditions }];
+      delete query.$or;
+    } else {
+      query.$or = centreConditions;
+    }
+  } else if (franchiseIdFilter && mongoose.isValidObjectId(franchiseIdFilter)) {
+    query.franchiseId = new mongoose.Types.ObjectId(franchiseIdFilter);
   }
 
   const [items, pendingCount] = await Promise.all([
@@ -4510,11 +5273,26 @@ app.post("/api/admin/finance/fee-approvals/:id/review", requireAuth, async (req,
 app.get("/api/admin/finance/payment-approvals", requireAuth, async (req, res) => {
   if (!canManageFees(req.user)) return sendError(res, 403, "Access restricted to authorized admin accounts");
   const statusFilter = String(req.query?.status || "pending").trim().toLowerCase();
-  const centreFilter = String(req.query?.centre || "all").trim();
+  const centreFilter = String(req.query?.centre || "").trim();
+  const franchiseIdFilter = String(req.query?.franchiseId || "").trim();
 
   const query = { ...(await scopedDataFilter(req, req.query)) };
-  if (centreFilter !== "all") {
-    query.centre = centreFilter;
+  if (centreFilter && centreFilter !== "all") {
+    const centreConditions = [
+      { centre: centreFilter },
+      { centre: { $regex: new RegExp(`^${escapeRegex(centreFilter)}$`, "i") } },
+    ];
+    if (franchiseIdFilter && mongoose.isValidObjectId(franchiseIdFilter)) {
+      centreConditions.push({ franchiseId: new mongoose.Types.ObjectId(franchiseIdFilter) });
+    }
+    if (query.$or) {
+      query.$and = [{ $or: query.$or }, { $or: centreConditions }];
+      delete query.$or;
+    } else {
+      query.$or = centreConditions;
+    }
+  } else if (franchiseIdFilter && mongoose.isValidObjectId(franchiseIdFilter)) {
+    query.franchiseId = new mongoose.Types.ObjectId(franchiseIdFilter);
   }
 
   const students = await Student.find(query)
@@ -4752,7 +5530,7 @@ app.post("/api/admin/students/:id/payments", requireAuth, leadDocumentUpload.arr
   const existingStudent = await Student.findById(req.params.id).lean();
   if (!existingStudent) return sendError(res, 404, "Student not found");
   if (!(await canAccessRecord(req, existingStudent))) return sendError(res, 403, "You can access only permitted records");
-  
+
   const finalPayable = Math.max(0, Number(existingStudent.totalFee || 0) - Number(existingStudent.discountAmount || 0));
   const courseObj = await Course.findOne({
     $or: [
@@ -4918,7 +5696,7 @@ app.post("/api/admin/students/:id/payments/:index/cash-deposits", requireAuth, l
   if (depositedBy.length > 80) return sendError(res, 400, "Deposited by name cannot exceed 80 characters");
   if (note.length > paymentNoteMaxLength) return sendError(res, 400, "Deposit note cannot exceed 250 characters");
   if (Number.isNaN(depositedAt.getTime())) return sendError(res, 400, "Choose a valid deposit date");
-  if (!req.file) return sendError(res, 400, "Deposit proof is required");
+  if (!req.file) return sendError(res, 400, "Deposit proof / challan is required");
 
   const student = await Student.findById(req.params.id);
   if (!student) return sendError(res, 404, "Student not found");
@@ -4926,50 +5704,177 @@ app.post("/api/admin/students/:id/payments/:index/cash-deposits", requireAuth, l
   const payment = student.payments?.[paymentIndex];
   if (!payment) return sendError(res, 404, "Payment not found");
   if ((payment.mode || "Cash") !== "Cash") return sendError(res, 400, "Only cash payments can be deposited");
-  const deposited = (payment.cashDeposits || []).reduce((sum, deposit) => sum + Number(deposit.amount || 0), 0);
+
+  const deposited = (payment.cashDeposits || [])
+    .filter((d) => d.status !== "rejected")
+    .reduce((sum, deposit) => sum + Number(deposit.amount || 0), 0);
   const pendingDeposit = Math.max(0, Number(payment.amount || 0) - deposited);
   if (pendingDeposit <= 0) return sendError(res, 400, "This cash payment is already fully deposited");
   if (amount > pendingDeposit) return sendError(res, 400, `Deposit cannot exceed pending cash of ${pendingDeposit}`);
 
   const proof = saveLeadDocument(req.file);
-  const updatedStudent = await Student.findOneAndUpdate(
-    {
-      _id: req.params.id,
-      [`payments.${paymentIndex}`]: { $exists: true },
-      $or: [
-        { [`payments.${paymentIndex}.mode`]: "Cash" },
-        { [`payments.${paymentIndex}.mode`]: { $exists: false } },
-      ],
-      $expr: {
-        $gte: [
-          {
-            $subtract: [
-              { $ifNull: [{ $arrayElemAt: ["$payments.amount", paymentIndex] }, 0] },
-              {
-                $sum: {
-                  $map: {
-                    input: { $ifNull: [{ $arrayElemAt: ["$payments.cashDeposits", paymentIndex] }, []] },
-                    as: "deposit",
-                    in: { $ifNull: ["$$deposit.amount", 0] },
-                  },
-                },
-              },
-            ],
-          },
-          amount,
-        ],
-      },
-    },
-    {
-      $push: {
-        [`payments.${paymentIndex}.cashDeposits`]: { amount, bank, referenceNumber, note, proof, depositedBy, by: req.user.name, depositedAt },
-        activities: { type: "payment", message: `Cash deposited: ${amount} by ${depositedBy} against payment #${paymentIndex + 1}${proof ? " with proof" : ""}`, by: req.user.name },
-      },
-    },
-    { new: true, runValidators: true },
-  );
-  if (!updatedStudent) return sendError(res, 400, "Deposit cannot exceed current pending cash");
-  res.json({ ok: true, data: updatedStudent });
+  const multiBranchInfo = await getStudentMultiBranchInfo(student);
+  const isApprover = await canApproveCashDeposit(req.user, student);
+  const depositStatus = isApprover ? "verified" : "pending";
+  const approverScope = multiBranchInfo.approverScope;
+
+  const newDeposit = {
+    _id: new mongoose.Types.ObjectId(),
+    amount,
+    bank,
+    referenceNumber,
+    note,
+    proof,
+    depositedBy,
+    by: req.user.name,
+    depositedAt,
+    status: depositStatus,
+    approverScope,
+    isMultiBranch: multiBranchInfo.isMultiBranch,
+    ...(isApprover ? {
+      verifiedBy: req.user.name,
+      verifiedByRole: req.user.role || "admin",
+      verifiedAt: new Date(),
+    } : {}),
+  };
+
+  if (!payment.cashDeposits) payment.cashDeposits = [];
+  payment.cashDeposits.push(newDeposit);
+
+  const activityMsg = isApprover
+    ? `Cash deposited & verified: ₹${amount} by ${depositedBy} against payment #${paymentIndex + 1}`
+    : `Cash deposit challan submitted: ₹${amount} by ${depositedBy} against payment #${paymentIndex + 1} (requires ${multiBranchInfo.isMultiBranch ? "Super Admin or Center Admin" : "Super Admin"} verification)`;
+
+  student.activities.push({
+    type: "payment",
+    message: activityMsg,
+    by: req.user.name,
+    at: new Date(),
+  });
+
+  await student.save();
+  res.json({ ok: true, data: student });
+});
+
+// POST /api/admin/students/:id/payments/:paymentIndex/cash-deposits/:depositRef/review - Verify or reject cash deposit challan
+app.post("/api/admin/students/:id/payments/:paymentIndex/cash-deposits/:depositRef/review", requireAuth, async (req, res) => {
+  const student = await Student.findById(req.params.id);
+  if (!student) return sendError(res, 404, "Candidate record not found");
+
+  const canReview = await canApproveCashDeposit(req.user, student);
+  if (!canReview) {
+    const branchInfo = await getStudentMultiBranchInfo(student);
+    if (!branchInfo.isMultiBranch) {
+      return sendError(res, 403, "Verification for single-branch cash deposits is restricted to Super Admin");
+    } else {
+      return sendError(res, 403, "Verification for multi-branch cash deposits requires Super Admin or Center Admin within center scope");
+    }
+  }
+
+  const paymentIndex = Number(req.params.paymentIndex);
+  const payment = student.payments?.[paymentIndex];
+  if (!payment) return sendError(res, 404, "Payment record not found");
+
+  const depositRef = String(req.params.depositRef);
+  const deposit = (payment.cashDeposits || []).find((d, idx) => String(d._id) === depositRef || String(idx) === depositRef);
+  if (!deposit) return sendError(res, 404, "Cash deposit record not found");
+
+  const action = String(req.body?.action || "").toLowerCase().trim();
+  const note = String(req.body?.note || "").trim();
+  if (!["verify", "approve", "reject"].includes(action)) {
+    return sendError(res, 400, "Invalid review action. Must be 'verify' or 'reject'");
+  }
+
+  if (action === "verify" || action === "approve") {
+    deposit.status = "verified";
+    deposit.verifiedBy = req.user.name || "Admin";
+    deposit.verifiedByRole = req.user.role || "admin";
+    deposit.verifiedAt = new Date();
+    deposit.rejectionReason = "";
+
+    student.activities.push({
+      type: "payment",
+      message: `Cash deposit challan of ₹${deposit.amount} for payment #${paymentIndex + 1} verified by ${req.user.name || "Admin"}`,
+      by: req.user.name || "Admin",
+      at: new Date(),
+    });
+  } else {
+    deposit.status = "rejected";
+    deposit.rejectionReason = note || "Challan deposit rejected by admin";
+    deposit.verifiedBy = req.user.name || "Admin";
+    deposit.verifiedByRole = req.user.role || "admin";
+    deposit.verifiedAt = new Date();
+
+    student.activities.push({
+      type: "payment",
+      message: `Cash deposit challan of ₹${deposit.amount} for payment #${paymentIndex + 1} rejected by ${req.user.name || "Admin"}: "${deposit.rejectionReason}"`,
+      by: req.user.name || "Admin",
+      at: new Date(),
+    });
+  }
+
+  await student.save();
+  res.json({ ok: true, data: student });
+});
+
+// GET /api/admin/finance/cash-deposits/approvals - List pending and reviewed cash deposits
+app.get("/api/admin/finance/cash-deposits/approvals", requireAuth, async (req, res) => {
+  if (!canManageFees(req.user)) return sendError(res, 403, "Access restricted to authorized admin accounts");
+  const statusFilter = String(req.query?.status || "pending").trim().toLowerCase();
+
+  const query = { ...(await scopedDataFilter(req, req.query)) };
+  const students = await Student.find(query)
+    .select("fullName phone admissionNumber centre franchiseId course payments createdAt")
+    .lean();
+
+  const flatDeposits = [];
+  let pendingCount = 0;
+
+  for (const st of students) {
+    (st.payments || []).forEach((payment, pIdx) => {
+      (payment.cashDeposits || []).forEach((deposit, dIdx) => {
+        const dStatus = deposit.status || "verified";
+        if (dStatus === "pending") pendingCount++;
+        if (statusFilter === "all" || dStatus === statusFilter) {
+          flatDeposits.push({
+            studentId: st._id,
+            studentName: st.fullName,
+            phone: st.phone,
+            admissionNumber: st.admissionNumber,
+            centre: st.centre,
+            course: st.course,
+            franchiseId: st.franchiseId,
+            paymentIndex: pIdx,
+            paymentAmount: payment.amount,
+            depositId: String(deposit._id || dIdx),
+            depositIndex: dIdx,
+            amount: deposit.amount,
+            bank: deposit.bank,
+            referenceNumber: deposit.referenceNumber,
+            note: deposit.note,
+            proof: deposit.proof,
+            depositedBy: deposit.depositedBy || deposit.by,
+            depositedAt: deposit.depositedAt || deposit.createdAt,
+            status: dStatus,
+            verifiedBy: deposit.verifiedBy,
+            verifiedByRole: deposit.verifiedByRole,
+            verifiedAt: deposit.verifiedAt,
+            rejectionReason: deposit.rejectionReason,
+            approverScope: deposit.approverScope || "superadmin",
+            isMultiBranch: Boolean(deposit.isMultiBranch),
+          });
+        }
+      });
+    });
+  }
+
+  flatDeposits.sort((a, b) => new Date(b.depositedAt || 0).getTime() - new Date(a.depositedAt || 0).getTime());
+
+  res.json({
+    ok: true,
+    data: flatDeposits,
+    pendingCount,
+  });
 });
 
 app.get("/api/admin/students/:id/payments/:paymentIndex/cash-deposits/:depositIndex/proof", requireAuth, async (req, res) => {
@@ -4977,14 +5882,22 @@ app.get("/api/admin/students/:id/payments/:paymentIndex/cash-deposits/:depositIn
   if (!existingStudent) return sendError(res, 404, "Student not found");
   if (!(await canAccessRecord(req, existingStudent))) return sendError(res, 403, "You can access only permitted records");
   const paymentIndex = Number(req.params.paymentIndex);
-  const depositIndex = Number(req.params.depositIndex);
-  if (!Number.isInteger(paymentIndex) || paymentIndex < 0 || !Number.isInteger(depositIndex) || depositIndex < 0) return sendError(res, 400, "Invalid deposit proof request");
-  const proof = existingStudent.payments?.[paymentIndex]?.cashDeposits?.[depositIndex]?.proof;
+  const payment = existingStudent.payments?.[paymentIndex];
+  if (!payment) return sendError(res, 404, "Payment not found");
+  const depositIndexParam = String(req.params.depositIndex);
+  const deposit = (payment.cashDeposits || []).find((d, idx) => String(d._id) === depositIndexParam || String(idx) === depositIndexParam);
+  const proof = deposit?.proof;
   if (!proof?.storedName) return sendError(res, 404, "Deposit proof not found");
   const filePath = path.join(leadDocumentDir, proof.storedName);
   if (!filePath.startsWith(leadDocumentDir) || !fs.existsSync(filePath)) return sendError(res, 404, "Deposit proof not found");
+  const fileName = String(proof.originalName || "cash-deposit-proof").replace(/[\r\n"]/g, "");
   res.setHeader("Content-Type", proof.mimeType || "application/octet-stream");
-  res.download(filePath, proof.originalName || "cash-deposit-proof");
+  if (req.query.download === "1") {
+    res.download(filePath, fileName);
+  } else {
+    res.setHeader("Content-Disposition", `inline; filename="${fileName}"; filename*=UTF-8''${encodeURIComponent(fileName)}`);
+    res.sendFile(filePath);
+  }
 });
 
 app.post("/api/admin/students/:id/feedback", requireAuth, async (req, res) => {
@@ -6222,3 +7135,4 @@ mongoose.connect(mongoUri)
     console.error("MongoDB connection failed:", error.message);
     process.exit(1);
   });
+
